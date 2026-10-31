@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Compiles before publishing any page or private-data changes.
-PdfDocument _writePrintablePdf(AiProgram program, PdfDocument document, List<AiBoundingBox> bounds, AiNativePlacementResolver? resolvePlacement) {
+PdfDocument _writePrintablePdf(AiProgram program, PdfDocument document, List<AiBoundingBox> bounds, AiNativePlacementResolver? resolvePlacement, AiNativeMeshColorResolver? resolveMeshColor) {
   document.limits.validate();
   final List<PdfPage> pages = document.pages;
   if (pages.isEmpty || pages.length != bounds.length) {
@@ -22,7 +22,7 @@ PdfDocument _writePrintablePdf(AiProgram program, PdfDocument document, List<AiB
     }
     boxes.add(box);
   }
-  final List<_PrintableNode> nodes = _readPrintable(program, resolvePlacement);
+  final List<_PrintableNode> nodes = _readPrintable(program, resolvePlacement, resolveMeshColor);
   final _PrintablePdfWriter writer = _PrintablePdfWriter(document: document, bounds: bounds);
   final _PrintableChunk content = writer.nodes(nodes);
   final PdfEditor editor = PdfEditor(document: document.copyWith(objects: writer.objects));
@@ -134,7 +134,9 @@ final class _PrintablePdfWriter {
         continue;
       }
       final _PrintableChunk child = this.nodes(node.children);
-      final _PrintableChunk paint = node.raster != null
+      final _PrintableChunk paint = node.mesh != null
+          ? _mesh(node)
+          : node.raster != null
           ? _raster(node)
           : node.gradient == null
           ? (_PrintableChunk()..operations.addAll(node.operations))

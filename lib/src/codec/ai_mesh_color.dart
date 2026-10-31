@@ -159,6 +159,27 @@ final class _MeshColorPatch {
     required this.second,
   });
 
+  /// Converts corner Hermite data to a tensor with zero mixed derivatives.
+  List<List<double>> get controlPoints {
+    final List<List<double>> grid = List.generate(16, (_) => List.filled(values.first.length, 0.0));
+    for (int corner = 0; corner < 4; corner++) {
+      final int horizontal = corner.isEven ? 0 : 3;
+      final int vertical = corner ~/ 2 == 0 ? 0 : 3;
+      final int inwardHorizontal = horizontal == 0 ? 1 : 2;
+      final int inwardVertical = vertical == 0 ? 1 : 2;
+      for (int component = 0; component < values.first.length; component++) {
+        final double value = values[corner][component];
+        final double alongFirst = first[corner][component] * (horizontal == 0 ? 1 : -1) / 3;
+        final double alongSecond = second[corner][component] * (vertical == 0 ? 1 : -1) / 3;
+        grid[horizontal * 4 + vertical][component] = value;
+        grid[inwardHorizontal * 4 + vertical][component] = _meshFinite(value + alongFirst);
+        grid[horizontal * 4 + inwardVertical][component] = _meshFinite(value + alongSecond);
+        grid[inwardHorizontal * 4 + inwardVertical][component] = _meshFinite(value + alongFirst + alongSecond);
+      }
+    }
+    return List.unmodifiable(grid.map(List<double>.unmodifiable));
+  }
+
   /// Evaluates the field and clamps components to the process-space range.
   List<double> sample(double horizontal, double vertical) {
     final List<double> a = _meshHermite(horizontal);

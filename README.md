@@ -189,7 +189,9 @@ tint edits preserve the original declarations and device alternatives.
 `AiNativeMeshInterpolation` evaluates qualified tensor geometry and process
 colors, including intermediate boundary knots. Named inks and mixed spaces
 require explicit host color resolution; varying corner opacity is not supported.
-Mesh geometry editing and PDF regeneration remain unfinished.
+The native PDF bridge renders qualified meshes with bounded color subdivision
+and constant opacity, and saves supported drawings with their edited native data.
+Mesh geometry editing and full-document opacity masks remain unfinished.
 
 ## Scope
 

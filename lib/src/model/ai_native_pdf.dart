@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:aikit/src/codec/ai_native_data.dart';
 import 'package:aikit/src/codec/ai_postscript.dart';
 import 'package:aikit/src/model/ai_document.dart';
+import 'package:aikit/src/model/ai_native_mesh_interpolation.dart';
 import 'package:aikit/src/model/ai_native_records.dart';
 import 'package:aikit/src/model/ai_program.dart';
 import 'package:pdfcore/pdfcore.dart';
@@ -14,6 +15,7 @@ part '../codec/ai_printable_parser.dart';
 part '../codec/ai_printable_raster.dart';
 part '../editing/ai_printable_gradient_writer.dart';
 part '../editing/ai_printable_raster_writer.dart';
+part '../editing/ai_printable_mesh_writer.dart';
 part '../editing/ai_printable_pdf_writer.dart';
 
 /// Supplies explicit process pixels for one current native linked placement.
@@ -28,8 +30,8 @@ typedef AiNativePlacementResolver = AiNativeRasterSamples? Function(AiNativePlac
 /// Rebuilds PDF compatibility artwork from native printable Illustrator drawings.
 ///
 /// This interprets declarative process-color paths, layers, groups, compound
-/// paths, clipping, classic gradient fills/strokes, embedded or host-resolved
-/// process-color images and supported opacity records.
+/// paths, clipping, classic gradient fills/strokes, qualified Cartesian meshes,
+/// embedded or host-resolved process-color images and supported opacity records.
 /// It does not execute a prolog.
 /// Unsupported drawing operations reject the whole export. Private authoring
 /// paths remain in the native program and do not paint a second time.
@@ -46,15 +48,25 @@ abstract final class AiNativePdf {
   /// Complete gradient appearance notes without a path do not paint.
   /// Embedded binary rasters retain native samples, placement and separate alpha.
   /// [resolvePlacement] supplies pixels for qualified CC raster links without
-  /// incorporating them into the native program. Missing links, text, patterns,
-  /// spot colors and unresolved appearances reject export.
-  static PdfDocument render({required AiProgram program, required AiBoundingBox bounds, AiNativePlacementResolver? resolvePlacement, PdfLimits limits = const PdfLimits()}) {
+  /// incorporating them into the native program. [resolveMeshColor] explicitly
+  /// resolves mixed mesh colors and named inks to a common process space.
+  /// Qualified mesh tensors retain exact geometry up to coordinate quantization;
+  /// adaptive color subdivision bounds component error by `1/1024 + 0.5/65535`.
+  /// Constant corner alpha composites the opaque mesh once in an isolated group.
+  /// Missing links, text, patterns, unresolved inks and appearances reject export.
+  static PdfDocument render({
+    required AiProgram program,
+    required AiBoundingBox bounds,
+    AiNativePlacementResolver? resolvePlacement,
+    AiNativeMeshColorResolver? resolveMeshColor,
+    PdfLimits limits = const PdfLimits(),
+  }) {
     limits.validate();
     final PdfDocument empty = PdfDocument.fromPages(
       pages: [PdfPageSource(width: bounds.right - bounds.left, height: bounds.top - bounds.bottom, content: [])],
     );
     final PdfDocument document = PdfDocument(objects: empty.objects, trailer: empty.trailer, limits: limits);
-    return _writePrintablePdf(program, document, [bounds], resolvePlacement);
+    return _writePrintablePdf(program, document, [bounds], resolvePlacement, resolveMeshColor);
   }
 
   /// Saves edited native bytes and regenerated PDF pages in one new snapshot.
@@ -70,18 +82,20 @@ abstract final class AiNativePdf {
   /// rejects unsupported visible and hidden operations instead of dropping art.
   /// [resolvePlacement] updates PDF image appearances while keeping the native
   /// file references, preview bytes and placed-object records unchanged.
+  /// [resolveMeshColor] has the same explicit process-color policy as [render].
   static AiPdfDocument save({
     required AiNativeSource source,
     required AiProgram program,
     required List<AiBoundingBox> pageBounds,
     AiNativePlacementResolver? resolvePlacement,
+    AiNativeMeshColorResolver? resolveMeshColor,
     AiNativeLimits limits = const AiNativeLimits(),
   }) {
     final AiDocument original = source.document;
     if (original is! AiPdfDocument || AiNativeData.extract(original, limits: limits).length != 1) {
       throw ArgumentError('PDF synchronization requires a single native program in a PDF-backed document.');
     }
-    final PdfDocument synchronized = _writePrintablePdf(program, original.pdf, pageBounds, resolvePlacement);
+    final PdfDocument synchronized = _writePrintablePdf(program, original.pdf, pageBounds, resolvePlacement, resolveMeshColor);
     return AiNativeData.replace(source: source, program: program.bytes, synchronizedPdf: synchronized, limits: limits);
   }
 }
@@ -108,6 +122,9 @@ final class _PrintableNode {
 
   /// Embedded or explicitly resolved image pixels and their native placement.
   final _PrintableRaster? raster;
+
+  /// Source-derived tensor geometry and explicitly resolved process colors.
+  final AiNativeMeshInterpolation? mesh;
 
   /// Stroke painted after the gradient clip has been restored.
   final List<PdfOperation> gradientStroke;
@@ -136,6 +153,7 @@ final class _PrintableNode {
     this.visible = true,
     this.gradient,
     this.raster,
+    this.mesh,
     this.gradientStroke = const [],
     this.evenOdd = false,
     this.opacity = 1,

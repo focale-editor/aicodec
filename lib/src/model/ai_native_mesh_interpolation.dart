@@ -86,6 +86,20 @@ final class AiNativeMeshInterpolation {
     }
     return AiNativeMeshProcessColor(space: space, components: field.sample(first, second));
   }
+
+  /// Returns bicubic process coefficients indexed by `first * 4 + second`.
+  ///
+  /// Each immutable vector has [space]'s component count. Coefficients may lie
+  /// outside zero to one; evaluating the polynomial and then clamping gives
+  /// [colorAt]. Renderers can restrict these tensors to bound approximation
+  /// error throughout a surface, rather than testing isolated color samples.
+  List<List<double>> colorControlPoints({required AiNativeMeshPatch patch}) {
+    final _MeshColorPatch? field = _colors[patch];
+    if (field == null) {
+      throw ArgumentError('The cell belongs to another native mesh snapshot.');
+    }
+    return field.controlPoints;
+  }
 }
 
 /// One bicubic tensor surface occupying a rectangle of a source mesh cell.

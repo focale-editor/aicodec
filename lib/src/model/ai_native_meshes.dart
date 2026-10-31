@@ -303,6 +303,18 @@ final class AiNativeMeshes {
   /// Retains an immutable inventory and its original resource policy.
   AiNativeMeshes._({required this.records, required this.bodyOnly, required List<AiNativeMesh> meshes}) : meshes = List.unmodifiable(meshes);
 
+  /// Requires direct printable artwork with independently owned appearance.
+  ///
+  /// Checks source ownership, private/resource placement, extension fields and
+  /// attached object/parent metadata. Rendering and native edits share this
+  /// contract so an unresolved appearance cannot silently lose dependencies.
+  void validateAppearance({required AiNativeMesh mesh}) {
+    if (!meshes.contains(mesh)) {
+      throw ArgumentError('The mesh belongs to another native snapshot.');
+    }
+    _validateMeshPaintOwner(records, mesh);
+  }
+
   /// Changes selected logical vertices, updating every neighboring corner copy.
   ///
   /// Color-space switches are local to each changed corner: subsequent source

@@ -1,8 +1,10 @@
 part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Compiles complete printable paths, rejecting unrepresented drawing semantics.
-List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver? resolvePlacement) {
+List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver? resolvePlacement, AiNativeMeshColorResolver? resolveMeshColor) {
   final AiNativeRecords records = AiNativeRecords.decode(program: program);
+  final AiNativeMeshes meshes = AiNativeMeshes.decode(records: records, bodyOnly: true);
+  final Map<int, AiNativeMesh> meshOpenings = {for (final AiNativeMesh mesh in meshes.meshes.where((mesh) => !mesh.isPrivate)) mesh.start: mesh};
   final List<AiNativeRaster> rasters = AiNativeRasters.decode(records: records, bodyOnly: true).images;
   final Set<int> rasterData = {
     for (final AiNativeRaster image in rasters)
@@ -60,6 +62,8 @@ List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver
   final List<PdfOperation> path = [];
   bool clip = false;
   bool rasterClosed = false;
+  int? meshEnd;
+  bool meshClosed = false;
 
   /// Publishes one paint, retaining compound topology until its group ends.
   void paint(String operator) {
@@ -86,6 +90,33 @@ List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver
 
   for (final AiInstruction instruction in program.instructions) {
     final String operator = instruction.operator;
+    if (meshEnd != null && instruction.end <= meshEnd) {
+      if (instruction.end == meshEnd) {
+        meshEnd = null;
+        meshClosed = true;
+      }
+      continue;
+    }
+    final AiNativeMesh? mesh = meshOpenings[instruction.start];
+    if (mesh != null) {
+      if (path.isNotEmpty || compound != null || gradientInstance != null || clip) {
+        throw UnsupportedError('A mesh cannot interrupt a native path or gradient.');
+      }
+      meshes.validateAppearance(mesh: mesh);
+      stack.last.children.add(
+        _PrintableNode(
+          operations: state.attributes.values.toList(),
+          mesh: AiNativeMeshInterpolation(mesh: mesh, resolveColor: resolveMeshColor),
+          opacity: state.opacity,
+          blend: state.blend,
+          isolated: state.isolated,
+          knockout: state.knockout,
+        ),
+      );
+      meshEnd = mesh.end;
+      appearanceState = null;
+      continue;
+    }
     final AiNativeRaster? image = rasterCommands[instruction.end];
     if (image != null) {
       if (path.isNotEmpty || compound != null || gradientInstance != null || clip) {
@@ -132,12 +163,14 @@ List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver
       rasterClosed = operator == '~';
       continue;
     }
-    if (rasterClosed && operator == 'N') {
+    if ((rasterClosed || meshClosed) && operator == 'N') {
       _printableArity(instruction, 0);
       rasterClosed = false;
+      meshClosed = false;
       continue;
     }
     rasterClosed = false;
+    meshClosed = false;
     switch (operator) {
       case 'Bb':
         if (gradientInstance != null) {
@@ -303,7 +336,7 @@ List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver
           compoundGroupClosed = false;
         } else if (operands.first.number == 6 && aiStringBytes(operands.last).isEmpty) {
           final _PrintableNode? previous = stack.last.children.lastOrNull;
-          if (previous == null || previous.clip || !previous.group && (previous.operations.isEmpty || appearanceState == null)) {
+          if (previous == null || previous.clip || !previous.group && (previous.operations.isEmpty && previous.mesh == null || appearanceState == null)) {
             throw const FormatException('Native appearance state has no preceding drawable object.');
           }
           final _PrintableState appearance = appearanceState ?? state;
@@ -333,7 +366,7 @@ List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver
         throw UnsupportedError('Native PDF export cannot render $operator.');
     }
   }
-  if (stack.length != 1 || path.isNotEmpty || clip || gradientInstance != null) {
+  if (stack.length != 1 || path.isNotEmpty || clip || gradientInstance != null || meshEnd != null) {
     throw const FormatException('Unterminated printable drawing.');
   }
   return stack.single.children;

@@ -67,8 +67,33 @@ Python derivation (maximum difference 3.411e-13 point), with color agreement
 within 2.221e-16. Reports are separate from the Python-only research results.
 Both drivers explicitly resolve only this fixture's canonical process inks.
 General color conversion, varying opacity, both-axis compound boundaries in one
-cell, additional files and rendered comparisons remain unqualified. This check
-validates the public evaluator, not an enabled `AiNativePdf` mesh export path.
+cell and additional files remain unqualified.
+
+Mesh PDF excerpts additionally exercise baseline rendering, one edited CMYK
+vertex and uniform 50% opacity. The source program remains complete in the
+`.ps` probes; the PDFs are explicitly isolated mesh excerpts. The verifier checks
+all native geometry tokens, selected/unselected colors and surrounding bytes.
+Baseline/opacity references reuse Adobe's tensor stream and ICC space; the edited
+reference subdivides Adobe geometry at fixed eighths and uses the independent
+native color field. Poppler comparisons at 1,644 × 1,038 require whole-page mean
+channel error below 0.075/255, painted-pixel mean below 0.6/255 and 99th-percentile
+maximum channel error at most six levels. Observed maxima are 0.040160/255,
+0.328143/255 and three levels respectively. Sparse edge pixels differ more;
+these checks do not establish pixel-identical output or Illustrator reopening.
+Constant opacity must compose the opaque shading in an isolated form to avoid
+visible tessellation seams.
+
+```sh
+dart run tool/check_native_mesh_pdf.dart
+python3 tool/verify_native_mesh_pdf.py
+```
+
+Outputs stay in ignored `output/mesh-pdf`. Add `--full` to the Dart command to
+require complete native/PDF rendering and saved-program recovery: this gate
+currently rejects the pinned source's unrelated `AI9_Mask`/`Xy` transparency
+state. Default excerpt checks do not mark that gate passed or save an edited
+full document with stale PDF artwork. Independent unit cases exercise native/PDF
+saving on supported mesh-only documents.
 
 `check_native_corpus.dart` requires extraction and structural parsing for all
 37 fixtures, verifies the nested layer fixture's names and flags, renames a

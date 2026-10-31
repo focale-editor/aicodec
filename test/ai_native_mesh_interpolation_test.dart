@@ -4,55 +4,7 @@ import 'package:aikit/aikit.dart';
 import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 
-/// Creates straight-sided cells with an independently specified linear field.
-String _grid({Set<int> compoundAxes = const {}, bool zeroHandles = false, bool collapsedInterior = false, double weight = 1, double opacity = 1, double Function(int, int)? color}) {
-  final StringBuffer source = StringBuffer('/Mesh X!\n%_2 /Version X#\n%_/Cartesian /Type X#\n%_[2 2] /Size X#\n%_/Data X#\n');
-  for (int first = 0; first < 2; first++) {
-    for (int second = 0; second < 2; second++) {
-      source.writeln('%_[$first $second] /P X#\n%_[-1] /R X#');
-      final List<(int, int)> corners = [(first, second), (first + 1, second), (first + 1, second + 1), (first, second + 1)];
-      final List<({double x, double y, int edge, bool corner, double color})> nodes = [];
-      for (int edge = 0; edge < 4; edge++) {
-        final (int, int) current = corners[edge];
-        final (int, int) next = corners[(edge + 1) % 4];
-        nodes.add((x: 3.0 * current.$1, y: 3.0 * current.$2, edge: edge, corner: true, color: color?.call(current.$1, current.$2) ?? (current.$1 + current.$2) / 4));
-        if (compoundAxes.contains(edge % 2)) {
-          final int across = edge.isEven ? current.$2 : current.$1;
-          final double fraction = across == 0 ? 0.25 : 0.75;
-          final double direction = edge < 2 ? fraction : 1 - fraction;
-          nodes.add((x: 3 * (current.$1 + direction * (next.$1 - current.$1)), y: 3 * (current.$2 + direction * (next.$2 - current.$2)), edge: edge, corner: false, color: 0));
-        }
-      }
-      for (int index = 0; index < nodes.length; index++) {
-        final ({double color, bool corner, int edge, double x, double y}) node = nodes[index];
-        final ({double color, bool corner, int edge, double x, double y}) previous = nodes[(index + nodes.length - 1) % nodes.length];
-        final ({double color, bool corner, int edge, double x, double y}) next = nodes[(index + 1) % nodes.length];
-        final bool reverse = !node.corner && node.edge < 2;
-        final before = reverse ? next : previous;
-        final after = reverse ? previous : next;
-        final double outgoingX = zeroHandles || collapsedInterior && node.x == 3 ? node.x : (2 * node.x + after.x) / 3;
-        final double outgoingY = zeroHandles ? node.y : (2 * node.y + after.y) / 3;
-        final double incomingX = zeroHandles || collapsedInterior && node.x == 3 ? node.x : (2 * node.x + before.x) / 3;
-        final double incomingY = zeroHandles ? node.y : (2 * node.y + before.y) / 3;
-        final List<double> values = node.corner
-            ? [node.color, opacity, node.x, node.y, outgoingX, outgoingY, weight, incomingX, incomingY, weight]
-            : [node.x, node.y, outgoingX, outgoingY, incomingX, incomingY, weight];
-        final String operator = node.corner
-            ? 'N'
-            : node.edge.isEven
-            ? 'A'
-            : 'S';
-        source.writeln('%_[${values.map(_number).join(' ')}] /$operator X#');
-      }
-      source.writeln('%_/E X#');
-    }
-  }
-  source.write('/End X!');
-  return source.toString();
-}
-
-/// Keeps fixture lexemes identical on the VM and JavaScript runtimes.
-String _number(double value) => value == value.truncateToDouble() ? value.toStringAsFixed(1) : value.toString();
+import 'support/native_mesh_fixture.dart';
 
 /// Wraps synthetic native data without involving a mesh writer.
 AiNativeMeshes _decode(String body) => AiNativeMeshes.decode(
@@ -65,7 +17,7 @@ void _near(double actual, double expected) => check((actual - expected).abs()).i
 /// Checks interpolation behavior, immutable access and conservative rejection.
 void main() {
   test('evaluates straight tensor geometry and a linear color field', () {
-    final AiNativeMeshes source = _decode(_grid(opacity: 0.6));
+    final AiNativeMeshes source = _decode(meshGrid(opacity: 0.6));
     final List<int> before = source.records.program.bytes.toList();
     final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: source.meshes.single);
     check(interpolation.space).equals(AiNativeMeshProcessSpace.gray);
@@ -81,6 +33,10 @@ void main() {
         }
       }
       check(surface.controlPoints.clear).throws<UnsupportedError>();
+      final List<List<double>> colors = interpolation.colorControlPoints(patch: surface.patch);
+      check(colors.length).equals(16);
+      check(colors.clear).throws<UnsupportedError>();
+      check(colors.first.clear).throws<UnsupportedError>();
     }
     check(interpolation.surfaces.clear).throws<UnsupportedError>();
     check(source.records.program.bytes).deepEquals(before);
@@ -88,7 +44,7 @@ void main() {
 
   test('partitions unequal opposite boundaries on either grid axis', () {
     for (final int axis in [0, 1]) {
-      final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(_grid(compoundAxes: {axis})).meshes.single);
+      final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(meshGrid(compoundAxes: {axis})).meshes.single);
       check(interpolation.surfaces.length).equals(10);
       for (final AiNativeMeshSurface surface in interpolation.surfaces) {
         final double first = surface.bounds.firstStart + 0.3 * (surface.bounds.firstEnd - surface.bounds.firstStart);
@@ -102,7 +58,7 @@ void main() {
   });
 
   test('limits color extrema while preserving values at every vertex', () {
-    final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(_grid(color: (first, second) => first == 1 ? 1 : 0)).meshes.single);
+    final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(meshGrid(color: (first, second) => first == 1 ? 1 : 0)).meshes.single);
     for (final AiNativeMeshSurface surface in interpolation.surfaces) {
       final AiNativeMeshPatch patch = surface.patch;
       _near(interpolation.colorAt(patch: patch, first: 0.5, second: 0.2).components.single, 0.75);
@@ -111,14 +67,14 @@ void main() {
   });
 
   test('retains collapsed interior tangents with zero directional color slope', () {
-    final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(_grid(collapsedInterior: true, color: (first, second) => first / 2)).meshes.single);
+    final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(meshGrid(collapsedInterior: true, color: (first, second) => first / 2)).meshes.single);
     final AiNativeMeshSurface surface = interpolation.surfaces.first;
     _near(surface.positionAt(first: 0.5, second: 0.5).x, 1.875);
     _near(interpolation.colorAt(patch: surface.patch, first: 0.5, second: 0.5).components.single, 0.375);
   });
 
   test('requires explicit common colors and checks every shared corner copy', () {
-    final String mixed = _grid().replaceFirst('%_/Data X#', '%_/Data X#\n%_/DeviceRGB /CS X#').replaceFirst('%_[0.0 1.0', '%_[0 0 0 1.0').replaceFirst(' /N X#', ' /N X#\n%_/DeviceGray /CS X#');
+    final String mixed = meshGrid().replaceFirst('%_/Data X#', '%_/Data X#\n%_/DeviceRGB /CS X#').replaceFirst('%_[0.0 1.0', '%_[0 0 0 1.0').replaceFirst(' /N X#', ' /N X#\n%_/DeviceGray /CS X#');
     final AiNativeMesh mesh = _decode(mixed).meshes.single;
     check(() => AiNativeMeshInterpolation(mesh: mesh)).throws<UnsupportedError>();
     int calls = 0;
@@ -132,12 +88,12 @@ void main() {
     check(calls).equals(16);
     _near(converted.colorAt(patch: mesh.patches.first, first: 0.5, second: 0.5).components.single, 0.25);
     check(() => AiNativeMeshInterpolation(mesh: mesh, resolveColor: (corner) => null)).throws<UnsupportedError>();
-    final String inconsistent = _grid().replaceFirst('%_[0.25 1.0', '%_[0.3 1.0');
+    final String inconsistent = meshGrid().replaceFirst('%_[0.25 1.0', '%_[0.3 1.0');
     check(() => AiNativeMeshInterpolation(mesh: _decode(inconsistent).meshes.single)).throws<FormatException>();
   });
 
   test('keeps named inks explicit and interpolates all resolved components', () {
-    final AiNativeMesh mesh = _decode(_grid().replaceFirst('%_/Data X#', '%_/Data X#\n%_[0 0 0 1 /DeviceCMYK (Black) /Separation] /CS X#')).meshes.single;
+    final AiNativeMesh mesh = _decode(meshGrid().replaceFirst('%_/Data X#', '%_/Data X#\n%_[0 0 0 1 /DeviceCMYK (Black) /Separation] /CS X#')).meshes.single;
     check(() => AiNativeMeshInterpolation(mesh: mesh)).throws<UnsupportedError>();
     for (final AiNativeMeshProcessSpace space in [AiNativeMeshProcessSpace.rgb, AiNativeMeshProcessSpace.cmyk]) {
       final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(
@@ -155,15 +111,15 @@ void main() {
 
   test('rejects unsupported weights, opacity, extension fields and boundaries', () {
     for (final String body in [
-      _grid(weight: 0.5),
-      _grid(zeroHandles: true),
-      _grid(compoundAxes: {0, 1}),
-      _grid().replaceFirst('%_[0.0 1.0', '%_[0.0 0.5'),
-      _grid().replaceFirst('%_/Data X#', '%_1 /Future X#\n%_/Data X#'),
+      meshGrid(weight: 0.5),
+      meshGrid(zeroHandles: true),
+      meshGrid(compoundAxes: {0, 1}),
+      meshGrid().replaceFirst('%_[0.0 1.0', '%_[0.0 0.5'),
+      meshGrid().replaceFirst('%_/Data X#', '%_1 /Future X#\n%_/Data X#'),
     ]) {
       check(() => AiNativeMeshInterpolation(mesh: _decode(body).meshes.single)).throws<UnsupportedError>();
     }
-    final AiNativeMeshes source = _decode(_grid());
+    final AiNativeMeshes source = _decode(meshGrid());
     final AiNativeMeshNode corner = source.meshes.single.patches.first.nodes[1];
     final String text = latin1.decode(source.records.program.bytes);
     final String field = text.substring(corner.field.start, corner.field.end);
@@ -175,9 +131,10 @@ void main() {
   });
 
   test('rejects foreign cells and invalid evaluation parameters', () {
-    final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(_grid()).meshes.single);
+    final AiNativeMeshInterpolation interpolation = AiNativeMeshInterpolation(mesh: _decode(meshGrid()).meshes.single);
     final AiNativeMeshSurface surface = interpolation.surfaces.first;
-    check(() => interpolation.colorAt(patch: _decode(_grid()).meshes.single.patches.first, first: 0.5, second: 0.5)).throws<ArgumentError>();
+    check(() => interpolation.colorAt(patch: _decode(meshGrid()).meshes.single.patches.first, first: 0.5, second: 0.5)).throws<ArgumentError>();
+    check(() => interpolation.colorControlPoints(patch: _decode(meshGrid()).meshes.single.patches.first)).throws<ArgumentError>();
     for (final double value in [-0.1, 1.1, double.nan, double.infinity]) {
       check(() => surface.positionAt(first: value, second: 0.5)).throws<ArgumentError>();
       check(() => surface.positionAt(first: 0.5, second: value)).throws<ArgumentError>();
@@ -187,7 +144,7 @@ void main() {
   });
 
   test('rejects one-cell extents and collapsed numeric ranges without source mutation', () {
-    final AiNativeMeshes source = _decode(_grid());
+    final AiNativeMeshes source = _decode(meshGrid());
     final AiNativeMesh mesh = source.meshes.single;
     final String text = latin1.decode(source.records.program.bytes);
     final AiNativeMeshPatch patch = mesh.patches.first;
