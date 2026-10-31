@@ -13,6 +13,10 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
 - Atomic multi-program saves preserve existing page identities and native graph
   dependencies; stale/foreign sources and implicit page remapping reject.
 - Native layers, plain paths, hierarchical records and artboards.
+- First/root/nested ordinary layer, group and path creation without existing
+  siblings; qualified removal, copying, reordering and reparenting preserve
+  ownership, identities and both state projections. Path creation accepts explicit
+  geometry/process paint and host-computed bounds, without generating a PDF.
 - Source-owned ruler units, canvas scale and coordinate metadata; artboards retain
   document ownership/order and separate artboard/text ruler origins.
 - Source identities, ordered record fields, saved artboard/XML artwork identifiers

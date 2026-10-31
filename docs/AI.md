@@ -761,6 +761,7 @@ stale selections reject before any source edit is applied.
 
 | Operation | Behavior |
 | --- | --- |
+| `createPath(definition:, parent:, layer:)` | Appends explicit ordinary geometry and paint at the root or inside an owned group/layer; no sibling or template is required. |
 | `duplicatePaths(paths:, identifiers:)` | Copies each complete qualified path and its metadata after the original; identified paths require fresh supplied IDs. |
 | `removePaths(paths:)` | Removes geometry/paint and its consumed point count. Persistent state and conservative drawing bounds remain. |
 | `insertPaths(insertions:)` | Inserts supplied geometry after each anchor, inheriting its paint, flags and count convention. Multiple insertions at the same anchor retain input order. |
@@ -774,6 +775,36 @@ ink `bounds`. Geometry has one initial moveto and portable finite coordinates.
 Counted closed paths receive a closing endpoint when needed. Bounds expand the
 existing drawing extent without changing artboards or PDF pages. All operations
 reparse under the original source limits and return immutable snapshots.
+
+`AiNativePathDefinition` supplies immutable `AiArtworkPath` geometry and process
+paints, host-computed ink `bounds`, an optional point count, hidden/opacity and
+overprint values, and optional byte-valued name and fresh XML identity. The
+artwork model is used only as a data value; native creation does not call its
+standalone AI7 writer. Gray, RGB and CMYK channels remain in their supplied space.
+Open/closed lines and cubic shorthand retain their operators. Fill-only,
+stroke-only, combined and unpainted paths have explicit consumed state, with
+line width, caps, joins, miter and dashes when stroked. Counted closed paths receive
+an explicit closing endpoint if needed. Coordinates and line values must be
+finite and portable; opacity uses the qualified `0 opacity 0 0 0 Xy` layout.
+
+Creation accepts a root, ordinary group or qualified layer, including a newly
+created or emptied owner. Parent flags remain inherited. It restores known
+outgoing native and printing state separately and rejects when a following old
+object needs an overwritten value that cannot be recovered. A fresh path cannot
+capture an existing count, expansion flag, note or dictionary. Only the inserted
+object, necessary scalar replay and the union of declared drawing bounds change;
+layers, saved views, artboards, existing identities and complete CC alternatives
+remain untouched. The caller supplies updated PDF artwork when saving.
+
+Eight regressions cover the first path, 48 process-color/closure/count/paint
+combinations, cubic and shorthand curves, empty/populated/hidden parents,
+subsequent duplication/removal, both state projections, immutable metadata and
+limits. Eighteen fixed independent transactions verify seven creations in three
+pinned real sources, ten synthetic creations and one immutable refusal. The
+reader checks geometry, counts, metadata, native ownership, both consumed paint
+projections, exact unselected bytes and declared bounds. This qualifies ordinary
+native data creation; new private live-shape parameters, advanced appearances,
+whole CC document creation and Adobe reopening remain separate contracts.
 
 These APIs accept paths whose ownership, metadata and inherited appearance are
 isolated. Qualified attached identities move with their artwork and require
@@ -1739,7 +1770,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; qualified parent dissolution with explicit metadata disposal | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
-| Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
+| Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

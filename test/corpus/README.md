@@ -653,6 +653,24 @@ dart run tool/check_native_group_creation.dart
 python3 tool/verify_native_group_creation.py --inkai-source /tmp/extension-ai
 ```
 
+Path creation without existing siblings has eighteen fixed transactions. Seven
+append explicit geometry at the root or in an owned group/layer in three pinned
+real files; ten synthetic cases cover the first path, gray/RGB/CMYK paints,
+unpainted/fill-only/stroke-only paths, uncounted open geometry, empty/populated
+parents and complete CC siblings. One unresolved following-fill request refuses
+immutably. Checksums pin every synthetic original. The unmodified reader verifies
+the supplied geometry, point counts, process paints, names/identities and parent
+ownership; old consumed state remains unchanged in both projections. Exact byte
+comparison permits only the new object, source-backed scalar replay and the
+declared drawing-bound union. Pair alternatives, layer data, resources and other
+unselected bytes remain exact. These are native-data checks, without claiming
+Adobe reopening or host representation generation.
+
+```sh
+dart run tool/check_native_path_creation.dart
+python3 tool/verify_native_path_creation.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

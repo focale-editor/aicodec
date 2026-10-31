@@ -31,9 +31,13 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
 ///
 /// Private scalar prefixes require a caller that validates native state separately.
 void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders, {bool privateState = false}) {
+  _ordinaryArtworkPrefix(drawing, _ordinaryObject(drawing, group).start, bound, layerHeaders, privateState: privateState);
+}
+
+/// Qualifies an artwork boundary without capturing unknown prefixes or metadata.
+void _ordinaryArtworkPrefix(AiNativeDrawing drawing, int start, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders, {bool privateState = false}) {
   final List<AiNativeItem> items = drawing.items;
-  final int start = _ordinaryObject(drawing, group).start;
-  final int preceding = _pathOffset(bound, group.start + 1, (shape) => shape.end);
+  final int preceding = _pathOffset(bound, start + 1, (shape) => shape.end);
   final int resolved = preceding == 0 ? drawing.records.program.bodyStart : bound[preceding - 1].end;
   int boundary = resolved;
   for (int index = _pathOffset(items, start, (item) => item.start) - 1; index >= 0 && items[index].end > resolved; index--) {

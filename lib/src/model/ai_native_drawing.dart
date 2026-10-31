@@ -239,6 +239,15 @@ final class AiNativeDrawing {
   AiNativeDrawing createGroup({AiNativeGroup? parent, AiLayer? layer, List<int>? nameBytes, List<int>? identifierBytes, bool inheritParentFlags = false}) =>
       _createNativeGroup(this, parent, layer, nameBytes, identifierBytes, inheritParentFlags);
 
+  /// Creates an ordinary path without requiring existing geometry or a sibling.
+  ///
+  /// Appends at the root or inside one owned [parent] group or [layer]. The
+  /// definition supplies all consumed object/paint state; ancestor flags remain
+  /// inherited. Known native and printing state is restored independently for
+  /// following artwork. Unresolved required state or ownership rejects atomically.
+  /// Host-computed ink bounds expand drawing extents without changing artboards.
+  AiNativeDrawing createPath({required AiNativePathDefinition definition, AiNativeGroup? parent, AiLayer? layer}) => _createNativePath(this, definition, parent, layer);
+
   /// Copies complete bound CC authoring/printing pairs after their originals.
   ///
   /// Private geometry, parameters, printing contours and saved alternatives stay

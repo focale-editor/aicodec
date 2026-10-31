@@ -133,9 +133,12 @@ groups and compound topology. There is no general modern object lifecycle API.
   1,274 uses and 195 saved identifiers. Latest validation: 336 VM/335 Node tests
   and clean format/fix/analysis. Unknown dependency schemas stay opaque; no
   global identity or arbitrary lifecycle permission is inferred from source spans.
-- [ ] Add qualified create/delete/duplicate/reorder/reparent operations for layers,
+- [x] Add qualified create/delete/duplicate/reorder/reparent operations for layers,
   groups and paths, preserving unrelated source and updating all references.
-  **In progress:** ordinary anonymous paths support insertion, duplication,
+  **Completed for ordinary owners and the declared bound CC subtree contracts.**
+  The implementation history below records each increment; the final paragraph
+  defines the completed subset and its remaining separate contracts.
+  Ordinary anonymous paths support insertion, duplication,
   removal, sibling reordering and same-layer movement across ordinary groups.
   Inherited paint/lock/visibility state is retained; movement rejects intervening
   state assignments. Point counts move with geometry, supplied ink bounds expand
@@ -562,9 +565,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   independent transactions verify seven real and five synthetic creations plus
   one immutable refusal. Latest validation: 674 VM/673 Node tests and clean
   format/fix/analysis. Adobe reopening remains unqualified.
-  The lifecycle task remains open: path creation without an existing sibling
-  still needs a public contract; broader
-  reference isolation and appearance families also retain their later tasks.
+  `createPath` now authors a first/root path or appends to an ordinary group/layer
+  without a sibling or template. Immutable definitions supply geometry, process
+  paints, line attributes, count/closure, visibility, opacity, overprint, optional
+  name/fresh identity and host-computed ink bounds. Known outgoing native and
+  printing state is restored independently; unknown required following state
+  rejects. Existing source, complete CC pairs and layer/view data remain exact
+  apart from the declared drawing-bound union. Eight regressions cover all 48
+  color/count/closure/paint combinations, curves, immutable values, created and
+  empty parents, subsequent edits and original limits. Eighteen independent
+  transactions verify seven real and ten synthetic creations plus one refusal;
+  the thirteen prior group-creation transactions also pass after prefix reuse.
+  Latest validation: 682 VM/681 Node tests and clean format/fix/analysis.
+  This completes creation, deletion, duplication, ordering and reparenting for
+  qualified ordinary layers/groups/paths, together with the documented lifecycle
+  of complete bound CC pairs and mixed subtrees. Unsupported references reject
+  atomically instead of leaving dangling identities. Artboards, compound/clip
+  editing, broader reference isolation, appearance families and creation of new
+  CC live-shape parameters retain their separate tasks. Adobe reopening remains
+  unqualified; no host renderer or derived representation generator was added.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships
