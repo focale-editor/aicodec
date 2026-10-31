@@ -118,6 +118,30 @@ final class AiNativeLayers {
   AiNativeLayers insertAfter({required AiNativeLayer after, required List<int> nameBytes, List<int>? identifierBytes, bool discardViewState = false}) =>
       _insertNativeLayer(this, after, nameBytes, identifierBytes, discardViewState);
 
+  /// Permutes selected sibling slots while retaining identities and child artwork.
+  ///
+  /// The selected subtrees and intervening state must have qualified ordinary
+  /// ownership. Source assignments preserve inherited and outgoing paint state.
+  /// Saved view data requires explicit [discardViewState], as for insertion.
+  AiNativeLayers reorder({required List<AiNativeLayer> layers, bool discardViewState = false}) => _reorderNativeLayers(this, layers, discardViewState);
+
+  /// Moves a complete subtree after another layer, retaining its saved identities.
+  ///
+  /// Changing its parent requires [inheritParentFlags]: the moved layer retains
+  /// its own flags and explicitly inherits its destination ancestors' attributes.
+  /// Persistent paint and object flags are preserved independently. An ancestor
+  /// can be the anchor when lifting a child out; a descendant cannot be an anchor.
+  AiNativeLayers moveAfter({required AiNativeLayer layer, required AiNativeLayer after, bool inheritParentFlags = false, bool discardViewState = false}) =>
+      _moveNativeLayer(this, layer, after, inside: false, inheritParentFlags: inheritParentFlags, discardViewState: discardViewState);
+
+  /// Appends a complete subtree inside a layer, including an empty destination.
+  ///
+  /// [inheritParentFlags] explicitly accepts the destination ancestors' flags
+  /// when the immediate parent changes. Source identities and the moved subtree's
+  /// own flags remain unchanged. No geometry or appearance is generated.
+  AiNativeLayers moveInto({required AiNativeLayer layer, required AiNativeLayer parent, bool inheritParentFlags = false, bool discardViewState = false}) =>
+      _moveNativeLayer(this, layer, parent, inside: true, inheritParentFlags: inheritParentFlags, discardViewState: discardViewState);
+
   /// Requires the exact immutable layer instance supplied by this inventory.
   void _requireOwned(AiNativeLayer layer) {
     if (layer.index >= layers.length || !identical(layers[layer.index], layer)) {

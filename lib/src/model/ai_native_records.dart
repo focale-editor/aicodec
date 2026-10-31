@@ -27,6 +27,7 @@ part '../editing/ai_native_printing_group_editor.dart';
 part '../editing/ai_native_path_lifecycle.dart';
 part '../editing/ai_native_group_lifecycle.dart';
 part '../editing/ai_native_layer_editor.dart';
+part '../editing/ai_native_layer_lifecycle.dart';
 part '../editing/ai_live_shape_gradient_editor.dart';
 part '../editing/ai_live_shape_gradient_placement_editor.dart';
 part '../editing/ai_live_shape_similarity_editor.dart';

@@ -93,6 +93,26 @@ dart run tool/check_native_layers.dart
 python3 tool/verify_native_layers.py --inkai-source /tmp/extension-ai
 ```
 
+Layer movement uses `layers_and_sublayers.ai`, `simple_shapes.ai` and
+`simple_shapes_cc.ai`, plus a checksum-pinned synthetic source with ordinary
+nested artwork and changing paint. Twelve moves cover sibling reordering,
+nonadjacent slots, backward movement, empty destinations and lifting complete
+subtrees to the root. Two independently verified insertion prerequisites supply
+empty layers that are moved into unchanged opaque artwork. The pinned reader
+checks exact identities, complete tree structure, path geometry/counts and known
+effective paint/lock/visibility assignments, without resetting paint at layer
+boundaries. Byte checks require the complete copied subtree and constrain all
+added assignments to original source values; unselected bytes remain exact.
+Root counts and explicit view invalidation are checked in the same transaction.
+VM/Node regressions additionally cover process-color alternatives, dashes, prefix
+metadata, malformed/unknown state, explicit parent inheritance and a 100-layer
+batch. Removal, duplication and Adobe reopening remain unqualified.
+
+```sh
+dart run tool/check_native_layer_lifecycle.dart
+python3 tool/verify_native_layer_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 Ordinary path lifecycle uses the anonymous free path in pinned `simple_shapes.ai`
 and `simple_shapes_cc.ai`, plus synthetic counted and grouped sources. Thirteen
 variants cover insertion, duplication, removal, sibling reordering and movement

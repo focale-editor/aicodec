@@ -163,9 +163,19 @@ groups and compound topology. There is no general modern object lifecycle API.
   ten headers with additional private fields reject. Latest validation: 378 VM/
   377 Node tests and clean format/fix/analysis, using xml 7.0.1. The shared header
   reader retains the independently checked 207 settings fields, 31 artboards and
-  32 text origins. Layer deletion, duplication,
-  reordering/reparenting, referenced objects and path moves across different state
-  remain outstanding. Adobe reopening is unqualified.
+  32 text origins. Qualified ordinary layer subtrees additionally support sibling
+  reordering, movement after a layer and insertion into an empty/nonempty parent.
+  IDs and own flags remain exact; parent changes require explicit destination
+  inheritance. Source assignments preserve incoming/outgoing paint and object
+  state; root counts and explicit view invalidation update atomically. Sixteen
+  regressions cover nested ownership, malformed/unknown state, prefixes, limits,
+  CMYK/RGB alternatives, dashes and a 100-layer batch. Independent checks qualify
+  12 movements and two insertion prerequisites from three pinned recent sources
+  and a synthetic program, comparing complete trees, identities, geometry/counts,
+  effective attributes and unselected bytes. Latest validation: 394 VM/393 Node
+  tests and clean format/fix/analysis, using xml 7.0.1. Layer deletion, duplication,
+  referenced artwork, opaque/derived subtree movement and path moves across
+  different state remain outstanding. Adobe reopening is unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

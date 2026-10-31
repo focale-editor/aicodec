@@ -93,6 +93,12 @@ enum AiNativeEditOperation {
   /// Insert an empty sibling with a qualified header and a fresh source identity.
   layerInsertion,
 
+  /// Reorder ordinary layer subtrees with retained identities and paint state.
+  layerReordering,
+
+  /// Move a layer subtree with explicit destination-parent attribute inheritance.
+  layerReparenting,
+
   /// Replace ordinary path coordinates with qualified geometry.
   pathGeometry,
 

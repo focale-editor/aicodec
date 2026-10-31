@@ -32,6 +32,8 @@ void main() {
     final AiNativeCapability path = report.findings.singleWhere((finding) => finding.feature == .path);
     check(layer.editable).isTrue();
     check(layer.edits.singleWhere((edit) => edit.operation == .layerInsertion).support).equals(AiNativeEditSupport.requiresValidation);
+    check(layer.edits.singleWhere((edit) => edit.operation == .layerReordering).support).equals(AiNativeEditSupport.requiresValidation);
+    check(layer.edits.singleWhere((edit) => edit.operation == .layerReparenting).support).equals(AiNativeEditSupport.requiresValidation);
     check(layer.end < path.start).isTrue();
     check(path.editable).isTrue();
     check(layer.owners).deepEquals([null, 0, 1]);

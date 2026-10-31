@@ -266,8 +266,51 @@ atomic refusal. Independent decoding checks all 50 original layers in 46 pinned
 sources and 40 inserted variants, including hidden/locked nested owners. Ten
 headers with additional private fields remain explicitly unsupported. Exact-byte
 checks preserve all unselected source and only allow the declared count/view
-edits. Layer removal, duplication, reordering/reparenting and Adobe reopening
-remain unqualified.
+edits. Layer removal, duplication and Adobe reopening remain unqualified.
+
+### Layer subtree movement
+
+`AiNativeLayers` also moves complete qualified layer subtrees, retaining names,
+XML identities, wrappers, panel expansion, the layers' own flags and descendants.
+The caller selects immutable handles from the current inventory.
+
+| Operation | Behavior |
+| --- | --- |
+| `reorder(layers:)` | Assigns the supplied sibling order to the selected source slots; unselected siblings keep their slots. |
+| `moveAfter(layer:, after:)` | Inserts the subtree after another layer, using that anchor's parent. An ancestor may be an anchor when lifting a child out. |
+| `moveInto(layer:, parent:)` | Appends the subtree before the destination's closing boundary, including an empty destination. |
+
+Reordering requires one immediate parent and disjoint selections. Moving rejects
+the selected layer itself or any descendant as the destination. Reparenting
+requires explicit `inheritParentFlags: true`: the subtree keeps its own flags
+and inherits its destination ancestors' visibility, locking and other layer
+attributes. This choice does not rewrite the layer header to approximate its
+previous effective visibility. Root counts update when a subtree enters or leaves
+the root; saved panel data still requires `discardViewState: true` when present.
+
+Layer boundaries do not supply an assumed paint reset. Source assignments restore
+the moved subtree's incoming paint/object state and each affected slot's outgoing
+state. A move leaves the selected subtree's persistent assignments at its old
+position, without leaving its objects or point counts. Missing required values
+reject rather than using guessed defaults. Added assignments are copied from the
+original source; geometry, identities and shared resources are not regenerated.
+
+The selected subtree and intervening interval must contain qualified ordinary
+paths/groups, known process paint and layer headers/identity dictionaries.
+Private/derived artwork, compound or clipped geometry, unresolved prefixes or
+postfixes, conditional records, orphan point counts and unknown state operators
+reject. Unrelated opaque siblings outside the interval remain exact. Moving an
+empty layer into an opaque parent's ending slot does not require interpreting
+that parent's earlier artwork. This is not general opaque-object relocation.
+
+Capabilities report `layerReordering` and `layerReparenting` as
+`requiresValidation`. Sixteen focused regressions cover the state, ownership,
+limits and explicit policies, including CMYK/RGB alternatives, dashes and a
+100-layer batch. Independent checks qualify 12 movements and their two insertion
+prerequisites across three pinned recent files and a checksum-pinned synthetic
+source. They compare complete decoded trees, identities, path geometry/counts,
+known effective attributes and exact unselected bytes. Adobe reopening remains
+unqualified.
 
 ### Ordinary path lifecycle
 
@@ -901,7 +944,7 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits and qualified empty sibling insertion | Additional private header fields, masks, unresolved ownership and implicit view invalidation reject; removal/copy/move remain unqualified. |
+| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree reorder/moves | Additional private header fields, masks and unresolved ownership/state reject; reparenting and view invalidation require explicit policies; removal/copy remain unqualified. |
 | Ordinary native paths | Source-backed geometry and paint | Geometry and qualified ordinary-path lifecycle | Moves across changed state, dependent or unresolved ownership reject. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and same-layer moves | Anonymous owners only; unknown required state, references, private/derived objects and cross-layer moves reject. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |

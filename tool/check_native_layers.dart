@@ -3,34 +3,7 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
-/// Retains source boundaries and exact metadata for independent native decoding.
-Map<String, Object?> _inventory(AiNativeLayers model) => {
-  'rootCount': model.rootCount,
-  'declaredRootCount': model.declaredRootCount,
-  'rootCountSpan': model.rootCountHeader == null ? null : [model.rootCountHeader!.token.start, model.rootCountHeader!.token.end],
-  'viewSpans': [
-    for (final AiToken token in model.viewComments) [token.start, token.end],
-  ],
-  'layers': [
-    for (final AiNativeLayer layer in model.layers)
-      {
-        'start': layer.start,
-        'end': layer.end,
-        'opening': [layer.source.begin.start, layer.source.begin.end],
-        'closing': [layer.source.end.start, layer.source.end.end],
-        'openingComment': layer.openingComment?.lexeme,
-        'closingComment': layer.closingComment?.lexeme,
-        'bodyStart': layer.bodyStart,
-        'parent': layer.parentIndex,
-        'children': layer.childIndices,
-        'name': layer.nameBytes?.toList(),
-        'attributes': layer.source.begin.numbers,
-        'expanded': layer.expanded,
-        'identifier': layer.identifier?.bytes.toList(),
-        'issue': layer.bindingIssue,
-      },
-  ],
-};
+import 'native_layer_support.dart';
 
 /// Checks header-only insertion without changing any original artwork bytes.
 Future<void> main() async {
@@ -57,12 +30,12 @@ Future<void> main() async {
             final AiNativeLayers changed = model.insertAfter(after: layer, nameBytes: label, identifierBytes: identifier, discardViewState: true);
             final String file = '$name.${source.$1}.insert-${layer.index}.ps';
             await File('${output.path}/$file').writeAsBytes(changed.drawing.records.program.bytes);
-            variants.add({'selected': layer.index, 'name': label, 'identifier': identifier, 'result': file, 'after': _inventory(changed)});
+            variants.add({'selected': layer.index, 'name': label, 'identifier': identifier, 'result': file, 'after': nativeLayerInventory(changed)});
           } on UnsupportedError catch (error) {
             variants.add({'selected': layer.index, 'unsupported': error.message});
           }
         }
-        rows.add({'file': name, 'manifest': manifestName, 'sourceIndex': source.$1, 'native': native, 'before': _inventory(model), 'variants': variants});
+        rows.add({'file': name, 'manifest': manifestName, 'sourceIndex': source.$1, 'native': native, 'before': nativeLayerInventory(model), 'variants': variants});
         stdout.writeln('$name: ${model.layers.length} layers, ${variants.where((variant) => variant.containsKey('result')).length} insertions');
       }
     }
