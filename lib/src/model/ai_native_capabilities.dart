@@ -105,6 +105,9 @@ enum AiNativeEditOperation {
   /// Attach host-composed geometry to an existing separate printing expansion.
   printingContours,
 
+  /// Attach a complete host-composed group with a retained outgoing paint state.
+  printingGroups,
+
   /// Edit a gradient's stops with host-supplied printing intervals.
   gradientStops,
 

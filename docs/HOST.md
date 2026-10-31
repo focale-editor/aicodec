@@ -51,7 +51,7 @@ The following contracts describe the currently qualified subsets:
 | Payload | Host input and serialization | Invalidation/preservation policy |
 | --- | --- | --- |
 | Compatibility PDF | Supply `synchronizedPdf` from the original graph to `replace`/`replaceAll`. | Rebuild affected artwork and resources; nonvisual edits may retain them. The kit verifies graph ownership, not visual equivalence. |
-| Native printing expansions | `withPrintingContours` attaches host-composed geometry to separate, bound CC live-shape expansions while retaining their paint/resource topology. Qualified shape transforms update bound private/printing records together; gradient edits accept explicit printing ramps. | Cover every owned path once, retain native authoring data and supply the host-computed ink bounds. Arbitrary group/style replacement remains unqualified; do not discard groups or reuse stale expansions after an unsupported edit. |
+| Native printing expansions | `withPrintingContours` retains paint/resource topology; `withPrintingGroups` attaches complete host-composed ordinary/compound groups with process paints and references to existing gradients. Both target separate, bound CC live-shape expansions. Qualified transforms update bound private/printing records together; gradient edits accept explicit printing ramps. | Retain native authoring data and supply host-computed ink bounds. Complete groups must preserve outgoing state and the source point-count convention. New resources, clipping and unresolved local dependencies require their own editing contracts; do not reuse stale expansions after an unsupported edit. |
 | Text composition | Supply `withTextLayout` frame/line/segment positions in the documented native coordinate space. | Content/feature edits clear known caches. `withoutTextLayout(story:)` also clears them after external dependency changes, preserving text/styles/frames. Recompose before saving; unknown view fields reject. |
 | Embedded image samples | Supply complete `AiNativeRasterSamples` through the raster editor or placement embedding operation. | Qualified replacements renew affected sample identities. Unknown dependent caches reject; the kit does not decode a replacement file or convert its profile. |
 | Linked-object preview | Supply explicit RGB/alpha samples to `relink`; retain the path/directory values to refresh only the preview's meaning. | Explicit `preview: null` removes the preview. Geometry edits may retain unchanged preview pixels. Unsupported layouts/dependencies reject. |
@@ -61,8 +61,8 @@ The following contracts describe the currently qualified subsets:
 
 Cache invalidation is an intermediate editing state. It does not certify an
 Illustrator-ready save, and packaging complete native bytes is not a substitute
-for a qualified dependency update. General printing-group attachment and other
-unresolved cache relationships remain tracked in `ROADMAP.md`.
+for a qualified dependency update. Attachment contracts for further object families
+and unresolved cache relationships remain tracked in `ROADMAP.md`.
 
 Printing-contour attachment updates derived geometry only. It neither regenerates
 shape parameters nor checks that the supplied curves match them. Keep authoring
@@ -74,6 +74,16 @@ closed endpoints. Unknown local state, nested authoring metadata, incomplete own
 and stale handles reject atomically. Unknown neighboring objects stay unchanged.
 The host computes ink bounds including strokes, effects and inherited transforms;
 the kit conservatively expands DSC bounds without changing artboards or rendering.
+
+Complete-group attachment may change path counts, nesting and local paints. It
+retains the native authoring records and existing resource definitions, and checks
+the attributes left after the supplied group. An inherited value absent from the
+original group is unknown: the kit neither invents defaults nor inserts resets.
+The host must preserve that boundary while composing the new expansion. Existing
+gradient references must resolve uniquely and match the supplied instance type.
+See [the printing-group contract](AI.md#host-supplied-printing-groups) for qualified
+commands and rejection policies. These checks establish serialization safety;
+the host still ensures that authoring data, expansion and PDF describe the same edit.
 
 For explicit PDF interchange, `AiPdfDocument.forPdfInterchange` removes stale
 Illustrator authoring links. It does not synthesize CC native editing data.

@@ -66,10 +66,10 @@ host-supplied PDF packaging exist. Diagnostics are currently distributed across
   regressions, 295 VM/294 Node tests and clean analysis; independent checks pass
   for 31 pinned PDFs and two synthetic multi-program/multiple-artboard saves,
   covering 35 exact programs and retained metadata/content/resources.
-- [ ] Define how the host supplies or invalidates each derived native payload:
+- [x] Define how the host supplies or invalidates each derived native payload:
   printing expansions, text/layout caches, image/placed previews and thumbnails.
   Extend serialization where a supplied payload cannot yet be attached safely.
-  **In progress:** `docs/HOST.md` now states each existing supply/invalidation
+  **Verified for the existing qualified families:** `docs/HOST.md` states each supply/invalidation
   policy. `withoutTextLayout` clears selected known text caches without changing
   the model or resources (three regressions and 20 independently decoded story
   invalidations). `withPrintingContours` attaches complete host-supplied geometry
@@ -84,11 +84,22 @@ host-supplied PDF packaging exist. Diagnostics are currently distributed across
   including supplied implicit closures and additional contours; ambiguous count
   ownership rejects atomically. Independent verification explicitly checks 68
   updated counts rather than relying on the SVG reader, which ignores them.
-  Latest full validation: 310 VM/309 Node tests and clean analysis, using xml 7.0.1.
-  General replacement of printing paint/resource topology and unresolved cache
-  relationships still need qualification before this task is complete.
-- [ ] Keep native/PDF packaging independent of a rendering operator whitelist;
+  `withPrintingGroups` additionally attaches complete ordinary/compound topology,
+  process paints and existing gradient references while preserving outgoing state
+  and the source count convention. Nine regressions cover paints, resources,
+  immutable inputs, limits and atomic refusal. Independent checks qualify ten
+  variants, 40 exact supplied groups and 40 added paths with equivalent ink and
+  unchanged private/unselected bytes. Latest full validation: 319 VM/318 Node
+  tests and clean format/fix/analysis, using xml 7.0.1. Unknown cache dependencies
+  retain an explicit preserve/reject policy; further appearance/resource and object
+  families remain in milestones 2–6 rather than being advertised as editable.
+- [x] Keep native/PDF packaging independent of a rendering operator whitelist;
   preserve unrelated metadata, references and unknown records.
+  **Verified:** the save path only checks byte/envelope and graph-ownership
+  contracts; it does not decode drawing commands or consult capability reports.
+  Regression saves preserve `FuturePaint`, opaque referenced streams, unselected
+  programs and host-supplied artwork/resources. Repeated independent checks pass
+  for 31 pinned PDFs and two synthetic partial/batch saves (35 exact programs).
 
 **Acceptance:** synthetic and pinned real files survive decode/edit/save/reopen
 with exact edited native data, supplied PDF resources and unselected payloads.

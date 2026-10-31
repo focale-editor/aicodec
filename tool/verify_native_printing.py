@@ -92,6 +92,22 @@ def outside(data, spans):
     return re.sub(rb'%%(?:HiResBoundingBox|BoundingBox|PageBoundingBox):[^\r\n]*', b'%%Bounds: supplied', b''.join(pieces))
 
 
+def equivalent_geometry(first, second):
+    """Verify the host's subdivision independently, including every curve span."""
+    assert not any(item.is_pseudo_comment for item in first + second)
+    assert len(second) == 1 + 2 * (len(first) - 1)
+    assert first[0].command == second[0].command == 'm'
+    close(first[0].tokens, second[0].tokens)
+    current = tuple(map(float, first[0].tokens))
+    for segment, item in enumerate(first[1:]):
+        expected = curve(current, item)
+        left = curve(current, second[1 + segment * 2])
+        right = curve(left[-1], second[2 + segment * 2])
+        for t in (0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1):
+            close(evaluate(expected, t), evaluate(left, t * 2) if t <= 0.5 else evaluate(right, t * 2 - 1))
+        current = expected[-1]
+
+
 def native(inkai, original, changed, row):
     """Verify curves and preserve every private record, paint and resource binding."""
     before = list(walk_body(inkai.parse(str(original)).trailer))
@@ -119,18 +135,7 @@ def native(inkai, original, changed, row):
         if index not in row['selectedPaths']:
             assert [(item.command, item.tokens) for item in first] == [(item.command, item.tokens) for item in second]
             continue
-        assert not any(item.is_pseudo_comment for item in first + second)
-        assert len(second) == 1 + 2 * (len(first) - 1)
-        assert first[0].command == second[0].command == 'm'
-        close(first[0].tokens, second[0].tokens)
-        current = tuple(map(float, first[0].tokens))
-        for segment, item in enumerate(first[1:]):
-            expected = curve(current, item)
-            left = curve(current, second[1 + segment * 2])
-            right = curve(left[-1], second[2 + segment * 2])
-            for t in (0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1):
-                close(evaluate(expected, t), evaluate(left, t * 2) if t <= 0.5 else evaluate(right, t * 2 - 1))
-            current = expected[-1]
+        equivalent_geometry(first, second)
     assert outside(original.read_bytes(), [group['before'] for group in row['groups']]) == outside(changed.read_bytes(), [group['after'] for group in row['groups']])
     return sum(index in row['selectedPaths'] for index in new_counts)
 

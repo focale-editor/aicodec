@@ -206,6 +206,17 @@ final class AiNativeDrawing {
   /// receive an explicit closing line when their last endpoint is not the first.
   AiNativeDrawing withPrintingContours({required List<AiNativePrintingReplacement> replacements}) => _replaceNativePrintingContours(this, replacements);
 
+  /// Replaces complete host-composed CC groups while retaining native ownership.
+  ///
+  /// Paths, compound nesting and process/gradient paints may change. The supplied
+  /// group must preserve its outgoing paint state and reference existing unique
+  /// gradient resources. Private authoring records, styles and unselected bytes
+  /// remain unchanged. The host supplies matching authoring/PDF representations
+  /// and ink bounds; this operation does not render or prove visual equivalence.
+  /// Unknown local state, clipping, embedded data and unsupported paint layouts
+  /// reject atomically. Source point-count conventions must remain coherent.
+  AiNativeDrawing withPrintingGroups({required List<AiNativePrintingGroupReplacement> replacements}) => _replaceNativePrintingGroups(this, replacements);
+
   /// Moves native shapes and their supported painted expansions atomically.
   ///
   /// Offsets use source drawing coordinates, with y increasing upwards. Native

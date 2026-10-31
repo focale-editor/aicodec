@@ -87,6 +87,24 @@ dart run tool/check_native_printing.dart
 python3 tool/verify_native_printing.py --inkai-source /tmp/extension-ai
 ```
 
+Complete-group attachment uses the same ten selections and 40 expansions. The
+host supplies nested groups and one additional zero-area unstroked path per
+selection, alongside equivalent subdivided geometry. Independent parsing checks
+every exact payload, all unselected bytes, existing private/resource commands,
+path-count headers and introduced topology. All ten external SVG comparisons use
+the same nonempty-output and difference thresholds as the contour checks.
+The pinned SVG reader clears inherited colors after an unpainted `N` path; the
+added paths use zero-area `F` fills to retain inherited fill. Stroked fixtures
+explicitly set their stroke before painting. The independent reader is unchanged.
+These are attachment/preservation checks, not Adobe reopening or proof that
+arbitrary supplied artwork matches its private authoring data. Focused unit tests
+separately cover paint-state changes, gradient ownership, limits and atomic refusal.
+
+```sh
+dart run tool/check_native_printing_groups.dart
+python3 tool/verify_native_printing_groups.py --inkai-source /tmp/extension-ai
+```
+
 After `check_native_corpus.dart`, verify layer/native preservation, 32 ATE payloads,
 20 content edits, 60 feature edits, 64 font registrations, 17 supplied layouts
 and frame translations. Twenty explicit layout invalidations additionally check

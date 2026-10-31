@@ -16,27 +16,7 @@ AiNativeDrawing _replaceNativePrintingContours(AiNativeDrawing drawing, List<AiN
   int outputTokens = 0;
   for (final AiNativePrintingReplacement replacement in replacements) {
     final AiLiveShape shape = replacement.shape;
-    if (!drawing.liveShapes.contains(shape)) {
-      throw ArgumentError('Printing replacement has a stale or foreign native shape.');
-    }
-    final AiNativeGroup? group = shape.appearanceGroup;
-    if (!shape.isBound || shape.path?.isPrivate != true || group == null || shape.appearanceDictionary == null) {
-      throw UnsupportedError(shape.bindingIssue ?? 'Printing replacement requires a separate, bound CC expansion.');
-    }
-    if (drawing.liveShapes.any((other) => !identical(other, shape) && other.start < group.end && other.end > group.start)) {
-      throw UnsupportedError('The printing group overlaps another authoring object.');
-    }
-    if (drawing.records._projection.tokens.any(
-      (token) =>
-          token.start < group.end && token.end > group.start && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%BeginDocument') || token.lexeme.startsWith('%AI'))),
-    )) {
-      throw UnsupportedError('Printing replacement requires resolved local data and embedded-document dependencies.');
-    }
-    for (final AiNativeItem item in drawing.items.where((item) => item.start >= group.start && item.end <= group.end)) {
-      if (item is! AiNativeInstruction || item.isPrivate || !_printingGeometryControls.contains(item.operator)) {
-        throw UnsupportedError('Printing replacement requires resolved local commands and no nested authoring metadata.');
-      }
-    }
+    final AiNativeGroup group = _printingShapeGroup(drawing, shape);
     final Map<AiNativePath, AiNativeInstruction> pointCounts = _printingPointCounts(drawing, group);
     final List<AiNativePath> paths = replacement.paths.map((path) => path.path).toList();
     if (paths.length != shape.appearancePaths.length || paths.toSet().length != paths.length || paths.any((path) => !shape.appearancePaths.contains(path) || !selected.add(path))) {
@@ -112,6 +92,39 @@ AiNativeDrawing _replaceNativePrintingContours(AiNativeDrawing drawing, List<AiN
   );
   if (result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => drawing.liveShapes[entry.$1].isBound && !entry.$2.isBound)) {
     throw const FormatException('Supplied printing contours changed native shape ownership.');
+  }
+  return result;
+}
+
+/// Resolves an isolated derived group without replacing private authoring data.
+AiNativeGroup _printingShapeGroup(AiNativeDrawing drawing, AiLiveShape shape) {
+  if (!drawing.liveShapes.contains(shape)) {
+    throw ArgumentError('Printing replacement has a stale or foreign native shape.');
+  }
+  final AiNativeGroup? group = shape.appearanceGroup;
+  if (!shape.isBound || shape.path?.isPrivate != true || group == null || shape.appearanceDictionary == null) {
+    throw UnsupportedError(shape.bindingIssue ?? 'Printing replacement requires a separate, bound CC expansion.');
+  }
+  if (drawing.liveShapes.any((other) => !identical(other, shape) && other.start < group.end && other.end > group.start)) {
+    throw UnsupportedError('The printing group overlaps another authoring object.');
+  }
+  _printingCommands(drawing, group);
+  return group;
+}
+
+/// Rejects hidden payloads and returns the exact local declarative commands.
+List<AiNativeInstruction> _printingCommands(AiNativeDrawing drawing, AiNativeGroup group) {
+  if (drawing.records._projection.tokens.any(
+    (token) => token.start < group.end && token.end > group.start && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%BeginDocument') || token.lexeme.startsWith('%AI'))),
+  )) {
+    throw UnsupportedError('Printing replacement requires resolved local data and embedded-document dependencies.');
+  }
+  final List<AiNativeInstruction> result = [];
+  for (final AiNativeItem item in drawing.items.where((item) => item.start >= group.start && item.end <= group.end)) {
+    if (item is! AiNativeInstruction || item.isPrivate || !_printingGeometryControls.contains(item.operator)) {
+      throw UnsupportedError('Printing replacement requires resolved local commands and no nested authoring metadata.');
+    }
+    result.add(item);
   }
   return result;
 }

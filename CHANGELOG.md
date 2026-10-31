@@ -15,3 +15,4 @@
 - Added explicit text-layout invalidation for changed host dependencies without rewriting text or resources.
 - Added bounded host-supplied CC printing contours while preserving native authoring records, paints, compound groups and shared resources.
 - Synchronized CC point-count headers during plain-path and printing-contour replacement, with atomic rejection of ambiguous or stale counts.
+- Added complete host-supplied CC printing groups with bounded topology/paint changes, existing gradient references and preserved outgoing state.

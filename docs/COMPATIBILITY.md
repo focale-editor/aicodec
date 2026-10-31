@@ -17,9 +17,10 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   opaque preservation, unsupported structures, malformed data and inspection limits.
 - Qualified CC live-shape translation, rotation and uniform scaling, including
   dependent printing geometry, gradients and shared-style isolation.
-- Host-supplied contours for separate, bound CC printing expansions, retaining
-  native authoring data, paints and resource topology; arbitrary group replacement
-  remains unsupported.
+- Host-supplied contours and complete groups for separate, bound CC printing
+  expansions. Complete groups allow new path/nesting/paint topology with process
+  colors and existing gradients, preserving outgoing state, native authoring data
+  and resource definitions. Unknown local dependencies reject.
 - ATE fonts, stories, UTF-16 runs and styles; native content/feature editing,
   host-composed layouts and frame translation. PsCore 0.2.2 supplies EngineData.
 - Gradient stops, printing ramps supplied by the host, focus, selected resource

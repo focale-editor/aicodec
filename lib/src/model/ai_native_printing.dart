@@ -43,3 +43,30 @@ final class AiNativePrintingReplacement {
     }
   }
 }
+
+/// A complete printing group composed by the host for one bound CC live shape.
+///
+/// Supply one `u`/`U` group with ordinary or compound paths, process paints and
+/// qualified references to existing gradient definitions. Authoring records and
+/// resources stay in the owning document. The outgoing paint state must match
+/// the source group so unselected following objects retain their appearance.
+final class AiNativePrintingGroupReplacement {
+  /// Source-backed shape owning the derived group to replace.
+  final AiLiveShape shape;
+
+  /// Owned group bytes, without a document header, setup or private metadata.
+  final Uint8List _bytes;
+
+  /// Host-computed complete ink bounds in y-up document drawing coordinates.
+  final AiBoundingBox bounds;
+
+  /// Captures a host-composed group without interpreting its rendered appearance.
+  AiNativePrintingGroupReplacement({required this.shape, required List<int> bytes, required this.bounds}) : _bytes = Uint8List.fromList(bytes) {
+    if (bytes.any((byte) => byte < 0 || byte > 255) || [bounds.left, bounds.bottom, bounds.right, bounds.top].any((coordinate) => coordinate.abs() > 9007199254740991)) {
+      throw ArgumentError('Printing groups require byte data and portable ink bounds.');
+    }
+  }
+
+  /// Immutable supplied bytes; validation uses the owning program's limits.
+  Uint8List get bytes => _bytes.asUnmodifiableView();
+}

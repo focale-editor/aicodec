@@ -47,7 +47,7 @@ ${_dictionary()}
 ''';
 
 /// Wraps two native objects and an opaque neighbor in immutable source bounds.
-AiNativeDrawing _drawing({String? first, AiNativeLimits limits = const AiNativeLimits()}) => AiNativeDrawing.decode(
+AiNativeDrawing _drawing({String? first, String setup = '', AiNativeLimits limits = const AiNativeLimits()}) => AiNativeDrawing.decode(
   records: AiNativeRecords.decode(
     program: AiProgram.decode(
       bytes: latin1.encode('''%!PS-Adobe-3.0
@@ -56,6 +56,7 @@ AiNativeDrawing _drawing({String? first, AiNativeLimits limits = const AiNativeL
 %%EndComments
 %%BeginSetup
 $_style
+$setup
 %%EndSetup
 ${first ?? _shape()}
 17 FutureNeighbor
@@ -68,6 +69,12 @@ ${_shape()}
     ),
   ),
 );
+
+/// Shares independently authored native ownership fixtures with group tests.
+AiNativeDrawing printingFixture({String? group, String setup = '', AiNativeLimits limits = const AiNativeLimits()}) {
+  final String shape = _shape();
+  return _drawing(first: group == null ? null : '$group\n${shape.substring(shape.indexOf('%_/ArtDictionary'))}', setup: setup, limits: limits);
+}
 
 /// Supplies host-authored contours without changing native style or parameters.
 AiNativePrintingReplacement _replacement(AiLiveShape shape, {bool multiple = false}) => AiNativePrintingReplacement(

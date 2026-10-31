@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:aikit/src/codec/ai_native_data.dart';
 import 'package:aikit/src/codec/ai_postscript.dart';
 import 'package:aikit/src/model/ai_document.dart';
 import 'package:aikit/src/model/ai_limit_exception.dart';
@@ -15,8 +16,10 @@ part '../codec/ai_native_gradient_resource_parser.dart';
 part '../codec/ai_native_raster_parser.dart';
 part '../codec/ai_native_placement_parser.dart';
 part '../codec/ai_native_mesh_parser.dart';
+part '../codec/ai_native_printing_state.dart';
 part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_printing_editor.dart';
+part '../editing/ai_native_printing_group_editor.dart';
 part '../editing/ai_live_shape_gradient_editor.dart';
 part '../editing/ai_live_shape_gradient_placement_editor.dart';
 part '../editing/ai_live_shape_similarity_editor.dart';

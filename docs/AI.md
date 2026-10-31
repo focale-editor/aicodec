@@ -398,6 +398,45 @@ Opaque neighbors outside the selected printing group remain unchanged. Direct
 authoring paths and arbitrary replacement paint/resource topology are not derived
 attachment slots. These restrictions govern this edit, not native/PDF packaging.
 
+### Host-supplied printing groups
+
+`withPrintingGroups(replacements:)` accepts `AiNativePrintingGroupReplacement`
+entries for the same separate, bound CC live-shape expansions. Each entry supplies
+owned byte data containing exactly one `u`/`U` group and host-computed ink `bounds`.
+Path counts, ordinary/compound nesting and local paints can change. Private shape
+parameters, authoring paths, alternate dictionaries and resource definitions remain
+unchanged. The host supplies a consistent expansion and compatibility PDF; the kit
+does not derive artwork from those authoring records or prove visual equivalence.
+
+Each group contains non-private paths with one initial moveto. Source and supplied
+groups must leave identical explicit paint-state assignments, including color
+representation, opacity, stroke width, caps/joins, miter, dash array/phase,
+overprint, fill-rule and path flags. Absent assignments mean unknown inherited
+state, not defaults. Transient assignments may differ when the final assignment
+matches. The qualified attributes are process `g`/`G`, `k`/`K`, `Xa`/`XA`,
+`O`/`R`, `XR`, `D`, `Ap`, `J`/`j`, `w`, `M`, `d` and the observed
+`0 opacity 0 0 0 Xy` layout. `Ae` must immediately precede its owned group.
+Spot-color commands, `Xd`, clipping, executable state and unknown local commands
+have no full-group replacement contract yet. Geometry-only attachment can retain
+some such controls unchanged under its separate contract.
+
+Complete `Bb`/`BB` gradient fills may reference one existing uniquely named
+definition. They require one associated filled path, a positive-length `Bg`
+with flag 1, `BB` flag 0 and an imaging matrix for relative CC geometry. `Bh`
+requires a radial definition. Gradient-stroke selectors, interleaved state and
+new or ambiguous resources reject. No renderer is involved in these checks.
+
+Counted CC source groups must count every path; supplied groups retain this
+convention, including new paths and explicit closed endpoints. Counts are validated
+against the supplied geometry, not silently corrected. Uncounted groups stay
+uncounted. Byte, token, nesting and portable numeric limits apply before attachment
+and to the complete result. Document markers, embedded data and private metadata
+are forbidden inside the fragment. Batches are atomic and require distinct current
+source handles. Invalid local syntax/operands throw `FormatException`; unresolved
+ownership, state, resources or count conventions throw `UnsupportedError`;
+stale/duplicate handles and invalid constructor arguments throw `ArgumentError`;
+configured parsing ceilings throw `AiLimitException`.
+
 ## Gradients and paint styles
 
 `AiNativeDrawing.gradients` exposes `Bb`/`BB` instances, relative `Bg` geometry,
@@ -638,7 +677,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Native layers and plain paths | Yes | Editable subset | Dependent or unresolved appearances reject unsafe edits. |
 | Hierarchical records and artboards | Yes | Existing record edits | No general document/artboard lifecycle API. |
-| CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours | Parameter changes, general affine resizing and arbitrary printing topology remain incomplete. |
+| CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours and qualified complete groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |
 | Cartesian mesh version 2 | Yes | Vertex color, tint and opacity | Geometry/topology edits incomplete; rendering belongs to the host. |

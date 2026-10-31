@@ -3,11 +3,14 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
+/// Pinned examples shared by contour and complete-group attachment checks.
+const List<String> nativePrintingFixtures = ['simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai', 'gradient_linear.ai', 'gradient_radial.ai'];
+
 /// Midpoint used only by the host-side fixture to compose equivalent curves.
 List<double> _midpoint(List<double> first, List<double> second) => [(first[0] + second[0]) / 2, (first[1] + second[1]) / 2];
 
 /// Supplies mathematically equivalent subdivided paths without a kit compositor.
-List<AiPathSegment> _subdivide(List<AiPathSegment> source) {
+List<AiPathSegment> subdividePrintingPath(List<AiPathSegment> source) {
   final List<AiPathSegment> result = [source.first];
   List<double> current = source.first.coordinates;
   for (final AiPathSegment segment in source.skip(1)) {
@@ -37,7 +40,7 @@ List<AiPathSegment> _subdivide(List<AiPathSegment> source) {
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/native-printing').create(recursive: true);
   final List<Map<String, Object?>> rows = [];
-  for (final String name in ['simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai', 'gradient_linear.ai', 'gradient_radial.ai']) {
+  for (final String name in nativePrintingFixtures) {
     final AiDocument document = const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes());
     final AiNativeSource source = AiNativeData.extract(document).single;
     final AiNativeDrawing drawing = AiNativeDrawing.decode(
@@ -55,7 +58,7 @@ Future<void> main() async {
           AiNativePrintingReplacement(
             shape: shape,
             paths: [
-              for (final AiNativePath path in shape.appearancePaths) AiNativePrintingContours(path: path, contours: [_subdivide(path.segments)]),
+              for (final AiNativePath path in shape.appearancePaths) AiNativePrintingContours(path: path, contours: [subdividePrintingPath(path.segments)]),
             ],
             bounds: source.asPostScript().boundingBox!,
           ),
