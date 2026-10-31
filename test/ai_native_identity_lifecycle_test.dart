@@ -159,7 +159,7 @@ void main() {
   test('refuses missing or opaque reference ownership in setup, body and trailer', () {
     for (final String input in [
       identityLifecycleSource.replaceFirst('%%EndSetup', '/Dictionary : (path_a) /String (Reference) , ;\n%%EndSetup'),
-      identityLifecycleSource.replaceFirst('%%EndSetup', '/Document : ;\n%%EndSetup'),
+      identityLifecycleSource.replaceFirst('%%EndSetup', '/Document : /Dictionary : (path_a) /String (FutureReference) , ; /Recorded , ;\n%%EndSetup'),
       identityLifecycleSource.replaceFirst('%%EndSetup', '/Reference { <706174685f61> } def\n%%EndSetup'),
       identityLifecycleSource.replaceFirst('%%Trailer', '19 FutureOperator\n%%Trailer'),
       identityLifecycleSource.replaceFirst('%%EOF', '%AI99_Ref: path_a\n%%EOF'),

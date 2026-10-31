@@ -341,22 +341,39 @@ removal can leave an empty parent; selecting every root can leave a zero-layer
 native program. Drawing bounds remain conservative instead of shrinking.
 
 Removing an identity requires stronger reference qualification than copying it.
-The currently qualified identified-source subset contains ordinary declarative
-artwork and qualified layer/path/group metadata dictionaries only. Additional document/resource
-records, opaque owners, executable sections outside the body, unknown structured
-header/trailer comments and ambiguous selected identities reject. Known DSC
-metadata and layer count/view declarations are allowed. This deliberately does
+The qualified identified-source subset contains ordinary declarative artwork,
+qualified layer/path/group metadata dictionaries and explicitly checked setup
+`Document` records. Unknown resource records, opaque owners, unqualified executable
+sections, structured comments and ambiguous selected identities reject. Known DSC
+metadata, numeric document headers and layer count/view declarations are allowed.
+Saved header version branches retain their separate known values. The exact
+standard `gsave annotatepage grestore showpage` trailer is preserved; arbitrary
+PostScript remains outside this declarative contract. This deliberately does
 not infer the absence of references from a missing literal name: Adobe UID
 references can be stored in document dictionaries, as described by the
 [Adobe dictionary suite](https://ai-sdk-2020.84.nz/html/struct_a_i_dictionary_suite).
-Typical resource-bearing CC
-documents therefore retain a stricter removal restriction than duplication.
+Documents with unresolved artwork/resource references therefore retain a stricter
+removal restriction than duplication.
 Anonymous subtrees retain their local ownership/state checks and may be removed
 beside unrelated opaque siblings. An identified descendant still activates the
 reference checks even when the selected root is anonymous. The same whole-source
 check now governs identified path and group deletion, including every identified
 descendant of an anonymous group. Known names/rotation fields do not imply
 references, but unqualified fields or owners cannot be ignored.
+
+Document qualification checks each known field's exact owning section and scalar
+type. Supported metadata includes artboard descriptors, page/grid/bleed settings,
+save options and observed PDF/print presets. The exportable-asset dictionary,
+saved-selection arrays and ink-reference table must be empty. Native XML metadata
+must have the known structural tree with empty variable definitions, sample data
+sets and slices; unknown children, attributes or values reject. Other nonempty
+reference owners cannot be cleared implicitly. Color-profile data must have the
+expected binary owner, matching declared/ICC header lengths and `acsp` signature.
+Profile decoding uses the original byte ceiling, and structured annotations
+outside its binary payload still reject. Custom screening code, unknown fields,
+repeated owners and conditional document records remain unqualified. These checks
+permit deletion; they do not edit settings, validate every ICC tag, or introduce
+color management.
 
 Both APIs validate disjoint owned selections, complete output/token budgets,
 root-count updates and explicit saved-view invalidation atomically. Capability
@@ -368,6 +385,15 @@ synthetic nonempty identified deletion and an anonymous AI7 insertion/removal
 regression. They verify decoded identities, trees, geometry/counts, paint state
 and exact bytes outside authorized source/string spans. General referenced
 deletion, opaque/derived lifecycle and Adobe reopening remain unqualified.
+Eleven reference-scope regressions additionally cover identified path/group/layer
+removal beside document metadata, malformed profiles, unknown fields, nonempty
+reference tables, XML bindings, conditional ownership, executable sections and
+header token limits. Independent checks verify nine identified-layer deletions in
+pinned uncompressed CC sources and three synthetic artwork/subtree deletions.
+All document bytes, artboards, decoded profiles and unselected data remain exact;
+LittleCMS also opens the real retained ICC profiles. Two injected real-document
+references reject without changing any source byte. This does not qualify
+deletion beside arbitrary shared styles, text engines or plug-in data.
 
 ### Attached object metadata
 

@@ -254,6 +254,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   independently rechecked, plus the 16 object-metadata transactions above.
   Capability checks still recover 37 exact sources, 41 layer headers and 181
   ordinary paths. Adobe reopening and host integration remain unqualified.
+  Identified deletion now qualifies known setup `Document` metadata instead of
+  rejecting every document record. Exact scalar/section schemas, empty asset and
+  selection tables, empty XML variables/data sets/slices, bounded ICC profile
+  ownership and known header/trailer syntax establish the supported reference
+  scope. Unknown fields, nonempty reference owners, conditional records and
+  executable extensions still reject. Eleven regressions cover path/group/layer
+  deletion, preserved metadata, malformed profiles, XML bindings, ambiguous
+  ownership, atomic refusal and header token ceilings. Independent checks verify
+  nine identified-layer deletions in pinned uncompressed CC files, three synthetic
+  artwork/subtree deletions and two exact refusals after injecting real-document
+  references. Complete document bytes, artboards, profiles, hierarchy, state and
+  unselected data remain exact; LittleCMS opens all nine retained real profiles.
+  Referenced artwork, shared-style/text/plug-in dependencies and derived subtree
+  lifecycle remain outstanding; the task remains open.
+  Latest validation: 474 VM/473 Node tests, clean format/fix/analysis, all 14
+  reference-scope transactions independently checked and all 44 existing
+  layer, combined-identity and object-metadata transactions regenerated and
+  independently rechecked. No Adobe reopening or broader reference support is
+  inferred from these results.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

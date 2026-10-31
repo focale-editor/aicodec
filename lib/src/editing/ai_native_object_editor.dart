@@ -73,8 +73,13 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
     for (final AiNativeObject object in model.drawing._objects.objects)
       if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
   };
-  if (model.drawing.records.roots.any((record) => !dictionaries.contains(record))) {
-    throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
+  final List<AiNativeContainer> documents = [];
+  for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
+    if (record.type != 'Document') {
+      throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
+    }
+    _referenceDocument(model, record);
+    documents.add(record);
   }
   final Map<String, int> occurrences = {};
   for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
@@ -85,17 +90,5 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
   }
   final AiProgram program = model.drawing.records.program;
   _layerInterval(model, program.bodyStart, program.bodyEnd, headers);
-  final Set<int> declarations = {if (model.rootCountHeader != null) model.rootCountHeader!.token.start, ...model.viewComments.map((token) => token.start)};
-  const Set<String> markers = {'%%EndComments', '%%BeginProlog', '%%EndProlog', '%%BeginSetup', '%%EndSetup', '%%PageTrailer', '%%Trailer', '%%EOF'};
-  const Set<String> fields = {'%%Creator', '%%Title', '%%For', '%%CreationDate', '%%BoundingBox', '%%HiResBoundingBox', '%%Pages', '%%Orientation', '%%PageOrder', '%%DocumentData', '%%LanguageLevel'};
-  final RegExp native = RegExp(r'^%{1,2}AI');
-  for (final AiToken token in model.drawing.records._projection.tokens) {
-    if (token.start >= program.bodyStart && token.start < program.bodyEnd) {
-      continue;
-    }
-    final bool unknown = native.hasMatch(token.lexeme) || token.lexeme.startsWith('%%') && !markers.contains(token.lexeme) && !fields.contains(token.lexeme.split(':').first);
-    if (token.kind != .comment || !declarations.contains(token.start) && unknown) {
-      throw UnsupportedError('Deleting identified artwork requires a declarative source without unqualified external reference sections.');
-    }
-  }
+  _referenceProgram(model, documents);
 }

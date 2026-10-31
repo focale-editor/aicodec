@@ -112,8 +112,8 @@ name/identity string spans. Three synthetic identified removals cover complete,
 nested and all-root deletion with retained outgoing state. A pinned anonymous AI7
 source supplies one further insertion/removal regression. In total, 22 transactions
 cover 12 movements, three duplications, four removals and three insertion
-prerequisites. Identity-removal qualification of real resource-bearing CC sources
-remains outstanding; their unknown document/resource references reject instead of
+prerequisites. Identity-removal qualification now includes the document-only CC
+cases described below; unknown document/resource references still reject instead of
 being assumed absent. Adobe reopening remains unqualified.
 
 ```sh
@@ -184,9 +184,11 @@ syntax. The external reader verifies five synthetic transactions: path/group
 copies with fresh IDs, anonymous deletion, sibling reordering and reparenting.
 Checks bind every reported object/dictionary/identifier/count span to the external
 parse, compare complete trees and effective paint, and require exact unselected
-bytes and source assignment provenance. Six real-file cases explicitly remain
-rejected: their empty metadata dictionaries do not qualify the enclosing `XW`
-style. No successful real CC identified-object edit or Adobe reopening is inferred.
+bytes and source assignment provenance. Five real CC path/group copies, removals
+and reordering cases now preserve their bound panel flag and default `XW` style.
+Styled-group dissolution still rejects. Five further checksum-pinned synthetic
+transactions verify nested panel/style metadata and retained path opacity. These
+16 cases do not establish general referenced-object editing or Adobe reopening.
 
 ```sh
 dart run tool/check_native_objects.dart
@@ -205,6 +207,22 @@ reference decoding for resource-bearing CC files or Adobe reopening.
 ```sh
 dart run tool/check_native_identity_lifecycle.dart
 python3 tool/verify_native_identity_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
+Document reference qualification reuses all nine CC files in
+`document_manifest.json`. Each identified-layer removal retains exact document,
+artboard, profile, header and trailer bytes outside the declared layer/count/view
+edits. The unchanged reader verifies every document source span, decoded metadata,
+empty reference tables, hierarchy and outgoing state. LittleCMS opens all nine
+retained real ICC profiles. Two injected references (an unknown document field
+and a nonempty exportable-assets table) must reject with exact source preservation.
+A checksum-pinned synthetic source adds identified path/group/subtree removal
+beside known document metadata. The 14 transactions qualify this explicit schema;
+unknown document fields and shared-style/text/plug-in dependencies remain unsupported.
+
+```sh
+dart run tool/check_native_reference_scope.dart
+python3 tool/verify_native_reference_scope.py --inkai-source /tmp/extension-ai
 ```
 
 Capability reports check all 37 exact extracted sources and catalog/page owners
