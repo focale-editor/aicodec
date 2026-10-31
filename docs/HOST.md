@@ -42,6 +42,15 @@ representation or prove they look equivalent. Nonvisual edits, such as renaming
 a layer, may reuse the existing PDF. Visual edits must not reuse stale artwork.
 No native rendering operator whitelist gates this serialization path.
 
+Supply the edited initial native header with the replacement program. The kit
+updates existing `AIMetaData` caches matching the original full header or its
+observed font-filtered form. It preserves unknown caches when the native header
+is unchanged and rejects header changes with unqualified cache layouts. Do not
+modify original cache objects in the host graph; selected owners receive new
+streams while unselected references retain their original data. See the
+[cached-header contract](AI.md#cached-native-headers) for limits and font-profile
+ambiguities. This synchronization does not establish a PDF-page mapping.
+
 ## Derived representations
 
 Keep the native edit and every derived representation tied to the same immutable
@@ -51,6 +60,7 @@ The following contracts describe the currently qualified subsets:
 | Payload | Host input and serialization | Invalidation/preservation policy |
 | --- | --- | --- |
 | Compatibility PDF | Supply `synchronizedPdf` from the original graph to `replace`/`replaceAll`. | Rebuild affected artwork and resources; nonvisual edits may retain them. The kit verifies graph ownership, not visual equivalence. |
+| PDF `AIMetaData` header cache | Include the edited header in the replacement native program; the kit copies qualified full/font-filtered headers. | Preserve caches for unchanged native headers; reject divergent or ambiguous profiles when a header changes. Shared selected owners reuse the new stream. |
 | Native printing expansions | `withPrintingContours` retains paint/resource topology; `withPrintingGroups` attaches complete host-composed ordinary/compound groups with process paints and references to existing gradients. Both target separate, bound CC live-shape expansions. Qualified transforms update bound private/printing records together; gradient edits accept explicit printing ramps. | Retain native authoring data and supply host-computed ink bounds. Complete groups must preserve outgoing state and the source point-count convention. New resources, clipping and unresolved local dependencies require their own editing contracts; do not reuse stale expansions after an unsupported edit. |
 | Text composition | Supply `withTextLayout` frame/line/segment positions in the documented native coordinate space. | Content/feature edits clear known caches. `withoutTextLayout(story:)` also clears them after external dependency changes, preserving text/styles/frames. Recompose before saving; unknown view fields reject. |
 | Embedded image samples | Supply complete `AiNativeRasterSamples` through the raster editor or placement embedding operation. | Qualified replacements renew affected sample identities. Unknown dependent caches reject; the kit does not decode a replacement file or convert its profile. |

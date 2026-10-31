@@ -44,8 +44,10 @@ AiPdfDocument _replaceNativePrograms({
     }
     envelopes.add(envelope);
   }
+  final List<Map<int?, PdfStream>> headers = _nativeMetadataHeaders(replacements, owners, document.pdf, limits);
   final List<PdfPage> pages = synchronizedPdf.pages;
   final PdfEditor editor = PdfEditor(document: synchronizedPdf);
+  final Map<PdfStream, PdfReference> headerReferences = HashMap.identity();
   for (final (int, AiNativeReplacement) entry in replacements.indexed) {
     final AiNativeSource source = entry.$2.source;
     final Uint8List envelope = envelopes[entry.$1];
@@ -66,6 +68,7 @@ AiPdfDocument _replaceNativePrograms({
         values: {
           ...blocks,
           'NumBlock': PdfNumber(value: blocks.length),
+          if (headers[entry.$1][index] case final PdfStream header) 'AIMetaData': headerReferences.putIfAbsent(header, () => editor.addObject(value: header)),
         },
       );
       editor.replaceObject(

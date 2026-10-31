@@ -710,6 +710,24 @@ dart run tool/check_native_artboard_lifecycle.dart
 python3 tool/verify_native_artboard_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+## Cached native headers
+
+The header-cache suite reuses the 31 PDFs in `manifest.json` and the five-page
+Reuters fixture in `artboard_manifest.json`. It changes only the native Creator
+header, then independently extracts every owner and compares the supplied native
+bytes, full/font-filtered cache profile, remaining metadata, page content and
+resources. Twenty-two real saves and two checksum-pinned synthetic saves update
+31 owner caches; ten older sources explicitly refuse their divergent canvas or
+resource cache layouts. The synthetic partial/batch cases retain catalog aliases,
+independent programs and unselected caches. The Reuters aliases share one new
+cache stream. These checks do not infer any artboard-to-page mapping or establish
+Adobe reopening.
+
+```sh
+dart run tool/check_native_metadata_headers.dart
+python3 tool/verify_native_metadata_headers.py
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

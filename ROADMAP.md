@@ -608,9 +608,17 @@ groups and compound topology. There is no general modern object lifecycle API.
   pinned CC files and ten synthetic edits, including complete CC pairs/resources.
   Full validation: 704 VM/703 Node tests, clean format/fix/analysis; focused cases
   also cover rejection of ambiguous saved UUID encodings. The task remains open:
-  artboard-specific dependency isolation, print-range remapping, explicit host
-  PDF-page mapping and synchronized cached `AIMetaData` headers still require
-  implementation and checks. No host integration or native renderer was added.
+  artboard-specific dependency isolation, print-range remapping and explicit host
+  PDF-page mapping still require implementation and checks. Native saving now
+  synchronizes exact full/font-filtered `AIMetaData` header copies without parsing
+  drawing operators. Unknown caches remain exact for unchanged headers; changed
+  headers with divergent or ambiguous cache profiles reject atomically. Nine
+  regressions cover compression, aliases, partial batches, original references
+  and aggregate limits. Independent checks cover 32 pinned PDFs and two synthetic
+  saves: 22 real saves, ten older-profile refusals and 31 updated owner caches,
+  including all five owners in the Illustrator 30.6 source. Latest full validation:
+  713 VM/712 Node tests and clean format/fix/analysis. Divergent older cache profiles
+  remain unqualified. No host integration or native renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

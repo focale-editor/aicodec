@@ -178,7 +178,7 @@ owner order. This contract currently preserves the existing mapping only.
 
 Replacement keeps the original compression family, rewrites every shared owner,
 removes stale native thumbnail blocks, and preserves other producers and private
-metadata. Mixed native block families on one owner are rejected. New allocations
+metadata, with the qualified cached-header synchronization below. Mixed native block families on one owner are rejected. New allocations
 reserve existing dangling references. Old unreferenced objects may remain;
 replacement is not a redaction operation. Encode the returned document with
 `AiCodec`; file persistence and save checkpoints belong to the application.
@@ -188,6 +188,42 @@ multi-program cases: 35 exact native programs, layer-name-only changes, shared
 owners, unselected private metadata, page content and supplied PDF resources.
 The synthetic cases include two native artboards and partial/batch saves. These
 checks establish graph preservation, not visual correspondence or Adobe reopening.
+
+### Cached native headers
+
+Both native save APIs synchronize existing PDF `AIMetaData` streams when the
+supplied native program changes its initial comment header. The original cache
+must match either the complete source header through `%%EndComments`, or that
+header without `%%DocumentFonts`, `%%DocumentNeededFonts` and their `%%+`
+continuations. The same observed profile is applied to the supplied header,
+preserving its line endings and unknown comments. No artwork operator is parsed
+or rendered. A font-filtered cache can stay unchanged after a font-only edit.
+
+If the source has no font declarations, those two profiles are indistinguishable.
+Introducing fonts then rejects rather than guessing the cache's inclusion policy.
+Other divergent profiles, missing header terminators and non-comment header data
+also reject changes that require cache synchronization. Ten pinned older files
+retain different canvas/resource values in their caches; their header-update
+contract remains unqualified. When the native header is unchanged, all existing
+caches remain exact, including opaque or divergent data. Missing/null caches are
+not invented, and unselected programs remain untouched.
+
+New cache streams retain unknown dictionary entries and references while dropping
+old PDF filter/length declarations. Their bytes are written unfiltered. Shared
+owners reuse the new stream; references outside the selected owners still reach
+the old stream. Original native metadata must remain unchanged in the supplied
+graph: callers supply native/header edits through the replacement program, not
+by overwriting original metadata objects. Planning happens before graph mutation.
+Encoded inputs, decoded inputs and cache outputs have separate aggregate bounds
+using `AiNativeLimits`; header line inspection is bounded by `maxTokens`.
+
+Nine regressions cover all native compression families, complete/filtered caches,
+catalog/page aliases, independent and unselected programs, opaque drawing,
+atomic rejection and budgets. Independent pypdf/Zstandard checks cover 32 pinned
+PDFs and two synthetic saves: 22 real saves, ten explicit old-profile refusals,
+31 updated owner caches and exact native/body/PDF-content/resource preservation.
+This includes the five shared owners of the Illustrator 30.6 fixture. These are
+serialization checks, not Adobe reopening or visual-equivalence certification.
 
 `AiPdfDocument.forPdfInterchange(pdf: ...)` explicitly removes stale Illustrator
 authoring links from a PDF. It does not synthesize native CC editing records.
@@ -1336,8 +1372,9 @@ Artboard edits currently use the conservative whole-source native reference scop
 Qualified ordinary artwork, complete CC pairs and shared literal resources remain
 exact. Unsupported setup owners or dependent/unknown records reject atomically.
 The operations edit native data only: host-supplied compatibility pages and
-cached headers such as PDF `AIMetaData` must also be synchronized before a complete
-save. Narrower artboard-specific dependencies, print-range remapping and
+cached headers must also be synchronized before a complete save. The save APIs now
+update qualified PDF `AIMetaData` header copies as described above. Narrower
+artboard-specific dependencies, print-range remapping and
 explicit PDF page remapping remain in the open roadmap task.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
@@ -1855,7 +1892,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Qualified native creation, removal, resizing and complete reordering; explicit active/history/crop choices | Private arrays and qualified whole-source dependencies only; print-range remapping, cached-header synchronization and PDF page remapping remain incomplete. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Qualified native creation, removal, resizing and complete reordering; explicit active/history/crop choices; exact full/font-filtered cached headers synchronized during saving | Private arrays and qualified whole-source dependencies only; print-range remapping, divergent cached-header profiles and PDF page remapping remain incomplete. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

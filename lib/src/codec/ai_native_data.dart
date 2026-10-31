@@ -8,6 +8,7 @@ import 'package:pdfcore/pdfcore.dart';
 import 'package:zcodec/zcodec.dart';
 
 part 'ai_native_save.dart';
+part 'ai_native_metadata_header.dart';
 
 /// Compression inside Illustrator's private PDF streams, after PDF filtering.
 enum AiNativeCompression {
@@ -237,6 +238,8 @@ abstract final class AiNativeData {
   /// Reacquire sources after each save, or use [replaceAll] for one batch. This API
   /// cannot infer equivalence between native and PDF artwork. Stale thumbnail
   /// blocks are removed; private metadata and other producers are retained.
+  /// Known AIMetaData header copies follow changed native headers. Unknown cache
+  /// layouts reject header changes; unchanged headers retain opaque caches.
   /// All shared owners are updated. Unreferenced old objects are not redacted.
   static AiPdfDocument replace({
     required AiNativeSource source,
