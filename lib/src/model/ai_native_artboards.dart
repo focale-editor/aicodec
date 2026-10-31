@@ -1,5 +1,20 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// Explicit pairing of one current native artboard and a host-produced PDF page.
+final class AiNativeArtboardPage {
+  /// Current source-owned artboard, never inferred from page dimensions or order.
+  final AiNativeArtboard artboard;
+
+  /// Indirect page in the host's synchronized PDF graph.
+  final PdfReference page;
+
+  /// Original native owner providing metadata; null selects a catalog alias.
+  final int? metadataOwner;
+
+  /// Declares the native owner, PDF page and original metadata template together.
+  const AiNativeArtboardPage({required this.artboard, required this.page, required this.metadataOwner});
+}
+
 /// Ordered artboards and separate active, selected and crop state for one owner.
 ///
 /// `CropAreaActive` chooses an artboard independently of `IsArtboardSelected`.
@@ -116,4 +131,30 @@ final class AiNativeArtboards {
   /// their selection flags remain exact. Null [cropBounds] preserves the crop
   /// declaration rather than deriving it from the new order.
   AiNativeArtboards reorder({required List<AiNativeArtboard> artboards, required AiBoundingBox? cropBounds}) => _reorderNativeArtboards(this, artboards, cropBounds);
+
+  /// Binds every current artboard to one explicit host page for mapped saving.
+  ///
+  /// One top-level Document owner and one distinct page per board are required.
+  /// The resulting bindings follow native board order; `replaceMapped` checks
+  /// that order against the supplied PDF graph. It does not equate PDF boxes
+  /// with native rectangles or render their contents. Stale/foreign handles and
+  /// incomplete mappings reject before any PDF mutation.
+  AiNativePageReplacement pageReplacement({required AiNativeSource source, required List<AiNativeArtboardPage> pages}) {
+    if (source.document is! AiPdfDocument || source.owners.isEmpty || records.roots.where((root) => root.type == 'Document').length != 1 || pages.length != artboards.length) {
+      throw ArgumentError('Artboard page mapping requires a PDF source, one native Document and every current board.');
+    }
+    final Map<int, AiNativePageBinding> bindings = {};
+    final Set<PdfReference> references = {};
+    for (final AiNativeArtboardPage page in pages) {
+      final int index = _requireNativeArtboard(this, page.artboard);
+      if (bindings.containsKey(index) || !references.add(page.page)) {
+        throw ArgumentError('Artboard page mappings require distinct boards and PDF pages.');
+      }
+      bindings[index] = AiNativePageBinding(page: page.page, metadataOwner: page.metadataOwner);
+    }
+    return AiNativePageReplacement(
+      replacement: AiNativeReplacement(source: source, program: records.program.bytes),
+      pages: [for (int index = 0; index < artboards.length; index++) bindings[index]!],
+    );
+  }
 }

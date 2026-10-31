@@ -607,9 +607,9 @@ groups and compound topology. There is no general modern object lifecycle API.
   Twenty-five independent transactions qualify fifteen chained edits in three
   pinned CC files and ten synthetic edits, including complete CC pairs/resources.
   Full validation: 704 VM/703 Node tests, clean format/fix/analysis; focused cases
-  also cover rejection of ambiguous saved UUID encodings. The task remains open:
+  also cover rejection of ambiguous saved UUID encodings. At that stage,
   artboard-specific dependency isolation, print-range remapping and explicit host
-  PDF-page mapping still require implementation and checks. Native saving now
+  PDF-page mapping still required implementation and checks. Native saving now
   synchronizes exact full/font-filtered `AIMetaData` header copies without parsing
   drawing operators. Unknown caches remain exact for unchanged headers; changed
   headers with divergent or ambiguous cache profiles reject atomically. Nine
@@ -618,7 +618,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   saves: 22 real saves, ten older-profile refusals and 31 updated owner caches,
   including all five owners in the Illustrator 30.6 source. Latest full validation:
   713 VM/712 Node tests and clean format/fix/analysis. Divergent older cache profiles
-  remain unqualified. No host integration or native renderer was added.
+  remain unqualified. Explicit PDF mapping is now implemented through
+  `AiNativeArtboards.pageReplacement` and `AiNativeData.replaceMapped`. Current
+  boards bind distinct host pages in native order, with explicit original
+  page/catalog metadata templates. Catalog aliases and unselected programs remain
+  intact; new-page identity capture, incomplete mappings, reachable deleted-page
+  references and newly dangling references reject. Page-label positions require
+  supplied labels/removal or an explicit retain policy. Thirteen regressions cover
+  these contracts, atomic refusals, stale handles, opaque drawing and limits.
+  Nine independent serialized transactions pass: three real page-identity
+  replacements with exact native programs (including the five-page CC source),
+  four synthetic native lifecycle saves and two multi-program partial/batch saves.
+  Native data, cached headers, owner templates and supplied PDF content/resources
+  are independently checked. Full validation: 726 VM/725 Node tests and clean
+  format/fix/analysis. Existing strict saves (31 pinned PDFs, two synthetic saves,
+  35 programs) and header-cache checks (32 pinned PDFs, two synthetic saves,
+  31 updated owner caches) were regenerated and independently rechecked.
+  Artboard-specific dependency isolation and saved
+  print-range remapping remain outstanding, so this task stays open.
+  No host integration or native renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

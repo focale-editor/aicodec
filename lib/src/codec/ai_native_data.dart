@@ -9,6 +9,43 @@ import 'package:zcodec/zcodec.dart';
 
 part 'ai_native_save.dart';
 part 'ai_native_metadata_header.dart';
+part 'ai_native_page_save.dart';
+
+/// Explicit treatment of existing position-based PDF page labels during remapping.
+enum AiNativePageLabelsPolicy {
+  /// Require the host to replace or remove labels when page structure changes.
+  requireUpdated,
+
+  /// Keep existing labels attached to their numerical PDF positions.
+  retainPositions,
+}
+
+/// One supplied PDF page and the original native metadata owner to retain or copy.
+final class AiNativePageBinding {
+  /// Indirect page reference in the host's synchronized PDF graph.
+  final PdfReference page;
+
+  /// Original source owner index; null explicitly selects its catalog metadata.
+  ///
+  /// A retained native page must select its own original index. New native pages
+  /// explicitly choose a metadata template from the same extracted program.
+  final int? metadataOwner;
+
+  /// Records a mapping without inferring it from bounds, UUIDs or page counts.
+  const AiNativePageBinding({required this.page, required this.metadataOwner});
+}
+
+/// A native replacement with its explicitly ordered compatibility PDF pages.
+final class AiNativePageReplacement {
+  /// Immutable source and supplied native bytes.
+  final AiNativeReplacement replacement;
+
+  /// Native page order, using current PDF references and original metadata owners.
+  final List<AiNativePageBinding> pages;
+
+  /// Freezes one explicit mapping; any original catalog alias remains attached.
+  AiNativePageReplacement({required this.replacement, required List<AiNativePageBinding> pages}) : pages = List.unmodifiable(pages);
+}
 
 /// Compression inside Illustrator's private PDF streams, after PDF filtering.
 enum AiNativeCompression {
@@ -267,6 +304,31 @@ abstract final class AiNativeData {
     AiNativeLimits limits = const AiNativeLimits(),
     int blockBytes = 65536,
   }) => _replaceNativePrograms(replacements: replacements, synchronizedPdf: synchronizedPdf, limits: limits, blockBytes: blockBytes);
+
+  /// Saves explicit page remappings while preserving unrelated native programs.
+  ///
+  /// The host derives [synchronizedPdf] from the original graph and supplies all
+  /// page content, boxes, resources and dependent PDF structure. Each replacement
+  /// declares its complete resulting page order and metadata owners. All new
+  /// pages require a binding; removing pages belonging to unselected programs or
+  /// leaving references to removed pages rejects. Unselected page order remains
+  /// stable. Original catalog aliases remain attached, and retained or copied
+  /// metadata dependencies must remain unchanged. Page labels require an explicit policy.
+  /// This validates ownership and references, not visual equivalence or drawing.
+  static AiPdfDocument replaceMapped({
+    required List<AiNativePageReplacement> replacements,
+    required PdfDocument synchronizedPdf,
+    AiNativePageLabelsPolicy pageLabels = .requireUpdated,
+    AiNativeLimits limits = const AiNativeLimits(),
+    int blockBytes = 65536,
+  }) => _replaceNativePrograms(
+    replacements: replacements.map((entry) => entry.replacement).toList(),
+    synchronizedPdf: synchronizedPdf,
+    limits: limits,
+    blockBytes: blockBytes,
+    pageReplacements: replacements,
+    pageLabels: pageLabels,
+  );
 }
 
 /// Adobe's zlib envelope marker, with no newline before the compressed bytes.

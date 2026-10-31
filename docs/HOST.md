@@ -33,8 +33,19 @@ the batch atomically while retaining unselected programs. Reacquire handles afte
 every save. The synchronized graph must retain catalog/page identities and order,
 the original native-owner dictionaries and every referenced native metadata object.
 Copying or importing a newly parsed PDF with matching object numbers is insufficient.
-Page/artboard remapping needs a separate qualified structural-edit contract; the
-current save API rejects additions, removals, reordering and renumbering.
+These two APIs reject page additions, removals, reordering and renumbering.
+For page structure changes, use `AiNativeData.replaceMapped` with explicit
+`AiNativePageReplacement` bindings. `AiNativeArtboards.pageReplacement` binds one
+current board to each supplied PDF page and orders them by native board order.
+Retained native pages keep their original metadata owner; new native attachments
+require an explicit original page/catalog template. The kit preserves catalog
+aliases and unselected programs, and rejects incomplete or conflicting mappings.
+The host supplies the complete resulting PDF graph, including updated destinations,
+annotations, tags and page labels. Removed source page objects retain their native
+metadata but must be unreachable. Page labels require replacement/removal after
+remapping, or explicit `retainPositions`; native names are not PDF labels.
+See the [mapped-save contract](AI.md#explicit-nativepdf-page-mappings) for graph
+checks and the exact native lifecycle limits.
 
 `program` contains the edited native bytes; `synchronizedPdf` contains the
 host-produced representation of the same edit. AiKit does not render either
@@ -59,7 +70,7 @@ The following contracts describe the currently qualified subsets:
 
 | Payload | Host input and serialization | Invalidation/preservation policy |
 | --- | --- | --- |
-| Compatibility PDF | Supply `synchronizedPdf` from the original graph to `replace`/`replaceAll`. | Rebuild affected artwork and resources; nonvisual edits may retain them. The kit verifies graph ownership, not visual equivalence. |
+| Compatibility PDF | Supply `synchronizedPdf` from the original graph to `replace`/`replaceAll`, or explicit page bindings to `replaceMapped` for structural changes. | Rebuild affected artwork, resources and dependent PDF structures; nonvisual edits may retain them. The kit verifies graph ownership, not visual equivalence. |
 | PDF `AIMetaData` header cache | Include the edited header in the replacement native program; the kit copies qualified full/font-filtered headers. | Preserve caches for unchanged native headers; reject divergent or ambiguous profiles when a header changes. Shared selected owners reuse the new stream. |
 | Native printing expansions | `withPrintingContours` retains paint/resource topology; `withPrintingGroups` attaches complete host-composed ordinary/compound groups with process paints and references to existing gradients. Both target separate, bound CC live-shape expansions. Qualified transforms update bound private/printing records together; gradient edits accept explicit printing ramps. | Retain native authoring data and supply host-computed ink bounds. Complete groups must preserve outgoing state and the source point-count convention. New resources, clipping and unresolved local dependencies require their own editing contracts; do not reuse stale expansions after an unsupported edit. |
 | Text composition | Supply `withTextLayout` frame/line/segment positions in the documented native coordinate space. | Content/feature edits clear known caches. `withoutTextLayout(story:)` also clears them after external dependency changes, preserving text/styles/frames. Recompose before saving; unknown view fields reject. |

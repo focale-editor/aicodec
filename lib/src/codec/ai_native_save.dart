@@ -6,6 +6,8 @@ AiPdfDocument _replaceNativePrograms({
   required PdfDocument synchronizedPdf,
   required AiNativeLimits limits,
   required int blockBytes,
+  List<AiNativePageReplacement>? pageReplacements,
+  AiNativePageLabelsPolicy pageLabels = .requireUpdated,
 }) {
   limits.validate();
   if (replacements.isEmpty) {
@@ -18,7 +20,19 @@ AiPdfDocument _replaceNativePrograms({
   if (document is! AiPdfDocument || replacements.any((replacement) => !identical(replacement.source.document, document) || replacement.source.owners.isEmpty)) {
     throw ArgumentError('Native replacements must share one PDF extraction document.');
   }
-  final List<_NativeOwner> owners = _validateNativeSaveGraph(document.pdf, synchronizedPdf, limits);
+  final List<_NativeOwner> owners = pageReplacements == null ? _validateNativeSaveGraph(document.pdf, synchronizedPdf, limits) : _owners(document.pdf);
+  final List<List<_NativeSaveTarget>> targets = pageReplacements == null
+      ? [
+          for (final AiNativeReplacement replacement in replacements)
+            [
+              for (final int? index in replacement.source.owners)
+                (
+                  owner: owners.firstWhere((owner) => owner.pageIndex == index && owner.prefix == replacement.source._prefix),
+                  reference: (index == null ? synchronizedPdf.trailer['Root'] : synchronizedPdf.pages[index].reference)! as PdfReference,
+                ),
+            ],
+        ]
+      : _mappedNativeTargets(pageReplacements, owners, document.pdf, synchronizedPdf, limits, pageLabels);
   final Set<int?> selected = {};
   final List<Uint8List> envelopes = [];
   int decodedTotal = 0;
@@ -44,8 +58,7 @@ AiPdfDocument _replaceNativePrograms({
     }
     envelopes.add(envelope);
   }
-  final List<Map<int?, PdfStream>> headers = _nativeMetadataHeaders(replacements, owners, document.pdf, limits);
-  final List<PdfPage> pages = synchronizedPdf.pages;
+  final List<Map<int?, PdfStream>> headers = _nativeMetadataHeaders(replacements, targets.expand((targets) => targets.map((target) => target.owner)).toSet().toList(), document.pdf, limits);
   final PdfEditor editor = PdfEditor(document: synchronizedPdf);
   final Map<PdfStream, PdfReference> headerReferences = HashMap.identity();
   for (final (int, AiNativeReplacement) entry in replacements.indexed) {
@@ -58,17 +71,17 @@ AiPdfDocument _replaceNativePrograms({
         value: PdfStream(dictionary: PdfDictionary(), data: Uint8List.sublistView(envelope, offset, end)),
       );
     }
-    for (final int? index in source.owners) {
-      final _NativeOwner owner = owners.firstWhere((owner) => owner.pageIndex == index && owner.prefix == source._prefix);
-      final PdfReference reference = (index == null ? synchronizedPdf.trailer['Root'] : pages[index].reference)! as PdfReference;
+    for (final _NativeSaveTarget target in targets[entry.$1]) {
+      final _NativeOwner owner = target.owner;
+      final PdfReference reference = target.reference;
       final PdfDictionary dictionary = editor.document.dictionary(reference);
-      final PdfDictionary pieces = editor.document.dictionary(dictionary['PieceInfo']!);
+      final PdfDictionary pieces = dictionary['PieceInfo'] == null || dictionary['PieceInfo'] is PdfNull ? PdfDictionary() : editor.document.dictionary(dictionary['PieceInfo']!);
       final PdfDictionary data = owner.data.copyWith(
         remove: owner.data.values.keys.where(_blockPattern.hasMatch).toSet(),
         values: {
           ...blocks,
           'NumBlock': PdfNumber(value: blocks.length),
-          if (headers[entry.$1][index] case final PdfStream header) 'AIMetaData': headerReferences.putIfAbsent(header, () => editor.addObject(value: header)),
+          if (headers[entry.$1][owner.pageIndex] case final PdfStream header) 'AIMetaData': headerReferences.putIfAbsent(header, () => editor.addObject(value: header)),
         },
       );
       editor.replaceObject(
@@ -87,6 +100,9 @@ AiPdfDocument _replaceNativePrograms({
   }
   return AiPdfDocument(pdf: editor.document);
 }
+
+/// One source metadata owner attached to an explicitly validated PDF object.
+typedef _NativeSaveTarget = ({_NativeOwner owner, PdfReference reference});
 
 /// Rejects page remapping, stale native handles and foreign private graphs.
 List<_NativeOwner> _validateNativeSaveGraph(PdfDocument original, PdfDocument synchronized, AiNativeLimits limits) {
@@ -111,6 +127,12 @@ List<_NativeOwner> _validateNativeSaveGraph(PdfDocument original, PdfDocument sy
       )) {
     throw ArgumentError('Native saving requires current source owners and unchanged Illustrator metadata.');
   }
+  _validateNativeMetadata(owners, original, synchronized, limits);
+  return owners;
+}
+
+/// Retains every original metadata dependency, including unselected programs.
+void _validateNativeMetadata(List<_NativeOwner> owners, PdfDocument original, PdfDocument synchronized, AiNativeLimits limits, {Set<PdfReference> removedPages = const {}}) {
   final Set<PdfValue> seen = HashSet.identity();
   final Set<PdfReference> references = {};
   int count = 0;
@@ -125,6 +147,9 @@ List<_NativeOwner> _validateNativeSaveGraph(PdfDocument original, PdfDocument sy
     }
     switch (value) {
       case final PdfReference reference:
+        if (removedPages.contains(reference)) {
+          throw UnsupportedError('Native metadata still references a removed PDF page.');
+        }
         if (!references.add(reference)) {
           return;
         }
@@ -153,5 +178,4 @@ List<_NativeOwner> _validateNativeSaveGraph(PdfDocument original, PdfDocument sy
   for (final _NativeOwner owner in owners) {
     visit(owner.illustrator, 0);
   }
-  return owners;
 }

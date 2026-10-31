@@ -728,6 +728,29 @@ dart run tool/check_native_metadata_headers.dart
 python3 tool/verify_native_metadata_headers.py
 ```
 
+## Explicit native/PDF page mappings
+
+The mapped-save suite reuses three pinned PDFs: `simple_cc_legacy.ai`,
+`simple_v2020_no_pdf_data.ai` and the five-page `reuters-preview-dev.ai`. It replaces
+the first page identity using explicitly supplied original artwork and metadata
+templates, retaining exact native programs. It does not semantically edit the
+Reuters artwork. Four checksum-pinned synthetic cases save native artboard
+creation, removal, reordering and resizing with explicit PDF pages. Two further
+synthetic cases cover multiple programs with selected-only and batch saving.
+
+The unmodified pinned inkai reader decodes the uniquely bound Document fragment
+without interpreting opaque drawing operators. Independent checks compare all
+native Document values, complete native bytes outside prescribed edits, owner
+aliases, metadata templates, updated cached headers, other producer metadata,
+host-supplied page identities/boxes/content/resources and retained catalog data.
+All nine cases must pass. These checks establish serialization and graph
+preservation, not native rendering, appearance generation or Adobe reopening.
+
+```sh
+dart run tool/check_native_page_saves.dart
+python3 tool/verify_native_page_saves.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

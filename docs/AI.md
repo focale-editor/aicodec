@@ -166,7 +166,7 @@ duplicate/overlapping entries reject. All replacement envelopes and aggregate
 byte limits are checked before a result is published. Unselected native programs
 remain unchanged.
 
-Both save APIs verify the catalog reference, page count and ordered page
+`replace` and `replaceAll` verify the catalog reference, page count and ordered page
 references. They also require the original Illustrator dictionaries and their
 transitively referenced PDF objects, including unselected programs. The host may
 replace page contents/resources and unrelated producer metadata. Native metadata
@@ -174,7 +174,8 @@ mutations, stale extraction handles, a separately reparsed PDF, renumbering,
 page insertion/removal/reordering and changed alias membership reject atomically.
 Reacquire all handles after a save; use one batch to save several programs from
 the same snapshot. Page/artboard remapping is not inferred from counts, bounds or
-owner order. This contract currently preserves the existing mapping only.
+owner order. These two APIs preserve the existing mapping; use the explicit
+mapped-save contract below for structural changes.
 
 Replacement keeps the original compression family, rewrites every shared owner,
 removes stale native thumbnail blocks, and preserves other producers and private
@@ -189,9 +190,73 @@ owners, unselected private metadata, page content and supplied PDF resources.
 The synthetic cases include two native artboards and partial/batch saves. These
 checks establish graph preservation, not visual correspondence or Adobe reopening.
 
+### Explicit native/PDF page mappings
+
+`AiNativeData.replaceMapped(replacements:, synchronizedPdf:, pageLabels:)` saves
+one or more selected programs with an explicit resulting PDF page sequence.
+Each `AiNativePageReplacement` contains the immutable native replacement and
+ordered `AiNativePageBinding(page:, metadataOwner:)` entries. `page` is a current
+indirect reference in the host graph. `metadataOwner` is the original extracted
+source's page index, or null to select its catalog alias as a metadata template.
+A retained native page must keep its own original metadata owner. A new native
+attachment copies only Illustrator metadata from the explicitly chosen owner;
+the host's other producer data remains intact. Original catalog aliases remain
+attached automatically. No mapping is inferred from bounds, UUIDs or counts.
+
+For one top-level native Document with one PDF page per artboard, use
+`editedArtboards.pageReplacement(source:, pages:)`. Supply every current board
+exactly once through `AiNativeArtboardPage(artboard:, page:, metadataOwner:)`.
+This helper freezes the bindings in native board order; the save checks that
+this order matches the host PDF, including when unrelated pages intervene:
+
+```dart
+final AiNativePageReplacement replacement = editedArtboards.pageReplacement(
+  source: originalSource,
+  pages: explicitArtboardPages,
+);
+final AiPdfDocument saved = AiNativeData.replaceMapped(
+  replacements: [replacement],
+  synchronizedPdf: hostPdf,
+);
+```
+
+The host derives its graph from the original snapshot and supplies page content,
+resources, boxes and dependent PDF structures. Every added PDF page and every
+retained page of a selected program must be bound. Pages of unselected programs
+cannot be deleted or have their relative order changed. New attachments cannot
+overwrite existing Illustrator metadata, and new page references cannot reuse
+any original object number, including dangling references. Removed page objects
+remain unreachable with their original native metadata; their page dictionaries
+may have been materialized by earlier host edits. This is not data erasure.
+
+Original catalog identity, retained native dictionaries and dependencies of
+retained/copied metadata stay unchanged. Reachable references to removed pages
+and newly dangling references reject; preexisting dangling references remain
+reserved. The host must update destinations, annotations, tags and any other
+dependent PDF structure. Graph checks do not validate all semantic relationships
+inside opaque bytes or attest to visual equivalence.
+
+Page labels use numerical PDF positions. If page identities/order/count change,
+the default `requireUpdated` policy requires the host to replace or remove the
+existing label tree. Explicit `retainPositions` keeps labels at their numerical
+positions. Supplied trees must have bounded acyclic structure, ordered unique
+starts beginning at zero within current pages, consistent limits and valid label
+styles, prefixes and positive counters. The kit does not infer labels from native
+board names. Native saved print ranges have their separate edit restrictions.
+
+Thirteen regressions cover complete mappings, stale/foreign handles, immutable
+inputs, metadata templates, catalog aliases, partial batches, opaque artwork,
+removed-page destinations, dangling identities, label policies and budgets.
+Independent checks verify nine serialized transactions: fresh page identities in
+three pinned real files (including all five pages of the Illustrator 30.6 file),
+four synthetic native lifecycle edits and two multi-program partial/batch saves.
+The real programs remain byte-identical; synthetic edits are independently
+decoded and compared, along with supplied PDF content/resources and owner data.
+These are serialization checks, not native rendering or Adobe reopening.
+
 ### Cached native headers
 
-Both native save APIs synchronize existing PDF `AIMetaData` streams when the
+All native save APIs synchronize existing PDF `AIMetaData` streams when the
 supplied native program changes its initial comment header. The original cache
 must match either the complete source header through `%%EndComments`, or that
 header without `%%DocumentFonts`, `%%DocumentNeededFonts` and their `%%+`
@@ -1373,18 +1438,20 @@ Qualified ordinary artwork, complete CC pairs and shared literal resources remai
 exact. Unsupported setup owners or dependent/unknown records reject atomically.
 The operations edit native data only: host-supplied compatibility pages and
 cached headers must also be synchronized before a complete save. The save APIs now
-update qualified PDF `AIMetaData` header copies as described above. Narrower
-artboard-specific dependencies, print-range remapping and
-explicit PDF page remapping remain in the open roadmap task.
+update qualified PDF `AIMetaData` header copies and accept explicit PDF page
+mappings as described above. Narrower artboard-specific dependencies and
+print-range remapping remain in the open roadmap task.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
 explicit crop/origin choices, CC pairs/resources, malformed input, conditional
 ownership and limits. Nineteen independent transactions cover six real-source
 inspections, six resizes in three pinned CC sources (including large canvases and
 moved origins), four synthetic resizes and three unchanged refusals. The large
-five-page fixture is inspection-only: the independent reader also reports
+five-page fixture's native qualification is inspection-only: the independent reader also reports
 unsupported body operators, so only its separately bound Document metadata is
-qualified. No PDF rendering, Adobe reopening or complete artboard save is claimed.
+qualified. Explicit page-identity replacement preserves that complete native body
+and verifies its supplied PDF separately. No native rendering or Adobe reopening
+is claimed.
 Thirteen further lifecycle regressions cover creation, active replacement,
 permutations, absent fields, exact source retention, line endings, immutable
 definitions, identity collisions, unknown dependencies and aggregate limits.
@@ -1892,7 +1959,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Qualified native creation, removal, resizing and complete reordering; explicit active/history/crop choices; exact full/font-filtered cached headers synchronized during saving | Private arrays and qualified whole-source dependencies only; print-range remapping, divergent cached-header profiles and PDF page remapping remain incomplete. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Qualified native creation, removal, resizing and complete reordering; explicit active/history/crop choices; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only; artboard-specific isolation, print-range remapping and divergent cached-header profiles remain incomplete. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
