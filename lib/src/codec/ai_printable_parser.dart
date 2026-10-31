@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Compiles complete printable paths, rejecting unrepresented drawing semantics.
-List<_PrintableNode> _readPrintable(AiProgram program) {
+List<_PrintableNode> _readPrintable(AiProgram program, AiNativePlacementResolver? resolvePlacement) {
   final AiNativeRecords records = AiNativeRecords.decode(program: program);
   final List<AiNativeRaster> rasters = AiNativeRasters.decode(records: records, bodyOnly: true).images;
   final Set<int> rasterData = {
@@ -15,14 +15,32 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
   for (final AiNativeRaster image in rasters) {
     image.validateProcessLayout();
   }
+  final List<AiNativePlacedObject> placements = AiNativePlacements.decode(records: records, bodyOnly: true).objects;
+  final Map<int, AiNativePlacedObject> placedCommands = {
+    for (final AiNativePlacedObject object in placements.where((object) => object.isPrintable(program: program))) ...{
+      object.instruction.end: object,
+      object.closing.end: object,
+    },
+  };
+  for (final AiNativePlacedObject object in placements) {
+    if (object.isPrintable(program: program)) {
+      object.validateRasterLayout();
+    }
+  }
   int colorModel = 1;
+  int placementIndex = 0;
   for (final AiToken token in AiPostScript.tokenize(program.bytes, maxBytes: program.limits.maxDecodedBytes, maxTokens: program.limits.maxTokens, maxDepth: program.limits.maxDepth)) {
     if (token.start < program.bodyStart && token.kind == .comment && token.lexeme.startsWith('%AI9_ColorModel:')) {
       colorModel = int.tryParse(token.lexeme.substring('%AI9_ColorModel:'.length).trim()) ?? 0;
     }
+    while (placementIndex < placements.length && placements[placementIndex].end <= token.start) {
+      placementIndex++;
+    }
+    final AiNativePlacedPreview? preview = placementIndex < placements.length ? placements[placementIndex].preview : null;
+    final bool previewData = preview != null && token.start > preview.start && token.end < preview.end;
     if (token.start >= program.bodyStart &&
         token.start < program.bodyEnd &&
-        (token.kind == .data && !rasterData.contains(token.start) || token.kind == .comment && token.lexeme.startsWith('%%BeginDocument'))) {
+        (token.kind == .data && !rasterData.contains(token.start) && !previewData || token.kind == .comment && token.lexeme.startsWith('%%BeginDocument'))) {
       throw UnsupportedError('Native PDF export requires a renderer for embedded drawing data.');
     }
   }
@@ -75,11 +93,43 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
       }
       if (operator == 'XI') {
         stack.last.children.add(
-          _PrintableNode(operations: state.attributes.values.toList(), raster: image, opacity: state.opacity, blend: state.blend, isolated: state.isolated, knockout: state.knockout),
+          _PrintableNode(
+            operations: state.attributes.values.toList(),
+            raster: _PrintableRaster.embedded(image: image),
+            opacity: state.opacity,
+            blend: state.blend,
+            isolated: state.isolated,
+            knockout: state.knockout,
+          ),
         );
         appearanceState = null;
       }
       rasterClosed = operator == 'XH';
+      continue;
+    }
+    final AiNativePlacedObject? placed = placedCommands[instruction.end];
+    if (placed != null) {
+      if (path.isNotEmpty || compound != null || gradientInstance != null || clip) {
+        throw UnsupportedError('A linked image cannot interrupt a native path or gradient.');
+      }
+      if (operator == '`') {
+        final AiNativeRasterSamples? samples = resolvePlacement?.call(placed);
+        if (samples == null) {
+          throw UnsupportedError('Native PDF export requires explicit pixels for every printable linked image.');
+        }
+        stack.last.children.add(
+          _PrintableNode(
+            operations: state.attributes.values.toList(),
+            raster: _PrintableRaster.placed(object: placed, samples: samples),
+            opacity: state.opacity,
+            blend: state.blend,
+            isolated: state.isolated,
+            knockout: state.knockout,
+          ),
+        );
+        appearanceState = null;
+      }
+      rasterClosed = operator == '~';
       continue;
     }
     if (rasterClosed && operator == 'N') {

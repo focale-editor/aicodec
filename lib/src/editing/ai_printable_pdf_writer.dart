@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Compiles before publishing any page or private-data changes.
-PdfDocument _writePrintablePdf(AiProgram program, PdfDocument document, List<AiBoundingBox> bounds) {
+PdfDocument _writePrintablePdf(AiProgram program, PdfDocument document, List<AiBoundingBox> bounds, AiNativePlacementResolver? resolvePlacement) {
   document.limits.validate();
   final List<PdfPage> pages = document.pages;
   if (pages.isEmpty || pages.length != bounds.length) {
@@ -22,7 +22,7 @@ PdfDocument _writePrintablePdf(AiProgram program, PdfDocument document, List<AiB
     }
     boxes.add(box);
   }
-  final List<_PrintableNode> nodes = _readPrintable(program);
+  final List<_PrintableNode> nodes = _readPrintable(program, resolvePlacement);
   final _PrintablePdfWriter writer = _PrintablePdfWriter(document: document, bounds: bounds);
   final _PrintableChunk content = writer.nodes(nodes);
   final PdfEditor editor = PdfEditor(document: document.copyWith(objects: writer.objects));

@@ -500,7 +500,37 @@ Shared references retain it. Native output and sample sizes remain bounded.
 The host can deliberately pass `object.preview!.toSamples()` as a reduced-resolution
 fallback. That choice is never implicit. After embedding, `AiNativePdf.render`
 or `AiNativePdf.save` produces the corresponding image appearance using the
-embedded-raster contract. Unresolved links still reject native PDF rendering.
+embedded-raster contract.
+
+Both PDF methods also accept `resolvePlacement`, a synchronous
+`AiNativePlacementResolver` returning `AiNativeRasterSamples?`. The callback
+receives each current printable placement, including its source path bytes,
+relative directory, geometry and optional preview. The host resolves and decodes
+files before rendering, using its chosen format and color policy. The kit never
+opens those paths. A null return, absent resolver or unsupported placement rejects
+the export; host exceptions propagate without committing a PDF/native snapshot.
+There is no automatic preview fallback. A caller can explicitly choose
+`(object) => object.preview?.toSamples()` when that lower resolution is acceptable.
+
+Resolved samples use the same process-image, alpha, clipping and object-opacity
+writer as embedded pixels. Every placement is resolved once per export, even
+when several PDF pages share it; separate instances sharing a filename are
+resolved independently. Hidden or nonprinting layer contents are still qualified
+and resolved before their painting is suppressed, matching the strict whole-body
+export policy. Private authoring placements are structurally bounded, preserved
+and never passed to the resolver. Their opaque appearance metadata is not painted.
+Generated visible sample planes count against the aggregate PDF byte limit.
+
+When a link is rendered this way, `AiNativePdf.save` writes the supplied program's
+native file references, relative paths, preview rows and object records unchanged,
+while regenerating the PDF appearance from the resolved pixels. This supports a
+translated link without converting it to embedded artwork. The caller remains
+responsible for choosing pixels that represent the current external resource;
+the method does not refresh native previews or relink files.
+`object.validateRasterLayout()` exposes qualification separately, and
+`object.rasterMatrix(width:, height:)` supplies an immutable pixel-to-native
+transform for host adapters using the same placed extent and origin policy.
+Unresolved links still reject native PDF rendering.
 Relinking, external PDF/EPS placed artwork, older `XF` links, opaque effect-cache
 regeneration and Adobe reopening remain unqualified.
 
@@ -867,6 +897,15 @@ and exact native-program recovery. The fixture has no original PDF appearance,
 and the host sample source is another corpus image, not the missing external JPEG.
 These checks qualify geometry, samples and synchronization, not Adobe reopening.
 
+The same three variants also render and save with `resolvePlacement`, retaining
+their native links. Six additional zero-difference comparisons check their
+standalone and synchronized PDFs against the Ghostscript references. Independent
+extraction recovers each complete linked program byte for byte, including its
+saved preview and external references. Five Poppler pixel probes check linked
+sample alpha, object opacity, row orientation and clipping over a colored
+background. Focused tests additionally cover shared file paths, private and
+hidden placements, two PDF owners, resolver failures and aggregate byte limits.
+
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
@@ -877,7 +916,7 @@ These checks qualify geometry, samples and synchronization, not Adobe reopening.
 | Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Raster images | Decode process samples and separate alpha; translate placement; replace pixels, depth, channels and resolution with sample UUID renewal; render and save synchronized native images | Placed-size editing, older ASCII layouts, broader color models, dependent effect caches and Adobe identity qualification |
-| Linked placements | Read CC paths and counted previews, translate qualified raster links and embed host-resolved samples with synchronized PDF output | Relinking, external vector pages, older `XF` links, broader producer semantics and Adobe reopening |
+| Linked placements | Read CC paths and counted previews, translate qualified raster links; render and save with host-resolved pixels while retaining links, or explicitly embed them | Relinking, external vector pages, older `XF` links, broader producer semantics and Adobe reopening |
 | Meshes, effects, plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
 | PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, unresolved links/unsupported images, unresolved effects and host scene integration |

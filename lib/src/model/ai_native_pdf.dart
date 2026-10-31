@@ -11,15 +11,25 @@ import 'package:pdfcore/pdfcore.dart';
 
 part '../codec/ai_printable_gradient.dart';
 part '../codec/ai_printable_parser.dart';
+part '../codec/ai_printable_raster.dart';
 part '../editing/ai_printable_gradient_writer.dart';
 part '../editing/ai_printable_raster_writer.dart';
 part '../editing/ai_printable_pdf_writer.dart';
 
-/// Rebuilds PDF compatibility artwork from native printable Illustrator paths.
+/// Supplies explicit process pixels for one current native linked placement.
+///
+/// The host resolves file paths, decodes image formats and chooses color policy
+/// before rendering. Returning null rejects an unresolved link; saved previews
+/// are never used implicitly. The callback runs once per printable placement,
+/// including placements in hidden layers, and never for private authoring art.
+/// It may return `object.preview?.toSamples()` as an explicit preview fallback.
+typedef AiNativePlacementResolver = AiNativeRasterSamples? Function(AiNativePlacedObject object);
+
+/// Rebuilds PDF compatibility artwork from native printable Illustrator drawings.
 ///
 /// This interprets declarative process-color paths, layers, groups, compound
-/// paths, clipping, classic gradient fills/strokes, binary process-color images
-/// and supported opacity records.
+/// paths, clipping, classic gradient fills/strokes, embedded or host-resolved
+/// process-color images and supported opacity records.
 /// It does not execute a prolog.
 /// Unsupported drawing operations reject the whole export. Private authoring
 /// paths remain in the native program and do not paint a second time.
@@ -35,14 +45,16 @@ abstract final class AiNativePdf {
   /// Compound contours share their final paint, including gradients and holes.
   /// Complete gradient appearance notes without a path do not paint.
   /// Embedded binary rasters retain native samples, placement and separate alpha.
-  /// Text, linked images, patterns, spot colors and unresolved appearances reject export.
-  static PdfDocument render({required AiProgram program, required AiBoundingBox bounds, PdfLimits limits = const PdfLimits()}) {
+  /// [resolvePlacement] supplies pixels for qualified CC raster links without
+  /// incorporating them into the native program. Missing links, text, patterns,
+  /// spot colors and unresolved appearances reject export.
+  static PdfDocument render({required AiProgram program, required AiBoundingBox bounds, AiNativePlacementResolver? resolvePlacement, PdfLimits limits = const PdfLimits()}) {
     limits.validate();
     final PdfDocument empty = PdfDocument.fromPages(
       pages: [PdfPageSource(width: bounds.right - bounds.left, height: bounds.top - bounds.bottom, content: [])],
     );
     final PdfDocument document = PdfDocument(objects: empty.objects, trailer: empty.trailer, limits: limits);
-    return _writePrintablePdf(program, document, [bounds]);
+    return _writePrintablePdf(program, document, [bounds], resolvePlacement);
   }
 
   /// Saves edited native bytes and regenerated PDF pages in one new snapshot.
@@ -56,12 +68,20 @@ abstract final class AiNativePdf {
   /// The native operation must already have synchronized its printable paths.
   /// This method does not regenerate them from opaque effects or ATE data. It
   /// rejects unsupported visible and hidden operations instead of dropping art.
-  static AiPdfDocument save({required AiNativeSource source, required AiProgram program, required List<AiBoundingBox> pageBounds, AiNativeLimits limits = const AiNativeLimits()}) {
+  /// [resolvePlacement] updates PDF image appearances while keeping the native
+  /// file references, preview bytes and placed-object records unchanged.
+  static AiPdfDocument save({
+    required AiNativeSource source,
+    required AiProgram program,
+    required List<AiBoundingBox> pageBounds,
+    AiNativePlacementResolver? resolvePlacement,
+    AiNativeLimits limits = const AiNativeLimits(),
+  }) {
     final AiDocument original = source.document;
     if (original is! AiPdfDocument || AiNativeData.extract(original, limits: limits).length != 1) {
       throw ArgumentError('PDF synchronization requires a single native program in a PDF-backed document.');
     }
-    final PdfDocument synchronized = _writePrintablePdf(program, original.pdf, pageBounds);
+    final PdfDocument synchronized = _writePrintablePdf(program, original.pdf, pageBounds, resolvePlacement);
     return AiNativeData.replace(source: source, program: program.bytes, synchronizedPdf: synchronized, limits: limits);
   }
 }
@@ -86,8 +106,8 @@ final class _PrintableNode {
   /// Native gradient fill or stroke and its absolute printing geometry.
   final _PrintableGradient? gradient;
 
-  /// Embedded raster samples and their native placement, when present.
-  final AiNativeRaster? raster;
+  /// Embedded or explicitly resolved image pixels and their native placement.
+  final _PrintableRaster? raster;
 
   /// Stroke painted after the gradient clip has been restored.
   final List<PdfOperation> gradientStroke;

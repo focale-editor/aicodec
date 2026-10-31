@@ -134,10 +134,26 @@ def main():
         difference = compare(render_pdf(reference, 612, 792), render_pdf(args.output / f'{variant}.pdf', 612, 792), args.output / f'{variant}.difference.png', 0.02)
         renders.append({'variant': variant, 'meanChannelDifference': difference})
         print(f'{variant}: mean channel difference {difference}')
+        assert native_programs(args.output / f'{variant}.linked.ai') == [source]
+        for extension in ['pdf', 'ai']:
+            linked = args.output / f'{variant}.linked.{extension}'
+            # Keep distinct PNGs: the AI carrier and standalone PDF share a stem.
+            rendered = render_pdf(linked, 612, 792)
+            preserved = args.output / f'{variant}.linked-{extension}.png'
+            rendered.replace(preserved)
+            difference = compare(render_pdf(reference, 612, 792), preserved, args.output / f'{variant}.linked-{extension}.difference.png', 0.02)
+            renders.append({'variant': f'{variant}.linked-{extension}', 'meanChannelDifference': difference})
+            print(f'{variant}.linked-{extension}: mean channel difference {difference}')
     assert native_programs(args.output / 'synchronized.ai') == [(args.output / 'resolved.embedded.ps').read_bytes()]
     synchronized = compare(render_pdf(args.output / 'resolved.pdf', 612, 792), render_pdf(args.output / 'synchronized.ai', 612, 792), args.output / 'synchronized.difference.png', 0.02)
-    (args.output / 'independent-report.json').write_text(json.dumps({'sourceRevision': SOURCE_REVISION, 'readerRevision': REVISION, 'previewBytes': len(raw), 'unchangedSetupImages': 5, 'renders': renders, 'synchronizedDifference': synchronized}, indent=2) + '\n')
-    print('CC placement: exact preview, three embedded variants, four page comparisons and synchronized native bytes passed')
+    probe = render_pdf(args.output / 'linked-alpha-probes.pdf', 600, 600)
+    probes = [(20, 60, (64, 0, 191)), (35, 60, (0, 128, 127)), (20, 40, (0, 0, 255)), (35, 40, (128, 128, 255)), (45, 60, (0, 0, 255))]
+    with Image.open(probe) as image:
+        for x, y, expected in probes:
+            actual = image.getpixel((x * 6, (100-y) * 6))
+            assert max(abs(a-b) for a,b in zip(actual, expected)) <= 1, (x, y, actual, expected)
+    (args.output / 'independent-report.json').write_text(json.dumps({'sourceRevision': SOURCE_REVISION, 'readerRevision': REVISION, 'previewBytes': len(raw), 'unchangedSetupImages': 5, 'renders': renders, 'synchronizedDifference': synchronized, 'linkedPixelProbes': len(probes)}, indent=2) + '\n')
+    print('CC placement: exact preview, embedded/linked variants, ten page comparisons, four native programs and five linked pixel probes passed')
 
 
 if __name__ == '__main__':

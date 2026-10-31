@@ -72,28 +72,10 @@ AiNativeRasters _embedNativePlacement(AiNativePlacements source, AiNativePlacedO
   if (!source.objects.contains(object)) {
     throw ArgumentError('The placed object belongs to another native snapshot.');
   }
-  _validateRasterPlacement(object);
-  if (object.dictionary?.entries.any((entry) => !const {'BBAccumRotation', 'Raster Art Original Scale', 'AI10_ArtUID', 'AIArtName'}.contains(entry.key)) ?? false) {
-    throw UnsupportedError('Embedding requires qualified placed-object dictionary fields.');
-  }
+  final List<double> rasterMatrix = object.rasterMatrix(width: samples.width, height: samples.height);
   final int length = samples.colorSamples.length + (samples.alphaSamples?.length ?? 0);
   if (length > source.records.program.limits.maxDecodedBytes) {
     throw const FormatException('Embedded samples exceed the native decoded byte limit.');
-  }
-  final List<double> matrix = object.matrix;
-  final List<double> bounds = object.bounds;
-  final double horizontal = (bounds[2] - bounds[0]) / samples.width;
-  final double vertical = (bounds[3] - bounds[1]) / samples.height;
-  final List<double> rasterMatrix = [
-    matrix[0] * horizontal,
-    matrix[1] * horizontal,
-    -matrix[2] * vertical,
-    -matrix[3] * vertical,
-    _placedRasterOrigin(matrix[0] * bounds[0] + matrix[2] * bounds[1] + matrix[4]),
-    _placedRasterOrigin(matrix[1] * bounds[0] + matrix[3] * bounds[1] + matrix[5]),
-  ];
-  if (rasterMatrix.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
-    throw ArgumentError('Embedding exceeds finite native image coordinates.');
   }
   final String prefix = object.instruction.isPrivate ? '%_' : '';
   final String matrixText = '[ ${rasterMatrix.join(' ')} ]';

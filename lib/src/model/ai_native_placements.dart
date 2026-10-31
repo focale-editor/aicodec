@@ -107,6 +107,43 @@ final class AiNativePlacedObject extends AiNativeItem {
 
   /// Whether this object belongs to the printable body rather than private art.
   bool isPrintable({required AiProgram program}) => start >= program.bodyStart && end <= program.bodyEnd && !instruction.isPrivate;
+
+  /// Checks the qualified CC raster link and its appearance-related metadata.
+  void validateRasterLayout() {
+    _validateRasterPlacement(this);
+    if (dictionary?.entries.any((entry) => !const {'BBAccumRotation', 'Raster Art Original Scale', 'AI10_ArtUID', 'AIArtName'}.contains(entry.key)) ?? false) {
+      throw UnsupportedError('Raster placement requires qualified object dictionary fields.');
+    }
+  }
+
+  /// Maps host-decoded pixels to native points while retaining the linked extent.
+  ///
+  /// The result uses the embedded raster convention: its origin is the first
+  /// pixel's upper-left corner. For `[a, b, c, d, tx, ty]`, pixel `(x, y)` maps
+  /// to `(a*x - c*y + tx, b*x - d*y + ty)` in native drawing points.
+  /// Resolution changes preserve reflection, shear and the native placed box.
+  /// No file resolution, sampling, profile conversion or source edit occurs.
+  List<double> rasterMatrix({required int width, required int height}) {
+    validateRasterLayout();
+    if (width <= 0 || height <= 0) {
+      throw ArgumentError('Placed image dimensions must be positive.');
+    }
+    final double horizontal = (bounds[2] - bounds[0]) / width;
+    final double vertical = (bounds[3] - bounds[1]) / height;
+    final List<double> result = [
+      matrix[0] * horizontal,
+      matrix[1] * horizontal,
+      -matrix[2] * vertical,
+      -matrix[3] * vertical,
+      _placedRasterOrigin(matrix[0] * bounds[0] + matrix[2] * bounds[1] + matrix[4]),
+      _placedRasterOrigin(matrix[1] * bounds[0] + matrix[3] * bounds[1] + matrix[5]),
+    ];
+    final double determinant = result[0] * result[3] - result[1] * result[2];
+    if (!determinant.isFinite || determinant == 0 || result.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
+      throw ArgumentError('Resolved pixels exceed finite nonsingular placement bounds.');
+    }
+    return List.unmodifiable(result);
+  }
 }
 
 /// Immutable linked placements whose external files are resolved by the caller.

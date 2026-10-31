@@ -244,6 +244,14 @@ fully model its placement metadata; original header operands and DSC bounds
 separately verify geometry. Adobe reopening remains unqualified. Outputs stay
 in ignored `output/native-placements`.
 
+The same three variants also use the host resolver to render and save linked
+artwork. Six additional page comparisons have zero differences; independent
+extraction verifies exact preservation of all three native linked programs.
+Their paths, relative-directory sections and preview bytes remain unchanged.
+Five linked-image pixel probes verify separate alpha, object opacity, row order
+and clipping against explicit expected colors. Together with the embedded cases,
+the verifier requires ten page comparisons and four recovered native programs.
+
 ```sh
 python3 tool/fetch_corpus.py --manifest placement_manifest.json
 dart run tool/check_native_placements.dart

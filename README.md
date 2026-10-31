@@ -37,6 +37,8 @@ as self-contained AI7 PostScript.
   while retaining placed extents and renewing changed sample identities.
 - CC linked-file paths, placement and bounded ARGB previews. Translate links or
   incorporate host-decoded image samples into editable native raster artwork.
+- Render host-resolved linked images and synchronize PDF appearances while
+  retaining native file references, relative paths and cached previews.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -141,6 +143,12 @@ process-color paths, classic gradient fills/strokes, binary embedded images and
 resolved live-shape expansions, including groups, clipping and opacity. Unsupported drawing commands reject
 the complete save.
 
+Both methods accept `resolvePlacement` to render qualified CC raster links from
+host-decoded `AiNativeRasterSamples`. The callback receives the current native
+placement and its raw file references. Saving keeps those references and cached
+previews intact; missing pixels reject the operation. Using the saved preview
+through `(object) => object.preview?.toSamples()` is an explicit fallback.
+
 ## Scope
 
 AI is not one uniform format. A PDF page can be a compatibility warning rather
@@ -158,7 +166,7 @@ rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
 PDF bridge covers supported printable paths, classic gradient fills/strokes and
-binary embedded images, including qualified CC links after explicit incorporation.
+binary embedded images and qualified CC links with explicit host-supplied pixels.
 Text, unresolved linked images, unsupported raster layouts,
 gradients along/across strokes and unresolved effects still need host regeneration
 before saving visual edits.

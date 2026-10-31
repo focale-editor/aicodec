@@ -41,7 +41,7 @@ $prefix%AI5_EndPlace
 %_0 /Real (BBAccumRotation) ,
 %_1 /Real (Raster Art Original Scale) ,
 %_;
-9 () XW
+${prefix}9 () XW
 %%Trailer
 %%EOF
 '''),
@@ -58,6 +58,33 @@ AiNativePlacements _decode(List<int> bytes, {AiNativeLimits limits = const AiNat
 
 /// Renders the resulting native artwork with explicit drawing bounds.
 PdfDocument _render(AiProgram program) => AiNativePdf.render(program: program, bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100));
+
+/// Stores a linked program in shared native blocks across two PDF page owners.
+AiPdfDocument _linkedDocument(AiProgram program) {
+  final PdfDocument document = PdfDocument.fromPages(pages: [for (int index = 0; index < 2; index++) PdfPageSource(width: 100, height: 100, content: [])]);
+  const PdfReference block = PdfReference(objectNumber: 90);
+  final PdfDictionary pieces = PdfDictionary(
+    values: {
+      'Illustrator': PdfDictionary(
+        values: {
+          'Private': PdfDictionary(values: {'AIPrivateData1': block}),
+        },
+      ),
+    },
+  );
+  return AiPdfDocument(
+    pdf: document.copyWith(
+      objects: {
+        ...document.objects,
+        block: PdfStream(
+          dictionary: PdfDictionary(),
+          data: AiNativeData.encodeEnvelope(program.bytes, compression: .zstandard),
+        ),
+        for (final PdfPage page in document.pages) page.reference!: page.dictionary.copyWith(values: {'PieceInfo': pieces}),
+      },
+    ),
+  );
+}
 
 /// Checks native references, preview boundaries and conversion into embedded art.
 void main() {
@@ -180,6 +207,10 @@ void main() {
     final AiNativeRasters embedded = source.embed(object: source.objects.single, samples: samples);
     check(embedded.images.single.matrix).deepEquals([-10, 5, -10, 60, 80, 120]);
     check(embedded.images.single.colorSamples).deepEquals(List.filled(16, 128));
+    final List<double> matrix = source.objects.single.rasterMatrix(width: 4, height: 1);
+    check(matrix).deepEquals(embedded.images.single.matrix);
+    check(() => matrix[0] = 0).throws<UnsupportedError>();
+    check(() => source.objects.single.rasterMatrix(width: 0, height: 1)).throws<ArgumentError>();
   });
 
   test('retains shared file dependencies and removes only the last owned reference', () {
@@ -267,5 +298,182 @@ void main() {
     check(matrix[4]).equals(164);
     check(matrix[5]).equals(-533);
     check(matrix[0]).isCloseTo(264.1509433962264, 1e-10);
+  });
+
+  test('renders explicit linked samples without changing source links or previews', () {
+    final AiNativePlacements source = _decode(_bytes());
+    final AiNativeRasterSamples samples = source.objects.single.preview!.toSamples();
+    int calls = 0;
+    final PdfDocument linked = AiNativePdf.render(
+      program: source.records.program,
+      bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100),
+      resolvePlacement: (object) {
+        calls++;
+        check(object.pathBytes).deepEquals(source.objects.single.pathBytes);
+        check(object.relativeDirectoryBytes!).deepEquals(source.objects.single.relativeDirectoryBytes!);
+        return samples;
+      },
+    );
+    final AiNativeRasters embedded = source.embed(object: source.objects.single, samples: samples);
+    check(const PdfEncoder().convert(linked)).deepEquals(const PdfEncoder().convert(_render(embedded.records.program)));
+    check(calls).equals(1);
+    check(source.records.program.bytes).deepEquals(_bytes());
+  });
+
+  test('requires explicit resolution and propagates host failures without preview fallback', () {
+    final AiNativePlacements source = _decode(_bytes());
+    final AiBoundingBox bounds = AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100);
+    check(() => AiNativePdf.render(program: source.records.program, bounds: bounds)).throws<UnsupportedError>();
+    check(() => AiNativePdf.render(program: source.records.program, bounds: bounds, resolvePlacement: (object) => null)).throws<UnsupportedError>();
+    final StateError failure = StateError('Host could not decode this file.');
+    check(() => AiNativePdf.render(program: source.records.program, bounds: bounds, resolvePlacement: (object) => throw failure)).throws<StateError>().equals(failure);
+    final AiNativePlacements unknownPreview = _decode(_bytes(format: 18));
+    check(() => unknownPreview.objects.single.preview!.toSamples()).throws<UnsupportedError>();
+    AiNativePdf.render(program: unknownPreview.records.program, bounds: bounds, resolvePlacement: (object) => source.objects.single.preview!.toSamples());
+  });
+
+  test('qualifies native semantics before asking the host for pixels', () {
+    final String original = latin1.decode(_bytes());
+    for (final String changed in [original.replaceFirst('%%FileType: 1', '%%FileType: 2'), original.replaceFirst('(AIArtName)', '(OpaqueAppearance)')]) {
+      int calls = 0;
+      final AiProgram program = AiProgram.decode(bytes: latin1.encode(changed));
+      check(
+        () => AiNativePdf.render(
+          program: program,
+          bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100),
+          resolvePlacement: (object) {
+            calls++;
+            return object.preview!.toSamples();
+          },
+        ),
+      ).throws<UnsupportedError>();
+      check(calls).equals(0);
+    }
+  });
+
+  test('does not resolve private authoring placements or paint their previews', () {
+    final AiNativePlacements source = _decode(latin1.encode(latin1.decode(_bytes(private: true)).replaceFirst('%%FileType: 1', '%%FileType: 2').replaceFirst('(AIArtName)', '(OpaquePrivateState)')));
+    int calls = 0;
+    final PdfDocument pdf = AiNativePdf.render(
+      program: source.records.program,
+      bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100),
+      resolvePlacement: (object) {
+        calls++;
+        return object.preview!.toSamples();
+      },
+    );
+    check(calls).equals(0);
+    check(pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image')).isEmpty();
+  });
+
+  test('saves current linked appearances on every PDF page while preserving native bytes', () {
+    final AiNativePlacements initial = _decode(_bytes());
+    final AiNativePlacements moved = initial.translate(objects: initial.objects, deltaX: 3, deltaY: -7);
+    final AiPdfDocument original = _linkedDocument(initial.records.program);
+    final AiNativeSource source = AiNativeData.extract(original).single;
+    int calls = 0;
+    final AiPdfDocument saved = AiNativePdf.save(
+      source: source,
+      program: moved.records.program,
+      pageBounds: [for (int index = 0; index < 2; index++) AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100)],
+      resolvePlacement: (object) {
+        calls++;
+        check(object.matrix).deepEquals(moved.objects.single.matrix);
+        return object.preview!.toSamples();
+      },
+    );
+    check(calls).equals(1);
+    check(AiNativeData.extract(saved).single.bytes).deepEquals(moved.records.program.bytes);
+    check(
+      AiNativePlacements.decode(
+        records: AiNativeRecords.decode(program: AiProgram.decode(bytes: AiNativeData.extract(saved).single.bytes)),
+      ).objects.single.pathBytes,
+    ).deepEquals(initial.objects.single.pathBytes);
+    check(AiNativeData.extract(original).single.bytes).deepEquals(initial.records.program.bytes);
+    for (int index = 0; index < 2; index++) {
+      check(PdfProgram.fromPage(document: saved.pdf, pageIndex: index).operations.where((operation) => operation.operator == 'Do')).length.equals(1);
+    }
+  });
+
+  test('charges all linked sample planes against the aggregate PDF byte limit', () {
+    final String original = latin1.decode(_bytes());
+    final String section = original.substring(original.indexOf('%AI5_BeginPlace'), original.indexOf('%%Trailer'));
+    final AiProgram program = AiProgram.decode(bytes: latin1.encode(original.replaceFirst('%%Trailer', '$section%%Trailer')));
+    final AiNativeRasterSamples samples = AiNativeRasterSamples(width: 8, height: 8, bitsPerComponent: 8, components: 3, colorSamples: List.filled(192, 0), alphaSamples: List.filled(64, 255));
+    check(
+      () => AiNativePdf.render(program: program, bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100), resolvePlacement: (object) => samples, limits: const PdfLimits(maxDecodedBytes: 300)),
+    ).throws<FormatException>();
+  });
+
+  test('preserves clipping and object opacity when a link uses explicit samples', () {
+    final String original = latin1.decode(_bytes());
+    final String changed = original.replaceFirst('%AI5_BeginPlace', 'q 10 10 m 45 10 L 45 80 L 10 80 L h W N 0 0.5 0 0 0 Xy\n%AI5_BeginPlace').replaceFirst('%%Trailer', 'Q\n%%Trailer');
+    final AiNativePlacements source = _decode(latin1.encode(changed));
+    final AiNativeRasterSamples samples = source.objects.single.preview!.toSamples();
+    final PdfDocument linked = AiNativePdf.render(program: source.records.program, bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100), resolvePlacement: (object) => samples);
+    final AiNativeRasters embedded = source.embed(object: source.objects.single, samples: samples);
+    check(const PdfEncoder().convert(linked)).deepEquals(const PdfEncoder().convert(_render(embedded.records.program)));
+    final PdfDictionary opacity = linked.objects.values.whereType<PdfDictionary>().singleWhere((value) => value.name('Type') == 'ExtGState');
+    check((opacity['ca']! as PdfNumber).value).equals(0.5);
+  });
+
+  test('checks hidden links without painting and rejects links interrupting paths', () {
+    final String original = latin1.decode(_bytes());
+    final AiNativeRasterSamples samples = _decode(_bytes()).objects.single.preview!.toSamples();
+    final AiBoundingBox bounds = AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100);
+    final String hidden = original.replaceFirst('%AI5_BeginPlace', '0 1 1 1 0 0 0 0 0 0 Lb (Hidden) Ln\n%AI5_BeginPlace').replaceFirst('%%Trailer', 'LB\n%%Trailer');
+    final AiProgram program = AiProgram.decode(bytes: latin1.encode(hidden));
+    check(() => AiNativePdf.render(program: program, bounds: bounds)).throws<UnsupportedError>();
+    int calls = 0;
+    final PdfDocument pdf = AiNativePdf.render(
+      program: program,
+      bounds: bounds,
+      resolvePlacement: (object) {
+        calls++;
+        return samples;
+      },
+    );
+    check(calls).equals(1);
+    check(pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image')).isEmpty();
+    for (final (String, String) scope in [('0 0 m', '1 1 L S'), ('*u', '0 0 m 1 1 L S *U')]) {
+      final AiProgram interrupted = AiProgram.decode(
+        bytes: latin1.encode(original.replaceFirst('%AI5_BeginPlace', '${scope.$1}\n%AI5_BeginPlace').replaceFirst('%%Trailer', '${scope.$2}\n%%Trailer')),
+      );
+      PdfDocument render() => AiNativePdf.render(
+        program: interrupted,
+        bounds: bounds,
+        resolvePlacement: (object) {
+          calls++;
+          return samples;
+        },
+      );
+      if (scope.$1 == '0 0 m') {
+        check(render).throws<FormatException>();
+      } else {
+        check(render).throws<UnsupportedError>();
+      }
+    }
+    check(calls).equals(1);
+  });
+
+  test('resolves each instance independently even when file paths are shared', () {
+    final String original = latin1.decode(_bytes());
+    final String section = original.substring(original.indexOf('%AI5_BeginPlace'), original.indexOf('%%Trailer')).replaceFirst('-90 250', '-50 250');
+    final AiProgram program = AiProgram.decode(bytes: latin1.encode(original.replaceFirst('%%Trailer', '$section%%Trailer')));
+    final List<double> positions = [];
+    final PdfDocument pdf = AiNativePdf.render(
+      program: program,
+      bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100),
+      resolvePlacement: (object) {
+        positions.add(object.matrix[4]);
+        return AiNativeRasterSamples(width: 1, height: 1, bitsPerComponent: 8, components: 1, colorSamples: [if (positions.length == 1) 32 else 224]);
+      },
+    );
+    check(positions).deepEquals([-90, -50]);
+    final List<PdfStream> images = pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image').toList();
+    check(images.map(pdf.decodeStream).toList()).deepEquals([
+      [32],
+      [224],
+    ]);
   });
 }

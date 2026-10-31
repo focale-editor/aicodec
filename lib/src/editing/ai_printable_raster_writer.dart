@@ -4,7 +4,7 @@ part of 'package:aikit/src/model/ai_native_pdf.dart';
 extension on _PrintablePdfWriter {
   /// Maps the native upper-left pixel origin to PDF's unit image rectangle.
   _PrintableChunk _raster(_PrintableNode node) {
-    final AiNativeRaster image = node.raster!;
+    final _PrintableRaster image = node.raster!;
     final Uint8List color = image.colorSamples;
     final Uint8List? alpha = image.alphaSamples;
     bytes += color.length + (alpha?.length ?? 0);
