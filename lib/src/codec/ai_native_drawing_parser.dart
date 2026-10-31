@@ -138,11 +138,12 @@ final class _NativeDrawingReader {
     };
     final Map<int, AiNativeGroup> groupEnds = {for (final AiNativeGroup group in groups) group.end: group};
     final Map<String, AiNativeContainer> styles = {};
+    final Set<String> ambiguousStyles = {};
     for (final AiNativeContainer root in records.roots.where((root) => root.type == 'KnownStyle')) {
       final String? name = root['Name']?.text();
       if (name != null) {
         if (styles.containsKey(name)) {
-          throw const FormatException('Duplicate native known-style name.');
+          ambiguousStyles.add(name);
         }
         styles[name] = root;
       }
@@ -222,6 +223,8 @@ final class _NativeDrawingReader {
           issue = 'The compatibility expansion has no matching printable group.';
         } else if (!styles.containsKey(styleName)) {
           issue = 'The referenced native appearance style is missing.';
+        } else if (ambiguousStyles.contains(styleName)) {
+          issue = 'The referenced native appearance style has ambiguous declarations.';
         }
         alternate = -1;
       }
@@ -237,7 +240,7 @@ final class _NativeDrawingReader {
           alternativeDictionaries: alternativeDictionaries,
           appearanceGroup: appearanceGroup,
           styleName: styleName,
-          style: styleName == null ? null : styles[styleName],
+          style: styleName == null || ambiguousStyles.contains(styleName) ? null : styles[styleName],
           start: start,
           end: end,
           bindingIssue: issue,

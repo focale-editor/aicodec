@@ -58,6 +58,24 @@ dart run tool/check_native_document_settings.dart
 python3 tool/verify_native_document_settings.py --inkai-source /tmp/extension-ai
 ```
 
+Structure inspection uses the same 46 sources. The independent reader verifies
+220 private/printable paths, 50 layers, 109 ordinary/compound groups, 55 version
+blocks, 659 style/gradient declarations, 1,274 uses and 195 saved artboard/XML
+identifiers, together with lexical containment/order. Complete resource counts
+include setup symbols/patterns and both saved branches. For this count only, the
+verified version delimiter comments are removed from an inspection copy because
+the upstream parser otherwise discards older branches. Exact unmodified source
+fragments separately verify each path, boundary, resource and reference.
+Fake delimiters, internal name conditions, immutability, malformed layouts and
+budget limits have VM/Node regressions. These are ownership/inventory checks;
+existing live-shape tests qualify authoring/printing associations, and Adobe
+reopening and general structural edits remain unqualified.
+
+```sh
+dart run tool/check_native_structure.dart
+python3 tool/verify_native_structure.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

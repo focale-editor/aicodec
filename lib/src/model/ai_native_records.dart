@@ -11,6 +11,8 @@ import 'package:pdfcore/pdfcore.dart';
 
 part '../codec/ai_native_record_parser.dart';
 part '../codec/ai_native_document_settings_parser.dart';
+part '../codec/ai_native_version_parser.dart';
+part '../codec/ai_native_structure_parser.dart';
 part '../codec/ai_native_drawing_parser.dart';
 part '../codec/ai_native_gradient_parser.dart';
 part '../codec/ai_native_gradient_resource_parser.dart';
@@ -39,6 +41,8 @@ part '../editing/ai_native_gradient_focus_editor.dart';
 part '../editing/ai_native_mesh_paint_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_document_settings.dart';
+part 'ai_native_versions.dart';
+part 'ai_native_structure.dart';
 part 'ai_native_printing.dart';
 part 'ai_native_gradient.dart';
 part 'ai_native_gradient_resources.dart';

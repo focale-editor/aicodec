@@ -17,3 +17,5 @@
 - Synchronized CC point-count headers during plain-path and printing-contour replacement, with atomic rejection of ambiguous or stale counts.
 - Added complete host-supplied CC printing groups with bounded topology/paint changes, existing gradient references and preserved outgoing state.
 - Added source-owned document settings, explicit ruler units/canvas scale and artboard document/order/ruler-origin metadata.
+- Added immutable source ownership, ordered record fields, saved artboard/XML identifiers and both version branches, with explicit shared style/gradient reference resolution.
+- Retained duplicate known-style definitions for inspection while rejecting dependent edits without unique ownership.

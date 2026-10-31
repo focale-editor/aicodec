@@ -111,18 +111,28 @@ Visual agreement is a separate host/interoperability check.
 **Starting point:** layers and paths are source-backed; records expose artboards,
 groups and compound topology. There is no general modern object lifecycle API.
 
-- [ ] Model document units, ruler origins, artboards, ordering, object identities,
+- [x] Model document units, ruler origins, artboards, ordering, object identities,
   shared resources and versioned alternatives with explicit ownership.
-  **In progress:** `AiNativeDocumentSettings` retains header sources, display-unit
+  **Verified for the qualified structural families:** `AiNativeDocumentSettings` retains header sources, display-unit
   codes, canvas scale and separate artboard/text origins without inferring missing
   values. Artboards retain their owning Document and local order. Five focused
   regressions cover immutable fields, unknown/absent units, conditional/repeated
   declarations, malformed metadata, embedded-document boundaries and limits.
   Nine additional pinned CC files qualify moved origins and large canvases.
   Independent decoding checks 46 sources, 207 header fields, 31 artboards and 32
-  text origins. Full validation passes 324 VM/323 Node tests, format/fix and
-  analysis. Object identities, shared references and versioned drawing
-  ownership remain to be established before this task is complete.
+  text origins. `AiNativeStructure` adds immutable source identities, ordered
+  record fields, lexical parents/children, saved artboard/XML identifiers and
+  separate authoring/printing links. Both saved version branches remain explicit,
+  including nested, empty and newer-only blocks. Known-style/gradient links
+  retain resolved, missing, ambiguous and conditional ownership; setup symbol
+  and pattern uses are included without claiming semantic editing of those
+  families. Twelve structural regressions cover foreign handles, malformed
+  boundaries, opaque siblings, duplicate names, internal name conditions and
+  aggregate limits. Independent checks verify all 46 sources, 220 paths, 50
+  layers, 109 ordinary/compound groups, 55 version blocks, 659 declarations,
+  1,274 uses and 195 saved identifiers. Latest validation: 336 VM/335 Node tests
+  and clean format/fix/analysis. Unknown dependency schemas stay opaque; no
+  global identity or arbitrary lifecycle permission is inferred from source spans.
 - [ ] Add qualified create/delete/duplicate/reorder/reparent operations for layers,
   groups and paths, preserving unrelated source and updating all references.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping

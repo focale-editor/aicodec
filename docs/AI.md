@@ -256,8 +256,53 @@ the saved artboard origin in canvas coordinates with y down. Each
 it is not silently merged with another origin or inferred from a page. Artboards,
 canvas extent, drawing/ink bounds and compatibility PDF pages remain distinct.
 This is an inspection contract, not an artboard lifecycle or origin-edit API.
-Object identities, shared-reference ownership and versioned drawing alternatives
-still need the structural contracts tracked in `ROADMAP.md`.
+
+### Structure, identities and saved alternatives
+
+`AiNativeStructure.decode(drawing:)` indexes source-owned layers, groups,
+compound/clip groups, private and printable paths, records, version blocks,
+gradient declarations and remaining body instructions. Nodes retain direct
+lexical parents and child order. Unknown records and instructions remain in the
+index without acquiring editing semantics. `nodeFor`, `parentOf`, `childrenOf`
+and `entryFor` reject foreign handles. Ordered record fields retain their exact
+owner and local index, including repeated object fields and unkeyed entries.
+
+Node identity belongs to one immutable snapshot, not to an offset in another
+revision. Saved `ArtboardUUID` and `AI10_ArtUID`/`XMLUID` values have separate
+namespaces and exact dictionary-field ownership. Their bytes are immutable;
+equal values do not merge objects or prove global uniqueness. An artwork
+dictionary's XML identifier alone does not identify a neighboring path.
+`shapes` exposes the drawing reader's existing authoring-path, printing-group,
+printing-dictionary and alternate-dictionary bindings separately from lexical
+parenthood. An unresolved `shape.bindingIssue` remains authoritative.
+
+`AiNativeVersions.decode(records:)` retains matched `%AI*_Begin_Content_if_version_gt`
+blocks, their major/minor condition, optional alternate and closing markers.
+Both branches survive, including empty and newer-only branches. `memberships`
+reports outer-to-inner ownership for a whole source interval. A span enclosing a
+complete block has no membership in that block; a span crossing a boundary
+rejects. Strings, procedures, embedded documents and binary payloads cannot
+contribute version delimiters. No target Illustrator version is selected.
+
+Named resource links currently cover `KnownStyle`/mode-one `XW` and global
+`Bd`/complete `Bg` instances. The index includes qualified uses inside native
+`Art`, paint styles and setup pattern/symbol artwork; inspecting those references
+does not implement pattern/symbol editing. References outside indexed structural
+nodes keep a null lexical owner and exact instruction offsets. Declaration
+memberships follow the source name, including conditions inside its record.
+Duplicate definitions remain separate. A use is `resolved`, `missing`,
+`ambiguous` or `conditional`; `usesOf` includes potential conditional/ambiguous
+dependencies. Opposite branches of the same block cannot bind each other.
+Conditions in separate blocks are not assumed equivalent. Unknown plug-in
+dependency schemas remain opaque.
+
+The inventory rejects crossing lexical owners, references/names split across
+version boundaries, unresolved qualified style layouts and malformed saved
+identifiers. It bounds combined ownership depth and declaration/reference
+association work with the source limits. Duplicate known-style names no longer
+prevent drawing inspection, but dependent live-shape edits still reject unresolved
+style ownership. This inventory supplies structural evidence, not permission to
+move or delete arbitrary byte spans; lifecycle operations remain in `ROADMAP.md`.
 
 ## Editable text
 
@@ -707,6 +752,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Native layers and plain paths | Yes | Editable subset | Dependent or unresolved appearances reject unsafe edits. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
+| Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours and qualified complete groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

@@ -15,6 +15,9 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
 - Native layers, plain paths, hierarchical records and artboards.
 - Source-owned ruler units, canvas scale and coordinate metadata; artboards retain
   document ownership/order and separate artboard/text ruler origins.
+- Source identities, ordered record fields, saved artboard/XML artwork identifiers
+  and lexical owners. Version alternatives remain separate; qualified style and
+  gradient references report missing, ambiguous and conditional ownership.
 - Source-local capability reports distinguish typed data, qualified operations,
   opaque preservation, unsupported structures, malformed data and inspection limits.
 - Qualified CC live-shape translation, rotation and uniform scaling, including
