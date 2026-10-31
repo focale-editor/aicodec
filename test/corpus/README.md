@@ -76,6 +76,23 @@ dart run tool/check_native_structure.dart
 python3 tool/verify_native_structure.py --inkai-source /tmp/extension-ai
 ```
 
+Layer inspection and empty insertion use the same 46 pinned sources. The
+unchanged independent reader verifies 50 original layer headers, names, saved
+identities, panel-expansion flags, wrappers and direct parents/children. Forty
+inserted variants cover root and nested owners, including hidden and locked
+sublayers; the root count excludes nested layers. Ten Inkscape-derived headers
+contain additional private dictionary fields and reject insertion explicitly.
+Byte checks permit only insertion, the applicable root-count change and explicit
+saved-view invalidation. All original artwork, private records and state remain
+exact. VM/Node cases additionally qualify classic bare layers, raw name bytes,
+view continuations, stale handles, unknown/conditional metadata and limits. These
+checks do not qualify removal, duplication, movement or Adobe reopening.
+
+```sh
+dart run tool/check_native_layers.dart
+python3 tool/verify_native_layers.py --inkai-source /tmp/extension-ai
+```
+
 Ordinary path lifecycle uses the anonymous free path in pinned `simple_shapes.ai`
 and `simple_shapes_cc.ai`, plus synthetic counted and grouped sources. Thirteen
 variants cover insertion, duplication, removal, sibling reordering and movement

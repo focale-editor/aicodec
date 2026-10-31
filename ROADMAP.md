@@ -153,9 +153,19 @@ groups and compound topology. There is no general modern object lifecycle API.
   refusal, limits and a 200-group batch. Independent checks verify 13 group
   variants across two pinned recent files and a synthetic source, including
   complete topology, effective attributes and exact unselected bytes. Latest
-  validation: 366 VM/365 Node tests and clean format/fix/analysis. Layer
-  lifecycle, referenced objects and path moves across different state remain
-  outstanding. Adobe reopening is unqualified.
+  validation: 366 VM/365 Node tests and clean format/fix/analysis.
+  `AiNativeLayers` now binds exact wrappers, names, panel expansion, XML identities
+  and direct ownership. Qualified empty sibling insertion retains header flags,
+  requires fresh identifiers, updates root counts and requires explicit saved-view
+  invalidation. Twelve focused regressions cover malformed metadata, conditional
+  headers, limits and atomic refusal. Independent checks verify all 50 layers in
+  46 pinned sources and 40 inserted variants, preserving every unselected byte;
+  ten headers with additional private fields reject. Latest validation: 378 VM/
+  377 Node tests and clean format/fix/analysis, using xml 7.0.1. The shared header
+  reader retains the independently checked 207 settings fields, 31 artboards and
+  32 text origins. Layer deletion, duplication,
+  reordering/reparenting, referenced objects and path moves across different state
+  remain outstanding. Adobe reopening is unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

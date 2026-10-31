@@ -215,6 +215,60 @@ Duplicate, interleaved, cross-object or inconsistent counts reject atomically.
 The capability report flags plain paths in counted programs as requiring this
 additional validation. Sources without counts retain their existing layout.
 
+### Layer ownership and empty insertion
+
+`AiNativeLayers.decode(drawing:)` associates each original `AiLayer` with its
+matching optional `%AI5_BeginLayer`/`%AI5_EndLayer` wrapper, direct parent/children,
+native name bytes, saved `AE` panel expansion and attached `ArtDictionary`.
+`identifier` exposes a known `AI10_ArtUID` even when other dictionary fields
+remain opaque. `bindingIssue` distinguishes unqualified ownership/header layouts
+from malformed numeric attributes or unmatched boundaries, which throw.
+
+`rootCountHeader` retains `%AI5_NumLayers`, which counts root layers rather than
+all nested layers. Missing declarations remain absent. `rootCountMatches` exposes
+stale declarations for inspection; structural editing rejects a mismatch.
+`viewHeader` and `viewComments` retain `%AI5_OpenViewLayers` and continuations.
+Their numbers are not interpreted as layer indices.
+
+```dart
+final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+final AiNativeLayer template = layers.layers.first;
+final AiNativeLayers inserted = layers.insertAfter(
+  after: template,
+  nameBytes: 'New layer'.codeUnits,
+  identifierBytes: template.identifier == null ? null : 'New_layer_unique'.codeUnits,
+  discardViewState: true,
+);
+final AiProgram changed = inserted.drawing.records.program;
+```
+
+This inserts an empty sibling, retaining the selected header's flags, operand
+layout and DSC wrapper convention. Names are explicit bytes, safely escaped as
+PostScript strings. Identified templates require a caller-supplied fresh portable
+ASCII XML name; collisions with existing XML artwork identities reject. Anonymous
+templates stay anonymous. A present `AE` becomes zero for the new panel entry.
+No artwork, paint assignment or original identity is copied into the new layer.
+
+The qualified header layouts have 10, 13 or 14 operands; the last operand of the
+14-operand layout must be zero. Additional dictionary fields, multilayer masks,
+conditional headers, unresolved attached metadata and non-layer parents reject.
+Opaque child artwork may remain untouched in the selected template. This does
+not grant lifecycle operations on that artwork or permission to copy its private
+records. Existing root counts update atomically; nested insertion preserves them.
+A saved layer-view mapping requires explicit `discardViewState: true`, removing
+that declaration and its continuations because its reference schema is not yet
+qualified. The default refuses to invalidate it implicitly.
+
+Source limits, immutable snapshots and stale/foreign-handle checks apply to the
+whole transaction. `layerInsertion` is reported as `requiresValidation`.
+Twelve focused regressions cover wrappers, metadata, malformed input, limits and
+atomic refusal. Independent decoding checks all 50 original layers in 46 pinned
+sources and 40 inserted variants, including hidden/locked nested owners. Ten
+headers with additional private fields remain explicitly unsupported. Exact-byte
+checks preserve all unselected source and only allow the declared count/view
+edits. Layer removal, duplication, reordering/reparenting and Adobe reopening
+remain unqualified.
+
 ### Ordinary path lifecycle
 
 `AiNativeDrawing` supports the following operations on independent ordinary
@@ -847,7 +901,8 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Native layers and plain paths | Yes | Layer headers, plain geometry and qualified ordinary-path lifecycle | No layer lifecycle or path moves across changed state; dependent or unresolved ownership rejects. |
+| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits and qualified empty sibling insertion | Additional private header fields, masks, unresolved ownership and implicit view invalidation reject; removal/copy/move remain unqualified. |
+| Ordinary native paths | Source-backed geometry and paint | Geometry and qualified ordinary-path lifecycle | Moves across changed state, dependent or unresolved ownership reject. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and same-layer moves | Anonymous owners only; unknown required state, references, private/derived objects and cross-layer moves reject. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
@@ -908,6 +963,7 @@ claims. Remaining package work is tracked in [ROADMAP.md](../ROADMAP.md).
 - [Adobe XMP media-management properties](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/xmpMM.md)
 - [Native compression observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/compression.md)
 - [Native hierarchy observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/hierarchy.md)
+- [Native layer observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/layers.md)
 - [Native text observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/text_documents.md)
 - [Native document/artboard observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/document_data.md)
 - [Native live-shape observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/live_shapes.md)

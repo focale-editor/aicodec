@@ -21,3 +21,4 @@
 - Retained duplicate known-style definitions for inspection while rejecting dependent edits without unique ownership.
 - Added qualified ordinary-path insertion, duplication, removal, sibling reordering and same-layer group moves, preserving inherited state and native point counts.
 - Added ordinary group creation, ungrouping, duplication, removal, reordering and same-layer reparenting with source-backed incoming/outgoing paint and object-state preservation.
+- Added source-owned layer wrappers, names, identities and nested ownership, with qualified empty sibling insertion, synchronized root counts and explicit saved-view invalidation.

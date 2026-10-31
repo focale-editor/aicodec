@@ -90,6 +90,9 @@ enum AiNativeEditOperation {
   /// Change native visibility, lock and printing flags.
   layerFlags,
 
+  /// Insert an empty sibling with a qualified header and a fresh source identity.
+  layerInsertion,
+
   /// Replace ordinary path coordinates with qualified geometry.
   pathGeometry,
 
