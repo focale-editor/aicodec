@@ -29,8 +29,7 @@ AiNativeArtboards _resizeNativeArtboard(
   if (bounds.left == bounds.right || bounds.bottom == bounds.top || rulerOrigin != null && rulerOrigin.length != 2) {
     throw ArgumentError('An artboard needs positive dimensions and a two-coordinate ruler origin.');
   }
-  final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: model.records));
-  _nativeReferenceScope(layers, _layerHeaderItems(layers));
+  _nativeArtboardReferenceScope(model);
   final List<AiSourceEdit> edits = [];
 
   /// Keeps field types, source prefixes and all unselected spelling unchanged.

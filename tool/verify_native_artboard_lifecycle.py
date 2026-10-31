@@ -12,6 +12,7 @@ import sys
 
 from corpus_support import REVISION, native_programs
 from verify_native_artboards import SYNTHETIC, inventory
+from verify_native_artboards import verify as verify_resize
 from verify_native_path_lifecycle import patch
 from verify_native_reference_scope import documents, values
 from verify_native_structure import parsed
@@ -22,6 +23,7 @@ def requests(names):
     result = {}
     for name in names:
         for variant, predecessor in (
+            ('resize', 'original'),
             ('create-front', 'original'), ('reorder', 'create-front'),
             ('remove-new', 'reorder'), ('create-active', 'original'),
             ('remove-original', 'create-active'),
@@ -49,7 +51,7 @@ def expected_document(original, row):
     recorded = expected['Recorded']
     boards = recorded['ArtboardArray']
     variant = row['variant']
-    real = row['source'].startswith('units-')
+    real = row['source'] not in SYNTHETIC
     if variant == 'create-front':
         boards.insert(0, new_board(True))
         recorded['CropAreaActive'] += 1
@@ -94,6 +96,9 @@ def checked_inventory(data, document, reported):
 
 def verify(inkai, source, target, row):
     """Check the whole Document, exact retained records and all external bytes."""
+    if row['variant'] == 'resize':
+        verify_resize(inkai, source, target, dict(row, selected=0, crop=False, origin=False, rejected=False), {})
+        return
     before, after = source.read_bytes(), target.read_bytes()
     original = values(documents(inkai, source, [row['before']['document']])[0])
     changed = values(documents(inkai, target, [row['after']['document']])[0])
@@ -137,9 +142,10 @@ def main():
     sys.path.insert(0, str(args.inkai_source.resolve()))
     inkai = importlib.import_module('inkai')
     manifest = {entry['file']: entry for entry in json.loads(Path('test/corpus/artboard_manifest.json').read_text())['files'] if entry['file'].startswith('units-')}
+    manifest.update({entry['file']: entry for entry in json.loads(Path('test/corpus/manifest.json').read_text())['files'] if entry['file'] in ('rgb_rectangle.ai', 'cmyk_rectangle.ai')})
     expected = requests(manifest)
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(manifest) == 3 and len(rows) == len(expected) == 25
+    assert len(manifest) == 5 and len(rows) == len(expected) == 40
     assert {(row['source'], row['variant']) for row in rows} == expected.keys()
     for name in (*manifest, *SYNTHETIC):
         original = (args.output / f'{name}.original.ps').read_bytes()
@@ -158,7 +164,7 @@ def main():
         verify(inkai, args.output / row['original'], args.output / row['result'], row)
         checked.append(f'{name}/{variant}')
         print(checked[-1], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, realTransactions=15, syntheticTransactions=10), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, realTransactions=30, syntheticTransactions=10), indent=2) + '\n')
 
 
 if __name__ == '__main__':

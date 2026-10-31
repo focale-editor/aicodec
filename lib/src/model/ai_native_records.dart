@@ -9,6 +9,7 @@ import 'package:aikit/src/model/ai_document.dart';
 import 'package:aikit/src/model/ai_limit_exception.dart';
 import 'package:aikit/src/model/ai_program.dart';
 import 'package:pdfcore/pdfcore.dart';
+import 'package:pscore/pscore.dart';
 
 part '../codec/ai_native_record_parser.dart';
 part '../codec/ai_native_document_settings_parser.dart';
@@ -46,6 +47,9 @@ part '../editing/ai_native_group_lifecycle.dart';
 part '../editing/ai_native_group_selection.dart';
 part '../editing/ai_native_artwork_creation.dart';
 part '../editing/ai_native_artboard_editor.dart';
+part '../editing/ai_native_artboard_references.dart';
+part '../editing/ai_native_artboard_setup_scope.dart';
+part '../editing/ai_native_artboard_text_scope.dart';
 part '../editing/ai_native_artboard_lifecycle.dart';
 part '../editing/ai_native_print_job_editor.dart';
 part '../editing/ai_native_path_creation.dart';

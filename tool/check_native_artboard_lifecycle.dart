@@ -21,11 +21,12 @@ Future<void> main() async {
     stdout.writeln('$name/$variant passed');
   }
 
-  for (final String name in ['units-525x801_origin_at_100_100_CC.ai', 'units-20000x10000_origin_at_100_100_CC.ai', 'units-20x40mm_origin_topleft_CC.ai']) {
+  for (final String name in ['units-525x801_origin_at_100_100_CC.ai', 'units-20000x10000_origin_at_100_100_CC.ai', 'units-20x40mm_origin_topleft_CC.ai', 'rgb_rectangle.ai', 'cmyk_rectangle.ai']) {
     final AiNativeSource source = AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single;
     final AiNativeArtboards model = AiNativeArtboards.decode(
       records: AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes)),
     );
+    await record(name, 'resize', '$name.original.ps', model, model.resize(artboard: model.artboards.first, bounds: AiBoundingBox(left: -25, bottom: -950, right: 2000, top: 40), cropBounds: null));
     final AiNativeArtboards front = model.create(definition: newArtboard(selected: true), index: 0, lastArtboardId: model.lastArtboardId! + 7, cropBounds: null);
     await record(name, 'create-front', '$name.original.ps', model, front);
     final AiNativeArtboards reordered = front.reorder(artboards: front.artboards.reversed.toList(), cropBounds: null);

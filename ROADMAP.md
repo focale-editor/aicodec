@@ -650,8 +650,20 @@ groups and compound topology. There is no general modern object lifecycle API.
   unselected bytes. Full validation: 737 VM/736 Node tests and clean format,
   fix and analysis. The 19 existing artboard inspections/resizes/refusals and
   25 lifecycle transactions were regenerated and independently rechecked.
-  Actual Adobe printing remains unqualified. Artboard-specific
-  dependency isolation still remains, so this task stays open.
+  Actual Adobe printing remains unqualified. A separate artboard dependency scope
+  now preserves simple process styles, literal plug-in inventories, resolved
+  style lists, empty symbol lists and process/registration palettes independently
+  of artwork identity deletion. Empty main/undo-free ATE documents retain unused
+  typography resources and explicit global ruler origins; unknown owners, active
+  text, opaque tokens, conditional wrappers and aggregate inspection excesses
+  reject atomically. Thirteen regressions cover namespace separation, all four
+  artboard operations, global-coordinate retention, unchanged deletion guards,
+  malformed setup and bounded binary parsing. The independent lifecycle suite
+  now verifies forty transactions: thirty edits in five pinned real CC files
+  (including original RGB/CMYK rectangle setup/text payloads), and ten synthetic
+  edits with shared resources. Full validation: 750 VM/749 Node tests and clean
+  format, fix and analysis. Populated text and complex resource/object-family
+  isolation still remain, so this task stays open.
   No host integration or native renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.

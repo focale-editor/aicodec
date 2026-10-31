@@ -1434,14 +1434,30 @@ existing declarations, including case variants. Foreign/stale handles, duplicate
 selections, missing replacement-active policies and output/parser limits reject
 atomically.
 
-Artboard edits currently use the conservative whole-source native reference scope.
-Qualified ordinary artwork, complete CC pairs and shared literal resources remain
-exact. Unsupported setup owners or dependent/unknown records reject atomically.
+Artboard edits have a separate retained-dependency scope. Qualified ordinary
+artwork, complete CC pairs and shared literal resources remain exact. This scope
+also accepts literal `SimpleStyle` process paints, plug-in name inventories,
+existing style-name lists, empty symbol lists and process palettes with standard
+RGB/CMYK registration colors. These are preserved declarations, not permission to
+execute plug-ins, edit symbol instances or synthesize artwork.
+
+One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
+retained when both compact ATE payloads have no stories or frames and no drawing
+text references exist. Their unused font/typography resources remain in their
+own namespace; the global text ruler origin must be explicit and is unchanged.
+Template-box, page-origin and canvas-scale declarations remain exact, even when
+the first board moves or changes size. Binary bytes and node counts share bounds
+across both snapshots. Unknown engine owners, opaque tokens, populated text,
+conditional/ambiguous wrappers, dangling display-list indices and unknown setup
+or artwork dependencies reject. The qualified text payloads are retained as
+unused data; this does not establish a populated-text lifecycle contract.
+Artwork identity deletion retains its separate, stricter reference qualification.
+
 The operations edit native data only: host-supplied compatibility pages and
 cached headers must also be synchronized before a complete save. The save APIs now
 update qualified PDF `AIMetaData` header copies and accept explicit PDF page
-mappings as described above. Narrower artboard-specific dependencies remain in
-the open roadmap task.
+mappings as described above. Broader artboard isolation for populated text and
+complex resource/object families remains in the open roadmap task.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
 explicit crop/origin choices, CC pairs/resources, malformed input, conditional
@@ -1456,9 +1472,13 @@ is claimed.
 Thirteen further lifecycle regressions cover creation, active replacement,
 permutations, absent fields, exact source retention, line endings, immutable
 definitions, identity collisions, unknown dependencies and aggregate limits.
-Twenty-five independent transactions additionally qualify fifteen chained edits
-in three pinned CC sources and ten synthetic edits, including complete CC pairs
-and shared gradients. The independent reader compares complete Document values,
+Thirteen dependency-scope regressions additionally cover retained setup/text
+owners, namespace separation, exact global coordinates, unchanged artwork-deletion
+refusals, malformed data and aggregate binary inspection limits. Forty independent
+lifecycle transactions qualify thirty edits in five pinned CC sources and ten
+synthetic edits, including complete CC pairs and shared gradients. The real set
+includes the RGB and CMYK rectangle documents with their complete original setup
+inventories and empty text-engine snapshots. The independent reader compares complete Document values,
 exact retained dictionaries/separator trivia and every byte outside the declared
 array/scalar/crop edits.
 

@@ -97,16 +97,7 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
 
 /// Qualifies declarative document, resource and artwork dependency owners.
 void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers) {
-  final List<_NativeShapeBundle> shapes = [
-    for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true)) _shapeBundle(model.drawing, shape, model.structure),
-  ];
-  final Set<AiNativeContainer> dictionaries = {
-    for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
-    for (final AiNativeLayer layer in model.layers)
-      if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,
-    for (final AiNativeObject object in model.drawing._objects.objects)
-      if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
-  };
+  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(model, headers);
   final List<({int start, int end})> independent = _referenceGradientRanges(model);
   for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
     if (record.type == 'KnownStyle') {
@@ -118,6 +109,21 @@ void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers
     }
     independent.add((start: record.start, end: record.end));
   }
+  _referenceProgram(model, independent..sort((first, second) => first.start.compareTo(second.start)));
+}
+
+/// Returns owned artwork dictionaries after checking ordinary and paired bodies.
+Set<AiNativeContainer> _nativeReferenceBody(AiNativeLayers model, Map<int, AiNativeLayer> headers) {
+  final List<_NativeShapeBundle> shapes = [
+    for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true)) _shapeBundle(model.drawing, shape, model.structure),
+  ];
+  final Set<AiNativeContainer> dictionaries = {
+    for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
+    for (final AiNativeLayer layer in model.layers)
+      if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,
+    for (final AiNativeObject object in model.drawing._objects.objects)
+      if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
+  };
   final AiProgram program = model.drawing.records.program;
   int position = program.bodyStart;
   for (final _NativeShapeBundle bundle in shapes) {
@@ -125,5 +131,5 @@ void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers
     position = bundle.shape.end;
   }
   _referenceArtworkInterval(model, position, program.bodyEnd, headers);
-  _referenceProgram(model, independent..sort((first, second) => first.start.compareTo(second.start)));
+  return dictionaries;
 }

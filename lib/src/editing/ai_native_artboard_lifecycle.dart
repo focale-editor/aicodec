@@ -2,8 +2,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies complete source dependencies and unambiguous artboard identities.
 void _nativeArtboardStructureScope(AiNativeArtboards model) {
-  final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: model.records));
-  _nativeReferenceScope(layers, _layerHeaderItems(layers));
+  _nativeArtboardReferenceScope(model);
   final Set<String> identities = {};
   for (final AiNativeContainer record in model.records.containers) {
     final AiNativeEntry? entry = record['ArtboardUUID'];
