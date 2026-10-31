@@ -156,6 +156,9 @@ enum AiNativeEditOperation {
   /// Removes complete authoring/printing pairs with qualified state and references.
   liveShapeRemoval,
 
+  /// Reorders complete sibling pairs with qualified input and outgoing state.
+  liveShapeReordering,
+
   /// Attach host-composed geometry to an existing separate printing expansion.
   printingContours,
 

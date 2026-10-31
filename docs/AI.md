@@ -599,6 +599,44 @@ source assignments and qualified style scalars; every other byte remains exact.
 The synthetic native SVG limitation described above still applies. These checks
 do not establish Adobe reopening, pair reordering or pair reparenting.
 
+### CC authoring/printing pair reordering
+
+`AiNativeDrawing.reorderLiveShapes(shapes:)` places complete selected pairs into
+their existing sibling slots in the requested order. Unselected slots remain
+unchanged. All selected pairs must have the same immediate native parent; an
+unchanged valid order returns the original snapshot. Private contours, printing
+groups, panel flags, counts, both metadata alternatives and saved identities move
+as exact source blocks. Shared resources and opaque external reference records
+remain unchanged; no identities are allocated or deleted.
+
+Incoming and outgoing attributes are tracked separately for printing and native
+interpretation. Known source assignments restore values around relocated pairs.
+An unknown value can remain unchanged only when its source provenance agrees;
+opaque or conditional boundaries cannot establish equivalence. Qualified complete
+gradient fills retain their scoped procedure changes without invalidating unrelated
+global flags. Unknown required input values reject instead of receiving defaults.
+
+When a destination's original outgoing value is unknown, each following source
+dependency is checked until explicit reassignment. Both native and printing reads
+must remain valid; private assignments cannot restore printing state. Attributes
+unused by subsequent artwork need no synthesized value. In particular, inactive
+stroke attributes can differ in a derived printing stream while its explicit
+`stroke:none` retains identical ink. Authoritative native records remain exact.
+The `liveShapeReordering` capability therefore requires operation-specific checks.
+
+Sixteen regressions cover complete permutations, nonconsecutive slots, saved
+identities, opaque references, both state projections, panel flags, unchanged
+orders, unknown provenance, outgoing dependencies, snapshot handles and limits.
+Independent checks verify 24 transactions: 12 real-file and six synthetic
+permutations, two unchanged orders and four exact refusals. Pair bytes, metadata
+alternatives, unselected gaps, source-derived replay and both contour-state streams
+are checked independently. Real-file native/printing SVG and synthetic printing
+SVG retain geometry, active paint and resolved resources in the requested order.
+The only permitted SVG attribute differences are inactive leaf-stroke settings;
+those cases additionally require pixel-identical RGBA output from librsvg. The
+synthetic version-branch SVG limitation still applies. This does not establish
+Adobe reopening or cross-parent pair movement.
+
 ### Ordinary path lifecycle
 
 `AiNativeDrawing` supports the following operations on independent ordinary
@@ -1302,7 +1340,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves, including empty destination layers | Anonymous owners only; unknown state, references and private/derived objects reject; different layers or ancestor flags require explicit inheritance. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal; supplied printing contours and qualified groups | Parameter changes, general affine resizing, pair moves and unresolved printing dependencies remain incomplete. |
+| CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering; supplied printing contours and qualified groups | Parameter changes, general affine resizing, pair reparenting and unresolved printing dependencies remain incomplete. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |
 | Cartesian mesh version 2 | Yes | Vertex color, tint and opacity | Geometry/topology edits incomplete; rendering belongs to the host. |

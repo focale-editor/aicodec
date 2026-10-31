@@ -186,7 +186,7 @@ def main():
             assert before in (native_programs(path) if path.read_bytes().startswith(b'%PDF-') else [path.read_bytes()])
         if row['rejected']:
             assert before == target.read_bytes() and row['before'] == row['after']
-            issue = {'synthetic-following': 'removed native style state: fill', 'synthetic-reference': 'opaque reference owners', 'synthetic-alias': 'unambiguous native identity'}[row['source']]
+            issue = {'synthetic-following': 'unresolved native style state: fill', 'synthetic-reference': 'opaque reference owners', 'synthetic-alias': 'unambiguous native identity'}[row['source']]
             assert issue in row['issue']
         else:
             assert row['issue'] is None

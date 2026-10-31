@@ -25,72 +25,6 @@ List<int> _removedShapeState(_NativeShapeBundle bundle, Map<String, AiNativeInst
   return latin1.encode(output.toString());
 }
 
-/// Proves that retained objects never consume unresolved removed-style effects.
-void _shapeRemovalDependencies(AiNativeDrawing drawing, List<_NativeShapeBundle> selected, Map<AiLiveShape, Map<String, AiNativeInstruction>> restored) {
-  final Set<String> unresolved = {};
-  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
-  final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
-  final Map<AiLiveShape, _NativeShapeBundle> removed = {for (final _NativeShapeBundle bundle in selected) bundle.shape: bundle};
-  final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
-
-  /// Requires identical incoming attributes wherever retained artwork reads them.
-  void read(Set<String> keys) {
-    final Set<String> missing = unresolved.intersection(keys);
-    if (missing.isNotEmpty) {
-      throw UnsupportedError('Following artwork depends on removed native style state: ${missing.join(', ')}.');
-    }
-  }
-
-  /// Accounts for retained assignments before each path or group observes state.
-  void command(AiNativeInstruction item, {bool discard = false, _NativeShapeBundle? bundle}) {
-    final String? key = _nativeArtworkStateKey(item);
-    if (key != null) {
-      unresolved.remove(key);
-      return;
-    }
-    if (discard) {
-      if (_marker(item, 1)) {
-        unresolved.addAll(bundle!.styleWrites);
-        unresolved.removeAll(restored[bundle.shape]!.keys);
-      }
-      return;
-    }
-    if (paths[item.start] case final AiNativePath path) {
-      read(_shapeCopyReads(drawing, path));
-    } else if (const {'u', '*u'}.contains(item.operator)) {
-      read({'A', 'Xw'});
-    } else if (_marker(item, 6)) {
-      read({'Xy'});
-    } else if (_marker(item, 1)) {
-      read(bundle!.styleReads);
-      // Potential writes are not definite writes: hidden filter parts may not
-      // execute. Keep unresolved keys until an explicit assignment replaces them.
-    }
-  }
-
-  /// Qualifies ordinary intervening artwork only while state may still differ.
-  void interval(int start, int end) {
-    if (unresolved.isEmpty || start == end) {
-      return;
-    }
-    _layerInterval(layers, start, end, headers).forEach(command);
-  }
-
-  int position = selected.first.start;
-  for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.appearanceGroup != null && shape.path?.isPrivate == true && shape.end > position)) {
-    final int start = drawing._objects.forSource(shape.appearanceGroup!).expansion?.start ?? shape.start;
-    interval(position, start);
-    if (removed.containsKey(shape) || unresolved.isNotEmpty) {
-      final _NativeShapeBundle bundle = removed[shape] ?? _shapeBundle(drawing, shape, layers.structure);
-      for (final AiNativeInstruction item in bundle.commands) {
-        command(item, discard: removed.containsKey(shape), bundle: bundle);
-      }
-    }
-    position = shape.end;
-  }
-  interval(position, drawing.records.program.bodyEnd);
-}
-
 /// Qualifies every possible reference owner before deleting saved pair identities.
 void _shapeRemovalReferences(AiNativeDrawing drawing, List<_NativeShapeBundle> selected) {
   final AiNativeStructure structure = drawing._objects.structure;
@@ -120,7 +54,17 @@ AiNativeDrawing _removeNativeShapes(AiNativeDrawing drawing, List<AiLiveShape> s
           if (states[bundle.shape.end]!.native[key] case final AiNativeInstruction value) key: value,
       },
   };
-  _shapeRemovalDependencies(drawing, selected, restored);
+  _shapeFollowingDependencies(drawing, selected, {
+    for (final _NativeShapeBundle bundle in selected)
+      bundle.shape: (
+        bundle: bundle,
+        prefix: [],
+        suffix: [for (final AiNativeInstruction value in restored[bundle.shape]!.values) (value: value, private: true)],
+        unresolved: bundle.styleWrites.difference(restored[bundle.shape]!.keys.toSet()),
+        printingUnresolved: {},
+        discard: true,
+      ),
+  });
   final List<AiSourceEdit> edits = [];
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final _NativeShapeBundle bundle in selected) {

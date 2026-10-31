@@ -342,6 +342,27 @@ groups and compound topology. There is no general modern object lifecycle API.
   transactions regenerated and independently rechecked. Pair reordering,
   reparenting and broader resource-reference lifecycle remain outstanding; the
   task stays open.
+  Complete CC sibling pairs now support `reorderLiveShapes`, retaining exact
+  private/printing source blocks, identities, alternatives and shared resources.
+  Source provenance distinguishes unchanged unknown attributes from values across
+  opaque boundaries; known literal assignments preserve both input streams and
+  destination state. Complete scoped gradients no longer invalidate unrelated
+  flags. Unknown outgoing attributes require a proof that subsequent artwork does
+  not read them before reassignment, separately for native and printing state.
+  Sixteen regressions cover permutations, nonconsecutive slots, identities,
+  inherited opacity/flags, external records, panel ownership, unchanged orders,
+  unknown inputs, outgoing dependencies, stale handles and bounds. Independent
+  checks verify 24 transactions and 59 changed pair slots: 12 real-file and six
+  synthetic permutations, two unchanged orders and four exact refusals. Native
+  records, all unselected bytes and source-derived replay are checked; real SVG
+  native/printing paint and geometry retain the requested order. Three printing
+  comparisons with inactive stroke-attribute differences additionally produce
+  pixel-identical librsvg RGBA images. Synthetic version-branch SVG limitations
+  remain explicit. Latest validation: 539 VM/538 Node tests, clean format/fix/
+  analysis, all 22 pair-copy and 27 pair-removal transactions regenerated and
+  independently rechecked. Pair reparenting and broader resource-reference
+  lifecycle remain outstanding; this task stays open. No host integration or
+  Adobe reopening is inferred.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

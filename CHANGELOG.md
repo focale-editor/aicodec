@@ -34,3 +34,4 @@
 - Extended qualified path/group/layer lifecycle to direct live shapes, preserving native parameters and fresh copied identities while rejecting unresolved private/printing dependencies.
 - Added atomic duplication of complete CC authoring/printing pairs, retaining private geometry, native parameters, version alternatives, shared resources and distinct native/printing state.
 - Added complete CC pair removal with source-backed scalar replay, retained shared styles/resources and document-wide qualification before deleting saved identities.
+- Added complete CC sibling-pair reordering with retained identities, separate native/printing state provenance and explicit checks of unresolved following dependencies.

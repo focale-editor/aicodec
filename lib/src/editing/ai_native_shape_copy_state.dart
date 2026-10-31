@@ -1,7 +1,15 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Known values for the two source interpretations at one copy boundary.
-typedef _NativeShapeInputs = ({Map<String, AiNativeInstruction> printing, Map<String, AiNativeInstruction> native});
+/// Known values and unknown-value provenance for both source interpretations.
+typedef _NativeShapeInputs = ({
+  Map<String, AiNativeInstruction> printing,
+  Map<String, AiNativeInstruction> native,
+  Map<String, int> printingOrigins,
+  Map<String, int> nativeOrigins,
+});
+
+/// Attributes read before assignment and potentially written by a complete pair.
+typedef _NativeShapeAccess = ({Set<String> printingReads, Set<String> nativeReads, Set<String> printingWrites, Set<String> nativeWrites});
 
 /// Serializes a qualified scalar assignment in its requested source projection.
 String _shapeStateText(AiNativeInstruction value, {required bool private}) {
@@ -87,11 +95,27 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
   final Map<int, _NativeShapeInputs> result = {};
   final Map<String, AiNativeInstruction> printing = {};
   final Map<String, AiNativeInstruction> native = {};
+  final Map<String, int> printingOrigins = {for (final String key in _nativeArtworkStateKeys) key: -1};
+  final Map<String, int> nativeOrigins = Map.of(printingOrigins);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(AiNativeLayers.decode(drawing: drawing));
   final Set<AiNativeContainer> metadata = {};
   final Map<int, AiLiveShape> styles = {};
   final Set<int> printingStyles = {};
+  final Set<int> scopedGradients = {};
   final Set<int> versionComments = {};
+
+  /// Distinguishes unknown values across opaque or conditional source boundaries.
+  void barrier(int start, {required bool private}) {
+    native.clear();
+    for (final String key in _nativeArtworkStateKeys) {
+      nativeOrigins[key] = start;
+    }
+    if (!private) {
+      printing.clear();
+      printingOrigins.addAll(nativeOrigins);
+    }
+  }
+
   for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.start < positions.last)) {
     try {
       for (final AiNativeContainer dictionary in [shape.dictionary, ?shape.appearanceDictionary, ...shape.alternativeDictionaries]) {
@@ -107,6 +131,17 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
           throw UnsupportedError('Conditional style declarations cannot establish inherited state.');
         }
         _shapeCopyStyleState(drawing, shape);
+        if (shape.appearanceGroup case final AiNativeGroup group) {
+          _printingState(drawing, group);
+          scopedGradients.addAll(
+            _pathInterval(
+              drawing.items,
+              group.start,
+              group.end,
+              (item) => item.start,
+            ).whereType<AiNativeInstruction>().where((item) => _gradientCommands.contains(item.operator)).map((item) => item.start),
+          );
+        }
         styles[shape.end] = shape;
         printingStyles.addAll(drawing.items.whereType<AiNativeInstruction>().where((item) => item.start >= shape.start && item.end <= shape.end && _marker(item, 6)).map((item) => item.start));
       }
@@ -128,10 +163,7 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
         try {
           key = _nativeArtworkStateKey(item);
         } on FormatException {
-          native.clear();
-          if (!item.isPrivate) {
-            printing.clear();
-          }
+          barrier(item.start, private: item.isPrivate);
           continue;
         }
         if (key != null) {
@@ -144,6 +176,9 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
         if (styles[item.end] case final AiLiveShape shape when _marker(item, 1)) {
           final Set<String> changed = _shapeCopyStyleState(drawing, shape).writes;
           native.removeWhere((key, _) => changed.contains(key));
+          for (final String key in changed) {
+            nativeOrigins[key] = item.start;
+          }
           final List<AiNativeContainer> records = drawing.records.containers.where((record) => record.start >= shape.style!.start && record.end <= shape.style!.end).toList();
           if (records.every((record) => record['Visible'] == null || record['Visible']!.number == 1)) {
             final Map<String, List<AiNativeInstruction>> candidates = {};
@@ -163,19 +198,16 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
           }
           continue;
         }
-        if (printingStyles.contains(item.start) || item.operator == 'Xd' && item.numbers?.length == 2 && item.numbers!.every((value) => value == 0)) {
+        if (scopedGradients.contains(item.start) || printingStyles.contains(item.start) || item.operator == 'Xd' && item.numbers?.length == 2 && item.numbers!.every((value) => value == 0)) {
           continue;
         }
         if (_nativeGeometry.contains(item.operator) || _nativePaint.contains(item.operator) || const {'u', 'U', '*u', '*U', 'As', 'Ae'}.contains(item.operator)) {
           continue;
         }
       }
-      native.clear();
-      if (!drawing.records._projection.isPrivate(item.start)) {
-        printing.clear();
-      }
+      barrier(item.start, private: drawing.records._projection.isPrivate(item.start));
     }
-    result[position] = (printing: Map.of(printing), native: Map.of(native));
+    result[position] = (printing: Map.of(printing), native: Map.of(native), printingOrigins: Map.of(printingOrigins), nativeOrigins: Map.of(nativeOrigins));
   }
   return result;
 }
@@ -195,8 +227,8 @@ Set<String> _shapeCopyReads(AiNativeDrawing drawing, AiNativePath path) => {
   if (const {'s', 'S', 'b', 'B'}.contains(path.paint.operator)) ...['stroke', 'R', 'J', 'j', 'w', 'M', 'd'],
 };
 
-/// Restores only read-before-write values that the preceding original can change.
-List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _NativeShapeInputs inputs, int maxBytes) {
+/// Describes source dependencies without executing a pair's retained appearance.
+_NativeShapeAccess _shapeAccess(AiNativeDrawing drawing, _NativeShapeBundle copy) {
   final Map<int, AiNativePath> paths = {
     for (final AiNativePath path in [...copy.shape.appearancePaths, copy.shape.path!]) path.start: path,
   };
@@ -228,8 +260,14 @@ List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _Na
     }
   }
   nativeWrites.addAll(copy.styleWrites);
-  final Set<String> printingNeeded = printingReads.intersection(printingWrites);
-  final Set<String> nativeNeeded = nativeReads.intersection(nativeWrites);
+  return (printingReads: printingReads, nativeReads: nativeReads, printingWrites: printingWrites, nativeWrites: nativeWrites);
+}
+
+/// Restores only read-before-write values that the preceding original can change.
+List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _NativeShapeInputs inputs, int maxBytes) {
+  final _NativeShapeAccess access = _shapeAccess(drawing, copy);
+  final Set<String> printingNeeded = access.printingReads.intersection(access.printingWrites);
+  final Set<String> nativeNeeded = access.nativeReads.intersection(access.nativeWrites);
   final StringBuffer prefix = StringBuffer();
 
   /// Bounds generated source before retaining an additional replay instruction.

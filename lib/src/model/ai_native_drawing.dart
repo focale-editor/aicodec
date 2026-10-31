@@ -244,6 +244,13 @@ final class AiNativeDrawing {
   /// Saved identities require a qualified document-wide reference scope.
   AiNativeDrawing removeLiveShapes({required List<AiLiveShape> shapes}) => _removeNativeShapes(this, shapes);
 
+  /// Places complete CC pairs into their original sibling slots in the given order.
+  ///
+  /// Saved identities, private geometry, printing groups and alternatives travel
+  /// together. Other objects retain their source bytes and inherited attributes.
+  /// Unknown required state or unresolved following dependencies rejects the batch.
+  AiNativeDrawing reorderLiveShapes({required List<AiLiveShape> shapes}) => _reorderNativeShapes(this, shapes);
+
   /// Removes ordinary geometry and owned point counts, retaining surrounding state.
   ///
   /// Unselected bytes and paint/lock/visibility assignments remain unchanged.

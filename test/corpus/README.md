@@ -285,6 +285,23 @@ dart run tool/check_native_shape_removal.dart
 python3 tool/verify_native_shape_removal.py --inkai-source /tmp/extension-ai
 ```
 
+Sibling-pair reordering checks four pinned real files and five checksum-pinned
+synthetic sources. The fixed 24 transactions cover 12 real-file and six synthetic
+permutations (59 changed pair slots), two unchanged orders and four exact refusals.
+Complete source blocks retain saved identities and both metadata alternatives;
+all unselected gaps remain exact, and inserted scalar assignments must originate
+in the source. Native/printing contour flags and synthetic private/public opacity
+move with their selected owners. Real-file native/printing SVG and synthetic
+printing SVG compare active paint, geometry and resolved resources. Differences
+limited to inactive leaf-stroke attributes additionally require exact RGBA pixels
+from `rsvg-convert` at 1024 pixels wide; three linear-gradient printing comparisons
+exercise this check. The synthetic version-branch SVG limitation remains explicit.
+
+```sh
+dart run tool/check_native_shape_reordering.dart
+python3 tool/verify_native_shape_reordering.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.
