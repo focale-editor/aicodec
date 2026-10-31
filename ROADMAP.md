@@ -135,6 +135,17 @@ groups and compound topology. There is no general modern object lifecycle API.
   global identity or arbitrary lifecycle permission is inferred from source spans.
 - [ ] Add qualified create/delete/duplicate/reorder/reparent operations for layers,
   groups and paths, preserving unrelated source and updating all references.
+  **In progress:** ordinary anonymous paths support insertion, duplication,
+  removal, sibling reordering and same-layer movement across ordinary groups.
+  Inherited paint/lock/visibility state is retained; movement rejects intervening
+  state assignments. Point counts move with geometry, supplied ink bounds expand
+  drawing extents, and private/derived/referenced/version-dependent objects reject.
+  Thirteen focused lifecycle regressions cover ownership, atomic refusal, malformed
+  counts, immutable input and limits. Independent decoding verifies 13 variants
+  from two pinned recent files and synthetic counted/grouped sources, with exact
+  unselected-byte preservation. Latest validation: 349 VM/348 Node tests and clean
+  format/fix/analysis, using xml 7.0.1. Group/layer lifecycle, referenced objects and
+  moves across different state remain outstanding. Adobe reopening is unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

@@ -76,6 +76,23 @@ dart run tool/check_native_structure.dart
 python3 tool/verify_native_structure.py --inkai-source /tmp/extension-ai
 ```
 
+Ordinary path lifecycle uses the anonymous free path in pinned `simple_shapes.ai`
+and `simple_shapes_cc.ai`, plus synthetic counted and grouped sources. Thirteen
+variants cover insertion, duplication, removal, sibling reordering and movement
+between ordinary groups. Reordering starts from an independently verified
+insertion result. The unchanged native reader verifies geometry, paint, point
+counts, preceding persistent controls and owner order; byte checks preserve
+every unselected region and allow only supplied ink-bound expansion. Private live
+shapes and their records remain untouched. Synthetic cases cover counted closed
+endpoints, hidden/locked owners, shared state and emptied groups; they do not
+qualify an Adobe writer profile. These checks do not establish Adobe reopening,
+group/layer lifecycle or arbitrary referenced-object editing.
+
+```sh
+dart run tool/check_native_path_lifecycle.dart
+python3 tool/verify_native_path_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

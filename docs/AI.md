@@ -215,6 +215,49 @@ Duplicate, interleaved, cross-object or inconsistent counts reject atomically.
 The capability report flags plain paths in counted programs as requiring this
 additional validation. Sources without counts retain their existing layout.
 
+### Ordinary path lifecycle
+
+`AiNativeDrawing` supports the following operations on independent ordinary
+paths. Select handles from the current drawing; empty, repeated, foreign and
+stale selections reject before any source edit is applied.
+
+| Operation | Behavior |
+| --- | --- |
+| `duplicatePaths(paths:)` | Copies each selected path immediately after its original, retaining geometry, paint, internal ordinary comments and optional point counts. |
+| `removePaths(paths:)` | Removes geometry/paint and its consumed point count. Persistent state and conservative drawing bounds remain. |
+| `insertPaths(insertions:)` | Inserts supplied geometry after each anchor, inheriting its paint, flags and count convention. Multiple insertions at the same anchor retain input order. |
+| `reorderPaths(paths:)` | Places selected siblings into their existing source slots in the requested order, carrying geometry, paint and count syntax together. |
+| `movePathAfter(path:, after:)` | Moves a path after an anchor, optionally across ordinary group boundaries within one containing layer. |
+
+`AiNativePathInsertion` freezes supplied `segments` and requires host-computed
+ink `bounds`. Geometry has one initial moveto and portable finite coordinates.
+Counted closed paths receive a closing endpoint when needed. Bounds expand the
+existing drawing extent without changing artboards or PDF pages. All operations
+reparse under the original source limits and return immutable snapshots.
+
+These APIs accept anonymous paths whose ownership and inherited appearance are
+isolated. Private paths, live-shape expansions, gradients, compound/clip members,
+version alternatives, attached identities, tags, notes and unresolved metadata
+reject. Qualification includes ordinary parent groups/layers and postfix records,
+even when state assignments separate an object from its metadata. A completed
+bound live shape does not by itself make the next ordinary path an expansion.
+Unselected opaque setup or sibling data can remain unchanged outside that scope.
+
+Persistent paint, lock and visibility assignments stay at their source positions.
+Reordering or moving additionally requires an interval with no state assignments,
+opaque data or metadata. Ordinary `u`/`U` boundaries do not save and restore paint;
+only `movePathAfter` may cross them. Cross-layer moves and moves across different
+paint states remain unsupported. These operations do not create or remove groups,
+layers, shared resources or referenced identities. Capabilities report all five
+operations as requiring selection-specific validation.
+
+Independent checks cover 13 variants across two pinned recent Illustrator files
+and synthetic counted/grouped sources, including retained ownership, inherited
+controls, exact unselected bytes and counts. Adobe reopening remains unqualified.
+Saving changed geometry requires matching PDF artwork supplied by the host.
+
+### Hierarchical records
+
 `AiNativeRecords.decode` exposes dictionaries, arrays, objects and binary
 resources in ordinary and `%_`-prefixed syntax. Source offsets, multiline and
 adjacent strings, unknown record types and embedded drawing commands survive.
@@ -302,7 +345,8 @@ identifiers. It bounds combined ownership depth and declaration/reference
 association work with the source limits. Duplicate known-style names no longer
 prevent drawing inspection, but dependent live-shape edits still reject unresolved
 style ownership. This inventory supplies structural evidence, not permission to
-move or delete arbitrary byte spans; lifecycle operations remain in `ROADMAP.md`.
+move or delete arbitrary byte spans. The ordinary-path operations above apply
+their own guards; broader lifecycle operations remain in `ROADMAP.md`.
 
 ## Editable text
 
@@ -750,7 +794,7 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Native layers and plain paths | Yes | Editable subset | Dependent or unresolved appearances reject unsafe edits. |
+| Native layers and plain paths | Yes | Layer headers, plain geometry and qualified ordinary-path lifecycle | No group/layer lifecycle or path moves across changed state; dependent or unresolved ownership rejects. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours and qualified complete groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete. |

@@ -125,6 +125,18 @@ final class _NativeCapabilityReader {
                   ? 'Dependent appearance, private extensions or unhandled body operators prevent plain-path editing.'
                   : (counted ? 'Native point-count ownership and closed endpoints require validation.' : 'Plain source geometry is isolated under the current editor contract.'),
             ),
+            for (final AiNativeEditOperation operation in [
+              AiNativeEditOperation.pathInsertion,
+              AiNativeEditOperation.pathDuplication,
+              AiNativeEditOperation.pathRemoval,
+              AiNativeEditOperation.pathReordering,
+              AiNativeEditOperation.pathReparenting,
+            ])
+              AiNativeEditCapability._(
+                operation: operation,
+                support: .requiresValidation,
+                reason: 'Path lifecycle edits require independent native ownership, resolved surrounding metadata and source point-count validation.',
+              ),
           ],
         );
       }

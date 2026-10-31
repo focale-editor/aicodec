@@ -19,3 +19,4 @@
 - Added source-owned document settings, explicit ruler units/canvas scale and artboard document/order/ruler-origin metadata.
 - Added immutable source ownership, ordered record fields, saved artboard/XML identifiers and both version branches, with explicit shared style/gradient reference resolution.
 - Retained duplicate known-style definitions for inspection while rejecting dependent edits without unique ownership.
+- Added qualified ordinary-path insertion, duplication, removal, sibling reordering and same-layer group moves, preserving inherited state and native point counts.

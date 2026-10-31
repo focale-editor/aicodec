@@ -55,6 +55,31 @@ final class AiNativePath extends AiNativeItem {
   bool get closed => const {'n', 'f', 's', 'b'}.contains(paint.operator);
 }
 
+/// New ordinary geometry inheriting an existing path's paint and object flags.
+///
+/// Insertion immediately follows [after], before subsequent state changes. The
+/// host supplies ink bounds; the kit does not compose strokes or render artwork.
+final class AiNativePathInsertion {
+  /// Owned ordinary source path establishing insertion order and inherited state.
+  final AiNativePath after;
+
+  /// New geometry, with exactly one initial moveto and no nested subpaths.
+  final List<AiPathSegment> segments;
+
+  /// Host-supplied ink bounds used to expand the existing drawing extent.
+  final AiBoundingBox bounds;
+
+  /// Freezes the geometry before planning the complete source transaction.
+  AiNativePathInsertion({required this.after, required List<AiPathSegment> segments, required this.bounds}) : segments = List.unmodifiable(segments) {
+    if (segments.isEmpty || segments.first.operator != 'm' || segments.skip(1).any((segment) => segment.operator == 'm')) {
+      throw ArgumentError('Inserted native paths require exactly one initial moveto.');
+    }
+    if (segments.any((segment) => segment.coordinates.any((value) => value.abs() > 9007199254740991))) {
+      throw ArgumentError('Inserted native coordinates exceed portable numeric limits.');
+    }
+  }
+}
+
 /// A grouped or compound collection of native paths in one representation.
 final class AiNativeGroup extends AiNativeItem {
   /// Opening group, compound-path or graphics-state operator.
@@ -187,6 +212,45 @@ final class AiNativeDrawing {
        groups = List.unmodifiable(groups),
        gradients = List.unmodifiable(gradients),
        liveShapes = List.unmodifiable(liveShapes);
+
+  /// Duplicates ordinary paths immediately after their original source objects.
+  ///
+  /// Geometry, paint, comments and optional CC point counts are copied. Existing
+  /// paint/lock/visibility state remains in place and is inherited by each copy.
+  /// Private authoring paths, derived expansions, compound/clip members and
+  /// unresolved attached metadata reject. Copies have no synthesized identifiers.
+  AiNativeDrawing duplicatePaths({required List<AiNativePath> paths}) => _duplicateNativePaths(this, paths);
+
+  /// Removes ordinary geometry and owned point counts, retaining surrounding state.
+  ///
+  /// Unselected bytes and paint/lock/visibility assignments remain unchanged.
+  /// Existing drawing bounds remain conservative. Paths with unresolved native
+  /// owners, references or attached metadata reject before applying any edits.
+  AiNativeDrawing removePaths({required List<AiNativePath> paths}) => _removeNativePaths(this, paths);
+
+  /// Inserts geometry using each anchor's existing paint, flags and count layout.
+  ///
+  /// Input order is retained when several insertions share an anchor. Counted
+  /// closed paths receive an explicit closing line when necessary. The same
+  /// ownership restrictions as [duplicatePaths] apply; this does not create a
+  /// missing modern document, layer, resource or private live-shape definition.
+  /// Saving requires matching host-supplied PDF artwork through the save API.
+  AiNativeDrawing insertPaths({required List<AiNativePathInsertion> insertions}) => _insertNativePaths(this, insertions);
+
+  /// Reorders selected sibling paths into their existing source positions.
+  ///
+  /// [paths] gives the desired order. Persistent state must remain unchanged
+  /// throughout the interval; interleaved attribute assignments, metadata and
+  /// other object kinds reject. Geometry, paint and point counts move together.
+  AiNativeDrawing reorderPaths({required List<AiNativePath> paths}) => _reorderNativePaths(this, paths);
+
+  /// Moves a path after an anchor, optionally into another ordinary group.
+  ///
+  /// Both paths must share a layer and an interval without state assignments or
+  /// opaque dependencies. Ordinary group boundaries may be crossed. This narrow
+  /// contract preserves inherited paint/flags; moving across layers or changed
+  /// state requires an additional explicit appearance-state contract.
+  AiNativeDrawing movePathAfter({required AiNativePath path, required AiNativePath after}) => _moveNativePath(this, path, after);
 
   /// Attaches host-composed contours to separate native printing expansions.
   ///

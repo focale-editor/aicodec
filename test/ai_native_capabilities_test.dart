@@ -54,7 +54,7 @@ void main() {
     final AiNativeCapability record = report.findings.singleWhere((finding) => finding.feature == .record && finding.message.contains('FutureObject'));
     check(layer.editable).isTrue();
     check(path.support).equals(AiNativeDataSupport.typed);
-    check(path.edits.single.support).equals(AiNativeEditSupport.unsupported);
+    check(path.edits.singleWhere((edit) => edit.operation == .pathGeometry).support).equals(AiNativeEditSupport.unsupported);
     check(path.editable).isFalse();
     check(unknown.support).equals(AiNativeDataSupport.preserved);
     check(latin1.decode(source.bytes.sublist(unknown.start, unknown.end))).equals('17 FuturePaint');
@@ -67,8 +67,16 @@ void main() {
     final AiNativeCapability path = report.findings.singleWhere((finding) => finding.feature == .path);
     check(path.support).equals(AiNativeDataSupport.typed);
     check(path.editable).isFalse();
-    check(path.edits.single.support).equals(AiNativeEditSupport.requiresValidation);
-    check(path.edits.single.reason).contains('point-count');
+    check(path.edits.singleWhere((edit) => edit.operation == .pathGeometry).support).equals(AiNativeEditSupport.requiresValidation);
+    check(path.edits.singleWhere((edit) => edit.operation == .pathGeometry).reason).contains('point-count');
+    check(path.edits.where((edit) => edit.operation != .pathGeometry).map((edit) => edit.operation)).deepEquals([
+      AiNativeEditOperation.pathInsertion,
+      AiNativeEditOperation.pathDuplication,
+      AiNativeEditOperation.pathRemoval,
+      AiNativeEditOperation.pathReordering,
+      AiNativeEditOperation.pathReparenting,
+    ]);
+    check(path.edits.map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.requiresValidation));
   });
 
   test('reports malformed structures separately from bounded inspection', () {

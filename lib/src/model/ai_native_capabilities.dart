@@ -93,6 +93,21 @@ enum AiNativeEditOperation {
   /// Replace ordinary path coordinates with qualified geometry.
   pathGeometry,
 
+  /// Insert ordinary geometry using an existing path's paint and object flags.
+  pathInsertion,
+
+  /// Copy an independent path immediately after its source object.
+  pathDuplication,
+
+  /// Remove independent geometry and its consumed native point count.
+  pathRemoval,
+
+  /// Reorder siblings without changing the interval's inherited paint state.
+  pathReordering,
+
+  /// Move into an ordinary group with the same layer and inherited state.
+  pathReparenting,
+
   /// Change live-shape translation and dependent native geometry.
   liveShapeTranslation,
 
