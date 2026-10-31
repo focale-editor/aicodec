@@ -46,6 +46,11 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   coverage, linked-frame ownership, explicit overflow, compact reordered ranges
   and automatic-hyphen maps. Seventeen layouts and fourteen hyphens checked
   independently; glyph shaping, path geometry and synchronized PDF remain pending.
+- Point/area/path frame translation, including selected linked frames and their
+  native confinement paths. Existing affine matrices and local glyph caches are
+  preserved; 26 frames and 13 paths are checked independently, plus one partial
+  linked-frame selection. Complex confinement appearances and synchronized PDF
+  saves still require further work.
 
 ## Next native editing work
 

@@ -208,6 +208,33 @@ this form requires a terminal BMP source character and the end of a composed lin
 Named CS reordered/hyphenated mappings and per-glyph path geometry remain explicit
 refusals. Host shaping, glyph adjustments, print/PDF synchronization and Adobe
 reopening qualification remain separate work.
+
+`translateFrames(frames:, deltaX:, deltaY:)` translates a distinct, source-owned
+selection of point, area or path frames in drawing points (y up). It adds the
+translation to the frame matrix's canvas offsets, with y reversed. Matrices may
+already rotate, shear or reflect the frame; their linear components stay intact.
+An omitted matrix becomes an explicit translated identity. Frame positions,
+Bezier control points, text/style runs, local layout and glyph bounds remain in
+their original pre-matrix space and are preserved exactly outside the selected
+frame resources. This operation does not require new shaping or line breaking.
+
+Every main-model drawing reference to a selected frame has its `/ConfiningPath`
+coordinates translated in drawing space, preserving curve shorthand, corner
+operators and nonpositional state. One frame within linked text may move without
+changing the other frames or their order. `AiNativeArt.decode` exposes the
+bounded commands and nested metadata used for these paths without executing
+PostScript. The editor accepts one unpainted path with optional retained rotation
+metadata. Embedded transforms, painted/compound paths, live-shape metadata,
+unknown frame/view semantics, missing drawing references, ambiguous main text
+documents and nonfinite output are explicit refusals. Failed edits leave the
+source snapshot unchanged.
+
+The shared `AiNativeEditor.translationBoundsEdits` expands DSC bounds to contain
+both original and moved artwork, skipping embedded documents and procedures;
+artboards and ruler origins remain fixed. Whole-file native text effects,
+undo-free appearance copies, printable/PDF artwork and thumbnails still belong
+to the host's synchronized save transaction. This operation does not claim an
+Illustrator reopening or independent pixel-rendering qualification.
 Shared parsing defaults to 128 MiB, one million values, 64 nesting levels and
 64 MiB per decoded string, with caller-selected tighter limits available.
 
@@ -437,6 +464,13 @@ selection metrics and fourteen automatic-hyphen insertions. Other engine data
 must remain identical. Three path-layout writes explicitly reject missing
 per-glyph geometry. These are source-position checks; old glyph caches are not
 represented as newly shaped text, and no new rendered appearance is claimed.
+Twenty-six native frame resources are translated across the CS/CC text fixtures.
+The independent reader requires unchanged engine trees except for their matrix
+offsets and checks all thirteen accompanying confinement paths. The transformed
+text fixture also moves only its first linked-area frame: exactly one confinement
+path changes, with the other fifteen frame resources and their paths retained.
+The body comparison checks unrelated operators and metadata as well as native
+text references; local cached glyph data remains unchanged.
 Newly shaped text,
 altered text appearance and Adobe reopening remain outside this check.
 
@@ -452,7 +486,7 @@ native reopening and complete editing compatibility remain unverified.
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
 | Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
-| Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans and host-composed point/area source-position records | Shaping, glyph-cache generation, path composition, advanced typography and synchronized text-content saves |
+| Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect native paint commands and instances; translate vectors/printing matrices; isolate shared positional styles | Edit stops/ramps, full appearance semantics and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes | Complete import into typed scene nodes |

@@ -12,6 +12,7 @@ part '../codec/ai_native_gradient_parser.dart';
 part '../editing/ai_live_shape_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_gradient.dart';
+part 'ai_native_art.dart';
 
 /// One source-backed component of Illustrator's native hierarchical records.
 sealed class AiNativeItem {
@@ -165,6 +166,12 @@ final class AiNativeRecords {
 
   /// Top-level hierarchical records in source order.
   final List<AiNativeContainer> roots;
+
+  /// Lazily indexed ownership for repeated nested-art lookups in one snapshot.
+  late final Set<AiNativeContainer> _ownedContainers = containers.toSet();
+
+  /// Shared projected tokens, avoiding a full reparse for every nested Art path.
+  late final _NativeRecordProjection _projection = _NativeRecordProjection(program: program);
 
   /// Creates a checked immutable view of native authoring records.
   factory AiNativeRecords.decode({required AiProgram program}) {

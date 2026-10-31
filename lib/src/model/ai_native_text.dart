@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:aikit/src/codec/ai_postscript.dart';
 import 'package:aikit/src/model/ai_native_records.dart';
+import 'package:aikit/src/model/ai_program.dart';
 import 'package:pscore/pscore.dart';
 
 part 'ai_native_text_styles.dart';
@@ -10,6 +13,7 @@ part 'ai_native_text_feature_edit.dart';
 part 'ai_native_text_changes.dart';
 part 'ai_native_text_composition.dart';
 part 'ai_native_text_fonts.dart';
+part 'ai_native_text_frames.dart';
 
 /// The resource table supplying an Illustrator text style.
 enum AiNativeTextStyleKind {
@@ -125,13 +129,13 @@ final class AiNativeTextFrame {
     _ => .unknown,
   };
 
-  /// Explicit canvas-space baseline origin, absent in some older point frames.
+  /// Baseline origin before [matrix], absent in some older point frames.
   List<double>? get position => _coordinates(_field(record, '0', 'Position'), 2);
 
   /// Native frame matrix `[a, b, c, d, e, f]`, without applying font scaling.
   List<double>? get matrix => _coordinates(_field(settings, '2', 'FrameMatrix'), 6);
 
-  /// Retained canvas-space path coordinates, including native control points.
+  /// Native control points before [matrix], in the frame's retained coordinates.
   List<double>? get pathCoordinates {
     final PsEngineValue? points = _at(record, [('1', 'Bezier'), ('0', 'Points')]);
     if (points == null) {

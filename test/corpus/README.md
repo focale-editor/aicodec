@@ -76,6 +76,12 @@ The oracle compares frame/line/segment origins, character coverage, bounds,
 selection metrics and fourteen automatic hyphens, while requiring other model
 and resource data to remain unchanged. Three path-text compositions must reject
 missing per-glyph geometry. This validates position records, not a glyph renderer.
+Twenty-six frame translations cover point, area, path and linked text, including
+existing rotations, reflections and shears. The independent reader checks all
+thirteen confinement paths, frame matrix offsets and exact preservation of other
+model/layout data. A second output moves only the first linked frame in
+`text_transforms.ai`; exactly one confinement path must change. Unrelated body
+operators and metadata remain intact. These checks do not render moved text.
 Verify these outputs with the same pinned external checkout:
 
 ```sh

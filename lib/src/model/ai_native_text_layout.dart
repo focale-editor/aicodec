@@ -115,7 +115,7 @@ final class AiNativeTextStrike {
   /// Retained shadow styles supplying per-glyph font and scale information.
   PsEngineDictionary? get shadowStyles => kind == .glyphs ? _optionalDictionary(_field(record, '10', 'ShadowStylesRun')) : null;
 
-  /// Canvas-space visual bounds of a glyph strike, when explicitly stored.
+  /// Retained visual bounds before the frame matrix, when explicitly stored.
   List<double>? get visualBounds => kind == .glyphs ? _coordinates(_field(record, '8', 'VisualBounds'), 4) : null;
 
   /// Native signed selection ascent for line and glyph nodes, when present.

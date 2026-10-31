@@ -11,7 +11,7 @@ final class _NativeDrawingReader {
   /// Parses body commands and records while retaining original byte spans.
   List<AiNativeItem> _items() {
     final AiProgram program = records.program;
-    final _NativeRecordProjection projection = _NativeRecordProjection(program: program);
+    final _NativeRecordProjection projection = records._projection;
     final List<AiNativeContainer> roots = records.roots.where((root) => root.start >= program.bodyStart && root.end <= program.bodyEnd).toList();
     final List<AiNativeItem> items = [];
     final _NativeCommandReader reader = _NativeCommandReader(maxDepth: program.limits.maxDepth);

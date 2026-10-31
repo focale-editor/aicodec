@@ -111,6 +111,10 @@ programs and their embedding remain host responsibilities.
 the host, including explicit overflow and compact automatic-hyphen maps. It
 validates UTF-16 coverage and resource ownership; it does not generate glyph
 shapes or synchronize the PDF appearance.
+`translateFrames` moves point, area and path text while keeping local composition
+intact. It updates the frame matrices and every corresponding native confinement
+path together, including selected frames within linked text. PDF appearances and
+effects still require host regeneration before saving a synchronized document.
 
 ## Scope
 

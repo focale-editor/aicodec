@@ -248,51 +248,7 @@ final class _LiveShapeTranslation {
   }
 
   /// Expands top-level DSC extents without altering fixed artboard coordinates.
-  List<AiSourceEdit> _boundsEdits() {
-    final AiProgram program = drawing.records.program;
-    final List<AiSourceEdit> edits = [];
-    int embedded = 0;
-    int procedure = 0;
-    for (final AiToken token in AiPostScript.tokenize(program.bytes, maxBytes: program.limits.maxDecodedBytes, maxTokens: program.limits.maxTokens, maxDepth: program.limits.maxDepth)) {
-      if (token.kind == .procedureStart) {
-        procedure++;
-      } else if (token.kind == .procedureEnd) {
-        procedure--;
-      }
-      if (token.kind != .comment || procedure != 0) {
-        continue;
-      }
-      if (token.lexeme.startsWith('%%BeginDocument')) {
-        embedded++;
-      } else if (token.lexeme == '%%EndDocument') {
-        embedded--;
-      }
-      if (embedded != 0) {
-        continue;
-      }
-      final RegExpMatch? match = RegExp(r'^(%%(?:HiResBoundingBox|BoundingBox|PageBoundingBox):)\s*(.*)$').firstMatch(token.lexeme);
-      if (match == null || match[2] == '(atend)') {
-        continue;
-      }
-      final AiBoundingBox previous = AiBoundingBox.parse(value: match[2]!);
-      final List<double> bounds = [
-        previous.left + (deltaX < 0 ? deltaX : 0),
-        previous.bottom + (deltaY < 0 ? deltaY : 0),
-        previous.right + (deltaX > 0 ? deltaX : 0),
-        previous.top + (deltaY > 0 ? deltaY : 0),
-      ];
-      if (bounds.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
-        throw ArgumentError('Translation exceeds finite source-coordinate bounds.');
-      }
-      final bool precise = match[1] == '%%HiResBoundingBox:';
-      final List<String> fields = [
-        for (int index = 0; index < bounds.length; index++)
-          if (precise) bounds[index].toString() else (index < 2 ? bounds[index].floor() : bounds[index].ceil()).toString(),
-      ];
-      edits.add(AiSourceEdit(start: token.start, end: token.end, bytes: latin1.encode('${match[1]} ${fields.join(' ')}')));
-    }
-    return edits;
-  }
+  List<AiSourceEdit> _boundsEdits() => AiNativeEditor.translationBoundsEdits(program: drawing.records.program, deltaX: deltaX, deltaY: deltaY);
 }
 
 /// Creates one finite numeric-token edit without changing native comment syntax.

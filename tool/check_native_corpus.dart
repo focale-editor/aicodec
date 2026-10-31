@@ -28,6 +28,7 @@ Future<void> main() async {
       int textStories = 0;
       int composedStories = 0;
       int rejectedPathLayouts = 0;
+      int translatedTextFrames = 0;
       for (final AiNativeContainer container in records.containers.where((record) => record.type == 'AI11TextDocument')) {
         final AiNativeTextDocument text = AiNativeTextDocument.decode(records: records, container: container);
         if (text.referenceIssues.isNotEmpty) {
@@ -59,6 +60,20 @@ Future<void> main() async {
         }
         await File('${output.path}/$name.fonts.ate').writeAsBytes(fonts.engine.bytes);
         await File('${output.path}/$name.fonts.ps').writeAsBytes(fonts.records.program.bytes);
+        if (text.frames.isNotEmpty) {
+          final AiNativeTextDocument moved = text.translateFrames(frames: text.frames, deltaX: 37.25, deltaY: -19.5);
+          if (moved.referenceIssues.isNotEmpty) {
+            throw StateError('Text frame translation changed native references.');
+          }
+          await File('${output.path}/$name.frames.ate').writeAsBytes(moved.engine.bytes);
+          await File('${output.path}/$name.frames.ps').writeAsBytes(moved.records.program.bytes);
+          translatedTextFrames += text.frames.length;
+          if (name == 'text_transforms.ai') {
+            final AiNativeTextDocument partial = text.translateFrames(frames: [text.frames.first], deltaX: 37.25, deltaY: -19.5);
+            await File('${output.path}/$name.frame-0.ate').writeAsBytes(partial.engine.bytes);
+            await File('${output.path}/$name.frame-0.ps').writeAsBytes(partial.records.program.bytes);
+          }
+        }
         for (final AiNativeTextStory story in text.stories) {
           final AiNativeTextDocument edited = text.replaceText(story: story, start: 0, end: story.text.length < 5 ? story.text.length : 5, text: 'Édité 🖋\u0003suite\r');
           if (edited.referenceIssues.isNotEmpty || edited.stories[story.index].strikes.isNotEmpty) {
@@ -220,6 +235,7 @@ Future<void> main() async {
         'textStories': textStories,
         'composedStories': composedStories,
         'rejectedPathLayouts': rejectedPathLayouts,
+        'translatedTextFrames': translatedTextFrames,
         'artboards': records.artboards.length,
         'nativePaths': drawing.paths.length,
         'liveShapes': drawing.liveShapes.length,

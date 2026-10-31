@@ -390,6 +390,73 @@ def verify_fonts(before, name, output, text_parser, stream, inkai, binary_type):
     return 2
 
 
+def verify_frame_translation(before, name, output, text_parser, stream, inkai, binary_type):
+    """Compare moved matrices and independent body paths, including partial selection."""
+    original_frames = resources(before, '8', 'TextFrameSet')
+    if not original_frames:
+        return 0, 0
+    stories = field(field(before, '1', 'DocumentObjects'), '1', 'TextObjects')
+    original_program = inkai.parse(str(output / f'{name}.native.ps'))
+    counts = []
+    for suffix, selected in [('frames', set(range(len(original_frames))))] + ([('frame-0', {0})] if name == 'text_transforms.ai' else []):
+        payload = (output / f'{name}.{suffix}.ate').read_bytes()
+        actual = text_parser.read_object(stream(io.BytesIO(payload)))
+        expected = copy.deepcopy(before)
+        expected_frames = resources(expected, '8', 'TextFrameSet')
+        for index in selected:
+            frame = expected_frames[index]
+            named = '/Data' in frame or '/DocumentResources' in before
+            settings = field(frame, '2', 'Data')
+            if settings is None:
+                settings = {}
+                frame['/Data' if named else '/2'] = settings
+            matrix = field(settings, '2', 'FrameMatrix')
+            if matrix is None:
+                matrix = [1, 0, 0, 1, 0, 0]
+                settings['/FrameMatrix' if named else '/2'] = matrix
+            matrix[4] += 37.25
+            matrix[5] += 19.5
+        assert actual == expected, f'Translation modified local text or unselected resources: {name}/{suffix}'
+        translated_program = inkai.parse(str(output / f'{name}.{suffix}.ps'))
+        section = translated_program.setup.first_subsection_of_type(b'%AI11_BeginTextDocument')
+        assert next(child.Data for child in section.children if isinstance(child, binary_type)) == payload
+
+        def compare(first, second, moving=False):
+            if hasattr(first, 'command'):
+                assert first.command == second.command and first.is_pseudo_comment == second.is_pseudo_comment
+                if moving and first.command in ('m', 'l', 'L', 'c', 'C', 'v', 'V', 'y', 'Y'):
+                    assert len(first.tokens) == len(second.tokens)
+                    for coordinate, (old, new) in enumerate(zip(first.tokens, second.tokens)):
+                        offset = 37.25 if coordinate % 2 == 0 else -19.5
+                        assert math.isclose(float(new), float(old) + offset, rel_tol=0, abs_tol=1e-9)
+                    return int(first.command == 'm')
+                assert first.tokens == second.tokens
+                return 0
+            if hasattr(first, 'asdict'):
+                return compare(first.asdict(), second.asdict(), moving)
+            if hasattr(first, 'children'):
+                assert type(first) is type(second)
+                return compare(first.children, second.children, moving)
+            if isinstance(first, dict):
+                assert isinstance(second, dict) and first.keys() == second.keys()
+                if first.get('_type') == 'AI11Text':
+                    story = stories[first['StoryIndex']] if first['FreeUndo'] == 0 else None
+                    references = field(field(story, '1', 'View'), '0', 'Frames') if story else []
+                    target = field(references[first['FrameIndex']], '0', 'Resource') if story else None
+                    return sum(compare(value, second[key], target in selected and key == 'ConfiningPath') for key, value in first.items())
+                return sum(compare(value, second[key], moving) for key, value in first.items())
+            if isinstance(first, list):
+                assert isinstance(second, list) and len(first) == len(second)
+                return sum(compare(old, new, moving) for old, new in zip(first, second))
+            assert first == second
+            return 0
+
+        counts.append(compare(original_program.trailer, translated_program.trailer))
+    if len(counts) == 2:
+        assert counts[1] == 1, 'The selected linked frame must move exactly one confinement'
+    return len(original_frames), counts[0]
+
+
 def close_positions(first, second):
     """Allow only floating-point regrouping when flattening nested row origins."""
     if isinstance(first, (list, tuple)):
@@ -478,10 +545,12 @@ def main():
         edits = verify_content_edits(before, name, args.output, text_parser, stream, inkai, binary_type)
         feature_edits = verify_feature_edits(before, name, args.output, text_parser, stream, inkai, binary_type)
         font_additions = verify_fonts(before, name, args.output, text_parser, stream, inkai, binary_type)
+        frames, confinements = verify_frame_translation(before, name, args.output, text_parser, stream, inkai, binary_type)
+        assert frames == entry['translatedTextFrames']
         compositions, hyphens = verify_compositions(before, name, args.output, text_parser, stream, inkai, binary_type)
         assert compositions == entry['composedStories']
         assert entry['rejectedPathLayouts'] == len(stories) - compositions
-        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "fontAdditions": font_additions, "compositions": compositions, "automaticHyphens": hyphens, "status": "passed"})
+        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "fontAdditions": font_additions, "translatedFrames": frames, "translatedConfinements": confinements, "compositions": compositions, "automaticHyphens": hyphens, "status": "passed"})
     assert len(results) == 32, "The required text-document corpus was not fully exercised"
     content_edits = sum(result["contentEdits"] for result in results)
     assert content_edits == 20, "The required native stories were not all edited"
@@ -489,6 +558,8 @@ def main():
     assert feature_edits == 60, "The required native stories and forced-break spans were not all formatted"
     font_additions = sum(result['fontAdditions'] for result in results)
     assert font_additions == 64, 'The required native font registrations were not all exercised'
+    assert sum(result['translatedFrames'] for result in results) == 26, 'The required native frames were not all translated'
+    assert sum(result['translatedConfinements'] for result in results) == 13, 'The required confinement paths were not all translated'
     compositions = sum(result['compositions'] for result in results)
     assert compositions == 17, "The required point/area stories were not all composed"
     hyphens_by_fixture = {result['file']: result['automaticHyphens'] for result in results if result['automaticHyphens']}

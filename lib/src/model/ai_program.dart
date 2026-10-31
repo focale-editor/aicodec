@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:aikit/src/codec/ai_native_data.dart';
 import 'package:aikit/src/codec/ai_postscript.dart';
+import 'package:aikit/src/model/ai_document.dart';
 
 part '../editing/ai_native_editor.dart';
 
