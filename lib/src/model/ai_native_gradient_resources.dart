@@ -221,9 +221,17 @@ final class AiNativeGradientResources {
   ///
   /// Stops are supplied in strictly increasing position order; ramps are in the
   /// same interval order. Native linear stops are written in descending order,
-  /// radial stops in ascending order. Every definition with the same byte name changes in
-  /// one transaction. Existing names, linear/radial kind, instance geometry and
-  /// unrelated bytes stay intact. Paired compatibility records are regenerated.
+  /// radial stops in ascending order. Every definition with the same byte name
+  /// changes in one transaction. Linear printing strips and exterior caps follow
+  /// the new positions in drawing, styles, patterns and swatches; the complete
+  /// gradient placement stays fixed. Radial matrices and matrix-free authoring
+  /// notes stay intact. Paired compatibility records are regenerated.
+  ///
+  /// Inconsistent or incomplete printing geometry rejects positional changes.
+  /// Legacy strips without `Xm` must identify one consistent whole axis. Moving
+  /// an endpoint requires its existing exterior cap, whose outer edge stays
+  /// fixed. Command-local whitespace/comments may be regenerated; unrelated
+  /// source bytes are preserved. Color-only edits do not reinterpret geometry.
   ///
   /// The host composes the ramps using its color profiles and interpolation, and
   /// regenerates flattened effects before a synchronized save. `AiNativePdf`

@@ -53,6 +53,7 @@ AiNativeGradientResources _replaceGradientStops(AiNativeGradientResources resour
     edits.add(AiSourceEdit(start: target.opening.operands[2].start, end: target.opening.operands[2].end, bytes: latin1.encode(stops.length.toString())));
     edits.add(AiSourceEdit(start: target.opening.end, end: target.closing.start, bytes: bytes));
   }
+  edits.addAll(_GradientGeometryEditor(resources: resources, definition: targets.last, stops: stops, remaining: remaining).edits());
   return AiNativeGradientResources.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: resources.records.program, edits: edits),

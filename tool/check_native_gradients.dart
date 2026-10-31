@@ -42,6 +42,24 @@ Future<void> main() async {
         final AiNativeGradientResources changed = source.replaceStops(definition: source.definitions.first, stops: stops, ramps: ramps);
         await File('${output.path}/$name.edited.ps').writeAsBytes(changed.records.program.bytes);
       }
+      if (name == 'circle.ai') {
+        final List<Map<String, Object?>> geometry = [];
+        for (final int number in [35, 42, 8, 21]) {
+          final String name = 'Unnamed gradient $number';
+          final AiNativeGradientDefinition definition = source.definitions.singleWhere((definition) => latin1.decode(definition.nameBytes) == name);
+          final AiNativeGradientResources changed = source.replaceStops(
+            definition: definition,
+            stops: [
+              for (int index = 0; index < stops.length; index++) AiNativeGradientStop(color: stops[index].color, position: const [10.0, 40.0, 90.0][index], opacity: stops[index].opacity),
+            ],
+            ramps: ramps,
+          );
+          final String file = 'geometry-$number.ps';
+          await File('${output.path}/$file').writeAsBytes(changed.records.program.bytes);
+          geometry.add({'file': file, 'name': name, 'previous': definition.stops.map((stop) => stop.position / 100).toList()..sort()});
+        }
+        await File('${output.path}/geometry.json').writeAsString(const JsonEncoder.withIndent('  ').convert(geometry));
+      }
       if (name == 'gradient_linear.ai') {
         final List<Map<String, Object?>> colors = [];
         for (final AiNativeGradientColorKind kind in AiNativeGradientColorKind.values) {

@@ -332,12 +332,26 @@ selected byte name in one transaction. Supply stops in strictly increasing
 position order and one host-composed printing interval per adjacent pair, in
 increasing interval order. The writer updates the count, both stop
 representations and the complete printing ramp. Names, resource counts, gradient
-kind, instance geometry, other resources and drawing-body bytes remain unchanged.
+kind and overall gradient placement remain unchanged.
 Native linear stops are written in descending position order and radial stops
 in ascending order, matching all 296 linear and 82 radial corpus definitions.
 Unknown structural metadata/operators, mixed same-name kinds, foreign handles,
 coincident stops and excessive expansion reject the edit. Older stop syntax
 requires opaque style-zero-through-four colors without an opacity wrapper.
+
+When linear stop positions change, every referencing `Bb`/`BB` instance is
+checked, including printable/private drawing, styles, nested art, patterns and
+palette resources. Each `Bm` strip is rebuilt for its new interval along the
+unchanged `Xm` axis. Older instances without `Xm` recover that whole axis from
+the first source interval and validate all remaining strips against it. The
+cross-axis extent stays fixed. Exterior `Bc` caps follow the first/last stop
+while keeping their far edges fixed. Missing caps reject endpoint moves;
+inconsistent strip counts, transforms, cap boundaries, singular geometry,
+unmatched commands or excessive expansion reject the whole transaction.
+Complete matrix-free notes and radial matrices remain untouched. Procedures,
+embedded documents, strings and binary payloads cannot supply executable
+gradient references. Color-only changes retain geometry verbatim. Matrix-local
+formatting/comments may be regenerated; other source bytes are preserved.
 
 Ramp composition, color profiles, tint/separation conversion and named-color
 registration belong to the host. AiKit requires explicit intervals to avoid
@@ -352,7 +366,15 @@ comments are regenerated with the edited resource; external bytes are preserved.
 The independent corpus check compares all 378 definitions, 1,103 authoritative
 stops, their fallback records and 725 printing intervals across 37 files. It
 rewrites a resource in each of the 23 files containing gradients, checks seven
-color layouts and verifies that unrelated resources and body bytes are unchanged.
+color layouts and verifies that unrelated resources and drawing commands are
+unchanged. Independent parsing also checks linear strip coverage, fixed exterior
+cap edges and unchanged gradient placement, including the color variants whose
+first stop moves from zero to ten percent. Four additional real pattern variants
+exercise private commands and three-, four- and five-stop resources, moving both
+endpoints and adding/removing intervals. Across these runs, 139 linear caches
+are rebuilt among 1,848 independently inspected instances (including repeated
+source instances across variants). Legacy matrices without `Xm`, unsupported
+layouts and output limits also have focused synthetic regressions.
 For the linear/radial CC fixtures, 24 instances are independently converted to SVG
 and rendered against the original geometry with explicitly replaced expected
 stops: both pixel comparisons are exact. These checks cover RGB stops and opacity

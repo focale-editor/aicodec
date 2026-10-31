@@ -12,6 +12,7 @@ part '../codec/ai_native_gradient_parser.dart';
 part '../codec/ai_native_gradient_resource_parser.dart';
 part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_gradient_editor.dart';
+part '../editing/ai_native_gradient_geometry_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_gradient.dart';
 part 'ai_native_gradient_resources.dart';
