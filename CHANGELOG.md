@@ -32,3 +32,4 @@
 - Qualified identified-artwork deletion beside known CC document settings, empty reference tables and bounded ICC payloads, preserving document metadata while rejecting unknown or nonempty reference owners.
 - Reserved native XML identity values in unrecognized owners and version alternatives when creating identified copies, preventing collisions and accidental binding of retained references.
 - Extended qualified path/group/layer lifecycle to direct live shapes, preserving native parameters and fresh copied identities while rejecting unresolved private/printing dependencies.
+- Added atomic duplication of complete CC authoring/printing pairs, retaining private geometry, native parameters, version alternatives, shared resources and distinct native/printing state.

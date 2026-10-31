@@ -247,6 +247,28 @@ dart run tool/check_native_direct_shapes.dart
 python3 tool/verify_native_direct_shapes.py --inkai-source /tmp/extension-ai
 ```
 
+Separate authoring/printing pair duplication reuses five pinned files from
+`manifest.json`. Fourteen successful real-file transactions cover ellipses,
+polygons, stars, lines and linear/radial gradient pairs in four files; four
+first-object refusals include `opacity.ai` and retain exact original bytes.
+Four checksum-pinned synthetic copies cover batches, separate saved identities
+and distinct native/printing flags. The unchanged reader independently binds the
+22 requested transactions to complete pairs, native parameters, saved alternatives,
+counts and style references. Exact insertion checks retain all unselected bytes;
+source flag checks cover values ignored by the reader's SVG conversion. Both
+native and printing SVG trees are checked for the real-file copies; synthetic
+copies check printing SVG plus independently decoded newer/older dictionaries.
+The pinned SVG dispatcher ignores lists returned for those version alternatives,
+so synthetic native SVG is not used as acceptance evidence. Compared SVG trees
+must equal the original with precisely the selected objects duplicated, including
+resolved gradient and path-effect resources. This
+does not qualify native Adobe reopening or other lifecycle operations on pairs.
+
+```sh
+dart run tool/check_native_shape_lifecycle.dart
+python3 tool/verify_native_shape_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

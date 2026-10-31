@@ -304,6 +304,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   regenerated and independently checked. Capability checks still recover all
   37 exact sources, 41 layer headers and 181 ordinary paths. No host rendering
   or Adobe reopening is inferred from this structural qualification.
+  Complete bound CC authoring/printing pairs now support `duplicateLiveShapes`.
+  Private contours, parameters, printing groups, both metadata alternatives and
+  shared style/resource references stay together. Identified dictionaries require
+  fresh source-wide XML names; unresolved repeated-ID aliases reject. Printing
+  and private state are tracked separately, and missing inherited values are
+  never replaced with defaults. Fifteen regressions cover atomic batches, editable
+  copies, both metadata owners, state replay, point counts, unknown attachments,
+  conditional styles, native dash serialization and limits. Independent checks
+  verify 22 transactions: 14 successful real-file copies, four synthetic copies
+  and four exact refusals, totaling 46 copied pairs. The real-file copies compare
+  native and printing SVG geometry/styles/resources; synthetic copies compare
+  printing SVG plus independently decoded version alternatives and source flags.
+  The pinned SVG dispatcher ignores version-branch lists, so synthetic native SVG
+  is explicitly excluded as acceptance evidence. Latest validation: 509 VM/508
+  Node tests, clean format/fix/analysis, all 21 direct-shape lifecycle transactions
+  independently rechecked and capability checks retaining 37 exact sources,
+  41 layer headers and 181 ordinary paths. Pair removal, reordering, reparenting
+  and broader resource-reference lifecycle remain outstanding; the task stays
+  open. No native Adobe reopening or application rendering was introduced.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

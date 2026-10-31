@@ -150,6 +150,9 @@ enum AiNativeEditOperation {
   /// Uniformly scale live-shape parameters and dependent geometry.
   liveShapeScaling,
 
+  /// Copy a complete bound authoring/printing pair with fresh saved identities.
+  liveShapeDuplication,
+
   /// Attach host-composed geometry to an existing separate printing expansion.
   printingContours,
 

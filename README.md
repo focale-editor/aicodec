@@ -34,6 +34,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   metadata, fresh copied IDs and preserved source opacity; unresolved references reject.
 - Whole-object lifecycle for qualified direct live shapes, retaining their native
   parameters through copies, deletion, movement and group/layer subtree edits.
+- Duplication of qualified CC authoring/printing pairs with retained alternatives,
+  shared styles and separately preserved native and printing attributes.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

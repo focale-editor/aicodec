@@ -28,18 +28,21 @@ String? _directNativeShapeIssue(AiLiveShape shape) {
       return 'The live shape has unknown parameter or reference fields.';
     }
     final String name = field.key!.substring(prefix.length);
-    final String type = switch (name) {
-      'Clockwise' || 'IsRegular' => 'Bool',
-      'InitialQuadrant' || 'NumSides' || 'NumPoints' => 'Int',
-      _ when name.contains('Type') => 'UnicodeString',
-      _ => 'Real',
-    };
+    final String type = _nativeShapeParameterType(shape.handler, name);
     if (field.type != type || (type == 'UnicodeString' ? field.stringBytes == null : field.number == null || field.number!.abs() > 9007199254740991)) {
       return 'The live shape has an unqualified parameter value.';
     }
   }
   return null;
 }
+
+/// Retains handler-specific scalar encodings without coercing source values.
+String _nativeShapeParameterType(String handler, String name) => switch (name) {
+  'Clockwise' || 'IsRegular' => 'Bool',
+  'InitialQuadrant' || 'NumSides' || 'NumPoints' => 'Int',
+  _ when name.contains('Type') => handler == 'ai::Rectangle' ? 'UnicodeString' : 'Int',
+  _ => 'Real',
+};
 
 /// Counts authoritative shape owners carried by disjoint complete object trees.
 int _selectedLiveShapeCount(AiNativeDrawing drawing, List<AiNativeItem> sources) => _selectedNativeObjects(drawing, sources).where((object) => object.liveShape != null).length;

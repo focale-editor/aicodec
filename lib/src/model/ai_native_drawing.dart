@@ -228,6 +228,15 @@ final class AiNativeDrawing {
   /// unresolved attached metadata reject.
   AiNativeDrawing duplicatePaths({required List<AiNativePath> paths, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativePaths(this, paths, identifiers);
 
+  /// Copies complete bound CC authoring/printing pairs after their originals.
+  ///
+  /// Private geometry, parameters, printing contours and saved alternatives stay
+  /// together. Shared styles/resources retain their identities. Each identified
+  /// metadata dictionary requires a fresh XML name in [identifiers]. Unknown
+  /// inherited state, resource ownership or local metadata rejects atomically.
+  /// Direct single-path shapes use [duplicatePaths] instead.
+  AiNativeDrawing duplicateLiveShapes({required List<AiLiveShape> shapes, Map<AiNativeContainer, List<int>> identifiers = const {}}) => _duplicateNativeShapes(this, shapes, identifiers);
+
   /// Removes ordinary geometry and owned point counts, retaining surrounding state.
   ///
   /// Unselected bytes and paint/lock/visibility assignments remain unchanged.

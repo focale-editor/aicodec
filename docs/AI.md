@@ -508,6 +508,61 @@ seven identified synthetic path/group/layer transactions. Complete native
 parameters, hierarchy, source counts and unselected private/style records remain
 exact. This does not qualify new shape creation or every known shape handler.
 
+### CC authoring/printing pair duplication
+
+`AiNativeDrawing.duplicateLiveShapes(shapes:, identifiers:)` copies complete bound
+CC pairs immediately after their originals. Each pair includes its optional panel
+flag, ordinary/compound printing group, redundant dictionary, private authoring
+contour, recorded native parameters, older metadata alternative and final named
+style application. Existing styles and gradient definitions remain shared and
+unchanged. The operation never derives either representation from the other.
+Direct single-path shapes continue to use `duplicatePaths`.
+
+The selection must contain distinct handles from the current snapshot. Qualified
+parents are ordinary groups or layers; an outer condition, private parent,
+unresolved prefix/postfix or hidden payload prevents copying. Local dictionaries
+require known scalar fields, and referenced styles/resources require unique,
+unconditional ownership. Rectangle corner selectors retain their string encoding;
+polygon/star selectors retain their numeric encoding. Known filter fields are
+typed literals. Unknown plug-ins or reference-bearing extensions reject. Owned
+printing and private point counts travel with their respective paths. Whole saved
+metadata alternatives remain intact; no target version is chosen or synthesized.
+
+`identifiers` maps each identified `AiNativeContainer` within the copied pair to
+one fresh portable XML name. This includes redundant and alternate dictionaries
+when they have their own saved IDs. Supply exactly these owners. Allocation uses
+the source-wide reserved XML namespace, including opaque records; stale/extra
+handles, missing IDs and collisions reject the batch. Only the copied identity
+strings change; existing references still refer to their original objects.
+Repeated identities within the selection reject until their alias relationship
+has an explicit copy contract.
+
+Copies retain inherited state separately for the printing stream and the native
+stream that also includes private commands. Source values are replayed only when
+the original can change an attribute read by its copy. The complete pair restores
+its original outgoing assignments. Known-style paint parts contribute their
+literal dependencies without executing filters or generating contours. Ambiguous
+incoming values are not replaced with assumed defaults. In particular, some first
+objects in the corpus lack an explicit inherited `D` value and remain rejected.
+Malformed, conditional or opaque neighboring state cannot establish a value.
+The `liveShapeDuplication` capability therefore requires operation-specific
+validation, even when the pair is bound.
+
+Fifteen regressions cover batches, editable copies, metadata identities, version
+alternatives, panel flags, separate printing/private attributes, native dash
+serialization, unknown fields/plug-ins, stale handles and limits. The optional
+corpus checks copies of ellipses, polygons, stars, lines and linear/radial gradient
+pairs, plus identified synthetic pairs and exact first-object refusals. Its
+unchanged independent reader compares complete records, source bytes and native
+owner flags. Fourteen real-file transactions compare both native and printing
+SVG geometry/styles/resources. Four synthetic transactions compare printing SVG
+and both independently decoded metadata alternatives: the pinned SVG dispatcher
+ignores the lists returned for versioned dictionaries, so its native SVG is not
+used as evidence for those cases. Four first-object refusals retain exact bytes. These
+checks do not establish Adobe reopening or deletion, reordering and reparenting
+of separate authoring/printing pairs. Saving updated PDF artwork still requires
+a matching representation supplied by the host.
+
 ### Ordinary path lifecycle
 
 `AiNativeDrawing` supports the following operations on independent ordinary

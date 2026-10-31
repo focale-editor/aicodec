@@ -1,0 +1,257 @@
+part of 'package:aikit/src/model/ai_native_records.dart';
+
+/// Known values for the two source interpretations at one copy boundary.
+typedef _NativeShapeInputs = ({Map<String, AiNativeInstruction> printing, Map<String, AiNativeInstruction> native});
+
+/// Qualifies literal filter fields without treating executable values as data.
+bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switch (field.key) {
+  'Name' || 'PluginFileName' || 'Title' => field.stringBytes != null,
+  'Visible' => const {0, 1}.contains(field.number),
+  'FillOrStroke' => const {0, 1, 2}.contains(field.number),
+  'Filter' =>
+    field.items.length == 3 &&
+        field.items.first is AiNativeToken &&
+        const {AiTokenKind.string, AiTokenKind.hexString}.contains((field.items.first as AiNativeToken).token.kind) &&
+        field.items[1] is AiNativeToken &&
+        const {0, 1}.contains((field.items[1] as AiNativeToken).token.number) &&
+        field.items[2] is AiNativeToken &&
+        (field.items[2] as AiNativeToken).token.number == 0,
+  'Def' when owner.type == 'KnownStyle' => field.container?.type == 'ActiveStyle',
+  'Def' => field.items.every((item) => item is AiNativeToken),
+  'Execution' => field.container?.type == 'CompoundFilter',
+  'Part' => const {'CompoundFilter', 'BasicFilter'}.contains(field.container?.type),
+  'Dict' => field.container?.type == 'Dictionary',
+  'FillStyle' || 'StrokeStyle' || 'BlendStyle' => field.container?.type == field.key,
+  'DisplayString' => const {'String', 'UnicodeString'}.contains(field.type) && field.stringBytes != null,
+  'UseEvenOdd' || 'StrokeOffsetInside' => field.type == 'Bool' && field.boolean != null,
+  'NotRecorded' => field.isQualifier,
+  _ => false,
+};
+
+/// Identifies state writes without executing appearance filters or drawing art.
+({Set<String> reads, Set<String> writes}) _shapeCopyStyleState(AiNativeDrawing drawing, AiLiveShape shape) {
+  final AiNativeContainer style = shape.style!;
+  if (drawing._objects.structure.versions.blocks.any((block) => block.start < style.end && block.end > style.start)) {
+    throw UnsupportedError('Shape copies require unconditional native filter execution.');
+  }
+  _LiveShapeEditor(drawing: drawing, shapes: [shape])._checkStyle(style);
+  final Set<String> writes = {};
+  final Set<String> reads = {};
+  for (final AiNativeContainer record in drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end)) {
+    if (record.entries.any((field) => !_shapeCopyStyleField(record, field))) {
+      throw UnsupportedError('Shape copies require literal, typed native filter fields.');
+    }
+    final String? plugin = record['PluginFileName']?.text();
+    if (plugin != null && !const {'Illustrator.exe', 'StrokeOffset.aip'}.contains(plugin)) {
+      throw UnsupportedError('Shape copies cannot qualify external appearance plug-ins.');
+    }
+    if (const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type)) {
+      final Set<String> local = {};
+      if (record.type != 'BlendStyle') {
+        local.add(record.type == 'FillStyle' ? 'fill' : 'stroke');
+      }
+      final AiNativePaintStyle paint = AiNativePaintStyle.decode(records: drawing.records, record: record);
+      for (final AiNativeInstruction command in paint.instructions) {
+        final String? key = _nativeArtworkStateKey(command);
+        if (key != null) {
+          local.add(key);
+        } else if (command.operator == 'Xd' && command.numbers?.length == 2 && command.numbers!.every((value) => value == 0 || value == 1)) {
+          // Each retained paint part carries its explicit fill/stroke flags.
+        } else if (!_gradientCommands.contains(command.operator)) {
+          throw UnsupportedError('Shape copies have no state contract for the native ${command.operator} style command.');
+        }
+      }
+      final Set<String> required = switch (record.type) {
+        'FillStyle' => {'fill', 'O', 'Xy', 'XR'},
+        'StrokeStyle' => {'stroke', 'R', 'Xy', 'J', 'j', 'w', 'M', 'd', 'XR'},
+        _ => {'Xy'},
+      };
+      reads.addAll(required.difference(local));
+      writes.addAll(local);
+    }
+  }
+  return (reads: reads, writes: writes);
+}
+
+/// Captures known source values separately for printing and private authoring.
+Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<int> boundaries) {
+  final List<int> positions = boundaries.toSet().toList()..sort();
+  final Map<int, _NativeShapeInputs> result = {};
+  final Map<String, AiNativeInstruction> printing = {};
+  final Map<String, AiNativeInstruction> native = {};
+  final Map<int, AiNativeLayer> headers = _layerHeaderItems(AiNativeLayers.decode(drawing: drawing));
+  final Set<AiNativeContainer> metadata = {};
+  final Map<int, AiLiveShape> styles = {};
+  final Set<int> printingStyles = {};
+  final Set<int> versionComments = {};
+  for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.start < positions.last)) {
+    try {
+      for (final AiNativeContainer dictionary in [shape.dictionary, ?shape.appearanceDictionary, ...shape.alternativeDictionaries]) {
+        _shapeCopyDictionary(drawing, shape, dictionary);
+        metadata.add(dictionary);
+      }
+      if (shape.alternativeDictionaries.isNotEmpty) {
+        versionComments.addAll(drawing.items.whereType<AiNativeVersionComment>().where((item) => item.start >= shape.path!.end && item.end <= shape.end).map((item) => item.start));
+      }
+      if (shape.style != null) {
+        final List<AiNativeResourceUse> uses = drawing._objects.structure.resourceUses.where((use) => use.kind == .knownStyle && use.instruction.end == shape.end).toList();
+        if (uses.length != 1 || uses.single.resolution != .resolved || uses.single.candidates.single.versions.isNotEmpty) {
+          throw UnsupportedError('Conditional style declarations cannot establish inherited state.');
+        }
+        _shapeCopyStyleState(drawing, shape);
+        styles[shape.end] = shape;
+        printingStyles.addAll(drawing.items.whereType<AiNativeInstruction>().where((item) => item.start >= shape.start && item.end <= shape.end && _marker(item, 6)).map((item) => item.start));
+      }
+    } on UnsupportedError {
+      // Unknown neighboring owners retain their state barrier.
+    } on FormatException {
+      // Malformed neighboring state does not establish inherited values.
+    }
+  }
+  int index = 0;
+  for (final int position in positions) {
+    while (index < drawing.items.length && drawing.items[index].end <= position) {
+      final AiNativeItem item = drawing.items[index++];
+      if (headers[item.start]?.bindingIssue == null && headers.containsKey(item.start) || _ordinaryObjectAttachment(drawing, item) || metadata.contains(item) || versionComments.contains(item.start)) {
+        continue;
+      }
+      if (item is AiNativeInstruction) {
+        final String? key;
+        try {
+          key = _nativeArtworkStateKey(item);
+        } on FormatException {
+          native.clear();
+          if (!item.isPrivate) {
+            printing.clear();
+          }
+          continue;
+        }
+        if (key != null) {
+          native[key] = item;
+          if (!item.isPrivate) {
+            printing[key] = item;
+          }
+          continue;
+        }
+        if (styles[item.end] case final AiLiveShape shape when _marker(item, 1)) {
+          final Set<String> changed = _shapeCopyStyleState(drawing, shape).writes;
+          native.removeWhere((key, _) => changed.contains(key));
+          final List<AiNativeContainer> records = drawing.records.containers.where((record) => record.start >= shape.style!.start && record.end <= shape.style!.end).toList();
+          if (records.every((record) => record['Visible'] == null || record['Visible']!.number == 1)) {
+            final Map<String, List<AiNativeInstruction>> candidates = {};
+            for (final AiNativeContainer record in records.where((record) => const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type))) {
+              for (final AiNativeInstruction command in AiNativePaintStyle.decode(records: drawing.records, record: record).instructions) {
+                final String? key = _nativeArtworkStateKey(command);
+                if (key != null && key != 'fill' && key != 'stroke') {
+                  (candidates[key] ??= []).add(command);
+                }
+              }
+            }
+            for (final MapEntry<String, List<AiNativeInstruction>> entry in candidates.entries) {
+              if (entry.value.every((command) => _sameNativeArtworkState(command, entry.value.first))) {
+                native[entry.key] = entry.value.first;
+              }
+            }
+          }
+          continue;
+        }
+        if (printingStyles.contains(item.start) || item.operator == 'Xd' && item.numbers?.length == 2 && item.numbers!.every((value) => value == 0)) {
+          continue;
+        }
+        if (_nativeGeometry.contains(item.operator) || _nativePaint.contains(item.operator) || const {'u', 'U', '*u', '*U', 'As', 'Ae'}.contains(item.operator)) {
+          continue;
+        }
+      }
+      native.clear();
+      if (!drawing.records._projection.isPrivate(item.start)) {
+        printing.clear();
+      }
+    }
+    result[position] = (printing: Map.of(printing), native: Map.of(native));
+  }
+  return result;
+}
+
+/// Selects attributes read by a path before any following style application.
+Set<String> _shapeCopyReads(AiNativeDrawing drawing, AiNativePath path) => {
+  'A',
+  'Xw',
+  'Ap',
+  'D',
+  'XR',
+  if (!const {'n', 'N'}.contains(path.paint.operator)) 'Xy',
+  if (const {'f', 'F', 'b', 'B'}.contains(path.paint.operator)) ...[
+    'O',
+    if (!drawing.gradients.any((gradient) => gradient.paths.contains(path))) 'fill',
+  ],
+  if (const {'s', 'S', 'b', 'B'}.contains(path.paint.operator)) ...['stroke', 'R', 'J', 'j', 'w', 'M', 'd'],
+};
+
+/// Restores only read-before-write values that the preceding original can change.
+List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeCopy copy, _NativeShapeInputs inputs, int maxBytes) {
+  final Map<int, AiNativePath> paths = {
+    for (final AiNativePath path in [...copy.shape.appearancePaths, copy.shape.path!]) path.start: path,
+  };
+  final Set<String> printingWrites = {};
+  final Set<String> nativeWrites = {};
+  final Set<String> printingReads = {};
+  final Set<String> nativeReads = {};
+  for (final AiNativeInstruction command in copy.commands) {
+    final String? key = _nativeArtworkStateKey(command);
+    if (key != null) {
+      nativeWrites.add(key);
+      if (!command.isPrivate) {
+        printingWrites.add(key);
+      }
+      continue;
+    }
+    final Set<String> reads = paths.containsKey(command.start)
+        ? _shapeCopyReads(drawing, paths[command.start]!)
+        : const {'u', '*u'}.contains(command.operator)
+        ? {'A', 'Xw'}
+        : _marker(command, 6)
+        ? {'Xy'}
+        : _marker(command, 1)
+        ? copy.styleReads
+        : {};
+    nativeReads.addAll(reads.difference(nativeWrites));
+    if (!command.isPrivate && command.operator != 'XW') {
+      printingReads.addAll(reads.difference(printingWrites));
+    }
+  }
+  nativeWrites.addAll(copy.styleWrites);
+  final Set<String> printingNeeded = printingReads.intersection(printingWrites);
+  final Set<String> nativeNeeded = nativeReads.intersection(nativeWrites);
+  final StringBuffer prefix = StringBuffer();
+
+  /// Bounds generated source before retaining an additional replay instruction.
+  void append(AiNativeInstruction value, {bool private = false}) {
+    final String operands = value.operator == 'd'
+        ? '[${value.operands.sublist(1, value.operands.length - 2).map((operand) => operand.lexeme).join(' ')}] ${value.operands.last.lexeme}'
+        : value.operands.map((operand) => operand.lexeme).join(' ');
+    final String text = '${private ? '%_' : ''}$operands ${value.operator}\n';
+    if (prefix.length + text.length > maxBytes) {
+      throw const AiLimitException(message: 'Shape copy state exceeds the native byte limit.');
+    }
+    prefix.write(text);
+  }
+
+  for (final String key in printingNeeded) {
+    final AiNativeInstruction? value = inputs.printing[key];
+    if (value == null) {
+      throw UnsupportedError('The shape copy requires an unknown inherited printing $key value.');
+    }
+    append(value);
+  }
+  for (final String key in nativeNeeded) {
+    final AiNativeInstruction? value = inputs.native[key];
+    if (value == null) {
+      throw UnsupportedError('The shape copy requires an unknown inherited native $key value.');
+    }
+    if (printingNeeded.contains(key) && _sameNativeArtworkState(value, inputs.printing[key])) {
+      continue;
+    }
+    append(value, private: true);
+  }
+  return latin1.encode(prefix.toString());
+}
