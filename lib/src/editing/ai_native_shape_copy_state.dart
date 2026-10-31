@@ -45,12 +45,14 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
 };
 
 /// Identifies state writes without executing appearance filters or drawing art.
-({Set<String> reads, Set<String> writes}) _shapeCopyStyleState(AiNativeDrawing drawing, AiLiveShape shape) {
-  final AiNativeContainer style = shape.style!;
+({Set<String> reads, Set<String> writes}) _shapeCopyStyleState(AiNativeDrawing drawing, AiLiveShape shape) => _nativeLiteralStyleState(drawing, shape.style!);
+
+/// Qualifies a literal style independently of any particular referencing shape.
+({Set<String> reads, Set<String> writes}) _nativeLiteralStyleState(AiNativeDrawing drawing, AiNativeContainer style) {
   if (drawing._objects.structure.versions.blocks.any((block) => block.start < style.end && block.end > style.start)) {
     throw UnsupportedError('Shape copies require unconditional native filter execution.');
   }
-  _LiveShapeEditor(drawing: drawing, shapes: [shape])._checkStyle(style);
+  _LiveShapeEditor(drawing: drawing, shapes: [])._checkStyle(style);
   final Set<String> writes = {};
   final Set<String> reads = {};
   for (final AiNativeContainer record in drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end)) {

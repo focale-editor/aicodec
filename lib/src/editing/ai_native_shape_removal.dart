@@ -34,12 +34,8 @@ void _shapeRemovalReferences(AiNativeDrawing drawing, List<_NativeShapeBundle> s
   if (identifiers.isEmpty) {
     return;
   }
-  final List<_NativeShapeBundle> bundles = _selectedShapeBundles(
-    drawing,
-    drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true).toList(),
-  );
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
-  _nativeRemovalReferences(layers, identifiers, _layerHeaderItems(layers), shapes: bundles);
+  _nativeRemovalReferences(layers, identifiers, _layerHeaderItems(layers));
 }
 
 /// Selects definite outgoing style scalars without synthesizing unknown effects.

@@ -75,6 +75,10 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
       boundary = item.end;
       break;
     }
+    if (headers[item.start] case final AiNativeLayer layer when layer.bindingIssue == null && item.start == layer.source.end.start) {
+      boundary = layer.end;
+      break;
+    }
     if (headers[item.start] case final AiNativeLayer layer when layer.bindingIssue == null && item.start != layer.source.begin.start && item.start != layer.source.end.start) {
       continue;
     }
@@ -186,9 +190,12 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
     }
   }
   _ordinaryPathFollowing(drawing.items, shape.end);
-  final int next =
-      drawing.items.whereType<AiNativeInstruction>().where((item) => item.start >= shape.end && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator)).firstOrNull?.start ??
-      drawing.records.program.bodyEnd;
+  final AiNativeInstruction? following = drawing.items
+      .whereType<AiNativeInstruction>()
+      .where((item) => item.start >= shape.end && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator))
+      .firstOrNull;
+  final AiNativeLayer? layer = following == null ? null : headers[following.start];
+  final int next = layer != null && layer.bindingIssue == null && following!.start == layer.source.begin.start ? layer.start : following?.start ?? drawing.records.program.bodyEnd;
   _ordinaryGroupMetadata(drawing, shape.end, next);
   return _NativeShapeBundle(shape: shape, start: start, commands: commands, styleWrites: style.writes, styleReads: style.reads);
 }

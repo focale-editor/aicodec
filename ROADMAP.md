@@ -382,6 +382,24 @@ groups and compound topology. There is no general modern object lifecycle API.
   pair-removal and 24 pair-reordering transactions regenerated and independently
   rechecked. Broader resource-reference lifecycle remains outstanding; this task
   stays open. No Focale integration was introduced.
+  Identified ordinary paths, groups and layers now share whole-document reference
+  qualification with complete CC pairs. Qualified neighboring pairs, unused literal
+  styles, counted gradient banks and private scalar replay are retained exactly;
+  resource names stay separate from artwork identities. Wrapped layer boundaries
+  preserve distinct ownership on either side of a pair. Thirteen regressions cover
+  mixed owners, replay, aliases, conditional resources, malformed counts and opaque
+  annotations. Independent checks verify 18 fixed transactions: four removals from
+  declared assemblies of five pinned CC sources, six synthetic removals, four full
+  donor-file refusals and four synthetic refusals. Assembly recipes are rebuilt
+  from exact original fragments and bound to the independent donor parse; these
+  derived fixtures do not qualify removal from the complete donor files. Both
+  real native/printing views and synthetic printing views retain the requested
+  change, resource records, metadata alternatives and all unselected bytes.
+  Latest validation: 569 VM/568 Node tests, clean format/fix/analysis, and all 119
+  existing pair-copy/removal/reordering/movement and reference-scope transactions
+  regenerated and independently rechecked. Group/layer subtrees containing private
+  pairs and broader reference-owner schemas remain outstanding; this task stays
+  open. Synthetic native SVG and Adobe reopening limitations remain explicit.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

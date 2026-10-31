@@ -75,10 +75,13 @@ void _ordinaryObjectRemoval(AiNativeDrawing drawing, List<AiNativeItem> sources)
 }
 
 /// Refuses identity deletion unless all possible native reference owners qualify.
-void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers, {List<_NativeShapeBundle> shapes = const []}) {
+void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers) {
   if (identifiers.isEmpty) {
     return;
   }
+  final List<_NativeShapeBundle> shapes = [
+    for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true)) _shapeBundle(model.drawing, shape, model.structure),
+  ];
   final Set<AiNativeContainer> dictionaries = {
     for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
     for (final AiNativeLayer layer in model.layers)
@@ -86,14 +89,16 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
     for (final AiNativeObject object in model.drawing._objects.objects)
       if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
   };
-  final Set<AiNativeContainer> styles = {for (final _NativeShapeBundle bundle in shapes) bundle.shape.style!};
-  final List<AiNativeContainer> documents = [];
-  for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record) && !styles.contains(record))) {
-    if (record.type != 'Document') {
+  final List<({int start, int end})> independent = _referenceGradientRanges(model);
+  for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
+    if (record.type == 'KnownStyle') {
+      _referenceLiteralStyle(model.drawing, record);
+    } else if (record.type == 'Document') {
+      _referenceDocument(model, record);
+    } else {
       throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
     }
-    _referenceDocument(model, record);
-    documents.add(record);
+    independent.add((start: record.start, end: record.end));
   }
   final Map<String, int> occurrences = {};
   for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
@@ -105,9 +110,9 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
   final AiProgram program = model.drawing.records.program;
   int position = program.bodyStart;
   for (final _NativeShapeBundle bundle in shapes) {
-    _layerInterval(model, position, bundle.start, headers);
+    _referenceArtworkInterval(model, position, bundle.start, headers);
     position = bundle.shape.end;
   }
-  _layerInterval(model, position, program.bodyEnd, headers);
-  _referenceProgram(model, [...documents, ...styles]..sort((first, second) => first.start.compareTo(second.start)));
+  _referenceArtworkInterval(model, position, program.bodyEnd, headers);
+  _referenceProgram(model, independent..sort((first, second) => first.start.compareTo(second.start)));
 }

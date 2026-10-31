@@ -75,11 +75,13 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing draw
       final AiLiveShape? preceding = index == 0 ? null : bound[index - 1];
       if (!_ordinaryMetadataPrefix(drawing, previousEnds[path]!, path.start, allowStateOnly: drawing._objects.forSource(path).liveShape != null) &&
           (preceding == null ||
-              _pathInterval(items, preceding.end, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)))) {
+              _pathInterval(items, preceding.end, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)) &&
+                  !_ordinaryMetadataPrefix(drawing, preceding.end, path.start, allowStateOnly: true))) {
         throw UnsupportedError('The selected path has unresolved appearance dependencies.');
       }
       // Mode-one XW ends the preceding bound shape. Its resolved postfix style
       // does not turn a later ordinary path into a private printing expansion.
+      // Qualified layer headers may separate these independent native owners.
       // A direct shape's own qualified dictionary also sets the plain flag;
       // its prefix must still contain only resolved metadata and ordinary state.
     }

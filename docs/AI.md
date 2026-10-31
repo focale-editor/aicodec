@@ -356,7 +356,8 @@ native program. Drawing bounds remain conservative instead of shrinking.
 
 Removing an identity requires stronger reference qualification than copying it.
 The qualified identified-source subset contains ordinary declarative artwork,
-qualified layer/path/group metadata dictionaries and explicitly checked setup
+complete CC authoring/printing pairs, qualified layer/path/group metadata,
+literal native styles, counted gradient banks and explicitly checked setup
 `Document` records. Unknown resource records, opaque owners, unqualified executable
 sections, structured comments and ambiguous selected identities reject. Known DSC
 metadata, numeric document headers and layer count/view declarations are allowed.
@@ -388,6 +389,40 @@ outside its binary payload still reject. Custom screening code, unknown fields,
 repeated owners and conditional document records remain unqualified. These checks
 permit deletion; they do not edit settings, validate every ICC tag, or introduce
 color management.
+
+The same reference qualification now applies to identified paths, groups, layers
+and complete CC pairs. Every neighboring pair must have qualified geometry,
+metadata alternatives, shared styles and resource ownership. Private scalar
+assignments left by earlier pair edits are allowed; unknown private instructions
+remain unqualified. Ordinary objects before or after a wrapped layer retain their
+separate ownership from adjacent pairs and their printing expansions.
+
+Retained `KnownStyle` declarations, including unused styles, require literal
+supported filter graphs without opaque annotations or external plug-ins. Gradient
+resources require complete parsed stops/ramps, matching source wrappers, ordinary
+unconditional boundaries and correct `Bn` bank counts. Balanced nonprinting
+setup sections retain their original placement. Intervening structured comments
+remain subject to reference checks; numeric count tokens cannot hide them.
+Style/gradient names have their own namespaces: a resource name equal to a removed
+artwork identity remains unchanged. Resource definitions, uses, compatibility
+stops and cached ramps are preserved exactly; this does not delete or retarget
+resources or nonempty saved-selection/asset references.
+
+Thirteen regressions cover mixed-owner removal, private scalar replay, unused
+styles, separate identity namespaces, layer boundaries, ambiguous references,
+conditional resources, malformed counts and hidden metadata. The independent
+suite checks 18 fixed transactions: four removals from declared assemblies of
+five pinned real sources, six synthetic removals and eight exact refusals.
+Each real assembly retains an entire CC document source and inserts one exact
+donor pair, its style and selected gradient definitions with explicit initial
+state. Its recipe is independently reconstructed and every fragment is bound to
+the original native parse. These are derived fixtures, not successful removal
+from the four complete donor files: those still reject their unqualified setup
+owners. Checks retain exact resource and unselected source bytes, both pair
+metadata branches, layer declarations and native/printing appearance. Synthetic
+native SVG remains limited by the external reader's version-branch dispatcher.
+Ordinary group/layer APIs still reject subtrees containing private paired artwork;
+Adobe reopening and broader reference-owner schemas remain unqualified.
 
 Both APIs validate disjoint owned selections, complete output/token budgets,
 root-count updates and explicit saved-view invalidation atomically. Capability

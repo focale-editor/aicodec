@@ -42,6 +42,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   and both representations together while preserving unselected dependencies.
 - Complete CC pair movement between qualified groups and layers, retaining
   identities and both state streams with explicit destination inheritance.
+- Shared identity-removal checks across ordinary artwork and CC pairs, preserving
+  qualified native styles and counted gradient banks without confusing namespaces.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

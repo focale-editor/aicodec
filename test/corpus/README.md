@@ -222,11 +222,32 @@ retained real ICC profiles. Two injected references (an unknown document field
 and a nonempty exportable-assets table) must reject with exact source preservation.
 A checksum-pinned synthetic source adds identified path/group/subtree removal
 beside known document metadata. The 14 transactions qualify this explicit schema;
-unknown document fields and shared-style/text/plug-in dependencies remain unsupported.
+unknown document fields and unqualified style/text/plug-in dependencies remain unsupported.
 
 ```sh
 dart run tool/check_native_reference_scope.dart
 python3 tool/verify_native_reference_scope.py --inkai-source /tmp/extension-ai
+```
+
+Mixed resource/reference qualification uses four source pairs/styles/gradient
+fragments from the pinned shape and gradient files and the complete pinned
+`units-20x40mm_origin_topleft_CC.ai` document. Each declared assembly is rebuilt
+independently from its original native byte spans and explicit initial state;
+the reader verifies the selected donor pair, style and gradient records. These
+are derived mixed fixtures. The complete four donor files remain exact refusal
+cases because their other setup owners still require qualification.
+The 18 transactions include four derived-real and six synthetic removals, four
+full-source refusals and four synthetic reference/identity refusals. Selected
+path/group/layer/pair ownership, unselected bytes, retained style/gradient records,
+both metadata branches, scalar state and layer count/view edits are checked
+independently. SVG checks compare both views of the derived real fixtures and
+printing views of the synthetic fixtures after removing exactly the selected
+subtree. Native synthetic version-branch SVG remains unqualified. No source
+artwork or generated output is published, and no Adobe reopening is inferred.
+
+```sh
+dart run tool/check_native_reference_resources.dart
+python3 tool/verify_native_reference_resources.py --inkai-source /tmp/extension-ai
 ```
 
 Direct live-shape lifecycle reuses six files in `manifest.json` and

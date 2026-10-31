@@ -175,7 +175,7 @@ bool _referenceHeaderComment(String comment, AiNativeLimits limits) {
 }
 
 /// Qualifies source sections outside artwork and checked reference-free records.
-void _referenceProgram(AiNativeLayers model, List<AiNativeContainer> documents) {
+void _referenceProgram(AiNativeLayers model, List<({int start, int end})> independent) {
   final AiProgram program = model.drawing.records.program;
   final Set<int> declarations = {if (model.rootCountHeader != null) model.rootCountHeader!.token.start, ...model.viewComments.map((token) => token.start)};
   final Set<int> versionMarkers = {
@@ -187,11 +187,13 @@ void _referenceProgram(AiNativeLayers model, List<AiNativeContainer> documents) 
   final List<String> trailer = [];
   int index = 0;
   bool initial = true;
+  bool setup = false;
+  bool nonPrinting = false;
   for (final AiToken token in model.drawing.records._projection.tokens) {
-    while (index < documents.length && documents[index].end <= token.start) {
+    while (index < independent.length && independent[index].end <= token.start) {
       index++;
     }
-    if (index < documents.length && documents[index].start <= token.start && token.end <= documents[index].end || token.start >= program.bodyStart && token.end <= program.bodyEnd) {
+    if (index < independent.length && independent[index].start <= token.start && token.end <= independent[index].end || token.start >= program.bodyStart && token.end <= program.bodyEnd) {
       continue;
     }
     if (token.kind != .comment) {
@@ -204,6 +206,21 @@ void _referenceProgram(AiNativeLayers model, List<AiNativeContainer> documents) 
     if (const {'%%EndComments', '%%BeginProlog', '%%BeginSetup'}.contains(token.lexeme)) {
       initial = false;
     }
+    if (token.lexeme == '%%BeginSetup') {
+      setup = true;
+    } else if (token.lexeme == '%%EndSetup') {
+      if (nonPrinting) {
+        throw const FormatException('Unterminated nonprinting setup reference scope.');
+      }
+      setup = false;
+    } else if (const {'%AI5_Begin_NonPrinting', '%AI5_End_NonPrinting--'}.contains(token.lexeme)) {
+      final bool opening = token.lexeme == '%AI5_Begin_NonPrinting';
+      if (!setup || opening == nonPrinting) {
+        throw const FormatException('Unbalanced nonprinting setup reference scope.');
+      }
+      nonPrinting = opening;
+      continue;
+    }
     if (declarations.contains(token.start) || initial && versionMarkers.contains(token.start) || markers.contains(token.lexeme) || fields.contains(token.lexeme.split(':').first)) {
       continue;
     }
@@ -212,6 +229,9 @@ void _referenceProgram(AiNativeLayers model, List<AiNativeContainer> documents) 
         throw UnsupportedError('Deleting identified artwork has unqualified metadata outside its ordinary body: ${token.lexeme.split(':').first}.');
       }
     }
+  }
+  if (nonPrinting) {
+    throw const FormatException('Unterminated nonprinting setup reference scope.');
   }
   if (trailer.isNotEmpty && trailer.join(' ') != 'gsave annotatepage grestore showpage') {
     throw UnsupportedError('Deleting identified artwork has an unqualified executable trailer.');
