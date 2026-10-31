@@ -8,7 +8,7 @@ Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/native-pdf').create(recursive: true);
   final List<Map<String, Object?>> report = [];
   int failures = 0;
-  for (final String name in ['cmyk_rectangle.ai', 'rgb_rectangle.ai', 'circle.ai', 'simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai']) {
+  for (final String name in ['cmyk_rectangle.ai', 'rgb_rectangle.ai', 'circle.ai', 'simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai', 'gradient_linear.ai', 'gradient_radial.ai']) {
     try {
       final AiDocument document = const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes());
       final AiNativeSource source = AiNativeData.extract(document).single;
@@ -22,6 +22,9 @@ Future<void> main() async {
           ? cropBounds
           : AiBoundingBox(left: cropBounds.left, bottom: cropBounds.bottom, right: cropBounds.left + media[2] - media[0], top: cropBounds.bottom + media[3] - media[1]);
       final AiNativeDrawing drawing = AiNativeDrawing.decode(records: AiNativeRecords.decode(program: program));
+      if (name == 'circle.ai') {
+        await _checkMidpoints(output, program);
+      }
       final AiNativeDrawing moved = drawing.translateLiveShapes(shapes: drawing.liveShapes, deltaX: 37, deltaY: -19);
       PdfDocument rebuilt;
       PdfDocument translated;
@@ -35,6 +38,13 @@ Future<void> main() async {
         }
         await File('${output.path}/$name.original.pdf').writeAsBytes(const AiCodec().encode(document));
         await File('${output.path}/$name.saved.ai').writeAsBytes(const AiCodec().encode(saved));
+        if (name.startsWith('gradient_')) {
+          final AiProgram colors = _replaceGradient(program);
+          final AiPdfDocument recolored = AiNativePdf.save(source: source, program: colors, pageBounds: [bounds]);
+          await File('${output.path}/$name.colors.ps').writeAsBytes(colors.bytes);
+          await File('${output.path}/$name.colors.ai').writeAsBytes(const AiCodec().encode(recolored));
+          await File('${output.path}/$name.colors.pdf').writeAsBytes(const PdfEncoder().convert(recolored.pdf));
+        }
       } else {
         rebuilt = AiNativePdf.render(program: program, bounds: bounds);
         translated = AiNativePdf.render(program: moved.records.program, bounds: bounds);
@@ -62,6 +72,61 @@ Future<void> main() async {
   if (failures > 0) {
     exitCode = 1;
   }
+}
+
+/// Exposes two real nonlinear swatches as PDF fields for cached-ramp comparison.
+Future<void> _checkMidpoints(Directory output, AiProgram source) async {
+  for (final int number in [14, 54]) {
+    final bool radial = number == 14;
+    final AiProgram program = AiNativeEditor.apply(
+      program: source,
+      edits: [
+        AiSourceEdit(
+          start: source.bodyStart,
+          end: source.bodyEnd,
+          bytes: latin1.encode('''
+
+0 0 m 200 0 L 200 200 L 0 200 L Bb
+${radial ? '0 0 0 0 Bh' : ''}
+1 (Unnamed gradient $number) 0 0 0 1 1 0 0 1 0 0 1 Bg
+${radial ? '100 0 0 -100 100 100 Bm' : '200 0 0 -200 0 200 Xm'}
+f 0 BB
+'''),
+        ),
+      ],
+    );
+    final PdfDocument pdf = AiNativePdf.render(program: program, bounds: AiBoundingBox(left: 0, bottom: 0, right: 200, top: 200));
+    await File('${output.path}/midpoint-$number.pdf').writeAsBytes(const PdfEncoder().convert(pdf));
+  }
+}
+
+/// Changes the shared CC resource to three explicit process colors and opacity.
+AiProgram _replaceGradient(AiProgram program) {
+  final AiNativeGradientResources resources = AiNativeGradientResources.decode(records: AiNativeRecords.decode(program: program));
+  final List<List<double>> channels = [
+    [0, 1, 1, 0, 1, 0, 0],
+    [1, 0, 1, 0, 0, 1, 0],
+    [1, 1, 0, 0, 0, 0, 1],
+  ];
+  final List<AiNativeGradientStop> stops = [
+    for (int index = 0; index < 3; index++)
+      AiNativeGradientStop(
+        color: AiNativeGradientColor(kind: .rgb, components: channels[index]),
+        position: const [0.0, 40.0, 100.0][index],
+        opacity: index == 1 ? 0.4 : 1,
+      ),
+  ];
+  final List<AiNativeGradientRamp> ramps = [
+    for (int interval = 0; interval < 2; interval++)
+      AiNativeGradientRamp(
+        kind: .rgb,
+        channels: [
+          for (int channel = 0; channel < 7; channel++)
+            AiNativeGradientChannel.samples(values: [for (int sample = 0; sample < 256; sample++) (channels[interval][channel] * (255 - sample) + channels[interval + 1][channel] * sample).round()]),
+        ],
+      ),
+  ];
+  return resources.replaceStops(definition: resources.definitions.first, stops: stops, ramps: ramps).records.program;
 }
 
 /// Writes independent pixel probes for opacity, blend groups and clipping scope.

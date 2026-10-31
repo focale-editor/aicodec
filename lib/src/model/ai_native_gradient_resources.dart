@@ -220,12 +220,14 @@ final class AiNativeGradientResources {
   /// Replaces a global gradient's stops and all its native printing intervals.
   ///
   /// Stops are supplied in strictly increasing position order; ramps are in the
-  /// same interval order. Every definition with the same byte name changes in
+  /// same interval order. Native linear stops are written in descending order,
+  /// radial stops in ascending order. Every definition with the same byte name changes in
   /// one transaction. Existing names, linear/radial kind, instance geometry and
   /// unrelated bytes stay intact. Paired compatibility records are regenerated.
   ///
   /// The host composes the ramps using its color profiles and interpolation, and
-  /// regenerates flattened effects and PDF/previews before a synchronized save.
+  /// regenerates flattened effects before a synchronized save. `AiNativePdf`
+  /// can render supported classic fills into matching PDF appearances.
   /// Explicit ramps prevent stale printing caches; they do not certify that the
   /// host's samples match its stops. Old single-record syntax requires opaque
   /// colors with style codes zero through four.

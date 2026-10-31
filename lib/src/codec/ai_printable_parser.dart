@@ -2,12 +2,22 @@ part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Compiles complete printable paths, rejecting unrepresented drawing semantics.
 List<_PrintableNode> _readPrintable(AiProgram program) {
+  int colorModel = 1;
   for (final AiToken token in AiPostScript.tokenize(program.bytes, maxBytes: program.limits.maxDecodedBytes, maxTokens: program.limits.maxTokens, maxDepth: program.limits.maxDepth)) {
+    if (token.start < program.bodyStart && token.kind == .comment && token.lexeme.startsWith('%AI9_ColorModel:')) {
+      colorModel = int.tryParse(token.lexeme.substring('%AI9_ColorModel:'.length).trim()) ?? 0;
+    }
     if (token.start >= program.bodyStart && token.start < program.bodyEnd && (token.kind == .data || token.kind == .comment && token.lexeme.startsWith('%%BeginDocument'))) {
       throw UnsupportedError('Native PDF export requires a renderer for embedded drawing data.');
     }
   }
   final AiNativeDrawing drawing = AiNativeDrawing.decode(records: AiNativeRecords.decode(program: program));
+  final Map<int, AiNativeGradient> gradients = {for (final AiNativeGradient gradient in drawing.gradients.where((gradient) => !gradient.opening.isPrivate)) gradient.opening.end: gradient};
+  final Map<String, AiNativeGradientDefinition> definitions = {
+    if (gradients.isNotEmpty)
+      for (final AiNativeGradientDefinition definition in AiNativeGradientResources.decode(records: drawing.records).definitions) latin1.decode(definition.nameBytes): definition,
+  };
+  _PrintableGradient? gradient;
   final _PrintableState state = _PrintableState();
   final List<_PrintableContainer> stack = [_PrintableContainer(end: '')];
   final List<PdfOperation> path = [];
@@ -22,11 +32,14 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
       path.add(PdfOperation(operator: 'h'));
     }
     if (stack.last.end == '*U') {
+      if (gradient != null) {
+        throw UnsupportedError('Gradient compound paths require a complete shared appearance.');
+      }
       stack.last.compound.addAll(path);
       stack.last.paint = operator;
       stack.last.clip |= clip;
     } else {
-      stack.last.children.add(_printablePath(path, operator, state, clip));
+      stack.last.children.add(_printablePath(path, operator, state, clip, gradient: gradient));
     }
     path.clear();
     clip = false;
@@ -35,6 +48,25 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
   for (final AiInstruction instruction in program.instructions) {
     final String operator = instruction.operator;
     switch (operator) {
+      case 'Bb':
+        if (colorModel != 1 && colorModel != 2) {
+          throw UnsupportedError('Unknown native gradient document color model.');
+        }
+        if (gradient != null) {
+          throw const FormatException('Nested printable gradient.');
+        }
+        final AiNativeGradient native = gradients[instruction.end] ?? (throw const FormatException('Missing printable gradient instance.'));
+        final AiNativeGradientDefinition definition = definitions[latin1.decode(native.geometry.nameBytes)] ?? (throw const FormatException('Missing native gradient definition.'));
+        gradient = _PrintableGradient(native: native, definition: definition, cmyk: colorModel == 2);
+      case 'Bg' || 'Bh' || 'Xm' || 'Bm' || 'Bc':
+        if (gradient == null || instruction.end > gradient.native.closing.start) {
+          throw const FormatException('Gradient command outside its printable instance.');
+        }
+      case 'BB':
+        if (gradient == null || instruction.end != gradient.native.end || path.isNotEmpty) {
+          throw const FormatException('Invalid printable gradient termination.');
+        }
+        gradient = null;
       case 'm' || 'l' || 'L' || 'c' || 'C' || 'v' || 'V' || 'y' || 'Y':
         final List<double> values = _printableNumbers(instruction);
         AiPathSegment(operator: operator, coordinates: values);
@@ -186,14 +218,14 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
         throw UnsupportedError('Native PDF export cannot render $operator.');
     }
   }
-  if (stack.length != 1 || path.isNotEmpty || clip) {
+  if (stack.length != 1 || path.isNotEmpty || clip || gradient != null) {
     throw const FormatException('Unterminated printable drawing.');
   }
   return stack.single.children;
 }
 
 /// Combines subpaths with their final paint while keeping clip scope explicit.
-_PrintableNode _printablePath(List<PdfOperation> geometry, String paint, _PrintableState state, bool clip) {
+_PrintableNode _printablePath(List<PdfOperation> geometry, String paint, _PrintableState state, bool clip, {_PrintableGradient? gradient}) {
   final String operator = switch (paint.toUpperCase()) {
     'N' => 'n',
     'F' => state.evenOdd ? 'f*' : 'f',
@@ -204,13 +236,21 @@ _PrintableNode _printablePath(List<PdfOperation> geometry, String paint, _Printa
   if (clip && operator != 'n' && (state.opacity != 1 || state.blend != 'Normal' || state.isolated || state.knockout)) {
     throw UnsupportedError('Painting a translucent clipping path requires separate appearances.');
   }
+  if (gradient != null && (clip || !const {'F', 'B'}.contains(paint.toUpperCase()))) {
+    throw UnsupportedError('Native gradient rendering requires a filled, non-clipping path.');
+  }
   return _PrintableNode(
     operations: [
       ...state.attributes.values,
       ...geometry,
       if (clip) PdfOperation(operator: state.evenOdd ? 'W*' : 'W'),
-      PdfOperation(operator: operator),
+      if (gradient == null) PdfOperation(operator: operator),
     ],
+    gradient: gradient,
+    gradientStroke: gradient != null && (gradient.native.closing.numbers!.single > 0 || paint.toUpperCase() == 'B')
+        ? [...state.attributes.values, ...geometry, if (gradient.native.closing.numbers!.single == 2) PdfOperation(operator: 'h'), PdfOperation(operator: 'S')]
+        : const [],
+    evenOdd: state.evenOdd,
     clip: clip,
     opacity: clip ? 1 : state.opacity,
     blend: state.blend,

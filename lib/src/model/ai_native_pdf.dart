@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:aikit/src/codec/ai_native_data.dart';
@@ -7,13 +9,16 @@ import 'package:aikit/src/model/ai_native_records.dart';
 import 'package:aikit/src/model/ai_program.dart';
 import 'package:pdfcore/pdfcore.dart';
 
+part '../codec/ai_printable_gradient.dart';
 part '../codec/ai_printable_parser.dart';
+part '../editing/ai_printable_gradient_writer.dart';
 part '../editing/ai_printable_pdf_writer.dart';
 
 /// Rebuilds PDF compatibility artwork from native printable Illustrator paths.
 ///
 /// This interprets declarative process-color paths, layers, groups, compound
-/// paths, clipping and supported opacity records. It does not execute a prolog.
+/// paths, clipping, classic gradient fills and supported opacity records.
+/// It does not execute a prolog.
 /// Unsupported drawing operations reject the whole export. Private authoring
 /// paths remain in the native program and do not paint a second time.
 abstract final class AiNativePdf {
@@ -22,8 +27,9 @@ abstract final class AiNativePdf {
   /// [bounds] specifies the page in native drawing points, with y upwards.
   /// It is explicit because artwork bounds and Illustrator artboards differ.
   /// Hidden or nonprinting layers do not paint; their authoring data is retained
-  /// only when packaging with [save]. Text, gradients, rasters, patterns, spot
-  /// colors and unrecognized appearance operations currently reject export.
+  /// only when packaging with [save]. Classic gradient fills require explicit
+  /// printing matrices and process colors; stop opacity uses a PDF soft mask.
+  /// Text, rasters, patterns, spot colors and unresolved appearances reject export.
   static PdfDocument render({required AiProgram program, required AiBoundingBox bounds, PdfLimits limits = const PdfLimits()}) {
     limits.validate();
     final PdfDocument empty = PdfDocument.fromPages(
@@ -71,6 +77,15 @@ final class _PrintableNode {
   /// Whether layer visibility and printing flags allow this node to paint.
   final bool visible;
 
+  /// Native gradient fill and its absolute printing geometry, when present.
+  final _PrintableGradient? gradient;
+
+  /// Stroke painted after the gradient clip has been restored.
+  final List<PdfOperation> gradientStroke;
+
+  /// Winding rule used to bound the gradient to its painted geometry.
+  final bool evenOdd;
+
   /// Opacity applied to the complete object, including overlapping fill/stroke.
   double opacity;
 
@@ -90,6 +105,9 @@ final class _PrintableNode {
     this.group = false,
     this.clip = false,
     this.visible = true,
+    this.gradient,
+    this.gradientStroke = const [],
+    this.evenOdd = false,
     this.opacity = 1,
     this.blend = 'Normal',
     this.isolated = false,

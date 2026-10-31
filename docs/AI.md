@@ -333,6 +333,8 @@ position order and one host-composed printing interval per adjacent pair, in
 increasing interval order. The writer updates the count, both stop
 representations and the complete printing ramp. Names, resource counts, gradient
 kind, instance geometry, other resources and drawing-body bytes remain unchanged.
+Native linear stops are written in descending position order and radial stops
+in ascending order, matching all 296 linear and 82 radial corpus definitions.
 Unknown structural metadata/operators, mixed same-name kinds, foreign handles,
 coincident stops and excessive expansion reject the edit. Older stop syntax
 requires opaque style-zero-through-four colors without an opacity wrapper.
@@ -340,10 +342,11 @@ requires opaque style-zero-through-four colors without an opacity wrapper.
 Ramp composition, color profiles, tint/separation conversion and named-color
 registration belong to the host. AiKit requires explicit intervals to avoid
 retaining stale caches; it does not prove that caller-supplied samples reproduce
-the supplied stops or implement Illustrator's midpoint interpolation. Replacing
+the supplied stops. Replacing
 a global swatch changes all its users. Isolating a single object, adding/removing
 resources, hard stops, mesh gradients along/across strokes, flattened appearance
-regeneration and synchronized PDF output remain further work. Definition-local
+regeneration remain further work. `AiNativePdf` synchronizes supported classic
+gradient fills; other gradient appearances still require host rendering. Definition-local
 comments are regenerated with the edited resource; external bytes are preserved.
 
 The independent corpus check compares all 378 definitions, 1,103 authoritative
@@ -407,6 +410,25 @@ state once. A clip persists only inside its enclosing mask group; translucent
 paint on the clipping path itself is rejected. Nonprinting and hidden layers
 are validated even though they do not paint.
 
+Classic linear and radial gradient fills use the retained absolute `Xm`/`Bm`
+printing matrices, preserving transformed axes, elliptical aspect ratios and
+focal offsets without approximating shape bounds. Linear fills require one
+overall `Xm`, or a single full-interval `Bm` for a two-stop resource. Radial fills
+require one `Bm`; `Bh` angle and distance determine the unit focal point.
+The `Bg` clipping flag controls the fill clip, and `BB` can add a solid stroke
+after that clip is restored. Missing or singular printing geometry rejects export.
+
+Color stops become shared PDF functions in their process color space. Gray can
+join RGB or CMYK stops without a color-profile conversion; gray in an explicitly
+CMYK document becomes black ink only. RGB alternatives can join CMYK in a CMYK
+document. Other mixed/named colors require a host color policy. Midpoints at or
+above 50% use a power curve; those below 50% use its mirrored form. Constant
+endpoint intervals cover stops that do not reach zero or one hundred percent.
+Stop opacity uses the same interpolation and geometry in a separate DeviceGray
+soft mask, independent of the painting color space and object/group opacity.
+This reauthors vector shading functions from the stops; it does not quantize
+colors through the retained byte ramp or execute its printing prolog.
+
 `AiNativePdf.save(source:, program:, pageBounds:)` rebuilds compatibility pages
 and replaces their native data together. It requires a PDF-backed source with
 one extracted native program, including programs aliased by multiple owners.
@@ -422,7 +444,9 @@ in the graph; this is not data redaction.
 The edited program must already contain synchronized printable expansions, as
 produced by supported live-shape translations. `XW` known-style markers require
 a bound live shape with an existing printable appearance. This method does not
-regenerate those expansions from opaque authoring records. Text, gradients,
+regenerate those expansions from opaque authoring records. Gradient strokes,
+coincident stops, gradient compound paths, multiple appearances within a gradient,
+newer interpolation methods, text,
 rasters, patterns, spot colors, overprint, embedded drawing data, nested compound
 groups and unknown drawing commands currently reject the entire export. This
 includes unsupported commands inside hidden layers. No Adobe prolog executes.
@@ -566,19 +590,30 @@ and checks visible, hidden and nonprinting layer behavior. That test explicitly
 skips if Ghostscript is unavailable. No Adobe Illustrator installation was used;
 native reopening and complete editing compatibility remain unverified.
 
-`check_native_pdf.dart` regenerates and translates six process-color fixtures.
-Four have original PDFs: Poppler compares their original and explicitly shifted
+`check_native_pdf.dart` regenerates and translates eight fixtures.
+Six have original PDFs: Poppler compares their original and explicitly shifted
 artwork with the rebuilt pages, while pypdf and Python zlib/Zstandard independently
 recover the saved native bytes. Two native-only live-shape fixtures use the
 pinned AI reader's printable stream converted through SVG and Inkscape to PDF;
 private shape reconstruction is excluded because it changes expanded contours.
-All twelve render comparisons pass at 1,200 pixels wide. Mean channel differences
-are below 0.02/255 and confined to reference-edge neighborhoods; unchanged flat
-colors are required. The moved opacity fixture has a small boundary difference
+Two additional saves change the shared gradient resource to three RGB stops with
+opacity. Their references replace only the original PDF's color/alpha functions.
+All eighteen render comparisons pass at 1,200 pixels wide. The fifteen linear
+instances match exactly before/after translation and recoloring. Radial outlines
+retain more coordinate precision than their original PDF rectangles; their mean
+channel difference is below 0.068/255, concentrated at boundary pixels. Other
+means remain below 0.02/255; unchanged flat colors are required. Gradient fields
+away from sharp boundaries must agree within one channel level. Native data in
+the six translated and two recolored saves is decoded independently.
+The moved opacity fixture has a small boundary difference
 from native `756.999999999999` versus original PDF `757` coordinates. Nine further
 pixel probes check whole-object fill/stroke opacity, a Multiply group, clip scope,
 hidden layers and nonprinting layers. Other blend modes and Adobe reopening are
-not independently qualified by these probes.
+not independently qualified by these probes. Two real nonlinear swatches also
+compare generated PDF function values with their independently decoded Adobe
+printing samples, covering midpoints below and above fifty percent. This is
+471 samples across four channels, with maximum difference below 0.5/255.
+This is evidence for classic interpolation, not general color-profile equivalence.
 
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
@@ -587,11 +622,11 @@ not independently qualified by these probes.
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
-| Gradients | Inspect instances; translate vectors/printing matrices; isolate positional styles; atomically replace global stops, fallback records and host-composed ramps | Color-managed ramp composition, isolated object colors, full appearance semantics and meshes |
+| Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradient strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
-| PDF compatibility appearance | Regenerate supported printable process-color paths and save them with native data; preserve or replace other graphs explicitly | Text, gradients, rasters, unresolved effects and host scene integration |
+| PDF compatibility appearance | Regenerate supported printable paths and classic gradient fills, saving them with native data; preserve or replace other graphs explicitly | Text, gradient strokes, rasters, unresolved effects and host scene integration |
 
 ## References
 

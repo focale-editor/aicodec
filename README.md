@@ -30,6 +30,8 @@ as self-contained AI7 PostScript.
   shared style resources and versioned metadata.
 - Native process-color path rendering into PDF and synchronized saving, with
   layers, compound paths, clipping, object opacity and group blend modes.
+- Classic linear/radial gradient fills in PDF, including focal ellipses,
+  midpoint interpolation, stop opacity and synchronized color edits.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -122,15 +124,17 @@ effects still require host regeneration before saving a synchronized document.
 color stops, opacity, named colors and sampled printing ramps. `replaceStops`
 updates every same-name definition and its compatibility records atomically,
 using explicit host-composed ramp intervals. Instance geometry stays intact;
-color management, flattened effects and PDF synchronization remain host work.
+color management and flattened effects remain host work. Supported classic
+fills can be synchronized through `AiNativePdf`.
 
 `AiNativePdf.render(program:, bounds:)` builds a PDF page from supported native
 printable paths, using an explicit drawing-coordinate page rectangle.
 `AiNativePdf.save(source:, program:, pageBounds:)` regenerates existing PDF pages
 and rewrites their shared native program in one immutable snapshot. Metadata and
 annotations are retained; stale thumbnails are removed. This currently supports
-process-color paths and resolved live-shape expansions, including groups,
-clipping and opacity. Unsupported drawing commands reject the complete save.
+process-color paths, classic gradient fills and resolved live-shape expansions,
+including groups, clipping and opacity. Unsupported drawing commands reject
+the complete save.
 
 ## Scope
 
@@ -148,8 +152,9 @@ gradient appearances; resizing,
 rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
-PDF bridge covers supported printable paths; text, gradients, rasters and
-unresolved effects still need host regeneration before saving visual edits.
+PDF bridge covers supported printable paths and classic gradient fills; text,
+rasters, gradient strokes and unresolved effects still need host regeneration
+before saving visual edits.
 No Adobe Illustrator reopening validation has been performed.
 
 See [docs/AI.md](docs/AI.md) for editing policies and
@@ -177,8 +182,8 @@ dart test --platform node
 The optional corpus checks extraction, layer renaming and native recompression
 on 37 pinned files. Independent zlib/Zstandard decoding checks the resulting
 bytes. Eight fixtures also check live-shape translations against a pinned
-independent reader and renderer. Six fixtures check regenerated and translated
-PDFs, with independent decoding of the four PDF-backed native saves. These
+independent reader and renderer. Eight fixtures check regenerated and translated
+PDFs, plus two gradient color/opacity edits, with independent native decoding. These
 checks do not establish complete native
 Illustrator compatibility.
 

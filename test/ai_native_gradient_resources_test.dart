@@ -54,6 +54,15 @@ AiNativeGradientStop _gray(double position, {bool hasOpacity = true}) => AiNativ
 
 /// Checks gradient syntax, immutable ownership and atomic cache replacement.
 void main() {
+  test('writes radial stops from the center outward and linear stops in reverse order', () {
+    for (final int kind in [0, 1]) {
+      final AiNativeGradientResources source = _resources(_definition(kind: kind));
+      final AiNativeGradientResources changed = source.replaceStops(definition: source.definitions.single, stops: [_gray(0), _gray(100)], ramps: [_ramp()]);
+      check(changed.definitions.single.stops.map((stop) => stop.position).toList()).deepEquals(kind == 1 ? [0, 100] : [100, 0]);
+      check(changed.definitions.single.fallbackStops.map((stop) => stop.position).toList()).deepEquals(kind == 1 ? [0, 100] : [100, 0]);
+    }
+  });
+
   test('reads paired stops, precision alternatives and sampled ramps', () {
     final AiNativeGradientResources source = _resources(_definition());
     final AiNativeGradientDefinition gradient = source.definitions.single;

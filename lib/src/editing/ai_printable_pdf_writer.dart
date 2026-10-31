@@ -92,6 +92,9 @@ final class _PrintablePdfWriter {
   /// Reused opacity resources, never applied directly to a fill/stroke pair.
   final Map<(double, String), (String, PdfReference)> opacities = {};
 
+  /// Gradient functions shared by instances without sharing positional matrices.
+  final Map<AiNativeGradientDefinition, (PdfReference, PdfReference?)> gradientFunctions = {};
+
   /// Aggregate generated content bytes before compression.
   int bytes = 0;
 
@@ -109,7 +112,7 @@ final class _PrintablePdfWriter {
       ]) {
     final int pageCount = document.pages.length;
     for (int index = 0; index < pageCount; index++) {
-      for (final String category in ['XObject', 'ExtGState']) {
+      for (final String category in ['XObject', 'ExtGState', 'Shading']) {
         final PdfValue? value = editor.pageResources(pageIndex: index)[category];
         if (value != null && document.resolve(value) is! PdfNull) {
           names.addAll(document.dictionary(value).values.keys);
@@ -131,8 +134,10 @@ final class _PrintablePdfWriter {
         continue;
       }
       final _PrintableChunk child = this.nodes(node.children);
-      _charge(node.operations.length + 2);
-      child.operations.insertAll(0, [PdfOperation(operator: 'q'), ...node.operations]);
+      final _PrintableChunk paint = node.gradient == null ? (_PrintableChunk()..operations.addAll(node.operations)) : _gradient(node);
+      _charge(paint.operations.length + 2);
+      child.add(paint);
+      child.operations.insert(0, PdfOperation(operator: 'q'));
       child.operations.add(PdfOperation(operator: 'Q'));
       if (node.opacity == 1 && node.blend == 'Normal' && !node.isolated && !node.knockout) {
         result.add(child);

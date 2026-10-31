@@ -40,7 +40,7 @@ AiNativeGradientResources _replaceGradientStops(AiNativeGradientResources resour
       writer.add('${ramp.kind.index} %_Br\n');
     }
     writer.add('[\n');
-    for (final AiNativeGradientStop stop in stops.reversed) {
+    for (final AiNativeGradientStop stop in target.radial ? stops : stops.reversed) {
       writer.stop(stop);
       writer.add(target.usesPrivateStops ? ' %_BS\n%_' : ' %_Bs\n');
       if (target.usesPrivateStops) {

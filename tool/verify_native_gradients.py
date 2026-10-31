@@ -127,14 +127,15 @@ def main():
         assert new.definition.nColors == 3 and new.definition.type == definitions[target].definition.type
         actual = stops(new, gradient.Bs, 'Bs')
         assert actual == stops(new, gradient.Bs, '%_BS')
-        assert [item['position'] for item in actual] == [100, 40, 0]
-        for primary, stop in zip([2, 1, 0], actual):
+        radial = new.definition.type == 1
+        assert [item['position'] for item in actual] == ([0, 40, 100] if radial else [100, 40, 0])
+        for primary, stop in zip([0, 1, 2] if radial else [2, 1, 0], actual):
             assert stop['components'] == [0 if channel == primary else 1 for channel in range(3)] + [0] + [1 if channel == primary else 0 for channel in range(3)]
             assert stop['opacity'] == (0.4 if primary == 1 else 1)
             assert stop['midpoint'] == 50 and stop['style'] == 2 and stop['hasOpacity']
         new_ramps = ramps(new, gradient.Br)
         assert len(new_ramps) == 2
-        colors = [stop['components'] for stop in reversed(actual)]
+        colors = [stop['components'] for stop in sorted(actual, key=lambda stop: stop['position'])]
         for interval, ramp in enumerate(new_ramps):
             assert ramp['kind'] == 4 and len(ramp['channels']) == 7
             for channel, samples in enumerate(ramp['channels']):

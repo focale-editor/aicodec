@@ -14,10 +14,11 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageFilter, ImageStat
 from lxml import etree
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import ArrayObject, BooleanObject, DecodedStreamObject, DictionaryObject, FloatObject, NameObject, NumberObject
 import zstandard
 
 REVISION = '1a5f42a0b0407fc869e032420570682048810108'
-FILES = {'cmyk_rectangle.ai', 'rgb_rectangle.ai', 'circle.ai', 'simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai'}
+FILES = {'cmyk_rectangle.ai', 'rgb_rectangle.ai', 'circle.ai', 'simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai', 'gradient_linear.ai', 'gradient_radial.ai'}
 
 
 def render_pdf(path, width, height):
@@ -60,7 +61,7 @@ def native_programs(path):
     return programs
 
 
-def compare(first, second, difference, ceiling):
+def compare(first, second, difference, ceiling, gradient=False):
     """Measure all channel differences, retaining the image for visual review."""
     with Image.open(first) as image:
         expected = image.convert('RGB')
@@ -80,6 +81,13 @@ def compare(first, second, difference, ceiling):
     mask = edges.point(lambda value: 255 if value else 0).filter(ImageFilter.MaxFilter(3))
     for channel in delta.split():
         assert ImageChops.multiply(channel, ImageChops.invert(mask)).getbbox() is None, f'{second.name}: changed flat pixels'
+    if gradient:
+        # Smooth field variations must agree to one channel level. Only sharp
+        # boundaries permit the larger coverage difference from rounded outlines.
+        sharp = edges.point(lambda value: 255 if value > 8 else 0).filter(ImageFilter.MaxFilter(3))
+        for channel in delta.split():
+            interior = ImageChops.multiply(channel, ImageChops.invert(sharp))
+            assert interior.getextrema()[1] <= 1, f'{second.name}: gradient field differs away from sharp edges'
     return mean
 
 
@@ -129,8 +137,91 @@ def check_composition(output):
     return len(samples)
 
 
+def recolor_original(source, destination):
+    """Independently replace original PDF fields with specified RGB/opacity stops."""
+    def array(values):
+        return ArrayObject([FloatObject(value) for value in values])
+
+    def function(values):
+        intervals = ArrayObject([
+            DictionaryObject({NameObject('/FunctionType'): NumberObject(2), NameObject('/Domain'): array([0, 1]), NameObject('/C0'): array(first), NameObject('/C1'): array(last), NameObject('/N'): NumberObject(1)})
+            for first, last in zip(values, values[1:])
+        ])
+        return DictionaryObject({NameObject('/FunctionType'): NumberObject(3), NameObject('/Domain'): array([0, 1]), NameObject('/Functions'): intervals, NameObject('/Bounds'): array([0.4]), NameObject('/Encode'): array([0, 1, 0, 1])})
+
+    document = PdfReader(source)
+    writer = PdfWriter()
+    writer.clone_document_from_reader(document)
+    page = writer.pages[0]
+    resources = page['/Resources']
+    content = page.get_contents().get_data()
+    for index, (name, reference) in enumerate(resources['/Shading'].items()):
+        shading = reference.get_object()
+        shading[NameObject('/ColorSpace')] = NameObject('/DeviceRGB')
+        shading[NameObject('/Function')] = function([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        mask_shading = DictionaryObject(shading)
+        mask_shading[NameObject('/ColorSpace')] = NameObject('/DeviceGray')
+        mask_shading[NameObject('/Function')] = function([[1], [0.4], [1]])
+        form = DecodedStreamObject()
+        form.set_data(b'/MaskShade sh')
+        form.update({
+            NameObject('/Type'): NameObject('/XObject'), NameObject('/Subtype'): NameObject('/Form'),
+            NameObject('/BBox'): array([-100, -100, 100, 100]),
+            NameObject('/Resources'): DictionaryObject({NameObject('/Shading'): DictionaryObject({NameObject('/MaskShade'): mask_shading})}),
+            NameObject('/Group'): DictionaryObject({NameObject('/S'): NameObject('/Transparency'), NameObject('/CS'): NameObject('/DeviceGray'), NameObject('/I'): BooleanObject(True)}),
+        })
+        state_name = f'/ExpectedAlpha{index}'
+        resources['/ExtGState'][NameObject(state_name)] = DictionaryObject({
+            NameObject('/SMask'): DictionaryObject({NameObject('/S'): NameObject('/Luminosity'), NameObject('/G'): writer._add_object(form), NameObject('/BC'): array([0])}),
+        })
+        content = content.replace(f'{name} sh'.encode(), f'{state_name} gs {name} sh'.encode())
+    stream = DecodedStreamObject()
+    stream.set_data(content)
+    page[NameObject('/Contents')] = writer._add_object(stream)
+    writer.write(destination)
+
+
+def check_midpoints(inkai, output):
+    """Compare PDF function evaluation with original Adobe sampled print ramps."""
+    from inkai.parser.gradient import Br
+    from verify_native_gradients import ramps
+
+    def evaluate(function, value):
+        function = function.get_object()
+        if function['/FunctionType'] == 2:
+            factor = value ** float(function['/N'])
+            return [float(first) + (float(last) - float(first)) * factor for first, last in zip(function['/C0'], function['/C1'])]
+        assert function['/FunctionType'] == 3
+        boundaries = [0, *map(float, function['/Bounds']), 1]
+        index = next((index for index in range(len(boundaries) - 1) if value < boundaries[index + 1]), len(boundaries) - 2)
+        first, last = map(float, function['/Encode'][2 * index:2 * index + 2])
+        mapped = first + (last - first) * (value - boundaries[index]) / (boundaries[index + 1] - boundaries[index])
+        return evaluate(function['/Functions'][index], mapped)
+
+    definitions = inkai.parse(str(output / 'circle.ai.native.ps')).setup.gradients
+    results = []
+    for number in [14, 54]:
+        definition = definitions[f'Unnamed gradient {number}']
+        samples = ramps(definition, Br)[0]['channels']
+        stops = sorted(definition.color_stops, key=lambda stop: stop.ramp_point)
+        start, end = stops[0].ramp_point / 100, stops[1].ramp_point / 100
+        page = PdfReader(output / f'midpoint-{number}.pdf').pages[0]
+        shade = next(iter(page['/Resources']['/Shading'].values())).get_object()
+        assert shade['/ColorSpace'] == '/DeviceCMYK'
+        assert all(isinstance(channel, list) and len(channel) == len(samples[0]) for channel in samples)
+        errors = []
+        for index in range(len(samples[0])):
+            actual = evaluate(shade['/Function'], start + (end - start) * index / (len(samples[0]) - 1))
+            errors.extend(abs(value - samples[channel][index] / 255) for channel, value in enumerate(actual))
+        mean, maximum = sum(errors) / len(errors), max(errors)
+        assert mean < 0.5 / 255 and maximum < 1 / 255, (number, mean, maximum)
+        results.append({'resource': number, 'samples': len(samples[0]), 'meanChannelDifference': mean, 'maxChannelDifference': maximum})
+        render_pdf(output / f'midpoint-{number}.pdf', 600, 600)
+    return results
+
+
 def main():
-    """Require all six fixtures and verify both original and edited artwork."""
+    """Require all eight fixtures and verify both original and edited artwork."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -160,11 +251,17 @@ def main():
             programs = native_programs(args.output / f'{name}.saved.ai')
             assert all(program == (args.output / f'{name}.translated.ps').read_bytes() for program in programs)
             owners += len(programs)
-        for label in ['rebuilt', 'translated']:
+        gradient = name.startswith('gradient_')
+        if gradient:
+            recolor_original(args.output / f'{name}.original.pdf', args.output / f'{name}.expected-colors.pdf')
+            assert all(program == (args.output / f'{name}.colors.ps').read_bytes() for program in native_programs(args.output / f'{name}.colors.ai'))
+        for label in ['rebuilt', 'translated', *(['colors'] if gradient else [])]:
             if row['pdfBacked']:
-                expected = args.output / f'{name}.{"original" if label == "rebuilt" else "expected-translated"}.pdf'
+                expected = args.output / f'{name}.{"original" if label == "rebuilt" else "expected-" + label}.pdf'
                 reference = render_pdf(expected, width, height)
-                ceiling = 0.02
+                # Native radial outlines retain more precision than the original
+                # PDF's rounded rectangles; subpixel edges differ, fields do not.
+                ceiling = 0.1 if name == 'gradient_radial.ai' else 0.02
             else:
                 native = args.output / f'{name}.{"native" if label == "rebuilt" else "translated"}.ps'
                 svg = args.output / f'{name}.{label}.reference.svg'
@@ -178,16 +275,17 @@ def main():
                 reference = render_pdf(pdf, width, height)
                 ceiling = 0.05
             actual = render_pdf(args.output / f'{name}.{label}.pdf', width, height)
-            mean = compare(reference, actual, args.output / f'{name}.{label}.difference.png', ceiling)
+            mean = compare(reference, actual, args.output / f'{name}.{label}.difference.png', ceiling, gradient)
             results.append({'file': name, 'variant': label, 'reference': 'original PDF' if row['pdfBacked'] else 'independent printable AI to SVG', 'meanChannelDifference': mean})
             print(f'{name} {label}: mean channel difference {mean}')
-    assert owners == 4 and len(results) == 12
+    assert owners == 6 and len(results) == 18
     probes = check_composition(args.output)
+    midpoints = check_midpoints(inkai, args.output)
     poppler = subprocess.run(['pdftoppm', '-v'], check=True, capture_output=True, text=True).stderr.splitlines()[0]
     inkscape = subprocess.check_output(['inkscape', '--version'], text=True).strip()
-    result = {'oracleRevision': REVISION, 'poppler': poppler, 'inkscape': inkscape, 'nativeOwners': owners, 'compositionProbes': probes, 'renders': results}
+    result = {'oracleRevision': REVISION, 'poppler': poppler, 'inkscape': inkscape, 'nativeOwners': owners, 'compositionProbes': probes, 'midpoints': midpoints, 'renders': results}
     (args.output / 'independent-report.json').write_text(json.dumps(result, indent=2) + '\n')
-    print(f'Independent native PDF comparisons: {len(results)}/12; native owners: {owners}/4')
+    print(f'Independent native PDF comparisons: {len(results)}/18; native owners: {owners}/6, plus two gradient color saves')
 
 
 if __name__ == '__main__':

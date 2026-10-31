@@ -55,14 +55,20 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   records and explicit host-composed printing intervals. All 378 definitions,
   1,103 stops and 725 intervals are compared independently; 23 resource rewrites,
   seven color layouts and 24 rendered CC instances are checked. Color-managed
-  ramp composition and flattened/PDF appearances remain host responsibilities.
+  ramp composition and flattened appearances remain host responsibilities.
 - Native printable process-color paths rendered through PdfCore and saved with
   their native program in one snapshot. Compound paths, clipping, hidden and
   nonprinting layers, object opacity and group blend state are supported.
-  Twelve independent render comparisons cover six original/translated fixtures;
-  four PDF-backed saves also have independently decoded native bytes. Nine pixel
-  probes check opacity, Multiply, clipping and layer flags. Text, gradients,
-  rasters and unrepresented drawing operations reject this renderer.
+  Eighteen independent comparisons cover eight original/translated fixtures and
+  two gradient recolorings; six translated and two recolored saves also have
+  independently decoded native bytes. Nine pixel probes check opacity, Multiply,
+  clipping and layer flags.
+- Classic gradient fills use absolute printing matrices, process-color PDF
+  functions, mirrored midpoints, focal ellipses and independent stop-opacity
+  masks. Two real swatches compare nonlinear PDF functions with their original
+  printing ramps. Native stop writes now follow the corpus's descending linear
+  and ascending radial order. Gradient strokes, hard stops, newer methods, text,
+  rasters and unrepresented drawing operations remain outside this renderer.
 
 ## Next native editing work
 
@@ -79,7 +85,7 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
    typography fixtures beyond Latin text and cover undo-free references.
 4. Model linked/embedded raster data, meshes, brushes, patterns, symbols, effects
    and plug-in records with explicit editing contracts.
-5. Extend synchronized native/PDF saves beyond process-color printable paths,
+5. Extend synchronized native/PDF saves beyond paths and classic gradient fills,
    integrate the host scene, and validate reopening in Illustrator on representative files.
 6. Extend legacy operator execution and native writing with bounded execution,
    resource handling and independent rendering checks.
