@@ -32,6 +32,7 @@ part '../editing/ai_native_reference_scope.dart';
 part '../editing/ai_native_reference_fields.dart';
 part '../editing/ai_native_path_lifecycle.dart';
 part '../editing/ai_native_shape_lifecycle.dart';
+part '../editing/ai_native_shape_removal.dart';
 part '../editing/ai_native_shape_copy_state.dart';
 part '../editing/ai_native_group_lifecycle.dart';
 part '../editing/ai_native_layer_editor.dart';

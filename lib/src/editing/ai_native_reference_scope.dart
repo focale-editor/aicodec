@@ -174,7 +174,7 @@ bool _referenceHeaderComment(String comment, AiNativeLimits limits) {
   return RegExp(r'^%AI5_FileFormat\s+\d+\.\d+\s*$').hasMatch(comment);
 }
 
-/// Qualifies source sections outside ordinary artwork and checked document records.
+/// Qualifies source sections outside artwork and checked reference-free records.
 void _referenceProgram(AiNativeLayers model, List<AiNativeContainer> documents) {
   final AiProgram program = model.drawing.records.program;
   final Set<int> declarations = {if (model.rootCountHeader != null) model.rootCountHeader!.token.start, ...model.viewComments.map((token) => token.start)};

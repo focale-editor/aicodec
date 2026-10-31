@@ -3,6 +3,14 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Known values for the two source interpretations at one copy boundary.
 typedef _NativeShapeInputs = ({Map<String, AiNativeInstruction> printing, Map<String, AiNativeInstruction> native});
 
+/// Serializes a qualified scalar assignment in its requested source projection.
+String _shapeStateText(AiNativeInstruction value, {required bool private}) {
+  final String operands = value.operator == 'd'
+      ? '[${value.operands.sublist(1, value.operands.length - 2).map((operand) => operand.lexeme).join(' ')}] ${value.operands.last.lexeme}'
+      : value.operands.map((operand) => operand.lexeme).join(' ');
+  return '${private ? '%_' : ''}$operands ${value.operator}\n';
+}
+
 /// Qualifies literal filter fields without treating executable values as data.
 bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switch (field.key) {
   'Name' || 'PluginFileName' || 'Title' => field.stringBytes != null,
@@ -188,7 +196,7 @@ Set<String> _shapeCopyReads(AiNativeDrawing drawing, AiNativePath path) => {
 };
 
 /// Restores only read-before-write values that the preceding original can change.
-List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeCopy copy, _NativeShapeInputs inputs, int maxBytes) {
+List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _NativeShapeInputs inputs, int maxBytes) {
   final Map<int, AiNativePath> paths = {
     for (final AiNativePath path in [...copy.shape.appearancePaths, copy.shape.path!]) path.start: path,
   };
@@ -226,10 +234,7 @@ List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeCopy copy, _Nati
 
   /// Bounds generated source before retaining an additional replay instruction.
   void append(AiNativeInstruction value, {bool private = false}) {
-    final String operands = value.operator == 'd'
-        ? '[${value.operands.sublist(1, value.operands.length - 2).map((operand) => operand.lexeme).join(' ')}] ${value.operands.last.lexeme}'
-        : value.operands.map((operand) => operand.lexeme).join(' ');
-    final String text = '${private ? '%_' : ''}$operands ${value.operator}\n';
+    final String text = _shapeStateText(value, private: private);
     if (prefix.length + text.length > maxBytes) {
       throw const AiLimitException(message: 'Shape copy state exceeds the native byte limit.');
     }

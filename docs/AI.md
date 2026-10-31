@@ -563,6 +563,42 @@ checks do not establish Adobe reopening or deletion, reordering and reparenting
 of separate authoring/printing pairs. Saving updated PDF artwork still requires
 a matching representation supplied by the host.
 
+### CC authoring/printing pair removal
+
+`AiNativeDrawing.removeLiveShapes(shapes:)` removes each selected complete pair,
+including its printing groups, private contour, point counts, panel flag and all
+saved metadata alternatives. It retains the shared styles, gradient resources,
+document bounds and every unselected source byte. Selection handles must belong
+to the current immutable snapshot; direct single-path shapes use `removePaths`.
+
+Public and private scalar assignments within removed objects remain in their
+original order and source projection. Definite scalar assignments from a known
+style are replayed privately when every visible paint part that assigns the
+attribute agrees on its value. Color clearing, hidden parts and other uncertain
+outgoing effects are not synthesized. The remaining source is checked for reads
+of these unresolved attributes before explicit reassignment. A following path,
+group or style that depends on one rejects the complete transaction. Unused
+terminal effects need no replacement. This qualifies first-object removal even
+when duplication cannot establish the object's incoming state.
+
+Deleting saved identities additionally requires a document-wide reference check.
+Every paired owner and its style must qualify; ordinary artwork/layers and the
+existing declarative document metadata contract cover the remaining source.
+Both newer and older dictionary IDs must be unambiguous. Unknown setup resources,
+unused unqualified styles, reference-bearing extensions or unresolved owners
+prevent identified deletion. No shared resources are deleted or renamed.
+The `liveShapeRemoval` capability requires operation-specific validation.
+
+Fourteen regressions cover batches, identities, two state projections, definite
+style replay, dependent following artwork, reference refusals, owned attachments,
+snapshot handles and limits. Independent validation covers 27 transactions and
+71 deleted pairs: 17 real-file removals compare native and printing SVG; seven
+synthetic removals compare printing SVG, decoded alternatives and native flags;
+three refusals retain exact source bytes. Replacement gaps contain only parsed
+source assignments and qualified style scalars; every other byte remains exact.
+The synthetic native SVG limitation described above still applies. These checks
+do not establish Adobe reopening, pair reordering or pair reparenting.
+
 ### Ordinary path lifecycle
 
 `AiNativeDrawing` supports the following operations on independent ordinary
@@ -1266,7 +1302,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves, including empty destination layers | Anonymous owners only; unknown state, references and private/derived objects reject; different layers or ancestor flags require explicit inheritance. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours and qualified complete groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete. |
+| CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal; supplied printing contours and qualified groups | Parameter changes, general affine resizing, pair moves and unresolved printing dependencies remain incomplete. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |
 | Cartesian mesh version 2 | Yes | Vertex color, tint and opacity | Geometry/topology edits incomplete; rendering belongs to the host. |

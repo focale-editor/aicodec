@@ -11,7 +11,7 @@ AiNativeDrawing _drawing(List<int> bytes) => AiNativeDrawing.decode(
 );
 
 /// Reports complete pair spans separately from printable and authoring owners.
-List<Map<String, Object?>> _inventory(AiNativeDrawing drawing) {
+List<Map<String, Object?>> shapeLifecycleInventory(AiNativeDrawing drawing) {
   final AiNativeObjects objects = AiNativeObjects.decode(drawing: drawing);
   return [
     for (final AiLiveShape shape in drawing.liveShapes)
@@ -70,8 +70,8 @@ Future<void> main() async {
             'bytes': entry.value,
           },
       ],
-      'before': _inventory(before),
-      'after': _inventory(after),
+      'before': shapeLifecycleInventory(before),
+      'after': shapeLifecycleInventory(after),
     });
     stdout.writeln('$result passed');
   }

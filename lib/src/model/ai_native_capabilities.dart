@@ -153,6 +153,9 @@ enum AiNativeEditOperation {
   /// Copy a complete bound authoring/printing pair with fresh saved identities.
   liveShapeDuplication,
 
+  /// Removes complete authoring/printing pairs with qualified state and references.
+  liveShapeRemoval,
+
   /// Attach host-composed geometry to an existing separate printing expansion.
   printingContours,
 

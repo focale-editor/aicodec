@@ -269,6 +269,22 @@ dart run tool/check_native_shape_lifecycle.dart
 python3 tool/verify_native_shape_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+Complete-pair removal reuses the same five pinned real files and seven
+checksum-pinned synthetic sources. The fixed 27 transactions cover 17 real-file
+and seven synthetic removals (71 pairs), plus three exact refusals for inherited
+style state, unknown references and ambiguous identities. Each replacement gap
+must contain precisely the independently parsed original state assignments and
+unanimous visible style scalars; all bytes outside those gaps remain exact.
+Retained pairs, both metadata alternatives and native owner flags are checked
+separately. Real-file native/printing SVG and synthetic printing SVG must equal
+the original with exactly the selected objects removed. The synthetic native SVG
+limitation above remains explicit; this does not certify Adobe reopening.
+
+```sh
+dart run tool/check_native_shape_removal.dart
+python3 tool/verify_native_shape_removal.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

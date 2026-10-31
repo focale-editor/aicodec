@@ -323,6 +323,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   41 layer headers and 181 ordinary paths. Pair removal, reordering, reparenting
   and broader resource-reference lifecycle remain outstanding; the task stays
   open. No native Adobe reopening or application rendering was introduced.
+  Complete CC pairs now support `removeLiveShapes`, retaining shared styles and
+  resources while removing both representations, saved alternatives, counts and
+  panel flags. Explicit public/private assignments remain; definite native style
+  scalars are replayed from source. Following artwork that reads an unresolved
+  removed-style effect before reassignment rejects atomically. Saved identities
+  additionally require an unambiguous whole-document reference scope covering
+  every paired owner, qualified styles, ordinary artwork and supported document
+  metadata. Fourteen regressions cover batches, identified alternatives, state
+  projections, scalar replay, dependent neighbors, opaque references, attachments,
+  snapshot handles and limits. Independent checks verify 27 transactions and
+  71 removed pairs: 17 real-file removals compare native and printing SVG, seven
+  synthetic removals compare printing SVG and decoded metadata/state, and three
+  exact refusals cover inherited style effects, unknown references and aliases.
+  All unselected bytes stay exact. The synthetic version-branch SVG limitation
+  remains explicit; no Adobe reopening is claimed. Latest validation: 523 VM/522
+  Node tests, clean format/fix/analysis, all 22 pair-copy and 14 reference-scope
+  transactions regenerated and independently rechecked. Pair reordering,
+  reparenting and broader resource-reference lifecycle remain outstanding; the
+  task stays open.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

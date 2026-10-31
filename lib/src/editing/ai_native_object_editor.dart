@@ -75,18 +75,20 @@ void _ordinaryObjectRemoval(AiNativeDrawing drawing, List<AiNativeItem> sources)
 }
 
 /// Refuses identity deletion unless all possible native reference owners qualify.
-void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers) {
+void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers, {List<_NativeShapeBundle> shapes = const []}) {
   if (identifiers.isEmpty) {
     return;
   }
   final Set<AiNativeContainer> dictionaries = {
+    for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
     for (final AiNativeLayer layer in model.layers)
       if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,
     for (final AiNativeObject object in model.drawing._objects.objects)
       if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
   };
+  final Set<AiNativeContainer> styles = {for (final _NativeShapeBundle bundle in shapes) bundle.shape.style!};
   final List<AiNativeContainer> documents = [];
-  for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
+  for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record) && !styles.contains(record))) {
     if (record.type != 'Document') {
       throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
     }
@@ -101,6 +103,11 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
     throw UnsupportedError('Deleting artwork requires an unambiguous native identity.');
   }
   final AiProgram program = model.drawing.records.program;
-  _layerInterval(model, program.bodyStart, program.bodyEnd, headers);
-  _referenceProgram(model, documents);
+  int position = program.bodyStart;
+  for (final _NativeShapeBundle bundle in shapes) {
+    _layerInterval(model, position, bundle.start, headers);
+    position = bundle.shape.end;
+  }
+  _layerInterval(model, position, program.bodyEnd, headers);
+  _referenceProgram(model, [...documents, ...styles]..sort((first, second) => first.start.compareTo(second.start)));
 }

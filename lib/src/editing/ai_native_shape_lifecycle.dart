@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Complete authoring/printing ownership and state dependencies of one copy.
-final class _NativeShapeCopy {
+/// Complete authoring/printing ownership and declarative state dependencies.
+final class _NativeShapeBundle {
   /// Source shape whose geometry, alternatives and shared style stay together.
   final AiLiveShape shape;
 
@@ -17,8 +17,8 @@ final class _NativeShapeCopy {
   /// Attributes a style part may inherit before assigning its own values.
   final Set<String> styleReads;
 
-  /// Creates a validated copy plan without moving any source bytes.
-  _NativeShapeCopy({required this.shape, required this.start, required this.commands, required this.styleWrites, required this.styleReads});
+  /// Retains a qualified complete bundle without moving any source bytes.
+  _NativeShapeBundle({required this.shape, required this.start, required this.commands, required this.styleWrites, required this.styleReads});
 }
 
 /// Validates metadata without admitting unknown references into copied objects.
@@ -55,7 +55,7 @@ void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeCo
 }
 
 /// Qualifies a complete source bundle rather than its individual private paths.
-_NativeShapeCopy _shapeCopy(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure) {
+_NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure) {
   final AiNativeGroup group = _printingShapeGroup(drawing, shape);
   if (!_shapeParameters.containsKey(shape.handler)) {
     throw UnsupportedError('Shape copies require a known native shape handler.');
@@ -190,19 +190,26 @@ _NativeShapeCopy _shapeCopy(AiNativeDrawing drawing, AiLiveShape shape, AiNative
       drawing.items.whereType<AiNativeInstruction>().where((item) => item.start >= shape.end && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator)).firstOrNull?.start ??
       drawing.records.program.bodyEnd;
   _ordinaryGroupMetadata(drawing, shape.end, next);
-  return _NativeShapeCopy(shape: shape, start: start, commands: commands, styleWrites: style.writes, styleReads: style.reads);
+  return _NativeShapeBundle(shape: shape, start: start, commands: commands, styleWrites: style.writes, styleReads: style.reads);
+}
+
+/// Qualifies distinct owned source bundles before changing any snapshot offsets.
+List<_NativeShapeBundle> _selectedShapeBundles(AiNativeDrawing drawing, List<AiLiveShape> shapes) {
+  if (shapes.isEmpty || shapes.toSet().length != shapes.length || shapes.any((shape) => !drawing.liveShapes.contains(shape))) {
+    throw ArgumentError('Shape lifecycle edits require distinct owned source shapes.');
+  }
+  final AiNativeStructure structure = drawing._objects.structure;
+  final List<_NativeShapeBundle> bundles = shapes.map((shape) => _shapeBundle(drawing, shape, structure)).toList()..sort((first, second) => first.start.compareTo(second.start));
+  if (bundles.indexed.any((entry) => entry.$1 > 0 && bundles[entry.$1 - 1].shape.end > entry.$2.start)) {
+    throw ArgumentError('Selected shape bundles cannot overlap.');
+  }
+  return bundles;
 }
 
 /// Copies complete source bundles with fresh identities and unchanged resources.
 AiNativeDrawing _duplicateNativeShapes(AiNativeDrawing drawing, List<AiLiveShape> shapes, Map<AiNativeContainer, List<int>> identifiers) {
-  if (shapes.isEmpty || shapes.toSet().length != shapes.length || shapes.any((shape) => !drawing.liveShapes.contains(shape))) {
-    throw ArgumentError('Shape copies require distinct owned source shapes.');
-  }
+  final List<_NativeShapeBundle> copies = _selectedShapeBundles(drawing, shapes);
   final AiNativeStructure structure = drawing._objects.structure;
-  final List<_NativeShapeCopy> copies = shapes.map((shape) => _shapeCopy(drawing, shape, structure)).toList()..sort((first, second) => first.start.compareTo(second.start));
-  if (copies.indexed.any((entry) => entry.$1 > 0 && copies[entry.$1 - 1].shape.end > entry.$2.start)) {
-    throw ArgumentError('Copied shape bundles cannot overlap.');
-  }
   final List<AiNativeObjectIdentifier> saved = structure.identifiers
       .where((identifier) => copies.any((copy) => identifier.field.owner.start >= copy.start && identifier.field.owner.end <= copy.shape.end))
       .toList();
@@ -223,7 +230,7 @@ AiNativeDrawing _duplicateNativeShapes(AiNativeDrawing drawing, List<AiLiveShape
   }
   final List<AiSourceEdit> edits = [];
   final Map<int, _NativeShapeInputs> inputs = _shapeCopyInputs(drawing, copies.map((copy) => copy.start));
-  for (final _NativeShapeCopy copy in copies) {
+  for (final _NativeShapeBundle copy in copies) {
     final List<int> prefix = _shapeCopyPrefix(drawing, copy, inputs[copy.start]!, remaining - 1);
     final List<int> bytes = _nativeSourceSpans(drawing.records.program, [(start: copy.start, end: copy.shape.end)], remaining - prefix.length - 1, edits: identityEdits);
     edits.add(AiSourceEdit(start: copy.shape.end, end: copy.shape.end, bytes: [10, ...prefix, ...bytes]));

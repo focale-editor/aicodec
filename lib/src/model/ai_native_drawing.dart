@@ -237,6 +237,13 @@ final class AiNativeDrawing {
   /// Direct single-path shapes use [duplicatePaths] instead.
   AiNativeDrawing duplicateLiveShapes({required List<AiLiveShape> shapes, Map<AiNativeContainer, List<int>> identifiers = const {}}) => _duplicateNativeShapes(this, shapes, identifiers);
 
+  /// Removes complete CC authoring/printing pairs while retaining shared resources.
+  ///
+  /// Explicit printing and private state assignments remain in the source.
+  /// Following artwork must not depend on unresolved outgoing style effects.
+  /// Saved identities require a qualified document-wide reference scope.
+  AiNativeDrawing removeLiveShapes({required List<AiLiveShape> shapes}) => _removeNativeShapes(this, shapes);
+
   /// Removes ordinary geometry and owned point counts, retaining surrounding state.
   ///
   /// Unselected bytes and paint/lock/visibility assignments remain unchanged.

@@ -262,6 +262,7 @@ final class _NativeCapabilityReader {
           ...conditional([.liveShapeTranslation, .liveShapeRotation, .liveShapeScaling], issue: shape.bindingIssue),
           ...conditional([
             .liveShapeDuplication,
+            .liveShapeRemoval,
             .printingContours,
             .printingGroups,
           ], issue: shape.bindingIssue ?? (shape.appearanceGroup == null || shape.path?.isPrivate != true ? 'No separate native printing expansion is bound.' : null)),
