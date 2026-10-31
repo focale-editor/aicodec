@@ -1,0 +1,248 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "inkscape_minimized_ai3.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai3.ai",
+      "size": 3217,
+      "sha256": "7f640a829922385e32c5620bcaef8f1065da23ed14185af60e1d3826c7d9ffe7",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai7.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai7.ai",
+      "size": 51657,
+      "sha256": "316c257bc46b06ddf9dffe537b409dcbfe2cedcc11eeaf080c1954f5ebb4d547",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai9.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai9.ai",
+      "size": 19170,
+      "sha256": "7357a048805a7911dc6f004c408fcc2f6b6ebc194e24c78838b10b2384a42267",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai10.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai10.ai",
+      "size": 20935,
+      "sha256": "9a006176cb9fa8ef18f18c561a66ce81ceffa1aab02caad8e2d144c7c9efea24",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cs.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cs.ai",
+      "size": 72439,
+      "sha256": "122c23198faa3d25e8fae45da20616a98d5609202c4429bff94c07cfbcede328",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cs2.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cs2.ai",
+      "size": 58512,
+      "sha256": "70b10e495cbc5dfe24ebc732f3cae10915c3b4bf13edceff84395e38e15c0632",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cs3.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cs3.ai",
+      "size": 58774,
+      "sha256": "523e329b187a71cf0c2613451ccfc000fcaefc84a83a6df31f70095359c10224",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cs4.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cs4.ai",
+      "size": 55820,
+      "sha256": "7e846be018e1d7253da636158ab9288df6c8e51056e758717cda5d8f82e2d9e2",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cs5.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cs5.ai",
+      "size": 56272,
+      "sha256": "0e3f22858fd413cc3d44a0d88973be8cae9671ca6fbd95c0d0febb6ce81af0b0",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cs6.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cs6.ai",
+      "size": 56272,
+      "sha256": "e501a52a1352697d4dd2a6a3cf6dabf006467d5d0822dabb9bedc15a191abfda",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cc.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cc.ai",
+      "size": 57407,
+      "sha256": "489816c85e8293e8654f851dbb902a22c7ae41390f1024dd8b9857a502421a0b",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "inkscape_minimized_ai_cc_current.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/inkscape_logo/inkscape_minimized_ai_cc_current.ai",
+      "size": 54946,
+      "sha256": "9d745498a75d74da0ebce617774ad32f190ee5e436f687c7ef4d4d2a948ebace",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2006 Andrew Michael Fitzsimon (Fitzsimon IT Consulting Pty Ltd) Fitzsimon IT Consulting Pty Ltd\nSPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: CC-BY-SA-3.0",
+      "expected": "accept"
+    },
+    {
+      "file": "circle.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/circle.ai",
+      "size": 1205562,
+      "sha256": "01534332157ada9d2be9ccca6074b3f7ba7ed631ee32b79ee0597dc8c059013d",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 C. Rogers <cajhne@gmail.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "cmyk_rectangle.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/cmyk_rectangle.ai",
+      "size": 43037,
+      "sha256": "a3820f4fefa4ff5b32f4d098c1e6022bbd3325f3f4e1fe5940e146521926d2ae",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 C. Rogers <cajhne@gmail.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "rgb_rectangle.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/rgb_rectangle.ai",
+      "size": 44244,
+      "sha256": "6c719202784a2c4fc6d91b118335a16acec3292d9b495ba2bbb52df7b563d732",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 C. Rogers <cajhne@gmail.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "empty_cs.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/empty_cs.ai",
+      "size": 1256883,
+      "sha256": "afdd30a2f874141b7779ec9a8965bf8c721c789b9938dc8bc68684534e3a7b31",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Software Freedom Conservancy <info@sfconservancy.org>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "empty_cs2.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/empty_cs2.ai",
+      "size": 1103064,
+      "sha256": "0ffd00111e543161fd154a4173e558589dfa51f7fb45f55c7549d8f07dd6c14b",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Software Freedom Conservancy <info@sfconservancy.org>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "gradient_linear.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/gradient_linear.ai",
+      "size": 222618,
+      "sha256": "185b0ab5c738fc33782856f5947eb3a2245acba2d12872e9a5fc82a292df7677",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "gradient_radial.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/gradient_radial.ai",
+      "size": 229887,
+      "sha256": "f84ac44ec40824e16612dad872e819cda3deaf05119d20046fe5d2b34431ebdb",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "layers_and_sublayers.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/layers_and_sublayers.ai",
+      "size": 1195202,
+      "sha256": "b8064e9da8f3b909a363a1b1d02b4c2ff0a5d2be721fe7194e359cc628c9c5d4",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "raster_ai8.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/raster_ai8.ai",
+      "size": 211072,
+      "sha256": "222e1f7e755ea453dae2ecea5d8d34367263ad92667527fbf96a73f5c02b2840",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "raster_v2020.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/raster_v2020.ai",
+      "size": 5059169,
+      "sha256": "efb40b3ecac82fd012cfb5768f170ca730c2b561c1f4949f23bac84ad0cfdda8",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2014 Aron Ambrosiani\nSPDX-FileCopyrightText: 2025 Anunay Jain <me@anu.ninja>\n\nSPDX-License-Identifier: CC-BY-SA-4.0\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_shapes.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_shapes.ai",
+      "size": 988572,
+      "sha256": "bf4e49291ec8aca6ed10dd7e5df78712eb33bc8ea127e9d304da6d5e4fa32084",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_shapes_cc.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_shapes_cc.ai",
+      "size": 988056,
+      "sha256": "6feae140f767a7a8593e7d9d9336c98bc2eb0c5ff76bf3e698685ba63b9d31dc",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "image_linked_ai8.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/image_linked_ai8.ai",
+      "size": 414680,
+      "sha256": "68b7584dd765c3dc3d37e81e8dbe5c9c2ce8cf586b3241ff4e58f63dbc4a6663",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Anunay Jain <me@anu.ninja>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "opacity.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/opacity.ai",
+      "size": 220012,
+      "sha256": "96fba55c33026ea56a8874f911b6a13a513cec689d7a709b1368fde650bb0059",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "flowtext.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/flowtext.ai",
+      "size": 352039,
+      "sha256": "911006a777ebe318f2007ad69e6b8c4d9ba41370bd85631e9dc463862d9e921d",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+test/corpus/files/
+test/corpus/output/
+AGENTS.md
+pubspec_overrides.yaml
+pubspec_overrides.yaml.example
