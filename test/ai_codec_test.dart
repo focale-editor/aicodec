@@ -44,6 +44,32 @@ PdfDocument illustratorPdf() {
   return document.copyWith(objects: objects);
 }
 
+/// Creates independently counted native planes containing hostile DSC-like bytes.
+Uint8List _rasterComments({required List<int> alpha, bool private = false, bool fullCount = false, int adjustment = 0, String newline = '\n', String depth = '8', String boundary = '%%EndData'}) {
+  final String prefix = private ? '%_' : '';
+  final int width = alpha.length;
+  return (BytesBuilder(copy: false)
+        ..add(
+          latin1.encode(
+            [
+              '%!PS-Adobe-3.0',
+              '%%Creator: Adobe Illustrator',
+              '%%Title: Header',
+              '%%BoundingBox: (atend)',
+              '$prefix%AI5_BeginRaster',
+              '$prefix[ 1 0 0 1 0 0 ] 0 0 $width 1 $width 1 $depth 1 1 16 1 0 4 4 0 0',
+              '$prefix%%BeginData: ${2 + newline.length + width + (fullCount ? width : 0) + adjustment} Binary Bytes',
+              'XI',
+              '',
+            ].join(newline),
+          ),
+        )
+        ..add(List.filled(width, 255))
+        ..add(alpha)
+        ..add(latin1.encode(['$prefix$boundary', '${prefix}XH', '$prefix%AI5_EndRaster', '%%Trailer', '%%BoundingBox: -1 -2 30 40', '%%EOF', ''].join(newline))))
+      .takeBytes();
+}
+
 /// Tests both AI families, provenance, private blocks and DSC boundaries.
 void main() {
   const String legacy =
@@ -56,6 +82,7 @@ void main() {
     check(document.title).equals('(Drawing)');
     check(document.boundingBox!.left).equals(-10);
     check(document.boundingBox!.top).equals(100);
+    check(document.dscIssue).isNull();
     check(const AiCodec().encode(document)).deepEquals(bytes);
     check(() => document.bytes[0] = 0).throws<UnsupportedError>();
   });
@@ -118,6 +145,120 @@ void main() {
     final String program = legacy.replaceFirst('%%EndComments', '%%BeginData: 2 ASCII Lines\n%%Title: Fake\n%%Title: Fake2\n%%EndData\n%%EndComments');
     check((const AiCodec().decode(latin1.encode(program)) as AiPostScriptDocument).title).equals('(Drawing)');
     check(() => const AiCodec().decode(latin1.encode('$legacy%%BeginBinary: 999\nx'))).throws<FormatException>();
+  });
+
+  test('skips omitted native alpha bytes before collecting DSC metadata', () {
+    final List<int> alpha = latin1.encode('\n%%Title: Pixel data\n%%Creator: Not metadata\n%%BoundingBox: 0 0 1 1\n%%EndDocument\n%%BeginData: 99999999\n%AI5_EndRaster\n');
+    for (final String newline in ['\n', '\r', '\r\n']) {
+      for (final bool fullCount in [false, true]) {
+        for (final int adjustment in [0, 1]) {
+          final Uint8List bytes = _rasterComments(alpha: alpha, newline: newline, fullCount: fullCount, adjustment: adjustment);
+          final AiPostScriptDocument document = const AiCodec().decode(bytes) as AiPostScriptDocument;
+          check(document.dscIssue).isNull();
+          check(document.title).equals('Header');
+          check(document.creator).equals('Adobe Illustrator');
+          check(document.comments['BoundingBox']!).deepEquals(['(atend)', '-1 -2 30 40']);
+          check(document.boundingBox!.top).equals(40);
+          check(const AiCodec().encode(document)).deepEquals(bytes);
+        }
+      }
+    }
+  });
+
+  test('recognizes private binary rasters without projecting their sample bytes', () {
+    final List<int> alpha = latin1.encode('\n%_%%EndData\n%_%AI5_EndRaster\n%%Title: Fake\n%%EndDocument\n');
+    for (final bool fullCount in [false, true]) {
+      final Uint8List bytes = _rasterComments(alpha: alpha, private: true, fullCount: fullCount);
+      final AiPostScriptDocument document = const AiCodec().decode(bytes) as AiPostScriptDocument;
+      check(document.dscIssue).isNull();
+      check(document.title).equals('Header');
+      check(document.comments['BoundingBox']!).deepEquals(['(atend)', '-1 -2 30 40']);
+      check(const AiCodec().encode(document)).deepEquals(bytes);
+    }
+  });
+
+  test('reports an incomplete inspection without scanning beyond damaged image data', () {
+    for (final bool private in [false, true]) {
+      final Uint8List bytes = _rasterComments(alpha: latin1.encode('\n%%Title: Fake\n'), private: private, boundary: 'damaged\n%%EndData');
+      final AiPostScriptDocument document = const AiCodec().decode(bytes) as AiPostScriptDocument;
+      check(document.title).equals('Header');
+      check(document.boundingBox).isNull();
+      check(document.comments['Trailer']).isNull();
+      check(document.dscIssue!.message).contains('raster data boundary');
+      check(document.dscIssue!.offset).equals(latin1.decode(bytes).indexOf(private ? '%_%%BeginData:' : '%%BeginData:'));
+      check(const AiCodec().encode(document)).deepEquals(bytes);
+    }
+  });
+
+  test('preserves unsupported native layouts with an explicit inspection diagnostic', () {
+    final Uint8List bytes = _rasterComments(alpha: latin1.encode('\n%%Title: Fake\n'), depth: '3');
+    final AiPostScriptDocument document = const AiCodec().decode(bytes) as AiPostScriptDocument;
+    check(document.dscIssue!.message).contains('sample layout');
+    check(document.title).equals('Header');
+    check(document.boundingBox).isNull();
+    check(const AiCodec().encode(document)).deepEquals(bytes);
+    final Uint8List unknown = latin1.encode(latin1.decode(_rasterComments(alpha: [0, 0, 0, 0])).replaceFirst('XI\n', 'XI \n'));
+    final AiPostScriptDocument other = const AiCodec().decode(unknown) as AiPostScriptDocument;
+    check(other.dscIssue!.message).contains('qualified binary XI');
+    check(other.boundingBox).isNull();
+    check(const AiCodec().encode(other)).deepEquals(unknown);
+    final Uint8List nested = latin1.encode(latin1.decode(_rasterComments(alpha: [0, 0, 0, 0])).replaceFirst('%AI5_BeginRaster', '%AI5_BeginRaster\n%AI5_BeginRaster'));
+    final AiPostScriptDocument nestedDocument = const AiCodec().decode(nested) as AiPostScriptDocument;
+    check(nestedDocument.dscIssue!.message).contains('Nested native raster');
+    check(nestedDocument.boundingBox).isNull();
+    check(const AiCodec().encode(nestedDocument)).deepEquals(nested);
+  });
+
+  test('does not use pixel DSC comments as Illustrator provenance', () {
+    final String unmarked = latin1.decode(_rasterComments(alpha: latin1.encode('\n%%Creator: Adobe Illustrator\n'))).replaceFirst('%%Creator: Adobe Illustrator', '%%Creator: Other');
+    check(() => const AiCodec().decode(latin1.encode(unmarked))).throws<FormatException>();
+    final AiPostScriptDocument document = const AiCodec(allowGeneric: true).decode(latin1.encode(unmarked)) as AiPostScriptDocument;
+    check(document.creator).equals('Other');
+  });
+
+  test('keeps nested image samples opaque while excluding child metadata', () {
+    final String child = latin1.decode(_rasterComments(alpha: latin1.encode('\n%%EndDocument\n%%Title: Fake\n')));
+    final String source = legacy.replaceFirst('%%EndComments', '%%BeginDocument: child.eps\n$child\n%%EndDocument\n%%EndComments');
+    final AiPostScriptDocument document = const AiCodec().decode(latin1.encode(source)) as AiPostScriptDocument;
+    check(document.title).equals('(Drawing)');
+    check(document.dscIssue).isNull();
+    check(document.comments['BoundingBox']!).deepEquals(['(atend)', '-10 -20 200 100']);
+  });
+
+  test('bounds native header inspection without guessing a subsequent DSC boundary', () {
+    final String source = latin1.decode(_rasterComments(alpha: [0, 0, 0, 0])).replaceFirst('[ 1 0 0 1 0 0 ]', '${' ' * 200}[ 1 0 0 1 0 0 ]');
+    final AiPostScriptDocument document = const AiCodec(limits: AiLimits(maxCommentBytes: 100)).decode(latin1.encode(source)) as AiPostScriptDocument;
+    check(document.dscIssue!.message).contains('byte limit');
+    check(document.title).equals('Header');
+    check(document.boundingBox).isNull();
+  });
+
+  test('reports incomplete DSC offsets relative to the DOS EPS PostScript section', () {
+    final Uint8List program = _rasterComments(alpha: [0, 0, 0, 0], boundary: 'damaged\n%%EndData');
+    final Uint8List bytes = Uint8List(30 + program.length + 4);
+    final ByteData header = ByteData.sublistView(bytes);
+    bytes.setRange(0, 4, [0xc5, 0xd0, 0xd3, 0xc6]);
+    header.setUint32(4, 30, Endian.little);
+    header.setUint32(8, program.length, Endian.little);
+    header.setUint32(20, 30 + program.length, Endian.little);
+    header.setUint32(24, 4, Endian.little);
+    bytes.setRange(30, 30 + program.length, program);
+    bytes.setRange(30 + program.length, bytes.length, [1, 2, 3, 4]);
+    final AiPostScriptDocument document = const AiCodec().decode(bytes) as AiPostScriptDocument;
+    check(document.dscIssue!.offset).equals(latin1.decode(program).indexOf('%%BeginData:'));
+    check(document.title).equals('Header');
+    check(const AiCodec().encode(document)).deepEquals(bytes);
+    check(() => AiDscIssue(offset: -1, message: 'Invalid')).throws<ArgumentError>();
+    check(() => AiDscIssue(offset: 0, message: '')).throws<ArgumentError>();
+    check(
+      () => AiPostScriptDocument(
+        bytes: program,
+        postScriptOffset: 0,
+        postScriptLength: program.length,
+        comments: {},
+        dscIssue: AiDscIssue(offset: program.length, message: 'Outside'),
+      ),
+    ).throws<FormatException>();
   });
 
   test('reads DOS EPS envelopes and retains preview bytes', () {

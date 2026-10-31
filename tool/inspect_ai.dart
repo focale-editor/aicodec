@@ -15,7 +15,13 @@ Future<void> main(List<String> arguments) async {
   switch (document) {
     case AiPdfDocument(:final pdf, :final privateBlocks):
       stdout.writeln('PDF: ${pdf.pages.length} pages, ${privateBlocks.length} native blocks');
-    case AiPostScriptDocument(:final creator, :final postScriptBytes):
-      stdout.writeln('PostScript: $creator; ${AiPostScript.tokenize(postScriptBytes).length} tokens');
+    case AiPostScriptDocument(:final creator, :final postScriptBytes, :final dscIssue):
+      if (dscIssue == null) {
+        stdout.writeln('PostScript: $creator; ${AiPostScript.tokenize(postScriptBytes).length} tokens');
+      } else {
+        stdout.writeln('PostScript: $creator; ${postScriptBytes.length} preserved bytes');
+        stderr.writeln('DSC inspection stopped at byte ${dscIssue.offset}: ${dscIssue.message}');
+        exitCode = 1;
+      }
   }
 }

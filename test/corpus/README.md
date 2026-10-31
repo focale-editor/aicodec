@@ -202,6 +202,9 @@ PDF/PNG/binary outputs stay in ignored `output/native-rasters`.
 They must reject at the computed binary boundary, without scanning for a later
 end marker or interpreting image bytes as commands. The optional check requires
 both these rejection cases and the five accepted core fixtures.
+Their preserved containers must also report an incomplete DSC inspection at the
+damaged raster declaration. Accepted PostScript files in the core corpus require
+complete inspection, independently of exact source-byte preservation.
 
 ```sh
 python3 tool/fetch_corpus.py --manifest raster_manifest.json

@@ -25,6 +25,9 @@ Future<void> main() async {
         throw StateError('Container kind changed');
       }
       if (decoded is AiPostScriptDocument) {
+        if (decoded.dscIssue case final AiDscIssue issue) {
+          throw FormatException('Incomplete DSC inspection at ${issue.offset}: ${issue.message}');
+        }
         AiPostScript.tokenize(decoded.postScriptBytes);
       }
       if (decoded is AiPostScriptDocument && !_same(bytes, encoded)) {
@@ -46,7 +49,7 @@ Future<void> main() async {
         throw StateError('Expected rejection but file decoded');
       }
       await File('test/corpus/output/$name').writeAsBytes(encoded);
-      report.add({'file': name, 'status': 'accepted', 'bytes': encoded.length});
+      report.add({'file': name, 'status': 'accepted', 'bytes': encoded.length, if (decoded is AiPostScriptDocument) 'dscComplete': decoded.dscIssue == null});
     } on FormatException catch (error) {
       report.add({'file': name, 'status': rejected ? 'rejected' : 'failed', 'error': error.toString()});
       if (!rejected) {

@@ -198,6 +198,8 @@ void main() {
     check(() => _decode(latin1.encode(latin1.decode(valid).replaceFirst('2 2 8 3', '999999999 2 8 3')))).throws<FormatException>();
     check(() => _decode(_bytes(bits: 3))).throws<UnsupportedError>();
     check(() => _decode(_bytes(mask: true))).throws<FormatException>();
+    final String unqualified = latin1.decode(valid).replaceFirst('%%BeginData: 16\nXI\n', 'XI\n%%BeginData: 12\n');
+    check(() => _decode(latin1.encode(unqualified))).throws<UnsupportedError>();
   });
 
   test('rejects unknown color or placement semantics and unrelated opaque drawing data', () {

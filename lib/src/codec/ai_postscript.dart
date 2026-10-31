@@ -134,7 +134,7 @@ abstract final class AiPostScript {
           newline();
           final int dataStart = position;
           if (raster && procedureDepth == 0 && (line.startsWith('%%BeginData:') || privateData) && fields.last.toLowerCase() != 'lines') {
-            final ({int samples, int end})? image = _rasterData(bytes: bytes, start: dataStart, declared: count, tokens: tokens, privateData: privateData);
+            final ({int samples, int end})? image = readAiRasterData(bytes: bytes, start: dataStart, declared: count, tokens: tokens, privateData: privateData);
             if (image != null) {
               if (!privateData) {
                 add(AiTokenKind.executableName, dataStart, dataStart + 2);

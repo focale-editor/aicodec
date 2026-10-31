@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:aikit/src/codec/ai_postscript.dart';
 import 'package:aikit/src/model/ai_document.dart';
 import 'package:pdfcore/pdfcore.dart';
 
@@ -97,9 +98,9 @@ final class AiDecoder extends Converter<List<int>, AiDocument> {
     if (!latin1.decode(program.sublist(0, math.min(32, program.length))).startsWith('%!PS-Adobe-')) {
       throw const FormatException('Unsupported Illustrator container signature.');
     }
-    final Map<String, List<String>> comments = _comments(program, limits);
-    final AiPostScriptDocument document = AiPostScriptDocument(bytes: bytes, postScriptOffset: start, postScriptLength: length, comments: comments);
-    if (!allowGeneric && !(document.creator?.contains('Illustrator') ?? false) && !comments.keys.any((key) => RegExp(r'^AI\d+_').hasMatch(key))) {
+    final ({Map<String, List<String>> comments, AiDscIssue? issue}) inspection = _comments(program, limits);
+    final AiPostScriptDocument document = AiPostScriptDocument(bytes: bytes, postScriptOffset: start, postScriptLength: length, comments: inspection.comments, dscIssue: inspection.issue);
+    if (!allowGeneric && !(document.creator?.contains('Illustrator') ?? false) && !document.comments.keys.any((key) => RegExp(r'^AI\d+_').hasMatch(key))) {
       throw const FormatException('PostScript has no Illustrator authoring markers.');
     }
     return document;
@@ -145,11 +146,12 @@ bool _illustratorPdf(PdfDocument pdf, AiPdfDocument document) {
 }
 
 /// Reads top-level DSC comments while skipping binary data and nested EPS files.
-Map<String, List<String>> _comments(Uint8List bytes, AiLimits limits) {
+({Map<String, List<String>> comments, AiDscIssue? issue}) _comments(Uint8List bytes, AiLimits limits) {
   final Map<String, List<String>> result = {};
   int position = 0;
   int nested = 0;
   int count = 0;
+  int? rasterStart;
   String? lastKey;
   while (position < bytes.length) {
     final int start = position;
@@ -168,11 +170,53 @@ Map<String, List<String>> _comments(Uint8List bytes, AiLimits limits) {
       throw const FormatException('AI comment exceeds the byte limit.');
     }
     final String line = latin1.decode(Uint8List.sublistView(bytes, start, end));
-    if (line.startsWith('%%BeginBinary:') || line.startsWith('%%BeginData:')) {
+    if (const {'%AI5_BeginRaster', '%_%AI5_BeginRaster'}.contains(line)) {
+      if (rasterStart != null) {
+        return (comments: result, issue: AiDscIssue(offset: start, message: 'Nested native raster section.'));
+      }
+      rasterStart = position;
+      lastKey = null;
+      continue;
+    }
+    if (const {'%AI5_EndRaster', '%_%AI5_EndRaster'}.contains(line)) {
+      rasterStart = null;
+    }
+    final bool privateData = rasterStart != null && line.startsWith('%_%%BeginData:');
+    if (line.startsWith('%%BeginBinary:') || line.startsWith('%%BeginData:') || privateData) {
       final List<String> fields = line.substring(line.indexOf(':') + 1).trim().split(RegExp(r'\s+'));
       final int? size = int.tryParse(fields.first);
       if (size == null || size < 0 || size > bytes.length) {
         throw const FormatException('Invalid AI DSC data-block size.');
+      }
+      if (rasterStart != null && (line.startsWith('%%BeginData:') || privateData) && fields.last.toLowerCase() != 'lines') {
+        try {
+          final List<AiToken> header = AiPostScript.tokenize(
+            Uint8List.sublistView(bytes, rasterStart, start),
+            maxBytes: limits.maxCommentBytes,
+            maxTokens: limits.pdf.maxObjects,
+            maxDepth: limits.pdf.maxDepth,
+          );
+          final ({int samples, int end})? image = readAiRasterData(
+            bytes: bytes,
+            start: position,
+            declared: size,
+            tokens: [
+              ...header,
+              AiToken(kind: .comment, start: start, end: end, lexeme: line),
+            ],
+            privateData: privateData,
+          );
+          if (image != null) {
+            position = image.end;
+            lastKey = null;
+            continue;
+          }
+          return (comments: result, issue: AiDscIssue(offset: start, message: 'Native raster data requires a qualified binary XI invocation.'));
+        } on FormatException catch (error) {
+          return (comments: result, issue: AiDscIssue(offset: start, message: error.message));
+        } on UnsupportedError catch (error) {
+          return (comments: result, issue: AiDscIssue(offset: start, message: error.message ?? 'Unsupported native raster boundary.'));
+        }
       }
       if (fields.last.toLowerCase() == 'lines') {
         for (int index = 0; index < size; index++) {
@@ -233,5 +277,5 @@ Map<String, List<String>> _comments(Uint8List bytes, AiLimits limits) {
   if (nested != 0) {
     throw const FormatException('Unterminated AI embedded document.');
   }
-  return result;
+  return (comments: result, issue: null);
 }

@@ -9,6 +9,9 @@ Future<void> main() async {
   final List<Map<String, Object?>> report = [];
   for (final String name in ['raster_ai8.ai', 'raster_v2020.ai', 'empty_cs.ai', 'empty_cs2.ai', 'simple_shapes_cc.ai']) {
     final AiDocument document = const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes());
+    if (document is AiPostScriptDocument && document.dscIssue != null) {
+      throw StateError('Valid raster fixture has incomplete DSC metadata: $name');
+    }
     final AiNativeSource source = AiNativeData.extract(document).single;
     final AiProgram program = AiProgram.decode(bytes: source.bytes);
     final AiNativeRasters rasters = AiNativeRasters.decode(records: AiNativeRecords.decode(program: program));
@@ -64,6 +67,9 @@ Future<void> main() async {
   for (final Object? entry in rejected['files']! as List) {
     final String name = (entry! as Map)['file']! as String;
     final AiDocument document = const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes());
+    if (document is! AiPostScriptDocument || !(document.dscIssue?.message.contains('raster data boundary') ?? false)) {
+      throw StateError('Damaged raster fixture requires an explicit DSC boundary diagnostic: $name');
+    }
     try {
       AiProgram.decode(bytes: AiNativeData.extract(document).single.bytes);
       throw StateError('Damaged raster data was accepted: $name');
@@ -71,7 +77,7 @@ Future<void> main() async {
       if (!error.message.contains('raster data boundary')) {
         rethrow;
       }
-      rejections.add({'file': name, 'error': error.message});
+      rejections.add({'file': name, 'error': error.message, 'dscIssueOffset': document.dscIssue!.offset});
     }
   }
   await File('${output.path}/rejections.json').writeAsString(const JsonEncoder.withIndent('  ').convert(rejections));

@@ -402,8 +402,10 @@ accepted only with an exact geometry-derived boundary; arbitrary count repairs
 and searching the pixels for an end marker are forbidden. Private binary bodies
 stay opaque before and after native comment projection, even when pixels contain
 PostScript syntax, `%_` prefixes or fake end markers. Corrupt text-transcoded
-samples reject instead of becoming drawing commands. Generic DSC data retains
-its original declared-count behavior outside recognized native raster sections.
+samples reject native parsing instead of becoming drawing commands. Container
+DSC inspection shares the same geometry-bounded skip for recognized public and
+private raster sections, including separate alpha planes. Generic DSC data
+retains its original declared-count behavior outside these sections.
 
 `rasters.translate(images:, deltaX:, deltaY:)` edits both `XI` and redundant `Xh`
 placement offsets in one immutable snapshot. Samples, file links, pixel UUIDs,
@@ -603,6 +605,23 @@ collecting title, creator and bounds. Continuations are retained; `(atend)` valu
 resolve from later concrete declarations. `HiResBoundingBox` takes precedence.
 DOS EPS PostScript/preview ranges are validated and the entire envelope is kept.
 Encoding returns the exact original source bytes, including unknown data.
+
+Native binary raster counts may omit alpha or include an extra byte. Inspection
+uses the shared raster geometry reader to skip the actual complete sample planes,
+including private `%_` images. Fake DSC declarations within these bytes cannot
+change document metadata or establish Illustrator provenance. The preceding
+raster header is bounded by `maxCommentBytes`, the PDF object limit for tokens
+and the PDF depth limit before the sample boundary is inspected.
+
+For a damaged or unsupported native raster boundary, `AiPostScriptDocument.dscIssue`
+records the declaration's byte offset relative to `postScriptBytes` and a reason.
+Only earlier comments are returned; the decoder does not search subsequent image
+bytes for a plausible delimiter or claim to have read trailer metadata. Source
+bytes, including a DOS EPS envelope, remain available for exact encoding.
+A null issue means this inspection reached the end of the section, not that
+PostScript execution or all native authoring semantics are supported. Invalid
+generic DSC counts and embedded-document nesting still reject decoding.
+`tool/inspect_ai.dart` reports partial metadata explicitly and exits unsuccessfully.
 
 `AiPostScript.tokenize` is optional and exposes immutable tokens with source byte
 spans and exact Latin-1 lexemes. It recognizes numbers (including exponent and

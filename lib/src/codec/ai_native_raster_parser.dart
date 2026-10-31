@@ -46,7 +46,12 @@ List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly) 
       }
       reader.finish();
       final List<AiNativeInstruction> operators = commands.where((command) => command.operator == 'XI').toList();
-      if (operators.length != 1 || data == null || declaration == null || data.start < operators.single.end || !const {20, 23, 24}.contains(operators.single.operands.length)) {
+      if (operators.length != 1 ||
+          data == null ||
+          declaration == null ||
+          declaration.end >= operators.single.token.start ||
+          data.start < operators.single.end ||
+          !const {20, 23, 24}.contains(operators.single.operands.length)) {
         throw UnsupportedError('Native raster decoding requires one binary XI image.');
       }
       images.add(

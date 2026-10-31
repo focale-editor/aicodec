@@ -137,6 +137,22 @@ final class AiPrivateBlock {
   const AiPrivateBlock({required this.pageIndex, required this.number, required this.stream});
 }
 
+/// Explains why inspection stopped before the end of a preserved native program.
+final class AiDscIssue {
+  /// Byte offset in the PostScript section, excluding any DOS EPS envelope.
+  final int offset;
+
+  /// Reason later bytes could not safely be interpreted as DSC metadata.
+  final String message;
+
+  /// Creates a diagnostic without attaching or copying the source artwork.
+  AiDscIssue({required this.offset, required this.message}) {
+    if (offset < 0 || message.isEmpty) {
+      throw ArgumentError('A DSC inspection issue requires an offset and message.');
+    }
+  }
+}
+
 /// A preserved legacy Illustrator PostScript program and its DSC metadata.
 ///
 /// The program is never executed. Encoding retains every source byte, including
@@ -153,14 +169,25 @@ final class AiPostScriptDocument extends AiDocument {
   final int postScriptLength;
 
   /// Top-level DSC comments, preserving repeated declarations.
+  ///
+  /// When [dscIssue] is present, only declarations before that issue are known.
   final Map<String, List<String>> comments;
 
+  /// Incomplete metadata inspection, or null when the full section was scanned.
+  ///
+  /// Unsupported or damaged raster boundaries stop inspection instead of
+  /// interpreting unknown pixel bytes. Source preservation remains exact.
+  final AiDscIssue? dscIssue;
+
   /// Creates a snapshot with metadata already extracted by the decoder.
-  AiPostScriptDocument({required List<int> bytes, required this.postScriptOffset, required this.postScriptLength, required Map<String, List<String>> comments})
+  AiPostScriptDocument({required List<int> bytes, required this.postScriptOffset, required this.postScriptLength, required Map<String, List<String>> comments, this.dscIssue})
     : _bytes = Uint8List.fromList(bytes),
       comments = Map.unmodifiable(comments.map((key, value) => MapEntry(key, List<String>.unmodifiable(value)))) {
     if (postScriptOffset < 0 || postScriptLength < 0 || postScriptOffset + postScriptLength > _bytes.length) {
       throw const FormatException('Invalid Illustrator PostScript section bounds.');
+    }
+    if (dscIssue case final AiDscIssue issue when issue.offset >= postScriptLength) {
+      throw const FormatException('DSC inspection issue lies outside the PostScript section.');
     }
   }
 

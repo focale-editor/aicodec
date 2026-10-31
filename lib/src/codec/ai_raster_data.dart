@@ -5,7 +5,8 @@ part of 'ai_postscript.dart';
 /// CC writers sometimes count one extra byte or omit the separate alpha plane
 /// from BeginData. Only these measured variants are accepted, and only when the
 /// computed sample boundary lands exactly on EndData (or its line separator).
-({int samples, int end})? _rasterData({required Uint8List bytes, required int start, required int declared, required List<AiToken> tokens, required bool privateData}) {
+/// Shared internally with container DSC inspection, outside the public barrel.
+({int samples, int end})? readAiRasterData({required Uint8List bytes, required int start, required int declared, required List<AiToken> tokens, required bool privateData}) {
   if (start + 3 > bytes.length || bytes[start] != 88 || bytes[start + 1] != 73 || bytes[start + 2] != 10 && bytes[start + 2] != 13) {
     return null;
   }
