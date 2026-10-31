@@ -45,6 +45,19 @@ to the application; see [the host contract](../../docs/HOST.md).
 
 ## Native text and shapes
 
+Document settings use the 37 baseline sources and nine additional CC fixtures in
+`document_manifest.json`: moved ruler origins, millimeter/centimeter display units
+and large canvases with scale 10. The unchanged independent parser verifies 207
+numeric header fields, 31 artboards with document/order/identifier ownership and
+32 text-document origins across 46 sources. Missing values remain absent. These
+are metadata checks, not object lifecycle or PDF page-mapping qualification.
+
+```sh
+python3 tool/fetch_corpus.py --manifest document_manifest.json
+dart run tool/check_native_document_settings.dart
+python3 tool/verify_native_document_settings.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

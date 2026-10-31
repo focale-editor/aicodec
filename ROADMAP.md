@@ -113,6 +113,16 @@ groups and compound topology. There is no general modern object lifecycle API.
 
 - [ ] Model document units, ruler origins, artboards, ordering, object identities,
   shared resources and versioned alternatives with explicit ownership.
+  **In progress:** `AiNativeDocumentSettings` retains header sources, display-unit
+  codes, canvas scale and separate artboard/text origins without inferring missing
+  values. Artboards retain their owning Document and local order. Five focused
+  regressions cover immutable fields, unknown/absent units, conditional/repeated
+  declarations, malformed metadata, embedded-document boundaries and limits.
+  Nine additional pinned CC files qualify moved origins and large canvases.
+  Independent decoding checks 46 sources, 207 header fields, 31 artboards and 32
+  text origins. Full validation passes 324 VM/323 Node tests, format/fix and
+  analysis. Object identities, shared references and versioned drawing
+  ownership remain to be established before this task is complete.
 - [ ] Add qualified create/delete/duplicate/reorder/reparent operations for layers,
   groups and paths, preserving unrelated source and updating all references.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping

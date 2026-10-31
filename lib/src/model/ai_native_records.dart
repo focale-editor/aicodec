@@ -10,6 +10,7 @@ import 'package:aikit/src/model/ai_program.dart';
 import 'package:pdfcore/pdfcore.dart';
 
 part '../codec/ai_native_record_parser.dart';
+part '../codec/ai_native_document_settings_parser.dart';
 part '../codec/ai_native_drawing_parser.dart';
 part '../codec/ai_native_gradient_parser.dart';
 part '../codec/ai_native_gradient_resource_parser.dart';
@@ -37,6 +38,7 @@ part '../editing/ai_native_gradient_placement_geometry.dart';
 part '../editing/ai_native_gradient_focus_editor.dart';
 part '../editing/ai_native_mesh_paint_editor.dart';
 part 'ai_native_drawing.dart';
+part 'ai_native_document_settings.dart';
 part 'ai_native_printing.dart';
 part 'ai_native_gradient.dart';
 part 'ai_native_gradient_resources.dart';
@@ -262,12 +264,13 @@ final class AiNativeRecords {
       if (array.type != 'Array') {
         throw const FormatException('Invalid Illustrator artboard array.');
       }
-      for (final AiNativeEntry entry in array.entries) {
+      for (final (int, AiNativeEntry) indexed in array.entries.indexed) {
+        final AiNativeEntry entry = indexed.$2;
         final AiNativeContainer? dictionary = entry.container;
         if (dictionary == null || dictionary.type != 'Dictionary') {
           throw const FormatException('Invalid Illustrator artboard entry.');
         }
-        result.add(AiNativeArtboard._(record: dictionary));
+        result.add(AiNativeArtboard._(record: dictionary, document: root, index: indexed.$1));
       }
     }
     return List.unmodifiable(result);
@@ -353,6 +356,12 @@ final class AiNativeRecords {
 
 /// An editable artboard record retaining its native drawing-coordinate bounds.
 final class AiNativeArtboard {
+  /// Owning Document record, independent of catalog/page preview ownership.
+  final AiNativeContainer document;
+
+  /// Position within the owning document's ArtboardArray.
+  final int index;
+
   /// Source dictionary owning the artboard's fields and unknown settings.
   final AiNativeContainer record;
 
@@ -360,7 +369,7 @@ final class AiNativeArtboard {
   final AiBoundingBox bounds;
 
   /// Checks required coordinates without inventing missing artboard geometry.
-  factory AiNativeArtboard._({required AiNativeContainer record}) {
+  factory AiNativeArtboard._({required AiNativeContainer record, required AiNativeContainer document, required int index}) {
     final AiNativeEntry? firstEntry = record['PositionPoint1'];
     final AiNativeEntry? secondEntry = record['PositionPoint2'];
     final List<double>? first = firstEntry?.numbers;
@@ -370,17 +379,21 @@ final class AiNativeArtboard {
         firstEntry?.type != 'RealPointRelToROrigin' ||
         secondEntry?.type != 'RealPointRelToROrigin' ||
         record['Name']?.stringBytes == null ||
-        record['IsArtboardSelected'] != null && record['IsArtboardSelected']!.boolean == null) {
+        record['IsArtboardSelected'] != null && (record['IsArtboardSelected']!.type != 'Bool' || !const {0, 1}.contains(record['IsArtboardSelected']!.number)) ||
+        record['ArtboardUUID'] != null && (!const {'String', 'UnicodeString'}.contains(record['ArtboardUUID']!.type) || record['ArtboardUUID']!.stringBytes == null) ||
+        record['RulerOrigin'] != null && (record['RulerOrigin']!.type != 'RealPoint' || record['RulerOrigin']!.numbers?.length != 2)) {
       throw const FormatException('Incomplete Illustrator artboard geometry or name.');
     }
     return AiNativeArtboard._checked(
       record: record,
+      document: document,
+      index: index,
       bounds: AiBoundingBox(left: first![0], bottom: second![1], right: second[0], top: first[1]),
     );
   }
 
   /// Stores a source-backed artboard after validating its bounds.
-  const AiNativeArtboard._checked({required this.record, required this.bounds});
+  const AiNativeArtboard._checked({required this.record, required this.document, required this.index, required this.bounds});
 
   /// Exact PostScript name bytes, ready for an explicitly selected text encoding.
   Uint8List get nameBytes => record['Name']!.stringBytes!;
@@ -390,4 +403,10 @@ final class AiNativeArtboard {
 
   /// Stable source identifier when the producing Illustrator version stored one.
   String? get identifier => record['ArtboardUUID']?.text();
+
+  /// Explicit artboard ruler origin in canvas coordinates, with y down.
+  ///
+  /// Missing origins stay absent; drawing bounds and global/text origins are
+  /// different fields and are never substituted for this saved value.
+  List<double>? get rulerOrigin => record['RulerOrigin']?.numbers;
 }

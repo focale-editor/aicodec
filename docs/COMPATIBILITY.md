@@ -13,6 +13,8 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
 - Atomic multi-program saves preserve existing page identities and native graph
   dependencies; stale/foreign sources and implicit page remapping reject.
 - Native layers, plain paths, hierarchical records and artboards.
+- Source-owned ruler units, canvas scale and coordinate metadata; artboards retain
+  document ownership/order and separate artboard/text ruler origins.
 - Source-local capability reports distinguish typed data, qualified operations,
   opaque preservation, unsupported structures, malformed data and inspection limits.
 - Qualified CC live-shape translation, rotation and uniform scaling, including

@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "units-20000x10000_origin_at_100_0_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/20000x10000_origin_at_100_0_CC.ai",
+      "size": 24153,
+      "sha256": "33f8fcee646e0da5089af147ae49195e9685fcec0eafdde22b9149480013e465",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-20000x10000_origin_at_100_100_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/20000x10000_origin_at_100_100_CC.ai",
+      "size": 24151,
+      "sha256": "244b61218f94b47b489aa4e4a3e19d59dcc3ce225bbb3d498cbd0da7b2c84e64",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-20000x10000_origin_topleft_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/20000x10000_origin_topleft_CC.ai",
+      "size": 24186,
+      "sha256": "ee0d6a2aeefe28197bcd3057e0533cd50221c1c594c89d8a2b8b2426f0fe3d95",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-20x40mm_origin_topleft_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/20x40mm_origin_topleft_CC.ai",
+      "size": 24125,
+      "sha256": "11588fc13ed7329384ce243f94b47e5d5486527297b65ead1ec6286ada9729d7",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-2x4cm_origin_10.2306_0mm_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/2x4cm_origin_10.2306_0mm_CC.ai",
+      "size": 24239,
+      "sha256": "e58f9b4fa3068f8fcc51aba24fc9ea8917e6f42fb4e909c5b9ca4e2e1a440a54",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-2x4cm_origin_topleft_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/2x4cm_origin_topleft_CC.ai",
+      "size": 24240,
+      "sha256": "c4d491dd96eba856ce7e9968d3daf7612a48f0b4a27da7cba16b093cfb88dd6a",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-525x801_origin_at_100_0_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/525x801_origin_at_100_0_CC.ai",
+      "size": 24024,
+      "sha256": "85de2d73d384855fca3c17b8312df38392e36a7d4490ce692753ec74706cd53b",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-525x801_origin_at_100_100_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/525x801_origin_at_100_100_CC.ai",
+      "size": 24024,
+      "sha256": "2ce4403642cbcec36ce95feb3324b1146cf9146f02eaf733336203bf7a9f9baa",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-525x801_origin_topleft_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/525x801_origin_topleft_CC.ai",
+      "size": 23975,
+      "sha256": "7265e080dc336d08427341863223e32866c9648a51a7834358cfcc268fddeee4",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    }
+  ]
+}

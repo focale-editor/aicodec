@@ -222,12 +222,42 @@ Repeated object fields remain ordered through `values(key)`; ambiguous single
 lookups reject. `decodeBinary(maxOutputBytes: ...)` uses bounded ASCII85 decoding.
 Decoding a binary resource does not establish support for its internal format.
 
-`records.artboards` exposes recorded names, identifiers, active flags and bounds,
-independently of PDF pages. `replaceString`, `replaceNumbers` and `replaceBinary`
+`records.artboards` exposes recorded names, identifiers, active flags, bounds and
+optional artboard ruler origins. Each board retains its owning `Document` record
+and local `index` in `ArtboardArray`, independently of PDF pages. A saved identifier
+is not a proof of global uniqueness. Optional UUID, selection and origin fields
+are validated when present. `replaceString`, `replaceNumbers` and `replaceBinary`
 update existing source-backed entries and reparse the records. Numeric writes
 validate native types and VM/JavaScript representability; string encodings remain
 explicit. These are record edits: changing a dimension through a scalar setter
 does not automatically update dependent paths, appearances or artboards.
+
+### Document settings and coordinate ownership
+
+`AiNativeDocumentSettings.decode(records:)` exposes the initial numeric header
+declarations together with their exact `AiToken` spans, top-level `Document`
+records, ordered artboards and setup `AI11TextDocument` ruler origins. Header
+inspection stops at the header boundary; embedded documents, procedure comments
+and declarations in setup/body data cannot replace the owning header's settings.
+Repeated or version-dependent settings reject rather than choosing a branch.
+Malformed numeric layouts throw `FormatException`. Parsing retains the source
+byte/token/depth limits and immutable field collections.
+
+`rulerUnitCode` and `largeRulerUnitCode` retain raw nonnegative codes, including
+unknown values. `rulerUnit` interprets ordinary codes 0–4 and 6 and large codes
+7–10. A present large code takes precedence even when unknown; unknown codes
+have no inferred enum value. Code 5 remains unqualified. `largeCanvasScale`,
+`canvasSize`, `templateBox` and `pageOrigin` expose their saved values without
+unit conversion or substituting defaults when absent.
+
+Artboard bounds use drawing coordinates with y up. `artboard.rulerOrigin` stores
+the saved artboard origin in canvas coordinates with y down. Each
+`textRulerOrigins` entry retains its own text-document container and source entry;
+it is not silently merged with another origin or inferred from a page. Artboards,
+canvas extent, drawing/ink bounds and compatibility PDF pages remain distinct.
+This is an inspection contract, not an artboard lifecycle or origin-edit API.
+Object identities, shared-reference ownership and versioned drawing alternatives
+still need the structural contracts tracked in `ROADMAP.md`.
 
 ## Editable text
 
@@ -676,7 +706,7 @@ These statuses do not imply complete Illustrator compatibility.
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Native layers and plain paths | Yes | Editable subset | Dependent or unresolved appearances reject unsafe edits. |
-| Hierarchical records and artboards | Yes | Existing record edits | No general document/artboard lifecycle API. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours and qualified complete groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |
