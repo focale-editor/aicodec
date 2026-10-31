@@ -45,6 +45,7 @@ part '../editing/ai_native_shape_copy_state.dart';
 part '../editing/ai_native_group_lifecycle.dart';
 part '../editing/ai_native_group_selection.dart';
 part '../editing/ai_native_artwork_creation.dart';
+part '../editing/ai_native_artboard_editor.dart';
 part '../editing/ai_native_path_creation.dart';
 part '../editing/ai_native_subtree_lifecycle.dart';
 part '../editing/ai_native_subtree_removal.dart';
@@ -71,6 +72,7 @@ part '../editing/ai_native_mesh_paint_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_path_definition.dart';
 part 'ai_native_document_settings.dart';
+part 'ai_native_artboards.dart';
 part 'ai_native_layers.dart';
 part 'ai_native_objects.dart';
 part 'ai_native_versions.dart';
@@ -434,7 +436,7 @@ final class AiNativeArtboard {
   /// Exact PostScript name bytes, ready for an explicitly selected text encoding.
   Uint8List get nameBytes => record['Name']!.stringBytes!;
 
-  /// Whether this was the active artboard in the saved document.
+  /// Saved selection flag, independent of the document's active artboard index.
   bool get selected => record['IsArtboardSelected']?.boolean ?? false;
 
   /// Stable source identifier when the producing Illustrator version stored one.

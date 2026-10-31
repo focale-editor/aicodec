@@ -671,6 +671,31 @@ dart run tool/check_native_path_creation.dart
 python3 tool/verify_native_path_creation.py --inkai-source /tmp/extension-ai
 ```
 
+## Native artboard state and rectangles
+
+`artboard_manifest.json` pins three CC unit/origin examples, two existing complex
+documents and Reuters' five-page `preview-dev.ai` at an explicit Git revision.
+The latter is distributed under the `ai2svelte/LICENSE` MIT notice retained in the
+manifest; artwork stays outside Git and publication. Its five PDF owners share
+one native program, independently extracted from every owner. Active index 4,
+selected index 2, LastArtboardID 67 and the separate crop rectangle are checked
+without inferring them from PDF page order, count or dimensions.
+
+Nineteen fixed transactions cover six real inspections, six successful rectangle
+edits in three CC sources, four checksum-pinned synthetic edits (including mixed
+CC pairs/resources) and three immutable refusals. The unmodified reader binds each
+reported Document span to its full parse, compares all document fields, and
+requires exact original bytes outside the requested coordinate/crop tokens. The
+large Reuters source remains inspection-only: upstream body-parser warnings are
+outside the separately parsed Document metadata check. PDF-page remapping,
+`AIMetaData` updates and Adobe reopening are not established by this suite.
+
+```sh
+python3 tool/fetch_corpus.py --manifest artboard_manifest.json
+dart run tool/check_native_artboards.dart
+python3 tool/verify_native_artboards.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

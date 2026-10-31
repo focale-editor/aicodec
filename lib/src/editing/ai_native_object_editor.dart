@@ -85,6 +85,18 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
   if (identifiers.isEmpty) {
     return;
   }
+  _nativeReferenceScope(model, headers);
+  final Map<String, int> occurrences = {};
+  for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
+    occurrences.update(latin1.decode(identifier.bytes), (count) => count + 1, ifAbsent: () => 1);
+  }
+  if (identifiers.any((identifier) => occurrences[latin1.decode(identifier.bytes)] != 1)) {
+    throw UnsupportedError('Deleting artwork requires an unambiguous native identity.');
+  }
+}
+
+/// Qualifies declarative document, resource and artwork dependency owners.
+void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers) {
   final List<_NativeShapeBundle> shapes = [
     for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true)) _shapeBundle(model.drawing, shape, model.structure),
   ];
@@ -105,13 +117,6 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
       throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
     }
     independent.add((start: record.start, end: record.end));
-  }
-  final Map<String, int> occurrences = {};
-  for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
-    occurrences.update(latin1.decode(identifier.bytes), (count) => count + 1, ifAbsent: () => 1);
-  }
-  if (identifiers.any((identifier) => occurrences[latin1.decode(identifier.bytes)] != 1)) {
-    throw UnsupportedError('Deleting artwork requires an unambiguous native identity.');
   }
   final AiProgram program = model.drawing.records.program;
   int position = program.bodyStart;

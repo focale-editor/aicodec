@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "simple_shapes_cc.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_shapes_cc.ai",
+      "size": 988056,
+      "sha256": "6feae140f767a7a8593e7d9d9336c98bc2eb0c5ff76bf3e698685ba63b9d31dc",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "layers_and_sublayers.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/layers_and_sublayers.ai",
+      "size": 1195202,
+      "sha256": "b8064e9da8f3b909a363a1b1d02b4c2ff0a5d2be721fe7194e359cc628c9c5d4",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "units-525x801_origin_at_100_100_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/525x801_origin_at_100_100_CC.ai",
+      "size": 24024,
+      "sha256": "2ce4403642cbcec36ce95feb3324b1146cf9146f02eaf733336203bf7a9f9baa",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-20000x10000_origin_at_100_100_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/20000x10000_origin_at_100_100_CC.ai",
+      "size": 24151,
+      "sha256": "244b61218f94b47b489aa4e4a3e19d59dcc3ce225bbb3d498cbd0da7b2c84e64",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "units-20x40mm_origin_topleft_CC.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/20x40mm_origin_topleft_CC.ai",
+      "size": 24125,
+      "sha256": "11588fc13ed7329384ce243f94b47e5d5486527297b65ead1ec6286ada9729d7",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    },
+    {
+      "file": "reuters-preview-dev.ai",
+      "url": "https://raw.githubusercontent.com/reuters-graphics/ai2svelte/ba5675cc4378acf77902709c08b744ca5796a052/ai2svelte/src/js/main/example/preview-dev.ai",
+      "size": 27504355,
+      "sha256": "2c95a900097320036783d4b4a82c1ab84b4b9dda44856ed0935f2e5720a12292",
+      "revision": "ba5675cc4378acf77902709c08b744ca5796a052",
+      "license": "MIT License. Copyright (c) Hyper Brew LLC. Source: ai2svelte/LICENSE at the pinned revision; fixture is distributed in ai2svelte/src/js/main/example. Retain that notice when redistributing.",
+      "licenseUrl": "https://raw.githubusercontent.com/reuters-graphics/ai2svelte/ba5675cc4378acf77902709c08b744ca5796a052/ai2svelte/LICENSE",
+      "expected": "accept",
+      "notes": "Illustrator 30.6, five PDF pages sharing one native program. Active board 4 differs from selected board 2. LastArtboardID is 67. Inspection coverage; complex artwork is not qualified for structural edits."
+    }
+  ]
+}

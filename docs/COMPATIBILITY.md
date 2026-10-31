@@ -19,6 +19,9 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   geometry/process paint and host-computed bounds, without generating a PDF.
 - Source-owned ruler units, canvas scale and coordinate metadata; artboards retain
   document ownership/order and separate artboard/text ruler origins.
+- Independent active-artboard, selection, crop and saved LastArtboardID fields;
+  qualified native rectangle resizing with explicit crop/ruler choices. General
+  artboard lifecycle and synchronization of page mappings/cached headers remain open.
 - Source identities, ordered record fields, saved artboard/XML artwork identifiers
   and lexical owners. Version alternatives remain separate; qualified style and
   gradient references report missing, ambiguous and conditional ownership.

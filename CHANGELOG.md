@@ -45,3 +45,4 @@
 - Required explicit parent inheritance when grouping or dissolving non-neutral or unknown native/printing lock and visibility flags, including ordinary path grouping.
 - Allowed dissolution of qualified neutral default-group resets, retaining child opacity, nested reset ownership and complete CC pairs while rejecting other style applications.
 - Added ordinary path creation without a sibling, using explicit immutable geometry/process paints, fresh optional metadata and host-computed bounds, with independent native/printing state restoration.
+- Separated native active-artboard, selection, crop and LastArtboardID state, and added qualified rectangle resizing with explicit crop/ruler-origin policies and exact unrelated-source preservation.

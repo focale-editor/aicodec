@@ -586,6 +586,20 @@ groups and compound topology. There is no general modern object lifecycle API.
   unqualified; no host renderer or derived representation generator was added.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
+  **In progress:** `AiNativeArtboards` now retains explicit document ownership,
+  ordered boards, separate `CropAreaActive`, selection, `LastArtboardID` and
+  initial crop declarations. A pinned five-page Illustrator 30.6 source confirms
+  that active index 4 differs from selected index 2, and that LastArtboardID 67 is
+  not the board count. Native rectangle resizing changes only selected coordinates
+  and explicitly supplied crop/ruler fields, preserving artwork and drawing
+  extents. Nine regressions and 19 independent transactions pass: six real-source
+  inspections, six resizes in three CC sources, four synthetic resizes including
+  complete CC pairs/resources, and three unchanged dependency refusals. Latest
+  validation: 691 VM/690 Node tests and clean format/fix/analysis. The multi-page
+  source is qualified for Document inspection only; its body is not fully decoded
+  by the independent reader. The task remains open: creation, deletion, ordering,
+  artboard-specific dependency isolation, explicit host PDF-page mapping and
+  synchronized cached `AIMetaData` headers still require implementation and checks.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
