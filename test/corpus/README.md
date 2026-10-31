@@ -258,6 +258,22 @@ dart run tool/check_native_placements.dart
 python3 tool/verify_native_placements.py --inkai-source /tmp/extension-ai
 ```
 
+Relinking uses the same intact fixture and the linked PDF carrier generated above.
+The verifier writes an actual `assets/relinked-apple.png`, independently inverted
+from the original saved RGB preview. Two native variants use that new absolute
+path and relative directory; one refreshes the preview, the other removes it.
+Ghostscript independently decodes both path operands. The pinned reader and
+Pillow verify the new ARGB rows, all five unchanged setup images and preserved
+geometry/object metadata. Four zero-difference Poppler comparisons cover the
+standalone and synchronized PDFs; two native programs are recovered exactly.
+Outputs and the generated linked resource stay in ignored `output/native-relinks`.
+This does not qualify Illustrator reopening or global XMP dependency updates.
+
+```sh
+dart run tool/check_native_relinks.dart
+python3 tool/verify_native_relinks.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

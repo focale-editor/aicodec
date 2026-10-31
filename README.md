@@ -37,6 +37,8 @@ as self-contained AI7 PostScript.
   while retaining placed extents and renewing changed sample identities.
 - CC linked-file paths, placement and bounded ARGB previews. Translate links or
   incorporate host-decoded image samples into editable native raster artwork.
+- Relink CC raster files with explicit relative directories and refreshed or
+  removed previews, retaining geometry and shared file dependencies.
 - Render host-resolved linked images and synchronize PDF appearances while
   retaining native file references, relative paths and cached previews.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,

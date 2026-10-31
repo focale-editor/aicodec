@@ -11,7 +11,7 @@ void _validateRasterPlacement(AiNativePlacedObject object) {
     throw UnsupportedError('Native placement editing requires a qualified CC raster file.');
   }
   final List<AiToken> includes = object.comments.where((token) => token.lexeme.startsWith('%%IncludeFile:')).toList();
-  if (includes.length != 1 || includes.single.lexeme.substring('%%IncludeFile:'.length).trim() != latin1.decode(object.pathBytes)) {
+  if (includes.length != 1 || _placedFileName(includes.single.lexeme.substring('%%IncludeFile:'.length)) != latin1.decode(object.pathBytes)) {
     throw UnsupportedError('Native placed-file references disagree.');
   }
   final List<String> expected = [
@@ -105,7 +105,7 @@ XI
     ..add(samples.colorSamples)
     ..add(samples.alphaSamples ?? [])
     ..add(latin1.encode('\n$prefix%%EndData\n${prefix}XH\n$prefix%AI5_EndRaster\n${prefix}N'));
-  final List<AiSourceEdit> edits = [AiSourceEdit(start: object.start, end: object.end, bytes: replacement.takeBytes()), ..._unusedPlacedFileEdits(source, object)];
+  final List<AiSourceEdit> edits = [AiSourceEdit(start: object.start, end: object.end, bytes: replacement.takeBytes()), ..._placedFileEdits(source, object)];
   final AiNativeRasters result = AiNativeRasters.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: source.records.program, edits: edits),
@@ -127,21 +127,44 @@ double _placedRasterOrigin(double value) {
   return (value - nearest).abs() <= 1e-9 ? nearest : value;
 }
 
-/// Removes a declared file only when no other native reference still uses it.
-List<AiSourceEdit> _unusedPlacedFileEdits(AiNativePlacements source, AiNativePlacedObject object) {
+/// Trims DSC separator bytes without treating non-ASCII path bytes as whitespace.
+String _placedFileName(String value) => value.replaceFirst(RegExp(r'^[ \t]*'), '').replaceFirst(RegExp(r'[ \t]*$'), '');
+
+/// Updates declared dependencies while preserving shared native file references.
+List<AiSourceEdit> _placedFileEdits(AiNativePlacements source, AiNativePlacedObject object, {String? replacement}) {
   final String path = latin1.decode(object.pathBytes);
+  if (replacement == path) {
+    return [];
+  }
   final List<AiToken> projected = source.records._projection.tokens;
-  if (projected.any(
+  final bool shared = projected.any(
     (token) =>
         (token.start < object.start || token.start >= object.end) &&
         ((token.kind == .string || token.kind == .hexString) && latin1.decode(aiStringBytes(token)) == path ||
-            token.kind == .comment && token.lexeme.startsWith('%%IncludeFile:') && token.lexeme.substring('%%IncludeFile:'.length).trim() == path),
-  )) {
+            token.kind == .comment && token.lexeme.startsWith('%%IncludeFile:') && _placedFileName(token.lexeme.substring('%%IncludeFile:'.length)) == path),
+  );
+  if (shared && replacement == null) {
     return [];
   }
   final List<AiSourceEdit> edits = [];
   final List<AiToken> deferred = [];
   bool retainedFiles = false;
+  bool concrete = false;
+  AiToken? header;
+  AiToken? trailer;
+  int replacementBytes = 0;
+
+  /// Bounds all authored declarations before allocating their byte buffers.
+  void edit(int start, int end, List<String> files, {bool insert = false}) {
+    final int length = files.fold(0, (total, file) => total + file.length + 4) + 17;
+    if (length > source.records.program.limits.maxDecodedBytes - replacementBytes) {
+      throw const FormatException('Placed-file declarations exceed the native byte limit.');
+    }
+    final String text = files.isEmpty ? '' : '${insert ? '\n' : ''}%%DocumentFiles:${files.first}${files.skip(1).map((file) => '\n%%+$file').join()}';
+    replacementBytes += text.length;
+    edits.add(AiSourceEdit(start: start, end: end, bytes: latin1.encode(text)));
+  }
+
   final List<AiToken> tokens = AiPostScript.tokenize(
     source.records.program.bytes,
     maxBytes: source.records.program.limits.maxDecodedBytes,
@@ -164,26 +187,55 @@ List<AiSourceEdit> _unusedPlacedFileEdits(AiNativePlacements source, AiNativePla
     if (token.kind == .comment && token.lexeme == '%%EndDocument') {
       embedded--;
     }
-    if (procedure != 0 || embedded != 0 || token.kind != .comment || !token.lexeme.startsWith('%%DocumentFiles:')) {
+    if (procedure != 0 || embedded != 0 || token.kind != .comment) {
       continue;
     }
-    final List<String> paths = [token.lexeme.substring('%%DocumentFiles:'.length).trim()];
+    if (token.start == 0 && token.lexeme.startsWith('%!PS-Adobe-')) {
+      header = token;
+    } else if (token.lexeme == '%%Trailer') {
+      trailer = token;
+    }
+    if (!token.lexeme.startsWith('%%DocumentFiles:')) {
+      continue;
+    }
+    final List<String> paths = [_placedFileName(token.lexeme.substring('%%DocumentFiles:'.length))];
     int end = token.end;
     while (index + 1 < tokens.length && tokens[index + 1].kind == .comment && tokens[index + 1].lexeme.startsWith('%%+')) {
       final AiToken next = tokens[++index];
-      paths.add(next.lexeme.substring(3).trim());
+      paths.add(_placedFileName(next.lexeme.substring(3)));
       end = next.end;
     }
     if (paths.length == 1 && paths.single == '(atend)') {
       deferred.add(token);
       continue;
     }
-    final List<String> remaining = paths.where((value) => value != path).toList();
+    concrete = true;
+    bool insertReplacement = replacement != null && !paths.contains(replacement);
+    final List<String> remaining = [];
+    for (final String value in paths) {
+      if (value != path || shared) {
+        remaining.add(value);
+      } else if (insertReplacement) {
+        remaining.add(replacement!);
+        insertReplacement = false;
+      }
+    }
+    if (insertReplacement) {
+      remaining.add(replacement!);
+    }
     retainedFiles = retainedFiles || remaining.isNotEmpty;
-    if (!paths.contains(path)) {
+    if (remaining.length == paths.length && remaining.indexed.every((item) => item.$2 == paths[item.$1])) {
       continue;
     }
-    edits.add(AiSourceEdit(start: token.start, end: end, bytes: latin1.encode(remaining.isEmpty ? '' : '%%DocumentFiles:${remaining.first}${remaining.skip(1).map((value) => '\n%%+$value').join()}')));
+    edit(token.start, end, remaining);
+  }
+  if (!concrete && replacement != null) {
+    final AiToken? location = deferred.isEmpty ? header : trailer;
+    if (location == null) {
+      throw UnsupportedError('Adding a placed-file dependency requires a native header or the declared trailer.');
+    }
+    edit(location.end, location.end, [if (shared) path, replacement], insert: true);
+    retainedFiles = true;
   }
   if (edits.isNotEmpty && !retainedFiles) {
     edits.addAll(deferred.map((token) => AiSourceEdit(start: token.start, end: token.end, bytes: [])));
