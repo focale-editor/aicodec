@@ -342,7 +342,9 @@ final class AiNativeDrawing {
   ///
   /// Retained paint/lock/visibility assignments preserve following objects.
   /// Drawing bounds stay conservative. Identified groups or descendants require
-  /// a qualified whole-source reference scope; derived or unresolved owners reject.
+  /// a qualified whole-source reference scope. Complete qualified CC pairs may
+  /// be removed with their parent; partial pairs and unresolved owners reject.
+  /// Both native and printing state used by retained artwork remain preserved.
   AiNativeDrawing removeGroups({required List<AiNativeGroup> groups}) => _removeNativeGroups(this, groups);
 
   /// Reorders selected ordinary sibling groups into their existing source slots.

@@ -165,6 +165,8 @@ final class AiNativeLayers {
   /// opaque records, external executable sections and ambiguous identities reject.
   /// Anonymous subtrees retain local dependency checks. Root counts update and
   /// saved panel data requires explicit [discardViewState]. Bounds do not shrink.
+  /// Complete qualified CC pairs are removed with their parent, including
+  /// both metadata alternatives. Retained artwork keeps both state streams.
   AiNativeLayers remove({required List<AiNativeLayer> layers, bool discardViewState = false}) => _removeNativeLayers(this, layers, discardViewState);
 
   /// Requires the exact immutable layer instance supplied by this inventory.

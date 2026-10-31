@@ -400,6 +400,30 @@ groups and compound topology. There is no general modern object lifecycle API.
   regenerated and independently rechecked. Group/layer subtrees containing private
   pairs and broader reference-owner schemas remain outstanding; this task stays
   open. Synthetic native SVG and Adobe reopening limitations remain explicit.
+  Qualified ordinary group/layer parents now support complete removal of mixed
+  subtrees containing CC pairs. Private contours, printing expansions, parameters,
+  panel flags and all metadata alternatives are deleted together. Explicit scalar
+  state retains its source order/projection, with definite style effects replayed
+  for surviving artwork. Dependency checks ignore reads by other deleted children
+  but retain their writes; unresolved effects read by surviving objects reject.
+  Every removed identity participates in the document reference check, including
+  older alternatives and identified children of anonymous parents. Authoritative
+  shape counts now handle both versioned and unversioned metadata without counting
+  a path-bound pair twice. Fourteen regressions cover nested/mixed owners, atomic
+  batches, retained dependencies, privacy, opaque references, partial pairs and
+  bounded scalar replay. Independent checks verify 22 fixed transactions: nine
+  derived-real and eight synthetic removals plus five exact refusals. Exact wrapper
+  recipes around complete pinned CC programs and declared resource assemblies are
+  reconstructed independently; source ownership, both metadata branches, retained
+  bytes, scalar order/privacy, topology and flags are checked. Both real-derived
+  SVG interpretations and synthetic printing SVG retain exactly the requested
+  deletion. These derived owners do not qualify complete original donor-layer
+  deletion. Latest validation: 583 VM/582 Node tests and clean format/fix/analysis.
+  All 101 existing group/layer/direct-shape/pair-removal/reference-resource
+  transactions were regenerated and independently rechecked.
+  Mixed-subtree copying, reordering and reparenting, plus broader reference-owner
+  schemas, remain outstanding; this task stays open. No Focale integration or
+  Adobe reopening was introduced, and synthetic native SVG remains unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

@@ -16,6 +16,7 @@ void _shapeFollowingDependencies(
   List<_NativeShapeBundle> slots,
   Map<AiLiveShape, _NativeShapeReplacement> replacements, {
   Map<int, _NativeShapeReplacement> insertions = const {},
+  List<_NativeSubtreeSpan> discarded = const [],
 }) {
   final Set<String> unresolved = {};
   final Set<String> printingUnresolved = {};
@@ -47,7 +48,7 @@ void _shapeFollowingDependencies(
       }
       return;
     }
-    if (discard) {
+    if (discard || discarded.any((span) => item.start >= span.start && item.end <= span.end)) {
       return;
     }
     if (paths[item.start] case final AiNativePath path) {

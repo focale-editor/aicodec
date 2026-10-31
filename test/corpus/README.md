@@ -250,6 +250,23 @@ dart run tool/check_native_reference_resources.dart
 python3 tool/verify_native_reference_resources.py --inkai-source /tmp/extension-ai
 ```
 
+Mixed group/layer removal uses declared wrappers around five complete pinned CC
+programs and four of the declared document/resource assemblies above. Exact
+recipes retain the original pair bytes, setup resources and unrelated artwork;
+new layer wrappers explicitly update the root count. These are derived ownership
+fixtures, not original Adobe-authored parent groups or newly qualified complete
+donor-layer deletions. The 22 fixed transactions contain nine derived-real and
+eight synthetic removals plus five exact refusals. The independent reader binds
+the selected owners, checks both saved metadata branches, exact retained bytes,
+scalar order/privacy, native flags and layer count/view changes. It compares
+native/printing SVG for real-derived fixtures and printing SVG for synthetic
+versioned fixtures. Synthetic native SVG and Adobe reopening remain unqualified.
+
+```sh
+dart run tool/check_native_subtree_removal.dart
+python3 tool/verify_native_subtree_removal.py --inkai-source /tmp/extension-ai
+```
+
 Direct live-shape lifecycle reuses six files in `manifest.json` and
 `rotation_manifest.json`; `direct_shape_manifest.json` adds the pinned `styles.ai`
 fixture with its source attribution. Fourteen real-file copies/removals retain

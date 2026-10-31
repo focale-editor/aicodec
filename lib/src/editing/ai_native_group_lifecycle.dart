@@ -1,13 +1,13 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies complete state/geometry intervals without evaluating opaque records.
-List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int end, {bool nested = true}) {
+List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int end, {bool nested = true, bool privateState = false}) {
   final List<AiNativeInstruction> commands = [];
   for (final AiNativeItem item in _pathInterval(drawing.items, start, end, (item) => item.start)) {
     if (_ordinaryObjectAttachment(drawing, item) && item.end <= end) {
       continue;
     }
-    if (item is! AiNativeInstruction || item.isPrivate || item.end > end) {
+    if (item is! AiNativeInstruction || item.isPrivate && !(privateState && _nativeArtworkStateKey(item) != null) || item.end > end) {
       throw UnsupportedError('Ordinary group edits require isolated non-private instructions.');
     }
     if (const {'u', 'U'}.contains(item.operator)) {
@@ -87,7 +87,7 @@ void _ordinaryGroupPostfix(AiNativeDrawing drawing, AiNativeGroup group) {
 }
 
 /// Validates disjoint ordinary owners, attached records and every contained path.
-AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups) {
+AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups, {List<_NativeShapeBundle> pairs = const []}) {
   final Set<AiNativeGroup> owned = drawing.groups.toSet();
   if (groups.isEmpty || groups.toSet().length != groups.length || groups.any((group) => !owned.contains(group))) {
     throw ArgumentError('Group lifecycle operations require distinct owned source groups.');
@@ -98,7 +98,8 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final AiNativeStructure ownership = layers.structure;
-  final List<AiLiveShape> shapes = drawing.liveShapes.where((shape) => _directNativeShapeIssue(shape) != null).toList()..sort((a, b) => a.start.compareTo(b.start));
+  final Set<AiLiveShape> paired = pairs.map((pair) => pair.shape).toSet();
+  final List<AiLiveShape> shapes = drawing.liveShapes.where((shape) => !paired.contains(shape) && _directNativeShapeIssue(shape) != null).toList()..sort((a, b) => a.start.compareTo(b.start));
   final List<AiLiveShape> bound = drawing.liveShapes.where((shape) => shape.isBound).toList()..sort((a, b) => a.end.compareTo(b.end));
   final Map<int, AiNativeLayer> layerHeaders = _layerHeaderItems(layers);
   int shapeIndex = 0;
@@ -111,7 +112,10 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
       throw UnsupportedError('Group lifecycle operations require independent ordinary authoring groups.');
     }
   }
-  final List<AiNativePath> paths = [for (final AiNativeGroup group in groups) ...group.paths];
+  final Set<AiNativePath> pairedPaths = {
+    for (final _NativeShapeBundle pair in pairs) ...[pair.shape.path!, ...pair.shape.appearancePaths],
+  };
+  final List<AiNativePath> paths = [for (final AiNativeGroup group in groups) ...group.paths.where((path) => !pairedPaths.contains(path))];
   final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: ownership);
   final Set<AiNativeInstruction> pathCommands = {
     for (final AiNativePath path in paths) ...[...path.geometry, path.paint],
@@ -127,7 +131,7 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
       if (checked.add(node)) {
         if (node.source case final AiNativeGroup owner) {
           _ordinaryObjectFollowing(drawing, owner);
-          _ordinaryGroupPrefix(drawing, owner, bound, layerHeaders);
+          _ordinaryGroupPrefix(drawing, owner, bound, layerHeaders, privateState: pairs.isNotEmpty);
           _ordinaryGroupPostfix(drawing, owner);
         } else {
           _ordinaryPathFollowing(drawing.items, node.end);
@@ -135,7 +139,8 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
       }
       node = ownership.parentOf(node);
     }
-    for (final AiNativeInstruction command in _groupInterval(drawing, group.start, group.end)) {
+    final List<AiNativeInstruction> commands = pairs.isEmpty ? _groupInterval(drawing, group.start, group.end) : _subtreeOrdinaryCommands(layers, group.start, group.end, pairs, groups: true);
+    for (final AiNativeInstruction command in commands) {
       if ((_nativeGeometry.contains(command.operator) || _nativePaint.contains(command.operator) || command.operator == 'As') && !pathCommands.contains(command)) {
         throw UnsupportedError('The selected group contains unowned geometry or point counts.');
       }
@@ -279,14 +284,22 @@ AiNativeDrawing _duplicateNativeGroups(AiNativeDrawing drawing, List<AiNativeGro
 
 /// Removes selected subtrees while replaying their persistent assignments.
 AiNativeDrawing _removeNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups) {
-  _ordinaryGroups(drawing, groups);
-  _ordinaryObjectRemoval(drawing, groups);
+  final List<_NativeSubtreeSpan> spans = [for (final AiNativeGroup group in groups) (start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
+  _ordinaryGroups(drawing, groups, pairs: pairs);
+  final List<AiSourceEdit> edits;
+  if (pairs.isEmpty) {
+    _ordinaryObjectRemoval(drawing, groups);
+    edits = [for (final AiNativeGroup group in groups) AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end, bytes: _removedGroupState(drawing, group))];
+  } else {
+    edits = _removedNativeSubtrees(AiNativeLayers.decode(drawing: drawing), spans, pairs, groups: true);
+  }
   return _groupLifecycleResult(
     drawing,
-    [for (final AiNativeGroup group in groups) AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end, bytes: _removedGroupState(drawing, group))],
+    edits,
     paths: drawing.paths.length - groups.fold(0, (count, group) => count + group.paths.length),
     groups: drawing.groups.length - _selectedGroupCount(groups),
-    liveShapes: drawing.liveShapes.length - _selectedLiveShapeCount(drawing, groups),
+    liveShapes: drawing.liveShapes.length - _subtreeLiveShapeCount(drawing, spans),
   );
 }
 

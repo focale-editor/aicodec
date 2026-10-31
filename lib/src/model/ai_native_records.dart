@@ -39,6 +39,7 @@ part '../editing/ai_native_shape_movement.dart';
 part '../editing/ai_native_shape_removal.dart';
 part '../editing/ai_native_shape_copy_state.dart';
 part '../editing/ai_native_group_lifecycle.dart';
+part '../editing/ai_native_subtree_removal.dart';
 part '../editing/ai_native_layer_editor.dart';
 part '../editing/ai_native_layer_lifecycle.dart';
 part '../editing/ai_live_shape_gradient_editor.dart';

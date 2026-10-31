@@ -12,20 +12,22 @@ Map<int, AiNativeLayer> _layerHeaderItems(AiNativeLayers model) => {
 };
 
 /// Refuses unresolved metadata that precedes and may belong to a selected layer.
-void _layerLifecyclePrefix(AiNativeLayers model, AiNativeLayer layer, Map<int, AiNativeLayer> headers) {
-  int start = model.drawing.records.program.bodyStart;
-  for (int index = _pathOffset(model.drawing.items, layer.start, (item) => item.start) - 1; index >= 0; index--) {
+void _layerLifecyclePrefix(AiNativeLayers model, AiNativeLayer layer, Map<int, AiNativeLayer> headers, {bool privateState = false}) {
+  int start = privateState
+      ? model.drawing.liveShapes.where((shape) => shape.isBound && shape.end <= layer.start).fold(model.drawing.records.program.bodyStart, (end, shape) => max(end, shape.end))
+      : model.drawing.records.program.bodyStart;
+  for (int index = _pathOffset(model.drawing.items, layer.start, (item) => item.start) - 1; index >= 0 && model.drawing.items[index].end > start; index--) {
     final AiNativeItem item = model.drawing.items[index];
     if (item is AiNativeInstruction && (_nativePaint.contains(item.operator) || const {'u', 'U', 'Lb', 'LB'}.contains(item.operator))) {
       start = item.end;
       break;
     }
   }
-  _layerInterval(model, start, layer.start, headers);
+  _layerInterval(model, start, layer.start, headers, privateState: privateState);
 }
 
 /// Validates an ordinary interval without interpreting opaque object families.
-List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int end, Map<int, AiNativeLayer> headers) {
+List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int end, Map<int, AiNativeLayer> headers, {bool privateState = false}) {
   final AiNativeDrawing drawing = model.drawing;
   final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).toList();
   final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: model.structure);
@@ -47,7 +49,7 @@ List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int en
     if (_ordinaryObjectAttachment(drawing, item)) {
       continue;
     }
-    if (item is! AiNativeInstruction || item.isPrivate) {
+    if (item is! AiNativeInstruction || item.isPrivate && !(privateState && _nativeArtworkStateKey(item) != null)) {
       throw UnsupportedError('Layer lifecycle edits require ordinary artwork and qualified layer identities.');
     }
     if (const {'u', 'U'}.contains(item.operator)) {
@@ -288,17 +290,24 @@ AiNativeLayers _duplicateNativeLayers(
 /// Deletes complete subtrees and retains only their persistent state assignments.
 AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> layers, bool discardViewState) {
   final List<AiNativeLayer> selected = _selectedLayers(model, layers);
+  final List<_NativeSubtreeSpan> spans = [for (final AiNativeLayer layer in selected) (start: layer.start, end: layer.end)];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
   final List<AiNativeLayer> descendants = _layerDescendants(model, selected);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
-  _nativeRemovalReferences(model, [
-    for (final AiNativeLayer layer in descendants) ?layer.identifier,
-    for (final AiNativeObject object in _selectedNativeObjects(model.drawing, selected)) ?object.identifier,
-  ], headers);
+  if (pairs.isEmpty) {
+    _nativeRemovalReferences(model, [
+      for (final AiNativeLayer layer in descendants) ?layer.identifier,
+      for (final AiNativeObject object in _selectedNativeObjects(model.drawing, selected)) ?object.identifier,
+    ], headers);
+  }
   final int roots = model.rootCount - selected.where((layer) => layer.parentIndex == null).length;
   final List<AiSourceEdit> edits = _layerDeclarations(model, roots, discardViewState);
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in selected) {
-    _layerLifecyclePrefix(model, layer, headers);
+    _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
+    if (pairs.isNotEmpty) {
+      continue;
+    }
     final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
     final List<int> state = _nativeSourceSpans(model.drawing.records.program, [
       for (final AiNativeInstruction item in commands)
@@ -306,6 +315,9 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
     ], remaining - 1);
     edits.add(AiSourceEdit(start: layer.start, end: layer.end, bytes: [10, ...state]));
     remaining -= state.length + 1;
+  }
+  if (pairs.isNotEmpty) {
+    edits.addAll(_removedNativeSubtrees(model, spans, pairs));
   }
   final ({int paths, int groups}) count = _layerArtworkCounts(model, selected);
   return _layerLifecycleResult(
@@ -315,6 +327,6 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
     layers: model.layers.length - descendants.length,
     paths: model.drawing.paths.length - count.paths,
     groups: model.drawing.groups.length - count.groups,
-    liveShapes: model.drawing.liveShapes.length - _selectedLiveShapeCount(model.drawing, selected),
+    liveShapes: model.drawing.liveShapes.length - _subtreeLiveShapeCount(model.drawing, spans),
   );
 }

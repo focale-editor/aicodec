@@ -21,7 +21,7 @@ AiNativeDrawing _drawing(List<int> bytes) => AiNativeDrawing.decode(
 );
 
 /// Builds a declared mixed fixture from exact real document, pair and resource spans.
-({AiNativeDrawing drawing, Map<String, Object?> provenance}) _combined(AiNativeDrawing base, AiNativeDrawing donor) {
+({AiNativeDrawing drawing, Map<String, Object?> provenance}) mixedReferenceSource(AiNativeDrawing base, AiNativeDrawing donor) {
   final String text = latin1.decode(donor.records.program.bytes);
   final AiLiveShape pair = donor.liveShapes[1];
   final AiNativeStructure structure = AiNativeStructure.decode(drawing: donor);
@@ -113,7 +113,7 @@ Future<void> main() async {
   final AiNativeDrawing base = _drawing(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/units-20x40mm_origin_topleft_CC.ai').readAsBytes())).single.bytes);
   for (final String name in ['simple_shapes.ai', 'simple_shapes_cc.ai', 'gradient_linear.ai', 'gradient_radial.ai']) {
     final AiNativeDrawing donor = _drawing(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single.bytes);
-    final ({AiNativeDrawing drawing, Map<String, Object?> provenance}) combined = _combined(base, donor);
+    final ({AiNativeDrawing drawing, Map<String, Object?> provenance}) combined = mixedReferenceSource(base, donor);
     await record('mixed-$name', 'layer', combined.drawing, provenance: {...combined.provenance, 'donor': name});
     await record(name, 'layer', donor, reject: true);
   }
