@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Plans synchronized edits against one immutable authoring snapshot.
-final class _LiveShapeTranslation {
+final class _LiveShapeTransform {
   /// Drawing owning every selected source handle.
   final AiNativeDrawing drawing;
 
@@ -15,14 +15,21 @@ final class _LiveShapeTranslation {
   final double deltaY;
 
   /// Creates an operation without mutating or partially updating the source.
-  _LiveShapeTranslation({required this.drawing, required List<AiLiveShape> shapes, required this.deltaX, required this.deltaY}) : shapes = List.unmodifiable(shapes);
+  _LiveShapeTransform({required this.drawing, required List<AiLiveShape> shapes, this.deltaX = 0, this.deltaY = 0, this.rotation}) : shapes = List.unmodifiable(shapes);
+
+  /// Optional rigid rotation; absent for the existing translation operation.
+  final _LiveShapeRotation? rotation;
 
   /// Validates all dependencies before applying one source-edit transaction.
   AiNativeDrawing apply() {
     if (!deltaX.isFinite || !deltaY.isFinite || shapes.isEmpty || shapes.toSet().length != shapes.length || shapes.any((shape) => !drawing.liveShapes.contains(shape))) {
-      throw ArgumentError('Translation requires finite offsets and distinct shapes from this snapshot.');
+      throw ArgumentError('Native transformation requires finite offsets and distinct shapes from this snapshot.');
     }
     _checkDrawing();
+    rotation?.validate();
+    if (rotation?.isIdentity ?? false) {
+      return drawing;
+    }
     final List<AiSourceEdit> edits = [];
     final Set<AiNativePath> moved = {};
     final Map<AiNativeContainer, String> copiedStyles = {};
@@ -30,7 +37,7 @@ final class _LiveShapeTranslation {
     for (final AiLiveShape shape in shapes) {
       final AiNativeGroup? appearanceGroup = shape.appearanceGroup;
       if (appearanceGroup != null && drawing.items.any((item) => item is AiNativeContainer && item.start > appearanceGroup.start && item.end < appearanceGroup.end)) {
-        throw UnsupportedError('Translation requires synchronizing nested appearance metadata.');
+        throw UnsupportedError('Native transformation requires synchronizing nested appearance metadata.');
       }
       if (!shape.isBound || !_shapeParameters.containsKey(shape.handler)) {
         throw UnsupportedError(shape.bindingIssue ?? 'Unsupported native live-shape handler: ${shape.handler}.');
@@ -44,6 +51,17 @@ final class _LiveShapeTranslation {
         _checkDictionary(appearance, shape.handler);
       }
       for (final AiNativeContainer dictionary in [shape.dictionary, ?appearance, ...shape.alternativeDictionaries]) {
+        final List<double>? cached = _nativeGradientTransform(dictionary);
+        if (cached != null) {
+          final List<double>? geometry = _shapeGradientTransform(drawing, shape);
+          if (geometry == null || !_sameNativeMatrix(cached, geometry)) {
+            throw UnsupportedError('Native shape metadata disagrees with its accumulated gradient transform.');
+          }
+        }
+        if (rotation case final _LiveShapeRotation operation) {
+          edits.addAll(operation.dictionaryEdits(shape, dictionary));
+          continue;
+        }
         final AiNativeContainer? parameters = dictionary['ai::LiveShape']?.container?['ai::LiveShape::Params']?.container;
         if (parameters == null) {
           continue;
@@ -61,9 +79,12 @@ final class _LiveShapeTranslation {
           throw const FormatException('Selected native shapes share an appearance path.');
         }
         for (final AiNativeInstruction command in path.geometry) {
-          for (int index = 0; index < command.operands.length; index++) {
-            final AiToken token = command.operands[index];
-            edits.add(_numberEdit(AiNativeToken._(token: token), token.number!.toDouble() + (index.isEven ? deltaX : deltaY)));
+          for (int index = 0; index < command.operands.length; index += 2) {
+            final AiToken x = command.operands[index];
+            final AiToken y = command.operands[index + 1];
+            final List<double> point = rotation?.point(x.number!.toDouble(), y.number!.toDouble()) ?? [x.number!.toDouble() + deltaX, y.number!.toDouble() + deltaY];
+            edits.add(_numberEdit(AiNativeToken._(token: x), point[0]));
+            edits.add(_numberEdit(AiNativeToken._(token: y), point[1]));
           }
         }
       }
@@ -73,7 +94,7 @@ final class _LiveShapeTranslation {
           continue;
         }
         if (gradient.paths.any((path) => !shape.appearancePaths.contains(path))) {
-          throw UnsupportedError('Translation requires synchronizing a shared gradient instance.');
+          throw UnsupportedError('Native transformation requires synchronizing a shared gradient instance.');
         }
         edits.addAll(_gradientEdits(gradient));
       }
@@ -83,7 +104,7 @@ final class _LiveShapeTranslation {
           for (final AiNativeContainer record in drawing.records.containers.where(
             (record) => record.start > style.start && record.end < style.end && const {'FillStyle', 'StrokeStyle'}.contains(record.type),
           ))
-            for (final AiNativeGradient gradient in AiNativePaintStyle.decode(records: drawing.records, record: record).gradients) ..._gradientEdits(gradient),
+            for (final AiNativeGradient gradient in AiNativePaintStyle.decode(records: drawing.records, record: record).gradients) ..._gradientEdits(gradient, style: true),
         ];
         if (styleEdits.isNotEmpty) {
           String? name = copiedStyles[style];
@@ -137,20 +158,20 @@ final class _LiveShapeTranslation {
     for (final AiNativeItem item in drawing.items) {
       if (item is AiNativeVersionComment &&
           !drawing.liveShapes.any((shape) => shape.alternativeDictionaries.isNotEmpty && shape.path != null && item.start >= shape.path!.end && item.end <= shape.end)) {
-        throw UnsupportedError('Translation requires resolved version-dependent artwork.');
+        throw UnsupportedError('Native transformation requires resolved version-dependent artwork.');
       }
       if (item is AiNativeContainer && item.type != 'ArtDictionary') {
-        throw UnsupportedError('Translation cannot synchronize the native ${item.type} drawing resource.');
+        throw UnsupportedError('Native transformation cannot synchronize the native ${item.type} drawing resource.');
       }
       if (item is! AiNativeInstruction) {
         continue;
       }
-      if (!_translationCommands.contains(item.operator)) {
-        throw UnsupportedError('Translation cannot synchronize the native ${item.operator} operator.');
+      if (!_rigidTransformCommands.contains(item.operator)) {
+        throw UnsupportedError('Native transformation cannot synchronize the native ${item.operator} operator.');
       }
       if (item.operator == 'XW') {
         if (!_marker(item, 1) && !_marker(item, 6)) {
-          throw UnsupportedError('Translation requires a resolved XW appearance binding.');
+          throw UnsupportedError('Native transformation requires a resolved XW appearance binding.');
         }
         if (_marker(item, 1)) {
           final AiNativeContainer? style = styles[latin1.decode(aiStringBytes(item.operands[1]))];
@@ -169,7 +190,7 @@ final class _LiveShapeTranslation {
       for (final AiNativeGroup group in drawing.groups.where((group) => group.start < shape.start && group.end > shape.end)) {
         final int closing = drawing.items.indexWhere((item) => item.end == group.end);
         if (closing >= 0 && closing + 1 < drawing.items.length && drawing.items[closing + 1] is AiNativeContainer) {
-          throw UnsupportedError('Translation requires synchronizing the parent appearance.');
+          throw UnsupportedError('Native transformation requires synchronizing the parent appearance.');
         }
       }
     }
@@ -177,8 +198,12 @@ final class _LiveShapeTranslation {
 
   /// Checks native metadata whose positions are updated with the shape outline.
   void _checkDictionary(AiNativeContainer dictionary, String handler) {
-    if (dictionary.entries.any((entry) => !const {'ai::LiveShape', 'BBAccumRotation', 'AI10_ArtUID'}.contains(entry.key))) {
-      throw UnsupportedError('Translation cannot synchronize unknown native artwork metadata.');
+    if (dictionary.entries.any((entry) => !const {'ai::LiveShape', 'BBAccumRotation', 'AI10_ArtUID', 'Adobe_AI9_ArtStyle_Dictionary', 'PATH_IS_KAPPA_CURVE'}.contains(entry.key))) {
+      throw UnsupportedError('Native transformation cannot synchronize unknown native artwork metadata.');
+    }
+    final AiNativeEntry? curve = dictionary['PATH_IS_KAPPA_CURVE'];
+    if (curve != null && (curve.type != 'Bool' || !const {0, 1}.contains(curve.number))) {
+      throw UnsupportedError('Native transformation requires a valid cubic-curve metadata flag.');
     }
     final AiNativeContainer? definition = dictionary['ai::LiveShape']?.container;
     if (definition == null) {
@@ -186,7 +211,7 @@ final class _LiveShapeTranslation {
     }
     if (definition.entries.any((entry) => !const {'NotRecorded', 'ai::LiveShape::HandlerName', 'ai::LiveShape::Params'}.contains(entry.key)) ||
         definition['ai::LiveShape::HandlerName']?.text() != handler) {
-      throw UnsupportedError('Translation cannot synchronize this native live-shape definition.');
+      throw UnsupportedError('Native transformation cannot synchronize this native live-shape definition.');
     }
     final AiNativeContainer? parameters = definition['ai::LiveShape::Params']?.container;
     if (parameters == null) {
@@ -202,7 +227,7 @@ final class _LiveShapeTranslation {
       }
       final String? key = entry.key;
       if (key == null || !key.startsWith('$handler::') || !supported.contains(key.substring(handler.length + 2))) {
-        throw UnsupportedError('Translation cannot synchronize the native $key parameter.');
+        throw UnsupportedError('Native transformation cannot synchronize the native $key parameter.');
       }
     }
   }
@@ -212,18 +237,18 @@ final class _LiveShapeTranslation {
     for (final AiNativeContainer container in drawing.records.containers.where((container) => container.start >= style.start && container.end <= style.end)) {
       final Set<String>? keys = _solidStyleKeys[container.type];
       if (keys == null || container.entries.any((entry) => !keys.contains(entry.key))) {
-        throw UnsupportedError('Translation requires a supported appearance style.');
+        throw UnsupportedError('Native transformation requires a supported appearance style.');
       }
       final AiNativeEntry? filter = container['Filter'];
       if (filter != null) {
         final AiNativeItem? name = filter.items.firstOrNull;
         if (name is! AiNativeToken || name.token.kind != .string || !_solidFilters.contains(latin1.decode(aiStringBytes(name.token)))) {
-          throw UnsupportedError('Translation cannot synchronize this native appearance filter.');
+          throw UnsupportedError('Native transformation cannot synchronize this native appearance filter.');
         }
       }
       for (final AiNativeToken item in container.entries.expand((entry) => entry.items).whereType<AiNativeToken>()) {
         if (item.token.kind == .executableName && !_solidStyleCommands.contains(item.token.lexeme) && !_gradientCommands.contains(item.token.lexeme)) {
-          throw UnsupportedError('Translation cannot synchronize the native ${item.token.lexeme} style command.');
+          throw UnsupportedError('Native transformation cannot synchronize the native ${item.token.lexeme} style command.');
         }
       }
       if (const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(container.type)) {
@@ -235,8 +260,11 @@ final class _LiveShapeTranslation {
     }
   }
 
-  /// Moves absolute gradient imaging matrices while retaining relative vectors.
-  List<AiSourceEdit> _gradientEdits(AiNativeGradient gradient) {
+  /// Plans gradient edits while retaining relative authoring parameters.
+  List<AiSourceEdit> _gradientEdits(AiNativeGradient gradient, {bool style = false}) {
+    if (rotation case final _LiveShapeRotation operation) {
+      return operation.gradientEdits(gradient, style: style);
+    }
     final AiNativeGradientGeometry geometry = gradient.geometry;
     return [
       if (!geometry.relativeToArtwork)
@@ -248,7 +276,7 @@ final class _LiveShapeTranslation {
   }
 
   /// Expands top-level DSC extents without altering fixed artboard coordinates.
-  List<AiSourceEdit> _boundsEdits() => AiNativeEditor.translationBoundsEdits(program: drawing.records.program, deltaX: deltaX, deltaY: deltaY);
+  List<AiSourceEdit> _boundsEdits() => rotation?.boundsEdits() ?? AiNativeEditor.translationBoundsEdits(program: drawing.records.program, deltaX: deltaX, deltaY: deltaY);
 }
 
 /// Creates one finite numeric-token edit without changing native comment syntax.
@@ -260,7 +288,7 @@ AiSourceEdit _numberEdit(AiNativeItem item, double value) {
 }
 
 /// Drawing operations whose state has no independent spatial reference.
-const Set<String> _translationCommands = {
+const Set<String> _rigidTransformCommands = {
   ..._nativeGeometry,
   ..._nativePaint,
   ..._solidStyleCommands,
@@ -287,10 +315,10 @@ const Set<String> _translationCommands = {
 /// Encodes a newly allocated resource name without depending on locale escaping.
 List<int> _nativeString(String value) => latin1.encode('(${latin1.encode(value).map((byte) => '\\${byte.toRadixString(8).padLeft(3, '0')}').join()})');
 
-/// Solid painting attributes that remain unchanged under translation.
+/// Solid painting attributes that remain unchanged under rigid transforms.
 const Set<String> _solidStyleCommands = {'O', 'R', 'k', 'K', 'g', 'G', 'x', 'X', 'Xa', 'XA', 'Xy', 'J', 'j', 'w', 'M', 'd', 'XR', 'Xd'};
 
-/// Known appearance filters whose parameters are translation invariant.
+/// Known appearance filters whose parameters are invariant under rigid transforms.
 const Set<String> _solidFilters = {'Chain Style Filter', 'Stack Style Filter', 'Adobe Stroke Offset', 'Conduit Filter', 'Fill Style Filter', 'Stroke Style Filter', 'Blend Style Filter'};
 
 /// Allowed fields for the supported solid appearance graph.
@@ -305,7 +333,7 @@ const Map<String, Set<String>> _solidStyleKeys = {
   'BlendStyle': {'Def'},
 };
 
-/// Native shape fields with known translation behavior.
+/// Native shape fields supported by rigid transforms.
 const Map<String, Set<String>> _shapeParameters = {
   'ai::Rectangle': {
     'Width',

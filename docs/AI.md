@@ -273,7 +273,7 @@ rotation, styles, unselected artwork and unrelated source bytes are retained.
 Source handles cannot be reused against a later snapshot.
 
 The current operation rejects drawing state containing patterns,
-clipping, transforms, unsupported effects/metadata or unresolved versioned
+clipping, arbitrary executable transforms, unsupported effects/metadata or unresolved versioned
 artwork. This includes unsupported state outside the selection: the reader does
 not yet prove that inherited graphics state is independent of that artwork.
 Nested appearance ownership is rejected when dependent copies are unresolved.
@@ -282,8 +282,59 @@ Reading and exact source preservation remain available for these documents.
 DSC bounds conservatively include the original extent and its translated copy;
 they may grow more than the exact new artwork bounds. Artboards remain fixed.
 The result is an authoring snapshot: the host must regenerate the PDF appearance
-and cached previews before packaging a visual edit. Resizing, rotation,
+and cached previews before packaging a visual edit. Resizing,
 parameter-driven shape regeneration and complete CC style editing remain open.
+
+`rotateLiveShapes(shapes:, radians:, pivotX:, pivotY:)` rotates the same five
+families around an explicit drawing-space pivot. Positive angles rotate
+counterclockwise in y-up coordinates; the input is bounded to -2π..2π. A unique
+setup `AI11TextDocument.RulerOrigin` supplies the stable canvas origin. Artboard
+positions, page origins and crop rectangles are not substitutes for that field.
+Missing or ambiguous canvas origins reject rotation without changing the source.
+Units remain native drawing units, before any large-canvas scaling.
+
+Each selected private/printable control point and every recorded/redundant center
+rotates in its own coordinate system. Rectangle `Angle` and other handlers'
+`RotationAngle` values advance in radians, normalized to 0..2π. Existing
+`BBAccumRotation` fields retain their scalar/string representation and update to
+six decimals; absent fields are added with a zero starting frame angle. The
+separate frame angle stays in the signed full-turn range. Dimensions, corner
+parameters, stroke widths/dashes, cubic-curve flags and unselected objects remain
+unchanged. Zero and complete-turn requests retain the original snapshot.
+
+CC gradient printing matrices rotate in drawing coordinates, while accumulated
+`Bg` matrices rotate in the y-down canvas frame. Radial highlight offsets rotate
+as vectors; their normalized polar focus stays fixed. Qualified nonprinting
+relative style notes retain their identity matrices and zero highlight offsets.
+The object-specific `Adobe_AI9_ArtStyle_Dictionary.CAIGradientTformMatrix` is
+updated or inserted, using the observed `NotRecorded` dictionary layout. Existing
+copies must agree with all the object's gradient appearances. Shared known-style
+resources stay byte-exact; unsupported positional styles and older gradient
+layouts reject rotation. Subsequent translations retain a qualified accumulated
+matrix and move its printing appearance normally.
+
+The same dependency restrictions apply to rotation as to translation. DSC bounds
+conservatively include the original and rotated whole extent, retaining stroke
+margins; fixed artboards may clip rotated artwork. The result still requires a
+synchronized PDF save and regeneration of other previews/effects by the host.
+`AiNativeEditor.affineBoundsEdits` exposes the corresponding bounded conservative
+DSC operation independently of shape editing.
+
+Rotation qualification covers 42 live shapes in eleven pinned files, each at a
+quarter turn and an oblique angle. The independent reader checks native centers,
+angles, frame metadata, gradient transforms, highlights and unchanged setup
+resources. Twenty SVG comparisons use native authoring shapes; two use printable
+curves because the pinned reader cannot render the irregular-corner path effect.
+Those corner parameters are still checked independently, and empty renders fail
+validation. The maximum SVG mean channel difference is below 0.00218/255.
+Eighteen saved native programs are recovered byte-exactly. Thirty-two PDF page
+comparisons use transformed original Adobe appearances; four use a Ghostscript
+rectangle reference because the moved-artboard fixture contains only Adobe's
+missing-PDF-content notice. The maximum PDF mean channel difference is below
+0.06142/255, with identical flat pixels and gradient-field differences at most
+one channel level. Edge coverage differs between transformed PDF rectangle
+operators and equivalent explicit paths. Adobe reopening and frame-tool behavior
+remain unqualified.
 
 ### Gradient instances and native paint styles
 
@@ -409,7 +460,7 @@ Only the focus operands change: stops, sampled ramps, geometry, named resource
 definitions and unrelated bytes remain intact. Procedures and embedded documents
 are not interpreted. Output growth remains bounded by the native byte limit.
 The host must regenerate the PDF appearance and flattened effects after editing;
-`AiNativePdf.save` synchronizes the supported printable subset. General gradient
+`AiNativePdf.save` synchronizes the supported printable subset. Independent gradient
 resize/rotation, isolated object focus and Illustrator reopening remain separate
 qualification work.
 
@@ -1109,8 +1160,8 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
-| Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
-| Gradients | Inspect/translate instances; isolate positional styles; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, isolated object focus/colors, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
+| Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate/rotate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/shear/regenerate live shapes and synchronize remaining positional paints/effects |
+| Gradients | Inspect/translate instances; rotate CC live-shape appearances and accumulated transforms; isolate positional styles; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, isolated object focus/colors, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |

@@ -24,6 +24,34 @@ final class AiSourceEdit {
 
 /// Applies atomic source edits while preserving all untouched native data.
 abstract final class AiNativeEditor {
+  /// Expands DSC bounds to include their affine-transformed original extent.
+  ///
+  /// [matrix] uses the six drawing-space coefficients `[a, b, c, d, tx, ty]`.
+  /// This is conservative for a partial selection and includes stroke extents
+  /// already represented by the original bounds. Artboards and nested document
+  /// bounds stay fixed; deferred declarations retain their trailer resolution.
+  static List<AiSourceEdit> affineBoundsEdits({required AiProgram program, required List<double> matrix}) {
+    if (matrix.length != 6 || matrix.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
+      throw ArgumentError('Bounds transformation requires six finite, bounded affine coefficients.');
+    }
+    return _drawingBoundsEdits(program, (previous) {
+      final List<double> horizontal = [previous.left, previous.right];
+      final List<double> vertical = [previous.bottom, previous.top];
+      for (final double x in [previous.left, previous.right]) {
+        for (final double y in [previous.bottom, previous.top]) {
+          horizontal.add(matrix[0] * x + matrix[2] * y + matrix[4]);
+          vertical.add(matrix[1] * x + matrix[3] * y + matrix[5]);
+        }
+      }
+      if ([...horizontal, ...vertical].any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
+        throw ArgumentError('Transformed drawing bounds exceed finite source-coordinate limits.');
+      }
+      horizontal.sort();
+      vertical.sort();
+      return [horizontal.first, vertical.first, horizontal.last, vertical.last];
+    });
+  }
+
   /// Plans conservative DSC bounds covering both original and translated art.
   ///
   /// Displacements use drawing coordinates with y increasing upwards. Artboards

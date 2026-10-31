@@ -308,6 +308,30 @@ dart run tool/check_native_image_geometry.dart
 python3 tool/verify_native_image_geometry.py --inkai-source /tmp/extension-ai
 ```
 
+Live-shape rotation reuses eight existing CC fixtures and the three additional
+files in `rotation_manifest.json`: rounded rectangles with equal/different
+corners and a moved first artboard. Quarter-turn and oblique variants exercise
+42 live shapes, including private outlines and redundant/versioned dictionaries.
+The independent reader checks rotated centers, angles, frame metadata, gradient
+matrices and Cartesian highlights, and byte-exact shared setup resources.
+Twenty native-authoring SVG renders are compared with transformed original SVGs.
+The two irregular-corner variants use printable curves because the pinned reader
+cannot render that authoring path effect; their corner parameters are checked
+independently. Empty renders fail validation. The maximum SVG mean channel
+difference is below 0.00218/255. Thirty-two saved PDF/AI comparisons use transformed
+Adobe appearances; four use Ghostscript's independent rendering of the moved
+artboard's known black rectangle, since its original PDF contains a compatibility
+warning. Their maximum mean channel difference is below 0.06142/255, with equal
+flat pixels and gradient-field differences at most one channel level. All
+eighteen saved native programs are recovered byte-exactly. These checks do not
+qualify Adobe reopening, frame-tool interactions or arbitrary effect regeneration.
+
+```sh
+python3 tool/fetch_corpus.py --manifest rotation_manifest.json
+dart run tool/check_live_shape_rotation.dart
+python3 tool/verify_live_shape_rotation.py --inkai-source /tmp/extension-ai
+```
+
 Radial focus editing reuses the 37 pinned native fixtures. The dedicated checker
 changes every radial resource to an interior focus, then saves three variants of
 the CC radial drawing: interior, centered and boundary. The independent reader

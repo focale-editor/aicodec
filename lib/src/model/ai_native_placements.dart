@@ -109,7 +109,7 @@ final class AiNativePlacedObject extends AiNativeItem {
   ///
   /// String, UnicodeString and Real fields are supported; unknown scalar
   /// layouts reject access instead of deriving an angle from the matrix.
-  double? get frameRotationRadians => _imageFrameRotation(dictionary);
+  double? get frameRotationRadians => _nativeFrameRotation(dictionary);
 
   /// Whether this object belongs to the printable body rather than private art.
   bool isPrintable({required AiProgram program}) => start >= program.bodyStart && end <= program.bodyEnd && !instruction.isPrivate;

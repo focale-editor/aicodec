@@ -201,5 +201,25 @@ final class AiNativeDrawing {
   /// Artboards stay fixed. The host must regenerate the PDF compatibility view
   /// and any cached previews before packaging the edited native program.
   AiNativeDrawing translateLiveShapes({required List<AiLiveShape> shapes, required double deltaX, required double deltaY}) =>
-      _LiveShapeTranslation(drawing: this, shapes: shapes, deltaX: deltaX, deltaY: deltaY).apply();
+      _LiveShapeTransform(drawing: this, shapes: shapes, deltaX: deltaX, deltaY: deltaY).apply();
+
+  /// Rotates native shapes and their appearances around a drawing-space pivot.
+  ///
+  /// [radians] is counterclockwise with y upwards, in -2π..2π. The operation
+  /// updates canvas centers, native angles, frame angles, private outlines and
+  /// printable paths together. CC gradients retain their relative parameters;
+  /// printing matrices and per-object accumulated transforms follow the shape.
+  /// Shared relative style resources remain shared. Dimensions and stroke widths
+  /// remain unchanged. A unique setup `AI11TextDocument.RulerOrigin` is required
+  /// to convert drawing coordinates into the native canvas frame.
+  ///
+  /// The dependency restrictions of [translateLiveShapes] also apply. Unknown
+  /// gradient layouts, positional styles and inconsistent accumulated matrices
+  /// reject the edit. DSC bounds grow conservatively; artboards stay fixed.
+  /// The host must regenerate PDF appearances and other cached previews.
+  AiNativeDrawing rotateLiveShapes({required List<AiLiveShape> shapes, required double radians, required double pivotX, required double pivotY}) => _LiveShapeTransform(
+    drawing: this,
+    shapes: shapes,
+    rotation: _LiveShapeRotation(drawing: this, radians: radians, pivotX: pivotX, pivotY: pivotY),
+  ).apply();
 }

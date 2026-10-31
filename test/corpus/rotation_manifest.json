@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "rectangle_with_rounded_corners.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/rectangle_with_rounded_corners.ai",
+      "size": 1200783,
+      "sha256": "659dd8350ad86d223a43494f5532ebfcacfe9794b79c5a6de3a23251e3ad509e",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 C. Rogers <cajhne@gmail.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later\n",
+      "expected": "accept"
+    },
+    {
+      "file": "rectangle-rounded-corners-all-different.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/rectangle-rounded-corners-all-different.ai",
+      "size": 1200045,
+      "sha256": "c1205bb680cfc7f9f2eaa0c0c8b9b04422a6ec0ea89e473cc381d01fa700edb3",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 C. Rogers <cajhne@gmail.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later\n",
+      "expected": "accept"
+    },
+    {
+      "file": "page_moved_to_1000_2000_rect200_300.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/units/page_moved_to_1000_2000_rect200_300.ai",
+      "size": 215885,
+      "sha256": "cd56bef2d972340b1ed218821df52bf2e5e0d09d79d716a256c51b7a214e31a7",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "Copyright: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\nLicense: GPL-2.0-or-later\nSource: .reuse/dep5, tests/data/units/*.ai\n",
+      "expected": "accept"
+    }
+  ]
+}

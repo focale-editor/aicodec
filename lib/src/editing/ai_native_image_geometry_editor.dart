@@ -97,7 +97,7 @@ List<AiSourceEdit> _imagePlacementEdits({
       throw UnsupportedError('Unrecognized original raster scale metadata.');
     }
   }
-  final List<AiSourceEdit> edits = _imageRotationEdits(records, dictionary, end, rotationRadians);
+  final List<AiSourceEdit> edits = _nativeFrameRotationEdits(records, dictionary, end, rotationRadians);
   bool geometryChanged = false;
   for (final AiNativeInstruction command in commands) {
     for (int index = 0; index < 6; index++) {
@@ -131,51 +131,4 @@ List<AiSourceEdit> _imagePlacementEdits({
     );
   }
   return edits;
-}
-
-/// Reads an explicit frame angle without conflating it with image geometry.
-double? _imageFrameRotation(AiNativeContainer? dictionary) {
-  final AiNativeEntry? entry = dictionary?['BBAccumRotation'];
-  if (entry == null) {
-    return null;
-  }
-  final double? value = switch (entry.type) {
-    'String' || 'UnicodeString' => double.tryParse(entry.text() ?? ''),
-    'Real' => entry.number,
-    _ => null,
-  };
-  if (value == null || !value.isFinite || entry.items.isEmpty) {
-    throw UnsupportedError('Unrecognized native image frame-angle metadata.');
-  }
-  return value;
-}
-
-/// Updates or adds the explicitly supplied frame angle using observed precision.
-List<AiSourceEdit> _imageRotationEdits(AiNativeRecords records, AiNativeContainer? dictionary, int end, double? radians) {
-  final AiNativeEntry? entry = dictionary?['BBAccumRotation'];
-  if (radians == null) {
-    if (entry != null) {
-      throw ArgumentError('An existing image frame angle requires an explicit replacement value.');
-    }
-    return [];
-  }
-  final String angle = (radians.abs() < 0.0000005 ? 0.0 : radians).toStringAsFixed(6);
-  if (entry != null) {
-    final bool string = const {'String', 'UnicodeString'}.contains(entry.type);
-    final double previous = _imageFrameRotation(dictionary)!;
-    if (previous == radians || previous == double.parse(angle)) {
-      return [];
-    }
-    return [
-      AiSourceEdit(start: entry.items.first.start, end: entry.items.first.end, bytes: latin1.encode(string ? '($angle)' : angle)),
-      for (final AiNativeItem fragment in entry.items.skip(1)) AiSourceEdit(start: fragment.start, end: fragment.end, bytes: []),
-    ];
-  }
-  if (dictionary != null) {
-    final AiToken closing = records._projection.tokens.singleWhere((token) => token.end == dictionary.end && token.lexeme == ';');
-    final bool private = records._projection.isPrivate(closing.start);
-    return [AiSourceEdit(start: closing.start, end: closing.start, bytes: latin1.encode('($angle) /String (BBAccumRotation) ,\n${private ? '%_' : ''}'))];
-  }
-  // Authoring dictionaries are private metadata even after printable artwork.
-  return [AiSourceEdit(start: end, end: end, bytes: latin1.encode('\n%_/ArtDictionary :\n%_($angle) /String (BBAccumRotation) ,\n%_;'))];
 }

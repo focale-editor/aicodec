@@ -92,7 +92,7 @@ final class AiNativeRaster extends AiNativeItem {
   ///
   /// This metadata is independent of the image matrix. Unknown scalar layouts
   /// reject access rather than guessing an angle from transformed image axes.
-  double? get frameRotationRadians => _imageFrameRotation(dictionary);
+  double? get frameRotationRadians => _nativeFrameRotation(dictionary);
 
   /// Checks process-color placement and metadata before editing or rendering.
   ///
