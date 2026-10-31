@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "scope": "Explicit rejection of native raster samples damaged by text transcoding. Accepted raster fixtures are pinned in manifest.json.",
+  "files": [
+    {
+      "file": "transparent_image.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/transparent_image.ai",
+      "size": 5000428,
+      "sha256": "4656e3d46e4571f07b50bf88da383832e589b0a69a9db9aaa72bff4302526082",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Anunay Jain <me@anu.ninja>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "reject",
+      "reason": "Native binary samples were UTF-8 transcoded; raster dimensions and DSC byte boundaries disagree."
+    },
+    {
+      "file": "image_linked.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/image_linked.ai",
+      "size": 3351264,
+      "sha256": "1a908c422378d15c5031b62f8a900a68f962aa3be6a59c52d0fdbcccb261d442",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2014 Aron Ambrosiani\nSPDX-FileCopyrightText: 2025 Anunay Jain <me@anu.ninja>\n\nSPDX-License-Identifier: CC-BY-SA-4.0\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "reject",
+      "reason": "Native binary samples were UTF-8 transcoded; raster dimensions and DSC byte boundaries disagree."
+    }
+  ]
+}

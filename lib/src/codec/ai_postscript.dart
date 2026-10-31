@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+part 'ai_raster_data.dart';
+
 /// Syntactic categories in an Illustrator PostScript program.
 enum AiTokenKind {
   /// A decimal, exponent or radix number.
@@ -88,6 +90,7 @@ abstract final class AiPostScript {
     final List<AiToken> tokens = [];
     int procedureDepth = 0;
     int position = 0;
+    bool raster = false;
 
     /// Adds a copied token without retaining mutable source memory.
     void add(AiTokenKind kind, int start, int end) {
@@ -116,7 +119,13 @@ abstract final class AiPostScript {
         }
         add(AiTokenKind.comment, start, position);
         final String line = tokens.last.lexeme;
-        if (line.startsWith('%%BeginBinary:') || line.startsWith('%%BeginData:')) {
+        if (procedureDepth == 0 && const {'%AI5_BeginRaster', '%_%AI5_BeginRaster'}.contains(line)) {
+          raster = true;
+        } else if (const {'%AI5_EndRaster', '%_%AI5_EndRaster'}.contains(line)) {
+          raster = false;
+        }
+        final bool privateData = raster && line.startsWith('%_%%BeginData:');
+        if (line.startsWith('%%BeginBinary:') || line.startsWith('%%BeginData:') || privateData) {
           final List<String> fields = line.substring(line.indexOf(':') + 1).trim().split(RegExp(r'\s+'));
           final int? count = int.tryParse(fields.first);
           if (count == null || count < 0 || count > bytes.length) {
@@ -124,6 +133,17 @@ abstract final class AiPostScript {
           }
           newline();
           final int dataStart = position;
+          if (raster && procedureDepth == 0 && (line.startsWith('%%BeginData:') || privateData) && fields.last.toLowerCase() != 'lines') {
+            final ({int samples, int end})? image = _rasterData(bytes: bytes, start: dataStart, declared: count, tokens: tokens, privateData: privateData);
+            if (image != null) {
+              if (!privateData) {
+                add(AiTokenKind.executableName, dataStart, dataStart + 2);
+              }
+              add(AiTokenKind.data, privateData ? dataStart : image.samples, image.end);
+              position = image.end;
+              continue;
+            }
+          }
           if (fields.last.toLowerCase() == 'lines') {
             for (int index = 0; index < count; index++) {
               if (position >= bytes.length) {

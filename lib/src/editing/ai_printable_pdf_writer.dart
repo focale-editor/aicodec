@@ -134,7 +134,11 @@ final class _PrintablePdfWriter {
         continue;
       }
       final _PrintableChunk child = this.nodes(node.children);
-      final _PrintableChunk paint = node.gradient == null ? (_PrintableChunk()..operations.addAll(node.operations)) : _gradient(node);
+      final _PrintableChunk paint = node.raster != null
+          ? _raster(node)
+          : node.gradient == null
+          ? (_PrintableChunk()..operations.addAll(node.operations))
+          : _gradient(node);
       _charge(paint.operations.length + 2);
       child.add(paint);
       child.operations.insert(0, PdfOperation(operator: 'q'));

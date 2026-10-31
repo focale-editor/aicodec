@@ -382,10 +382,52 @@ stops: both pixel comparisons are exact. These checks cover RGB stops and opacit
 at midpoint 50, not Illustrator reopening, print-engine ramp interpolation or
 arbitrary color-profile equivalence.
 
+## Native raster images
+
+`AiNativeRasters.decode(records:, bodyOnly:)` reads embedded binary `XI` image
+sections in setup resources and artwork, including private `%_` records. Each
+immutable image retains its source spans, matrix, image-space bounds, dimensions,
+component depth, process channel count, producer flags and optional alpha plane.
+The historical `h` operand is the number of columns and `w` the number of rows,
+as confirmed by independent image decoding and the original PDF. Color samples
+are interleaved; alpha is a separate plane after all color samples. Packed rows
+retain byte padding. Supported depths are 1, 2, 4, 8 and 16 bits per component.
+Decoding performs no profile conversion or external-file access.
+
+The tokenizer recognizes the `XI` invocation inside a declared raster data block
+and leaves its samples opaque. It derives their size from the validated header,
+including alpha, before checking the exact `%%EndData` boundary. Observed CS/CC
+counts may omit alpha or include one extra byte. These specific variants are
+accepted only with an exact geometry-derived boundary; arbitrary count repairs
+and searching the pixels for an end marker are forbidden. Private binary bodies
+stay opaque before and after native comment projection, even when pixels contain
+PostScript syntax, `%_` prefixes or fake end markers. Corrupt text-transcoded
+samples reject instead of becoming drawing commands. Generic DSC data retains
+its original declared-count behavior outside recognized native raster sections.
+
+`rasters.translate(images:, deltaX:, deltaY:)` edits both `XI` and redundant `Xh`
+placement offsets in one immutable snapshot. Samples, file links, pixel UUIDs,
+rotation/scale metadata and other images stay unchanged; DSC drawing bounds expand
+conservatively. Images must belong to the snapshot and have consistent known
+placement commands. Enclosing clipping paths, groups and artboards are separate
+objects. This operation does not replace pixels, resize images, fetch linked
+`XF` data or regenerate image caches.
+
+`AiNativePdf` writes these samples through PdfCore as process-color image
+XObjects with separate same-depth soft masks. The native matrix maps a top-left
+pixel origin with image y increasing downwards; the PDF image rectangle keeps
+that origin through reflection, shear and page placement. One-bit gray stencils
+use the current nonstroking paint. Object/group opacity applies independently.
+Unknown color spaces, producer flags, positional commands, noncanonical image
+bounds and inconsistent `Xh` metadata reject export. The qualified image bounds
+are `[0, 0, width, height]`. Older comment-encoded/ASCII image layouts, linked `XF`
+images and arbitrary image effects remain outside this rendering contract.
+
 ## Source-backed editing
 
 `AiProgram.decode` reads body instructions outside the prolog, setup, procedures,
-embedded documents and DSC-protected data. It exposes source spans, nested native
+embedded documents and opaque sample bytes. A recognized raster `XI` invocation
+inside DSC data is retained separately from its pixels. It exposes source spans, nested native
 layers, names, visibility, lock/print flags and explicit path segments. Corner
 and smooth operators, curve shorthand and paint operators are retained.
 `unhandledOperators` and `hasPrivateExtensions` expose unresolved semantics;
@@ -493,7 +535,8 @@ a bound live shape with an existing printable appearance. This method does not
 regenerate those expansions from opaque authoring records. Gradients along/across strokes,
 coincident stops, multiple independent appearances within a gradient,
 newer interpolation methods, text,
-rasters, patterns, spot colors, overprint, embedded drawing data, nested compound
+unsupported raster layouts, linked images, patterns, spot colors, overprint,
+unrecognized embedded drawing data, nested compound
 mask groups and unknown drawing commands currently reject the entire export. This
 includes unsupported commands inside hidden layers. No Adobe prolog executes.
 
@@ -686,6 +729,21 @@ MediaBox origins; the saved native program is independently recovered unchanged.
 These are complete-page compatibility checks for these fixtures; they do not
 qualify arbitrary native effects or Adobe reopening.
 
+`check_native_rasters.dart` and `verify_native_rasters.py` independently compare
+24 native images from five pinned files, including 20 alpha planes and two
+private gray images. The pinned reader recovers all sample bytes and matrices
+exactly. Two visible images are rebuilt and translated, with four zero-difference
+Poppler comparisons: one against Adobe's original PDF, the other against standard
+PostScript `colorimage` output generated from independently parsed CMYK samples
+and rendered by Ghostscript. The latter is an independent image-operator check,
+not execution of the complete Illustrator program, which lacks its prolog.
+Both saved PDF native programs are recovered unchanged by pypdf and Python
+zlib/Zstandard. Seven additional pixel probes verify separate alpha, image row
+orientation, object opacity and monochrome stencil polarity over a colored
+background. Stencil polarity is checked against Adobe's retained `XIImageMask`
+prolog. Two pinned fixtures
+with UTF-8-transcoded binary samples must reject at their computed boundaries.
+
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
@@ -695,12 +753,14 @@ qualify arbitrary native effects or Adobe reopening.
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
-| Meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
+| Raster images | Decode binary process samples and separate alpha; translate native placement; render and save embedded images with synchronized native data | Pixel replacement/cache identities, resizing, linked images, older ASCII layouts and broader color models |
+| Meshes, effects, plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
-| PDF compatibility appearance | Regenerate supported printable paths and classic gradient fills/strokes, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, rasters, unresolved effects and host scene integration |
+| PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, linked/unsupported images, unresolved effects and host scene integration |
 
 ## References
 
+- [Adobe DSC specification](https://web.mit.edu/PostScript/Adobe/Documents/5001.DSC_Spec.pdf), pages 45–46: counted data can include its invoking operator.
 - [Adobe PDF Reference 1.6](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.6.pdf), sections 4.6.3 and 4.9.1: shading patterns and initial form coordinate spaces.
 - [Adobe's AI format overview](https://www.adobe.com/creativecloud/file-types/image/vector/ai-file.html)
 - [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)

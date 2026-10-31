@@ -47,7 +47,11 @@ final class _NativeDrawingReader {
       if (embedded != 0 || token.kind == .data) {
         continue;
       }
-      final AiNativeInstruction? command = reader.add(token, isPrivate: projection.isPrivate(token.start));
+      // XI itself stays unprefixed inside DSC data, even for private operands.
+      final AiNativeInstruction? command = reader.add(
+        token,
+        isPrivate: token.kind == .executableName && token.lexeme == 'XI' ? reader._private ?? projection.isPrivate(token.start) : projection.isPrivate(token.start),
+      );
       if (command != null) {
         items.add(command);
       }

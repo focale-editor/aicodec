@@ -2,16 +2,29 @@ part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Compiles complete printable paths, rejecting unrepresented drawing semantics.
 List<_PrintableNode> _readPrintable(AiProgram program) {
+  final AiNativeRecords records = AiNativeRecords.decode(program: program);
+  final List<AiNativeRaster> rasters = AiNativeRasters.decode(records: records, bodyOnly: true).images;
+  final Set<int> rasterData = {
+    for (final AiNativeRaster image in rasters)
+      if (image.instruction.isPrivate) image.instruction.token.start else image.data.start,
+  };
+  final Map<int, AiNativeRaster> rasterCommands = {
+    for (final AiNativeRaster image in rasters.where((image) => image.isPrintable(program: program)))
+      for (final AiNativeInstruction command in image.commands) command.end: image,
+  };
+  rasters.forEach(_validatePrintableRaster);
   int colorModel = 1;
   for (final AiToken token in AiPostScript.tokenize(program.bytes, maxBytes: program.limits.maxDecodedBytes, maxTokens: program.limits.maxTokens, maxDepth: program.limits.maxDepth)) {
     if (token.start < program.bodyStart && token.kind == .comment && token.lexeme.startsWith('%AI9_ColorModel:')) {
       colorModel = int.tryParse(token.lexeme.substring('%AI9_ColorModel:'.length).trim()) ?? 0;
     }
-    if (token.start >= program.bodyStart && token.start < program.bodyEnd && (token.kind == .data || token.kind == .comment && token.lexeme.startsWith('%%BeginDocument'))) {
+    if (token.start >= program.bodyStart &&
+        token.start < program.bodyEnd &&
+        (token.kind == .data && !rasterData.contains(token.start) || token.kind == .comment && token.lexeme.startsWith('%%BeginDocument'))) {
       throw UnsupportedError('Native PDF export requires a renderer for embedded drawing data.');
     }
   }
-  final AiNativeDrawing drawing = AiNativeDrawing.decode(records: AiNativeRecords.decode(program: program));
+  final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
   final Map<int, AiNativeGradient> gradients = {for (final AiNativeGradient gradient in drawing.gradients.where((gradient) => !gradient.opening.isPrivate)) gradient.opening.end: gradient};
   final Map<String, AiNativeGradientDefinition> definitions = {
     if (gradients.values.any((gradient) => gradient.paths.isNotEmpty))
@@ -26,6 +39,7 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
   bool compoundGroupClosed = false;
   final List<PdfOperation> path = [];
   bool clip = false;
+  bool rasterClosed = false;
 
   /// Publishes one paint, retaining compound topology until its group ends.
   void paint(String operator) {
@@ -52,6 +66,26 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
 
   for (final AiInstruction instruction in program.instructions) {
     final String operator = instruction.operator;
+    final AiNativeRaster? image = rasterCommands[instruction.end];
+    if (image != null) {
+      if (path.isNotEmpty || compound != null || gradientInstance != null || clip) {
+        throw UnsupportedError('A raster cannot interrupt a native path or gradient.');
+      }
+      if (operator == 'XI') {
+        stack.last.children.add(
+          _PrintableNode(operations: state.attributes.values.toList(), raster: image, opacity: state.opacity, blend: state.blend, isolated: state.isolated, knockout: state.knockout),
+        );
+        appearanceState = null;
+      }
+      rasterClosed = operator == 'XH';
+      continue;
+    }
+    if (rasterClosed && operator == 'N') {
+      _printableArity(instruction, 0);
+      rasterClosed = false;
+      continue;
+    }
+    rasterClosed = false;
     switch (operator) {
       case 'Bb':
         if (gradientInstance != null) {
@@ -210,7 +244,9 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
         if (operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(operands.last.kind)) {
           throw const FormatException('Invalid native appearance marker.');
         }
-        if (operands.first.number == 9 && aiStringBytes(operands.last).isEmpty && (compound != null ? compoundGroupClosed : stack.last.children.lastOrNull?.group == true)) {
+        if (operands.first.number == 9 &&
+            aiStringBytes(operands.last).isEmpty &&
+            (compound != null ? compoundGroupClosed : stack.last.children.lastOrNull?.group == true || stack.last.children.lastOrNull?.raster != null)) {
           // A plain group marker carries no independent appearance state.
           compoundGroupClosed = false;
         } else if (operands.first.number == 6 && aiStringBytes(operands.last).isEmpty) {

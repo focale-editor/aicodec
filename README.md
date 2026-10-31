@@ -32,6 +32,8 @@ as self-contained AI7 PostScript.
   layers, compound paths, clipping, object opacity and group blend modes.
 - Classic linear/radial gradient fills and strokes in PDF, including focal
   ellipses, midpoint interpolation, stop opacity and synchronized color edits.
+- Binary native raster samples, separate alpha planes and synchronized image
+  translation/PDF saving, retaining process colors and affine placement.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -132,8 +134,8 @@ printable paths, using an explicit drawing-coordinate page rectangle.
 `AiNativePdf.save(source:, program:, pageBounds:)` regenerates existing PDF pages
 and rewrites their shared native program in one immutable snapshot. Metadata and
 annotations are retained; stale thumbnails are removed. This currently supports
-process-color paths, classic gradient fills/strokes and resolved live-shape
-expansions, including groups, clipping and opacity. Unsupported drawing commands reject
+process-color paths, classic gradient fills/strokes, binary embedded images and
+resolved live-shape expansions, including groups, clipping and opacity. Unsupported drawing commands reject
 the complete save.
 
 ## Scope
@@ -153,7 +155,7 @@ rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
 PDF bridge covers supported printable paths and classic gradient fills/strokes;
-text, rasters, gradients along/across strokes and unresolved effects still need
+text, linked images, unsupported raster layouts, gradients along/across strokes and unresolved effects still need
 host regeneration before saving visual edits.
 No Adobe Illustrator reopening validation has been performed.
 

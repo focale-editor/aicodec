@@ -129,7 +129,10 @@ final class AiProgram {
   /// Owned complete authoring bytes, not a regenerated approximation.
   final Uint8List _bytes;
 
-  /// Body instructions outside procedures and DSC-protected binary sections.
+  /// Body instructions outside procedures and opaque binary samples.
+  ///
+  /// A recognized XI operator inside a raster's DSC block is retained; its pixel
+  /// bytes remain opaque and cannot contribute instructions or delimiters.
   final List<AiInstruction> instructions;
 
   /// Native layers, including empty, locked, hidden and nested layers.

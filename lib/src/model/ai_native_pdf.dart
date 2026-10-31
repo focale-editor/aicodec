@@ -12,12 +12,14 @@ import 'package:pdfcore/pdfcore.dart';
 part '../codec/ai_printable_gradient.dart';
 part '../codec/ai_printable_parser.dart';
 part '../editing/ai_printable_gradient_writer.dart';
+part '../editing/ai_printable_raster_writer.dart';
 part '../editing/ai_printable_pdf_writer.dart';
 
 /// Rebuilds PDF compatibility artwork from native printable Illustrator paths.
 ///
 /// This interprets declarative process-color paths, layers, groups, compound
-/// paths, clipping, classic gradient fills/strokes and supported opacity records.
+/// paths, clipping, classic gradient fills/strokes, binary process-color images
+/// and supported opacity records.
 /// It does not execute a prolog.
 /// Unsupported drawing operations reject the whole export. Private authoring
 /// paths remain in the native program and do not paint a second time.
@@ -32,7 +34,8 @@ abstract final class AiNativePdf {
   /// Stroke appearances retain their curves, dashes, caps and joins as PDF paths.
   /// Compound contours share their final paint, including gradients and holes.
   /// Complete gradient appearance notes without a path do not paint.
-  /// Text, rasters, patterns, spot colors and unresolved appearances reject export.
+  /// Embedded binary rasters retain native samples, placement and separate alpha.
+  /// Text, linked images, patterns, spot colors and unresolved appearances reject export.
   static PdfDocument render({required AiProgram program, required AiBoundingBox bounds, PdfLimits limits = const PdfLimits()}) {
     limits.validate();
     final PdfDocument empty = PdfDocument.fromPages(
@@ -83,6 +86,9 @@ final class _PrintableNode {
   /// Native gradient fill or stroke and its absolute printing geometry.
   final _PrintableGradient? gradient;
 
+  /// Embedded raster samples and their native placement, when present.
+  final AiNativeRaster? raster;
+
   /// Stroke painted after the gradient clip has been restored.
   final List<PdfOperation> gradientStroke;
 
@@ -109,6 +115,7 @@ final class _PrintableNode {
     this.clip = false,
     this.visible = true,
     this.gradient,
+    this.raster,
     this.gradientStroke = const [],
     this.evenOdd = false,
     this.opacity = 1,

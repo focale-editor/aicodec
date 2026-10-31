@@ -147,7 +147,7 @@ python3 tool/verify_native_pdf.py --inkai-source /tmp/extension-ai
 These commands need Poppler (`pdftoppm`) and the oracle dependencies above.
 The PDFs, native programs, images and `independent-report.json` remain under
 the ignored `output/native-pdf` directory. This is printing-path validation;
-text, gradients along/across strokes, newer gradient methods, raster/effect rendering and
+text, gradients along/across strokes, newer gradient methods, effect rendering and
 Adobe reopening remain outside it.
 
 `pdf_manifest.json` pins three additional complete CC drawings for compound
@@ -184,6 +184,29 @@ report remain under the ignored `output/native-pdf-strokes` directory.
 ```sh
 dart run tool/check_native_pdf_strokes.dart
 python3 tool/verify_native_pdf_strokes.py
+```
+
+Native raster verification uses five existing core fixtures: `raster_ai8.ai`,
+`raster_v2020.ai`, `empty_cs.ai`, `empty_cs2.ai` and `simple_shapes_cc.ai`.
+The independent reader checks 24 images, 20 alpha planes and two private image
+records byte for byte. The two visible images are rebuilt and translated; all
+four Poppler comparisons have zero pixel differences. References use the original
+Adobe PDF for the first file and standard PostScript `colorimage`/Ghostscript
+rendering of independently read CMYK samples for the second. The latter does not
+execute the Illustrator program, whose printing prolog is absent. Two saved native
+programs are independently recovered. Seven probes check alpha, row orientation,
+object opacity and stencil polarity against the retained Adobe prolog.
+PDF/PNG/binary outputs stay in ignored `output/native-rasters`.
+
+`raster_manifest.json` separately pins two UTF-8-transcoded, damaged raster files.
+They must reject at the computed binary boundary, without scanning for a later
+end marker or interpreting image bytes as commands. The optional check requires
+both these rejection cases and the five accepted core fixtures.
+
+```sh
+python3 tool/fetch_corpus.py --manifest raster_manifest.json
+dart run tool/check_native_rasters.dart
+python3 tool/verify_native_rasters.py --inkai-source /tmp/extension-ai
 ```
 
 To check the existing downloads without network access or rewriting files:
