@@ -1,7 +1,22 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// Plans selected appearance edits without changing native shape geometry.
+abstract interface class _LiveShapeGradientEdit {
+  /// Checks caller inputs and source resources before planning source edits.
+  void validate();
+
+  /// Requires coherent printable and known-style ownership for this selection.
+  void validateShape(AiLiveShape shape);
+
+  /// Plans any setup resource changes in the same source transaction.
+  List<AiSourceEdit> resourceEdits();
+
+  /// Changes an owned printable instance or a copied shared-style instance.
+  List<AiSourceEdit> instanceEdits(AiNativeGradient gradient);
+}
+
 /// Isolates one named gradient across selected native and printable appearances.
-final class _LiveShapeGradientIsolation {
+final class _LiveShapeGradientIsolation implements _LiveShapeGradientEdit {
   /// Snapshot supplying exact shape ownership and native resource boundaries.
   final AiNativeDrawing drawing;
 
@@ -29,6 +44,7 @@ final class _LiveShapeGradientIsolation {
       nameBytes = List.unmodifiable(nameBytes);
 
   /// Requires a declared source and a name unused even by unresolved instances.
+  @override
   void validate() {
     if ([sourceNameBytes, nameBytes].any((name) => name.isEmpty || name.any((byte) => byte < 0 || byte > 255)) || _gradientBytesEqual(sourceNameBytes, nameBytes)) {
       throw ArgumentError('Gradient isolation requires distinct nonempty byte names.');
@@ -51,28 +67,18 @@ final class _LiveShapeGradientIsolation {
   }
 
   /// Requires the selected gradient in both views instead of guessing ownership.
-  void validateShape(AiLiveShape shape) {
-    final bool printable = drawing.gradients.any(
-      (gradient) => _matches(gradient) && gradient.paths.isNotEmpty && !gradient.opening.isPrivate && gradient.paths.every(shape.appearancePaths.contains),
-    );
-    final AiNativeContainer? style = shape.style;
-    final bool styled =
-        style == null ||
-        drawing.records.containers
-            .where((record) => record.start > style.start && record.end < style.end && const {'FillStyle', 'StrokeStyle'}.contains(record.type))
-            .any((record) => AiNativePaintStyle.decode(records: drawing.records, record: record).gradients.any(_matches));
-    if (!printable || !styled) {
-      throw UnsupportedError('Each selected shape requires a matching printable gradient and its corresponding known style.');
-    }
-  }
+  @override
+  void validateShape(AiLiveShape shape) => _validateLiveShapeGradient(drawing, shape, sourceNameBytes);
 
   /// Matches raw resource names without interpreting string encodings.
   bool _matches(AiNativeGradient gradient) => _gradientBytesEqual(gradient.geometry.nameBytes, sourceNameBytes);
 
   /// Copies every matching setup bank while retaining all original resources.
+  @override
   List<AiSourceEdit> resourceEdits() => _copyNativeGradientResources(this);
 
   /// Rebinds only the name operand, preserving geometry, focus and paint flags.
+  @override
   List<AiSourceEdit> instanceEdits(AiNativeGradient gradient) {
     if (!_matches(gradient)) {
       return [];
@@ -92,5 +98,24 @@ final class _LiveShapeGradientIsolation {
       throw const FormatException('Gradient isolation exceeds the native output limit.');
     }
     remaining -= growth;
+  }
+}
+
+/// Requires the selected gradient in both views instead of guessing ownership.
+void _validateLiveShapeGradient(AiNativeDrawing drawing, AiLiveShape shape, List<int> name) {
+  /// Matches raw byte names independently of their string encoding.
+  bool matches(AiNativeGradient gradient) => _gradientBytesEqual(gradient.geometry.nameBytes, name);
+
+  final bool printable = drawing.gradients.any(
+    (gradient) => matches(gradient) && gradient.paths.isNotEmpty && !gradient.opening.isPrivate && gradient.paths.every(shape.appearancePaths.contains),
+  );
+  final AiNativeContainer? style = shape.style;
+  final bool styled =
+      style == null ||
+      drawing.records.containers
+          .where((record) => record.start > style.start && record.end < style.end && const {'FillStyle', 'StrokeStyle'}.contains(record.type))
+          .any((record) => AiNativePaintStyle.decode(records: drawing.records, record: record).gradients.any(matches));
+  if (!printable || !styled) {
+    throw UnsupportedError('Each selected shape requires a matching printable gradient and its corresponding known style.');
   }
 }

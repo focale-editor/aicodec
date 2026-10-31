@@ -389,6 +389,27 @@ dart run tool/check_live_shape_gradients.dart
 python3 tool/verify_live_shape_gradients.py --inkai-source /tmp/extension-ai
 ```
 
+Relative gradient placement uses the same 15 linear and nine radial CC shapes.
+Six variants change every shape, a partial selection, or a partial selection
+after object rotation and uniform scaling. The independent parser checks old
+resources/styles, new style bindings, every retained path/dictionary, relative
+placement, polar/Cartesian focus and complete strip/cap coverage. Six saved
+native programs are recovered exactly. Twelve PDF comparisons use independently
+placed shadings in Adobe's original PDF; their new axes and origins are computed
+with Inkex from Adobe's own clip curves. Maximum mean channel difference is
+below 0.067991/255. Flat pixels must match exactly; smooth fields differ by at
+most one level away from reference color and clip edges. The clip-edge mask
+comes from Adobe's path geometry, including near-white boundaries that a
+contrast-only mask cannot identify. The checker never derives that mask from
+AiKit's output. Results remain in ignored `output/gradient-placement`.
+This qualifies source geometry and PDF rendering, not Adobe reopening, arbitrary
+affine paint transforms or execution of Illustrator's printing procsets.
+
+```sh
+dart run tool/check_live_shape_gradient_placement.dart
+python3 tool/verify_live_shape_gradient_placement.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

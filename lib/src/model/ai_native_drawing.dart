@@ -258,6 +258,32 @@ final class AiNativeDrawing {
   AiNativeDrawing isolateLiveShapeGradient({required List<AiLiveShape> shapes, required List<int> sourceNameBytes, required List<int> nameBytes}) => _LiveShapeEditor(
     drawing: this,
     shapes: shapes,
-    gradientIsolation: _LiveShapeGradientIsolation(drawing: this, sourceNameBytes: sourceNameBytes, nameBytes: nameBytes),
+    gradientEdit: _LiveShapeGradientIsolation(drawing: this, sourceNameBytes: sourceNameBytes, nameBytes: nameBytes),
+  ).apply();
+
+  /// Sets relative CC gradient placement inside selected live shapes.
+  ///
+  /// [originX] and [originY] use the native artwork-relative coordinates;
+  /// positive vertical offsets point downwards. [angle] is in degrees within
+  /// -360..360. [length] and [aspectRatio] must be positive. Linear gradients
+  /// require zero vertical origin and unit aspect ratio.
+  ///
+  /// All matching appearances within the selection, private notes and copied
+  /// known styles change together. Printable matrices and radial focus offsets
+  /// are regenerated; paths, shape parameters, resource colors and other users
+  /// stay unchanged. Inconsistent native/printing geometry rejects the edit.
+  /// Regenerate PDF appearances and previews before saving a visual edit.
+  AiNativeDrawing setLiveShapeGradientPlacement({
+    required List<AiLiveShape> shapes,
+    required List<int> nameBytes,
+    required double originX,
+    required double originY,
+    required double angle,
+    required double length,
+    double aspectRatio = 1,
+  }) => _LiveShapeEditor(
+    drawing: this,
+    shapes: shapes,
+    gradientEdit: _LiveShapeGradientPlacement(drawing: this, nameBytes: nameBytes, placement: [originX, originY, angle, length, aspectRatio]),
   ).apply();
 }

@@ -503,9 +503,9 @@ definitions and unrelated bytes remain intact. Procedures and embedded documents
 are not interpreted. Output growth remains bounded by the native byte limit.
 The host must regenerate the PDF appearance and flattened effects after editing;
 `AiNativePdf.save` synchronizes the supported printable subset. For a local edit,
-first isolate the resource on selected live shapes as described below. Independent
-gradient resize/rotation and Illustrator reopening remain separate qualification
-work.
+first isolate the resource on selected live shapes as described below. Relative
+CC placement can be edited independently through `setLiveShapeGradientPlacement`;
+arbitrary affine gradient editing and Illustrator reopening remain separate work.
 
 The dedicated corpus checker edits all radial resources across the same 37
 pinned files. An independent parser verifies 45 printing instances and 173
@@ -583,6 +583,75 @@ channel difference is below 0.06792/255, including isolation alone, matching the
 existing rounded-outline discrepancy. Flat pixels remain identical and smooth
 gradient fields differ by at most one level. These checks do not establish
 Illustrator reopening or arbitrary color-profile equivalence.
+
+### Relative CC gradient placement
+
+`AiNativeDrawing.setLiveShapeGradientPlacement(shapes:, nameBytes:, originX:,
+originY:, angle:, length:, aspectRatio:)` edits every occurrence of one named
+gradient inside the selected live shapes. It changes the native relative
+parameters and printable geometry together, including copied known styles and
+private nonprinting notes. Original shared styles, other objects, source resource
+definitions, colors, ramps, native shape parameters and path coordinates remain
+unchanged. Accumulated `Bg` matrices and `CAIGradientTformMatrix` records are
+retained; this operation changes the paint inside the object.
+
+Angles are in degrees within -360..360, counterclockwise in drawing coordinates.
+Length and aspect must be positive, with finite bounded values throughout.
+Linear gradients require `originY: 0` and `aspectRatio: 1`: the x origin and
+length are fractions of the shape's extent along the chosen gradient angle.
+For radial gradients, the origin is measured from the center of the shape in
+fractions of its width and height; positive y points downwards. The radius is
+`length * sqrt((width * (originX - 0.5))² +
+(height * (originY - 0.5))²) / sqrt(2)`, before applying angle, aspect and the
+retained object transform. Zero-radius or numerically singular results reject
+the edit.
+
+The editor removes the accumulated object's linear transform before measuring
+the appropriate axis-aligned or angle-aligned bounds. Cubic extrema and the
+native `v`/`y` shorthand curves are measured exactly, rather than using control
+point boxes. Existing printing geometry must agree with the source relative
+parameters before it is rewritten. Radial edits replace the single `Bm` matrix
+and recalculate Cartesian `Bh` offsets while retaining the polar focus. Linear
+edits retain each stop interval and rebuild the overall matrix, strips and both
+exterior caps. Coverage comes from the fixed artwork bounds, with inherited
+stroke width/miter reach and antialiasing margins. Repeated placements do not
+recursively enlarge previous printing rectangles. Subsequent `replaceStops`
+edits can repartition those strips normally.
+
+```dart
+final AiNativeDrawing placed = drawing.setLiveShapeGradientPlacement(
+  shapes: [drawing.liveShapes.first],
+  nameBytes: drawing.gradients.first.geometry.nameBytes,
+  originX: 0.15,
+  originY: 0,
+  angle: 37,
+  length: 0.75,
+);
+```
+
+This requires the CC relative layout, flag-one clipped printable appearances,
+resolved stroke state, identity-matrix flag-two style notes and the same qualified
+live-shape dependencies as other native edits. Linear sources require one `Xm`
+and complete, aligned `Bm` intervals; their printing matrices must be contiguous.
+Mixed same-name kinds/intervals, legacy geometry, unclipped appearances, stale
+focus or placement caches and unsupported dependencies reject the transaction.
+Exact no-ops retain the original snapshot. New source bytes remain bounded.
+Regenerate PDF appearances and previews before saving; `AiNativePdf.save` covers
+the supported printable subset. General affine shear/reflection of paint,
+plain-path selection and arbitrary appearance/effect graphs remain further work.
+
+The dedicated corpus covers the 15 linear and nine radial CC shapes with full
+and partial selections, including partial placement after object rotation and
+uniform scaling. Independent parsing checks all retained geometry/metadata,
+new style bindings, relative parameters, focus offsets and strip/cap coverage.
+Six saved native programs are recovered exactly. Twelve Poppler comparisons
+independently place Adobe's original PDF shadings using Inkex bounds of Adobe's
+own clip curves. The maximum mean channel difference is below 0.067991/255.
+Flat pixels must remain identical; smooth fields differ by at most one level
+outside reference color and clip boundaries. Clip boundaries are measured from
+Adobe's paths because a white gradient against the white page can hide an edge
+from a contrast-only detector. These checks do not establish Adobe reopening or
+execution of the native printing ramps by Illustrator's PostScript procsets.
 
 ## Native raster images
 
@@ -1270,7 +1339,7 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate/rotate/uniformly scale five CC shape families with solid/gradient appearances; create AI7 paths | Nonuniform or fixed-stroke/corner resizing, shear/regeneration and remaining positional paints/effects |
-| Gradients | Inspect/translate instances; rotate/uniformly scale CC live-shape appearances and accumulated transforms; isolate live-shape gradient resources for local colors/focus; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, plain-path appearance isolation, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
+| Gradients | Inspect/translate instances; edit relative CC live-shape placement; rotate/uniformly scale accumulated transforms; isolate live-shape gradient resources for local colors/focus; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General affine paint transforms, plain-path appearance isolation, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |

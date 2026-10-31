@@ -34,6 +34,8 @@ as self-contained AI7 PostScript.
   ellipses, midpoint interpolation, stop opacity and synchronized color edits.
 - Isolated live-shape gradient resources for selected-object color/focus edits,
   preserving other users, shared styles and swatches.
+- Relative CC gradient origin, angle, length and radial aspect editing inside
+  live shapes, with synchronized printing geometry and copied appearance styles.
 - Binary native raster samples, separate alpha planes and synchronized image
   translation/PDF saving. Replace embedded pixels, alpha, depth and resolution
   while retaining placed extents and renewing changed sample identities.
@@ -143,6 +145,12 @@ styles for selected live shapes. Supply an unused byte name, then decode
 `AiNativeGradientResources` from the returned drawing to change that copy's
 stops or radial focus. All uses of the original name within the selection are
 rebound; other objects and swatches retain their original resources.
+
+`setLiveShapeGradientPlacement` changes the relative origin, angle, length and
+radial aspect within selected live shapes. It updates native style parameters,
+printing matrices and focal offsets together while retaining the shape outlines
+and resource colors. The technical reference explains the native relative units
+and the layouts qualified for synchronized editing.
 
 `AiNativePdf.render(program:, bounds:)` builds a PDF page from supported native
 printable paths, using an explicit drawing-coordinate page rectangle.
