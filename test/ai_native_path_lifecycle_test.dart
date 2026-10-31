@@ -159,7 +159,6 @@ void main() {
 
   test('refuses trailing object identities, parent metadata, tags and path notes', () {
     for (final String body in [
-      '0 0 m 1 1 L N\n/ArtDictionary : /XMLUID : (owned) ; (AI10_ArtUID) , ;',
       'u 0 0 m 1 1 L N U\n/FutureOwner : 1 /Index ;',
       '0 0 m 1 1 L N\n/AdobeURL (https://example.test) XT',
       '0 0 m 1 1 L N\n0 A\n/ArtDictionary : /XMLUID : (owned) ; (AI10_ArtUID) , ;',

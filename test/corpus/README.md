@@ -178,6 +178,21 @@ dart run tool/check_native_artwork_movement.dart
 python3 tool/verify_native_artwork_movement.py --inkai-source /tmp/extension-ai
 ```
 
+Attached object metadata uses the existing pinned `layers_and_sublayers.ai`
+fixture and a checksum-pinned synthetic source with observed XML identity/name
+syntax. The external reader verifies five synthetic transactions: path/group
+copies with fresh IDs, anonymous deletion, sibling reordering and reparenting.
+Checks bind every reported object/dictionary/identifier/count span to the external
+parse, compare complete trees and effective paint, and require exact unselected
+bytes and source assignment provenance. Six real-file cases explicitly remain
+rejected: their empty metadata dictionaries do not qualify the enclosing `XW`
+style. No successful real CC identified-object edit or Adobe reopening is inferred.
+
+```sh
+dart run tool/check_native_objects.dart
+python3 tool/verify_native_objects.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

@@ -3,6 +3,36 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Declarative attributes whose values can be replayed without rendering.
 const Set<String> _nativeArtworkStateKeys = {'fill', 'stroke', 'A', 'Xw', 'O', 'R', 'XR', 'D', 'Ap', 'J', 'j', 'w', 'M', 'd'};
 
+/// Requires qualified metadata while leaving geometry/appearance checks separate.
+AiNativeObject _ordinaryObject(AiNativeDrawing drawing, AiNativeItem source) {
+  final AiNativeObject object = drawing._objects.forSource(source);
+  if (object.bindingIssue case final String issue) {
+    throw UnsupportedError(issue);
+  }
+  return object;
+}
+
+/// Checks successors after the complete object, including its own dictionary.
+void _ordinaryObjectFollowing(AiNativeDrawing drawing, AiNativeItem source) => _ordinaryPathFollowing(drawing.items, _ordinaryObject(drawing, source).end);
+
+/// Recognizes metadata with no unqualified appearance or reference payload.
+bool _ordinaryObjectMetadata(AiNativeDrawing drawing, AiNativeItem item) => drawing._objects._dictionaries[item.start]?.bindingIssue == null && drawing._objects._dictionaries.containsKey(item.start);
+
+/// Resolves bare dictionary syntax that the plain PostScript view cannot own.
+bool _ordinaryMetadataPrefix(AiNativeDrawing drawing, int start, int end) {
+  bool metadata = false;
+  for (final AiNativeItem item in _pathInterval(drawing.items, start, end, (item) => item.start)) {
+    if (_ordinaryObjectMetadata(drawing, item)) {
+      metadata = true;
+    } else if (item is! AiNativeInstruction ||
+        item.isPrivate ||
+        _nativeArtworkStateKey(item) == null && !(const {'u', 'U'}.contains(item.operator) && item.operands.isEmpty) && item.operator != 'As') {
+      return false;
+    }
+  }
+  return metadata;
+}
+
 /// Validates a source assignment and identifies its overwritten state component.
 String? _nativeArtworkStateKey(AiNativeInstruction item) {
   final String operator = item.operator;
@@ -95,7 +125,7 @@ Map<int, _NativeArtworkState> _nativeArtworkStates(AiNativeDrawing drawing, Iter
   for (final int position in positions) {
     while (index < drawing.items.length && drawing.items[index].end <= position) {
       final AiNativeItem item = drawing.items[index++];
-      if (structural.contains(item.start)) {
+      if (structural.contains(item.start) || _ordinaryObjectMetadata(drawing, item)) {
         continue;
       }
       if (item is AiNativeInstruction && !item.isPrivate) {
@@ -152,7 +182,7 @@ Map<int, _NativeArtworkState> _artworkMovementStates(
   final List<AiNativeStructureNode> targetGroups = targetParents.takeWhile((parent) => parent.kind == .group).toList();
   final List<int> positions = [source.start, position, ...sourceGroups.map((group) => group.start), ...targetGroups.map((group) => group.start)];
   final int start = min(source.start, position);
-  final int end = max(source.end, position);
+  final int end = max(_ordinaryObject(drawing, source).end, position);
   final Map<int, _NativeArtworkState> states;
   if (crossLayer) {
     final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);

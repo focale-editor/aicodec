@@ -196,6 +196,9 @@ final class AiNativeDrawing {
   /// Live shapes with explicit associations or an explanation of missing links.
   final List<AiLiveShape> liveShapes;
 
+  /// Lazily shares immutable object metadata across bounded lifecycle operations.
+  late final AiNativeObjects _objects = _nativeObjects(this);
+
   /// Builds a bounded structural view without evaluating arbitrary PostScript.
   factory AiNativeDrawing.decode({required AiNativeRecords records}) => _NativeDrawingReader(records: records).read();
 
@@ -215,17 +218,19 @@ final class AiNativeDrawing {
 
   /// Duplicates ordinary paths immediately after their original source objects.
   ///
-  /// Geometry, paint, comments and optional CC point counts are copied. Existing
-  /// paint/lock/visibility state remains in place and is inherited by each copy.
+  /// Geometry, paint, qualified object metadata and CC point counts are copied.
+  /// [identifiers] supplies a fresh XML name for every identified selected path.
+  /// Anonymous copies stay anonymous; existing references retain their targets.
+  /// Paint/lock/visibility state remains in place and is inherited by each copy.
   /// Private authoring paths, derived expansions, compound/clip members and
-  /// unresolved attached metadata reject. Copies have no synthesized identifiers.
-  AiNativeDrawing duplicatePaths({required List<AiNativePath> paths}) => _duplicateNativePaths(this, paths);
+  /// unresolved attached metadata reject.
+  AiNativeDrawing duplicatePaths({required List<AiNativePath> paths, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativePaths(this, paths, identifiers);
 
   /// Removes ordinary geometry and owned point counts, retaining surrounding state.
   ///
   /// Unselected bytes and paint/lock/visibility assignments remain unchanged.
   /// Existing drawing bounds remain conservative. Paths with unresolved native
-  /// owners, references or attached metadata reject before applying any edits.
+  /// owners or references reject; identified deletion remains unqualified.
   AiNativeDrawing removePaths({required List<AiNativePath> paths}) => _removeNativePaths(this, paths);
 
   /// Inserts geometry using each anchor's existing paint, flags and count layout.
@@ -241,8 +246,8 @@ final class AiNativeDrawing {
   ///
   /// [paths] gives the desired order. Source assignments preserve each path's
   /// paint and object flags and restore the following artwork's state. Unknown
-  /// required values, metadata and other object kinds reject. Geometry, paint
-  /// and point counts move together without changing unrelated source bytes.
+  /// required values, opaque metadata and other object kinds reject. Geometry,
+  /// qualified metadata and point counts move together, retaining identities.
   AiNativeDrawing reorderPaths({required List<AiNativePath> paths}) => _reorderNativePaths(this, paths);
 
   /// Moves a path after an anchor, optionally into another ordinary group.
@@ -265,20 +270,24 @@ final class AiNativeDrawing {
   /// Groups contiguous ordinary sibling paths without changing their source order.
   ///
   /// Optional point counts and intervening qualified state stay with the paths.
-  /// Unselected siblings, private owners and attached metadata reject atomically.
+  /// Qualified child metadata and identities stay with their paths. Unselected
+  /// siblings, private owners and unresolved metadata reject atomically.
   AiNativeDrawing groupPaths({required List<AiNativePath> paths}) => _groupNativePaths(this, paths);
 
   /// Removes ordinary group boundaries while retaining their children and state.
   ///
   /// Groups must be anonymous independent owners, with no compound/clip members,
-  /// derived artwork, attached metadata or unresolved state instructions.
+  /// derived artwork or unresolved state instructions. An empty group dictionary
+  /// is removed; nonempty group metadata has no dissolution policy.
   AiNativeDrawing ungroup({required List<AiNativeGroup> groups}) => _ungroupNativeGroups(this, groups);
 
   /// Copies complete ordinary groups with their qualified inherited state.
   ///
   /// Each copy follows its original. Source assignments restore the copy's input
   /// and the following object's state; unknown required values reject the batch.
-  AiNativeDrawing duplicateGroups({required List<AiNativeGroup> groups}) => _duplicateNativeGroups(this, groups);
+  /// [identifiers] supplies fresh XML names for every identified copied group
+  /// and path, including descendants, using their original source handles.
+  AiNativeDrawing duplicateGroups({required List<AiNativeGroup> groups, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativeGroups(this, groups, identifiers);
 
   /// Deletes ordinary groups and children while retaining outgoing state writes.
   ///

@@ -50,13 +50,13 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing draw
         if (group.opening.isPrivate) {
           throw UnsupportedError('A private group cannot supply independent authoring paths.');
         }
-        _ordinaryPathFollowing(items, group.end);
+        _ordinaryObjectFollowing(drawing, group);
       } else if (parent.source case final AiLayer layer) {
         _ordinaryPathFollowing(items, layer.end.end);
       }
       parent = structure.parentOf(parent);
     }
-    _ordinaryPathFollowing(items, path.end);
+    _ordinaryObjectFollowing(drawing, path);
     final Set<AiNativeInstruction> geometry = {...path.geometry, path.paint};
     if (_pathInterval(items, path.start, path.end, (item) => item.start).any((item) => !geometry.contains(item))) {
       throw UnsupportedError('The selected path contains dependent or interleaved native state.');
@@ -73,7 +73,9 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing draw
     if (plain.hasDependentAppearance) {
       final int index = _pathOffset(bound, path.start + 1, (shape) => shape.end);
       final AiLiveShape? preceding = index == 0 ? null : bound[index - 1];
-      if (preceding == null || _pathInterval(items, preceding.end, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator))) {
+      if (!_ordinaryMetadataPrefix(drawing, previousEnds[path]!, path.start) &&
+          (preceding == null ||
+              _pathInterval(items, preceding.end, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)))) {
         throw UnsupportedError('The selected path has unresolved appearance dependencies.');
       }
       // Mode-one XW ends the preceding bound shape. Its resolved postfix style
@@ -201,34 +203,34 @@ AiNativeDrawing _pathLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit>
 }
 
 /// Copies source geometry while leaving persistent attributes at their positions.
-AiNativeDrawing _duplicateNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths) {
+AiNativeDrawing _duplicateNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths, Map<AiNativeItem, List<int>> identifiers) {
   final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, paths);
   final AiProgram program = drawing.records.program;
+  final List<AiSourceEdit> replacements = _objectCopyEdits(drawing, paths, identifiers);
   final List<AiSourceEdit> edits = [];
+  int remaining = program.limits.maxDecodedBytes;
   for (final AiNativePath path in paths) {
     final AiNativeInstruction? count = counts[path];
-    edits.add(
-      AiSourceEdit(
-        start: path.end,
-        end: path.end,
-        bytes: [
-          10,
-          if (count != null) ...[...program.bytes.sublist(count.start, count.end), 10],
-          ...program.bytes.sublist(path.start, path.end),
-          10,
-        ],
-      ),
+    final AiNativeObject object = _ordinaryObject(drawing, path);
+    final List<int> bytes = _nativeSourceSpans(
+      program,
+      [if (count != null) (start: count.start, end: count.end), (start: object.start, end: object.end)],
+      remaining - 1,
+      edits: replacements,
     );
+    edits.add(AiSourceEdit(start: object.end, end: object.end, bytes: [10, ...bytes]));
+    remaining -= bytes.length + 1;
   }
   return _pathLifecycleResult(drawing, edits, drawing.paths.length + paths.length);
 }
 
-/// Deletes only geometry/paint and its optional consumed point-count declaration.
+/// Deletes complete anonymous objects and their consumed point-count declarations.
 AiNativeDrawing _removeNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths) {
   final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, paths);
+  _ordinaryObjectRemoval(drawing, paths);
   return _pathLifecycleResult(drawing, [
     for (final AiNativePath path in paths) ...[
-      AiSourceEdit(start: path.start, end: path.end, bytes: [32]),
+      AiSourceEdit(start: path.start, end: _ordinaryObject(drawing, path).end, bytes: [32]),
       if (counts[path] case final AiNativeInstruction count) AiSourceEdit(start: count.start, end: count.end, bytes: [32]),
     ],
   ], drawing.paths.length - paths.length);
@@ -263,7 +265,8 @@ AiNativeDrawing _insertNativePaths(AiNativeDrawing drawing, List<AiNativePathIns
     output.writeln(anchor.paint.operator);
     final List<int> bytes = latin1.encode(output.toString());
     encoded += bytes.length;
-    edits.add(AiSourceEdit(start: anchor.end, end: anchor.end, bytes: bytes));
+    final int position = _ordinaryObject(drawing, anchor).end;
+    edits.add(AiSourceEdit(start: position, end: position, bytes: bytes));
   }
   edits.addAll(
     AiNativeEditor.includeBoundsEdits(
@@ -291,7 +294,7 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
   if (slots.indexed.every((entry) => identical(entry.$2, paths[entry.$1]))) {
     return drawing;
   }
-  _ordinaryArtworkInterval(drawing, slots.first.start, slots.last.end, groups: false);
+  _ordinaryArtworkInterval(drawing, slots.first.start, _ordinaryObject(drawing, slots.last).end, groups: false);
   final AiProgram program = drawing.records.program;
   final Map<int, _NativeArtworkState> states = _nativeArtworkStates(drawing, slots.map((path) => path.start));
   final List<AiSourceEdit> edits = [];
@@ -308,7 +311,7 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
       program,
       [
         if (oldCount == null && newCount != null) (start: newCount.start, end: newCount.end),
-        (start: source.start, end: source.end),
+        (start: source.start, end: _ordinaryObject(drawing, source).end),
       ],
       [...source.geometry, source.paint],
       states[source.start]!,
@@ -316,7 +319,7 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
       states[slot.start]!,
       maxBytes: remaining - 1,
     );
-    edits.add(AiSourceEdit(start: slot.start, end: slot.end, bytes: [10, ...placed]));
+    edits.add(AiSourceEdit(start: slot.start, end: _ordinaryObject(drawing, slot).end, bytes: [10, ...placed]));
     remaining -= placed.length + 1;
     if (oldCount != null) {
       final List<int> replacement = newCount == null ? [32] : _nativeSourceSpans(program, [(start: newCount.start, end: newCount.end)], remaining);
@@ -335,11 +338,11 @@ AiNativeDrawing _moveNativePath(AiNativeDrawing drawing, AiNativePath path, AiNa
     drawing,
     ownership,
     path,
-    position: after.end,
+    position: _ordinaryObject(drawing, after).end,
     parent: ownership.parentOf(ownership.nodeFor(after)),
     inheritParentFlags: inheritParentFlags,
   );
-  return _relocateNativePath(drawing, path, counts[path], states, after.end);
+  return _relocateNativePath(drawing, path, counts[path], states, _ordinaryObject(drawing, after).end);
 }
 
 /// Appends an ordinary path as the last direct artwork of an owned layer.
@@ -365,7 +368,7 @@ AiNativeDrawing _relocateNativePath(AiNativeDrawing drawing, AiNativePath path, 
     program,
     [
       if (count != null) (start: count.start, end: count.end),
-      (start: path.start, end: path.end),
+      (start: path.start, end: _ordinaryObject(drawing, path).end),
     ],
     [...path.geometry, path.paint],
     states[path.start]!,
@@ -374,7 +377,7 @@ AiNativeDrawing _relocateNativePath(AiNativeDrawing drawing, AiNativePath path, 
     maxBytes: program.limits.maxDecodedBytes - 1,
   );
   return _pathLifecycleResult(drawing, [
-    AiSourceEdit(start: path.start, end: path.end, bytes: [32]),
+    AiSourceEdit(start: path.start, end: _ordinaryObject(drawing, path).end, bytes: [32]),
     if (count != null) AiSourceEdit(start: count.start, end: count.end, bytes: [32]),
     AiSourceEdit(
       start: position,

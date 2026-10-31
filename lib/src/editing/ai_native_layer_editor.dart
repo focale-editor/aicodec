@@ -44,36 +44,6 @@ List<AiSourceEdit> _layerDeclarations(AiNativeLayers model, int rootCount, bool 
   return edits;
 }
 
-/// Encodes caller-supplied byte strings after bounding their escaped output size.
-List<int> _layerString(List<int> value, int maxBytes) {
-  if (value.any((byte) => byte < 0 || byte > 255)) {
-    throw ArgumentError('A native layer name or identifier must contain bytes.');
-  }
-  if (value.length * 4 + 2 > maxBytes) {
-    throw const AiLimitException(message: 'Escaped layer strings exceed the native byte limit.');
-  }
-  return latin1.encode('(${value.map((byte) => '\\${byte.toRadixString(8).padLeft(3, '0')}').join()})');
-}
-
-/// Reserves qualified XML artwork identities without merging equal source owners.
-Set<String> _layerIdentityNames(AiNativeLayers model) => {
-  for (final AiNativeObjectIdentifier identifier in model.structure.identifiers)
-    if (identifier.kind == .xmlArt) latin1.decode(identifier.bytes),
-};
-
-/// Encodes one fresh identity and replaces only its source-owned string token.
-AiSourceEdit _layerIdentityEdit(AiNativeLayer layer, List<int> identifierBytes, Set<String> reserved, int maxBytes) {
-  final List<int> encoded = _layerString(identifierBytes, maxBytes);
-  if (identifierBytes.any((byte) => byte > 127) || !RegExp(r'^[A-Za-z_][A-Za-z0-9_.-]*$').hasMatch(latin1.decode(identifierBytes))) {
-    throw ArgumentError('New layer identifiers require a nonempty portable XML name.');
-  }
-  if (!reserved.add(latin1.decode(identifierBytes))) {
-    throw ArgumentError('The new layer identifier already belongs to the native source or this transaction.');
-  }
-  final AiNativeItem value = layer.identifier!.field.entry.container!.entries.single.items.single;
-  return AiSourceEdit(start: value.start, end: value.end, bytes: encoded);
-}
-
 /// Copies a header dictionary while assigning a distinct caller-owned XML name.
 List<int> _newLayerDictionary(AiNativeLayers model, AiNativeLayer layer, List<int>? identifierBytes) {
   if ((layer.identifier == null) != (identifierBytes == null)) {
@@ -81,7 +51,7 @@ List<int> _newLayerDictionary(AiNativeLayers model, AiNativeLayer layer, List<in
   }
   final List<AiSourceEdit> edits = [];
   if (identifierBytes != null) {
-    edits.add(_layerIdentityEdit(layer, identifierBytes, _layerIdentityNames(model), model.drawing.records.program.limits.maxDecodedBytes));
+    edits.add(_nativeIdentityEdit(layer.identifier!, identifierBytes, _nativeIdentityNames(model.structure), model.drawing.records.program.limits.maxDecodedBytes));
   }
   final AiNativeContainer? dictionary = layer.dictionary;
   if (dictionary == null) {
@@ -98,7 +68,7 @@ AiNativeLayers _insertNativeLayer(AiNativeLayers model, AiNativeLayer after, Lis
   _qualifiedLayerHeader(model, after);
   final AiProgram program = model.drawing.records.program;
   final List<AiSourceEdit> edits = _layerDeclarations(model, model.rootCount + (after.parentIndex == null ? 1 : 0), discardViewState);
-  final List<int> name = _layerString(nameBytes, program.limits.maxDecodedBytes);
+  final List<int> name = _nativeLiteralString(nameBytes, program.limits.maxDecodedBytes);
   final List<int> dictionary = _newLayerDictionary(model, after, identifierBytes);
   final int lineEnd = program.bytes.indexOf(10);
   final String newline = lineEnd > 0 && program.bytes[lineEnd - 1] == 13 ? '\r\n' : '\n';

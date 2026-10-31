@@ -25,7 +25,7 @@ void _layerLifecyclePrefix(AiNativeLayers model, AiNativeLayer layer, Map<int, A
 }
 
 /// Validates an ordinary interval without interpreting opaque object families.
-List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int end, Map<int, AiNativeLayer> headers) {
+List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int end, Map<int, AiNativeLayer> headers, {bool allowIdentifiedMetadata = true}) {
   final AiNativeDrawing drawing = model.drawing;
   final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).toList();
   final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: model.structure);
@@ -41,6 +41,12 @@ List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int en
     if (headers[item.start] case final AiNativeLayer owner) {
       if (owner.bindingIssue case final String issue) {
         throw UnsupportedError(issue);
+      }
+      continue;
+    }
+    if (_ordinaryObjectMetadata(drawing, item)) {
+      if (!allowIdentifiedMetadata && drawing._objects._dictionaries[item.start]!.identifier != null) {
+        throw UnsupportedError('Layer duplication/removal requires explicit identities and references for contained artwork.');
       }
       continue;
     }
@@ -210,18 +216,18 @@ List<AiSourceEdit> _layerCopyEdits(AiNativeLayers model, List<AiNativeLayer> des
   if (identifiers.length != expected.length || identifiers.keys.any((layer) => !expected.contains(layer)) || names.keys.any((layer) => !named.contains(layer))) {
     throw ArgumentError('Copies require exactly their identified descendants and only owned existing display names.');
   }
-  final Set<String> reserved = _layerIdentityNames(model);
+  final Set<String> reserved = _nativeIdentityNames(model.structure);
   final List<AiSourceEdit> edits = [];
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in descendants) {
     if (identifiers[layer] case final List<int> value) {
-      final AiSourceEdit edit = _layerIdentityEdit(layer, value, reserved, remaining);
+      final AiSourceEdit edit = _nativeIdentityEdit(layer.identifier!, value, reserved, remaining);
       edits.add(edit);
       remaining -= edit.bytes.length;
     }
     if (names[layer] case final List<int> value) {
       final AiToken token = layer.source.naming!.operands.single;
-      final List<int> encoded = _layerString(value, remaining);
+      final List<int> encoded = _nativeLiteralString(value, remaining);
       edits.add(AiSourceEdit(start: token.start, end: token.end, bytes: encoded));
       remaining -= encoded.length;
     }
@@ -244,7 +250,7 @@ AiNativeLayers _duplicateNativeLayers(AiNativeLayers model, List<AiNativeLayer> 
     final List<int> bytes = _placedLayer(
       model,
       layer,
-      _layerInterval(model, layer.start, layer.end, headers),
+      _layerInterval(model, layer.start, layer.end, headers, allowIdentifiedMetadata: false),
       states[layer.start]!,
       states[layer.end]!,
       states[layer.end]!,
@@ -313,7 +319,7 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in selected) {
     _layerLifecyclePrefix(model, layer, headers);
-    final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
+    final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers, allowIdentifiedMetadata: false);
     final List<int> state = _nativeSourceSpans(model.drawing.records.program, [
       for (final AiNativeInstruction item in commands)
         if (_nativeArtworkStateKey(item) != null) (start: item.start, end: item.end),

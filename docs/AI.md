@@ -360,6 +360,51 @@ regression. They verify decoded identities, trees, geometry/counts, paint state
 and exact bytes outside authorized source/string spans. General referenced
 deletion, opaque/derived lifecycle and Adobe reopening remain unqualified.
 
+### Attached object metadata
+
+`AiNativeObjects.decode(drawing:)` exposes immutable path/group associations with
+an optional directly attached `ArtDictionary`. `forSource` requires an exact
+handle from that drawing. Each object retains its lexical `node`, original
+`source`, complete `start`/`end`, dictionary, saved XML `identifier`, and source
+name fields. Layer-header dictionaries keep their separate `AiNativeLayers`
+ownership. Inspection includes private/compound/derived objects without granting
+ordinary lifecycle permission. `bindingIssue` reports unqualified metadata;
+malformed identity syntax still fails structural validation.
+
+Ordinary lifecycle currently qualifies empty dictionaries and the observed
+`AI10_ArtUID`, `AIArtName`, `Object name` and finite `BBAccumRotation` fields.
+Names preserve their string type and original bytes. These records do not change
+persistent paint state. Bare and `%_` syntax are retained; interleaved operators,
+version boundaries, repeated dictionaries, private appearance fields, SVG import
+records and unknown reference fields remain separate dependencies.
+
+Path/group movement and reordering carry the complete dictionary with the object.
+Insertion occurs after the anchor's dictionary, leaving the new path anonymous.
+`duplicatePaths` and `duplicateGroups` take an `identifiers` map keyed by original
+path/group handles. Supply exactly one fresh portable XML name for every copied
+identified object, including group descendants. Source-wide collisions, extra or
+foreign handles and missing identities reject atomically. Anonymous objects stay
+anonymous. Only the copied identifier string tokens change; names, rotation,
+geometry, remaining dictionary bytes and references to originals stay exact.
+
+Anonymous deletion removes the attached dictionary with its object. Identified
+path/group deletion still requires a reference-ownership contract. Ungrouping
+removes an empty group dictionary and preserves child metadata; it rejects a
+nonempty dictionary because there is no automatic destination for group-owned
+names, identities or rotation. Layer movement retains child object identities;
+layer duplication/removal currently rejects identified path/group descendants.
+The layer-specific identity map does not authorize copying those artwork IDs.
+
+Sixteen regressions cover whole-object edits, nested copies, repeated operations,
+immutable identity maps, stale handles, unknown dictionaries, counts, byte/token
+limits, layer transfer and capability findings. Independent pinned-inkai checks
+verify five synthetic identity transactions, including complete topology, decoded
+metadata, effective paint and exact unselected bytes. Six real-file rejections
+preserve `layers_and_sublayers.ai`: its three empty object dictionaries are valid,
+but the enclosing `XW` style remains outside the ordinary lifecycle contract.
+This is not evidence of successful identified-object editing in real CC files or
+Adobe reopening. Wider dependency support remains in the roadmap.
+
 ### Ordinary path lifecycle
 
 `AiNativeDrawing` supports the following operations on independent ordinary
@@ -368,7 +413,7 @@ stale selections reject before any source edit is applied.
 
 | Operation | Behavior |
 | --- | --- |
-| `duplicatePaths(paths:)` | Copies each selected path immediately after its original, retaining geometry, paint, internal ordinary comments and optional point counts. |
+| `duplicatePaths(paths:, identifiers:)` | Copies each complete qualified path and its metadata after the original; identified paths require fresh supplied IDs. |
 | `removePaths(paths:)` | Removes geometry/paint and its consumed point count. Persistent state and conservative drawing bounds remain. |
 | `insertPaths(insertions:)` | Inserts supplied geometry after each anchor, inheriting its paint, flags and count convention. Multiple insertions at the same anchor retain input order. |
 | `reorderPaths(paths:)` | Places selected siblings into their existing source slots in the requested order, carrying geometry, paint and count syntax together. |
@@ -381,10 +426,11 @@ Counted closed paths receive a closing endpoint when needed. Bounds expand the
 existing drawing extent without changing artboards or PDF pages. All operations
 reparse under the original source limits and return immutable snapshots.
 
-These APIs accept anonymous paths whose ownership and inherited appearance are
-isolated. Private paths, live-shape expansions, gradients, compound/clip members,
-version alternatives, attached identities, tags, notes and unresolved metadata
-reject. Qualification includes ordinary parent groups/layers and postfix records,
+These APIs accept paths whose ownership, metadata and inherited appearance are
+isolated. Qualified attached identities move with their artwork and require
+fresh replacements for duplication, as described below. Identified deletion,
+private paths, live-shape expansions, gradients, compound/clip members, version
+alternatives, tags, notes and unresolved metadata reject. Qualification includes ordinary parent groups/layers and postfix records,
 even when state assignments separate an object from its metadata. A completed
 bound live shape does not by itself make the next ordinary path an expansion.
 Unselected opaque setup or sibling data can remain unchanged outside that scope.
@@ -406,8 +452,8 @@ keeps its own attributes and accepts destination-group inheritance. Equal known
 ancestor states, or values with the same unchanged unknown provenance, need no
 extra policy. Cross-layer movement always requires explicit destination
 inheritance and qualified layer headers; paint continues across those headers.
-These operations do not create or remove groups, layers, shared resources or
-referenced identities. Capabilities report lifecycle operations as requiring
+These operations do not create or remove groups, layers or shared resources,
+and do not delete or redirect existing referenced identities. Capabilities report lifecycle operations as requiring
 selection-specific validation.
 
 Nine additional regressions cover changed process paints, all qualified state
@@ -421,7 +467,7 @@ Saving changed geometry requires matching PDF artwork supplied by the host.
 
 ### Ordinary group lifecycle
 
-`AiNativeDrawing` also supports anonymous ordinary `u`/`U` owners. A selected
+`AiNativeDrawing` also supports qualified ordinary `u`/`U` owners. A selected
 group can contain nested ordinary groups, qualified paths and process-paint or
 object-state assignments. Empty owners are supported. Batch selections must be
 owned, distinct and disjoint; selecting an ancestor and descendant together
@@ -431,7 +477,7 @@ rejects before editing.
 | --- | --- |
 | `groupPaths(paths:)` | Wraps consecutive sibling paths in one group, preserving source order, consumed point counts and intervening qualified assignments. |
 | `ungroup(groups:)` | Removes only the selected boundaries; child objects, nested groups and state remain. |
-| `duplicateGroups(groups:)` | Copies each complete subtree immediately after its original, replaying known source assignments to preserve inherited and outgoing state. |
+| `duplicateGroups(groups:, identifiers:)` | Copies the complete subtree with fresh supplied IDs for every identified group/path and restored incoming/outgoing state. |
 | `removeGroups(groups:)` | Removes the subtree's objects and counts, retaining its persistent assignments for following artwork. |
 | `reorderGroups(groups:)` | Places selected siblings into their existing slots in the requested order, restoring each slot's original outgoing state. |
 | `moveGroupAfter(group:, after:, inheritParentFlags:)` | Moves a subtree after an anchor, with explicit inheritance for different layers or ancestor-group flags/depths. |
@@ -458,11 +504,11 @@ the selected intervals and insertion points remain exact. Deletion retains the
 group's outgoing assignments even when its objects disappear. Drawing bounds
 remain conservative because these operations retain or remove existing geometry.
 
-Private/derived owners, compound/clip children, version alternatives, attached
-identities, tags, expansion flags, notes, unknown state and metadata comments
-reject. Moving cannot cross opaque/private intervals; source and anchor
-groups cannot contain one another. Shared styles, effects and referenced group
-identities need separate lifecycle contracts. Group capabilities therefore remain
+Private/derived owners, compound/clip children, version alternatives, opaque
+metadata, tags, expansion flags, notes and unknown state reject. Known identities
+and names stay with their objects; nonempty group metadata prevents dissolution. Moving cannot cross opaque/private intervals; source and anchor
+groups cannot contain one another. Shared styles, effects and identified
+deletion need separate lifecycle contracts. Group capabilities therefore remain
 selection-dependent, with compound/private/clip topology explicitly unsupported.
 
 Sixteen focused regressions include changed inherited state, nested and empty
@@ -1053,8 +1099,9 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
+| Object metadata | Direct path/group dictionaries, names and saved XML IDs | Whole-object movement/copy; anonymous removal; empty-dictionary dissolution | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion remains unqualified. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree copy/remove/reorder/moves | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
-| Ordinary native paths | Source-backed geometry and paint | Geometry and qualified ordinary-path lifecycle with retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
+| Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves, including empty destination layers | Anonymous owners only; unknown state, references and private/derived objects reject; different layers or ancestor flags require explicit inheritance. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

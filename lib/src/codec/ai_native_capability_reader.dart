@@ -224,6 +224,20 @@ final class _NativeCapabilityReader {
 
   /// Reports topology and association issues without making parent-wide claims.
   void drawing(AiNativeDrawing drawing) {
+    inspect(.record, drawing.records.program.bodyStart, drawing.records.program.bodyEnd, () {
+      for (final AiNativeObject object in AiNativeObjects.decode(drawing: drawing).objects) {
+        if (object.dictionary != null) {
+          add(
+            .record,
+            object.start,
+            object.end,
+            object.bindingIssue == null ? .typed : .preserved,
+            object.bindingIssue ?? 'Direct object identity/name metadata; geometry, appearance and lifecycle require independent validation.',
+            selector: 'object-metadata:${object.start}',
+          );
+        }
+      }
+    });
     for (final AiNativeGroup group in drawing.groups) {
       add(
         .group,

@@ -208,6 +208,21 @@ groups and compound topology. There is no general modern object lifecycle API.
   cross-layer corpus outputs match the independently checked files byte-for-byte.
   Referenced and private/derived artwork lifecycle, plus broader identified-layer
   deletion, remain outstanding. Adobe reopening is unqualified.
+  `AiNativeObjects` now binds direct path/group dictionaries, saved XML IDs,
+  names and rotation metadata independently of geometry/appearance qualification.
+  Whole-object moves/reorders retain metadata; duplication requires fresh IDs for
+  every identified copied descendant. Anonymous deletion removes its metadata,
+  and dissolution accepts only empty group dictionaries. Sixteen regressions
+  cover repeated edits, identity collisions, immutable inputs, limits, layer
+  transfers and unsupported/private records. Independent pinned-inkai checks
+  verify five synthetic transactions and six exact real-file refusals: the
+  three empty dictionaries in `layers_and_sublayers.ai` do not qualify its
+  enclosing `XW` style. Real CC identified-object editing, identified deletion
+  and derived/reference lifecycle remain outstanding; this task stays open.
+  Latest validation: 440 VM/439 Node tests, clean format/fix/analysis, all
+  65 prior layer/path/group/cross-layer transactions rechecked independently,
+  and capability checks repeated on 37 exact sources (41 layer headers and 181
+  ordinary paths). No renderer or host integration was introduced.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships
