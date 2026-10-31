@@ -542,8 +542,18 @@ groups and compound topology. There is no general modern object lifecycle API.
   the pinned SVG reader clears persistent fill after stroke-only paths. Synthetic
   native branches and Adobe reopening remain unqualified. Latest validation:
   658 VM/657 Node tests and clean format/fix/analysis.
-  The lifecycle task remains open: creation without an existing sibling still
-  needs public contracts; broader
+  `AiNativeLayers.create` now creates a first/root layer or appends a last child
+  without an existing sibling. Immutable definitions supply explicit qualified
+  integer header layouts, native names, fresh optional identities and panel state.
+  Existing bytes and LF/CRLF conventions are retained; declared root counts and
+  explicitly discarded view mappings update atomically. Eight regressions cover
+  recreation after total removal, empty/populated parents, all three layouts,
+  changed-width/absent counts, immutable inputs, collisions and original limits.
+  Twelve independent transactions verify six real and six synthetic creations,
+  with exact source preservation and original/native parent ownership. Latest
+  validation: 666 VM/665 Node tests and clean format/fix/analysis.
+  The lifecycle task remains open: path and group creation without an existing
+  sibling still need public contracts; broader
   reference isolation and appearance families also retain their later tasks.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.

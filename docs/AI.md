@@ -269,6 +269,41 @@ checks preserve all unselected source and only allow the declared count/view
 edits. The additional lifecycle contracts and their reference restrictions follow;
 Adobe reopening remains unqualified.
 
+### Layer creation without a template
+
+`AiNativeLayers.create(definition:, parent:, discardViewState:)` appends an empty
+root layer or a last child of an owned layer. No existing sibling is required:
+it can create the first layer or recreate one after removing every layer.
+`AiNativeLayerDefinition` freezes explicit `attributes`, `nameBytes`, optional
+`identifierBytes` and panel `expanded` state. It does not infer a CC document
+profile, copy opaque metadata or invent a source identity.
+
+The caller supplies one qualified integer-valued 10-, 13- or 14-operand `Lb`
+header. Visibility, preview, enabled, printing, dimming, display colors and the
+extended flags are validated; multilayer masks, extra operands, nonzero final
+14-operand flags and fractional values reject. For example, the observed CC
+header `[1, 1, 1, 1, 0, 0, 1, 0, 79, 128, 255, 0, 50, 0]` creates a visible,
+enabled, printing layer. These are explicit producer-layout attributes, not a
+general target-version policy or an independent document template.
+
+Names use escaped native byte strings; fresh identities share the same whole-
+document collision checks as duplication, including opaque `XMLUID` uses. New
+layers retain the original LF/CRLF convention. Root counts update only when the
+source declares them; absent declarations remain absent. Saved view mappings
+require explicit invalidation, including their continuations. Qualified parent
+headers can retain opaque children; existing artwork and persistent state remain
+byte-exact. Foreign/stale or conditional parents, mismatched root declarations,
+unknown header layouts and exceeded original limits fail atomically.
+
+Eight regressions cover first/repeated creation, removal followed by recreation,
+empty/populated parents, immutable definitions, names, all three layouts, absent
+and changed-width counts, view declarations, opaque neighbors, collisions and
+limits. Twelve independently decoded transactions cover six creations in three
+pinned real sources and six synthetic creations. The verifier binds the new
+empty owner, all original headers/identities and exact insertion/count/view edits;
+no appearance or compatibility representation is generated. Adobe reopening
+remains unqualified.
+
 ### Layer subtree movement
 
 `AiNativeLayers` also moves complete qualified layer subtrees, retaining names,

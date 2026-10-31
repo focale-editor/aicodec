@@ -26,8 +26,8 @@ Set<String> _nativeIdentityNames(AiNativeStructure structure) {
   return result;
 }
 
-/// Encodes one fresh identity and replaces only its source-owned string token.
-AiSourceEdit _nativeIdentityEdit(AiNativeObjectIdentifier identifier, List<int> identifierBytes, Set<String> reserved, int maxBytes) {
+/// Encodes and reserves a fresh identity for one creation or copy transaction.
+List<int> _newNativeIdentity(List<int> identifierBytes, Set<String> reserved, int maxBytes) {
   final List<int> encoded = _nativeLiteralString(identifierBytes, maxBytes);
   if (identifierBytes.any((byte) => byte > 127) || !RegExp(r'^[A-Za-z_][A-Za-z0-9_.-]*$').hasMatch(latin1.decode(identifierBytes))) {
     throw ArgumentError('New artwork identifiers require a nonempty portable XML name.');
@@ -35,6 +35,12 @@ AiSourceEdit _nativeIdentityEdit(AiNativeObjectIdentifier identifier, List<int> 
   if (!reserved.add(latin1.decode(identifierBytes))) {
     throw ArgumentError('The new artwork identifier already belongs to the native source or this transaction.');
   }
+  return encoded;
+}
+
+/// Encodes one fresh identity and replaces only its source-owned string token.
+AiSourceEdit _nativeIdentityEdit(AiNativeObjectIdentifier identifier, List<int> identifierBytes, Set<String> reserved, int maxBytes) {
+  final List<int> encoded = _newNativeIdentity(identifierBytes, reserved, maxBytes);
   final AiNativeItem value = identifier.field.entry.container!.entries.single.items.single;
   return AiSourceEdit(start: value.start, end: value.end, bytes: encoded);
 }

@@ -1,5 +1,54 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// An empty native layer with an explicitly supplied qualified header layout.
+///
+/// The ten-, thirteen- and fourteen-operand `Lb` layouts are supported. Supply
+/// actual header attributes rather than inferring a producer/version from other
+/// artwork. This defines one layer, not a complete new CC document profile.
+final class AiNativeLayerDefinition {
+  /// Exact integer-valued `Lb` operands, retaining the selected producer layout.
+  ///
+  /// The first six flags are visibility, preview, enabled, printing, dimming and
+  /// multilayer masks. Masks must be zero. The ten-operand layout ends with a
+  /// color index and three byte-valued display channels. Extended layouts add
+  /// a flag before those colors, then template and image-dimming values. The
+  /// fourteenth operand, when present, must be zero.
+  final List<double> attributes;
+
+  /// Native display-name bytes, independent of XML identity and text encoding.
+  final List<int> nameBytes;
+
+  /// Fresh portable XML identity, or null to create an anonymous layer.
+  final List<int>? identifierBytes;
+
+  /// Whether the new layer's panel entry starts expanded.
+  final bool expanded;
+
+  /// Freezes and validates a layer definition before any source is edited.
+  AiNativeLayerDefinition({required List<double> attributes, required List<int> nameBytes, List<int>? identifierBytes, this.expanded = false})
+    : attributes = List.unmodifiable(attributes),
+      nameBytes = List.unmodifiable(nameBytes),
+      identifierBytes = identifierBytes == null ? null : List.unmodifiable(identifierBytes) {
+    if (!const {10, 13, 14}.contains(attributes.length) ||
+        attributes.any((value) => !value.isFinite || value != value.truncateToDouble()) ||
+        attributes.take(6).any((value) => !const {0, 1}.contains(value)) ||
+        attributes[5] != 0 ||
+        attributes.length == 14 && attributes.last != 0) {
+      throw ArgumentError('New layers require a qualified unmasked native header.');
+    }
+    final int color = attributes.length == 10 ? 6 : 7;
+    if (attributes[color] < -1 ||
+        attributes[color] > 26 ||
+        attributes.skip(color + 1).take(3).any((value) => value < 0 || value > 255) ||
+        attributes.length > 10 && (!const {0, 1}.contains(attributes[6]) || !const {0, 1}.contains(attributes[11]) || attributes[12] < 0 || attributes[12] > 100)) {
+      throw ArgumentError('New layers require qualified display attributes.');
+    }
+    if (nameBytes.any((byte) => byte < 0 || byte > 255) || identifierBytes != null && identifierBytes.any((byte) => byte < 0 || byte > 255)) {
+      throw ArgumentError('Native layer names and identifiers must contain bytes.');
+    }
+  }
+}
+
 /// One source-owned layer with its complete wrapper and attached header metadata.
 final class AiNativeLayer extends AiNativeItem {
   /// Original low-level header, name, flags and matching closing instruction.
@@ -118,6 +167,15 @@ final class AiNativeLayers {
   /// reference mapping is unqualified. Root counts update in the same transaction.
   AiNativeLayers insertAfter({required AiNativeLayer after, required List<int> nameBytes, List<int>? identifierBytes, bool discardViewState = false}) =>
       _insertNativeLayer(this, after, nameBytes, identifierBytes, discardViewState);
+
+  /// Appends an empty layer without requiring an existing sibling or template.
+  ///
+  /// Omit [parent] to append at the document root, including after all layers
+  /// have been removed. An owned [parent] creates a last sublayer, including in
+  /// an empty parent. Existing artwork, state and layer headers remain exact.
+  /// Root counts update atomically; saved view declarations require explicit
+  /// [discardViewState]. Supplied identities must be fresh across the document.
+  AiNativeLayers create({required AiNativeLayerDefinition definition, AiNativeLayer? parent, bool discardViewState = false}) => _createNativeLayer(this, definition, parent, discardViewState);
 
   /// Permutes selected sibling slots while retaining identities and child artwork.
   ///

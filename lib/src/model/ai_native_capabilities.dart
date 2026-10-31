@@ -90,7 +90,7 @@ enum AiNativeEditOperation {
   /// Change native visibility, lock and printing flags.
   layerFlags,
 
-  /// Insert an empty sibling with a qualified header and a fresh source identity.
+  /// Add an empty sibling or child with a qualified header and fresh identity.
   layerInsertion,
 
   /// Reorder ordinary layer subtrees with retained identities and paint state.

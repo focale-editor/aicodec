@@ -624,6 +624,21 @@ dart run tool/check_native_path_group_movement.dart
 python3 tool/verify_native_path_group_movement.py --inkai-source /tmp/extension-ai
 ```
 
+Creation without a layer template has twelve fixed transactions. Six append
+explicit CC headers at the root or inside existing layers in three original
+manifest-pinned files; six synthetic cases create a first layer with each
+qualified layout, cross the nine-to-ten root-count boundary and append to empty
+or populated parents. Names, identities, header attributes and panel flags are
+independent expected values. The verifier decodes every old/new layer and proves
+that only the empty wrapper and permitted count/view declarations changed. No
+artwork, paint, resources or unselected source bytes change. This is native-data
+qualification, without new rendering or Adobe reopening claims.
+
+```sh
+dart run tool/check_native_layer_creation.dart
+python3 tool/verify_native_layer_creation.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

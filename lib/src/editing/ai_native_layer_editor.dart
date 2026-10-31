@@ -1,5 +1,11 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// Uses the original program's line-ending convention for newly written layers.
+String _layerLineEnding(AiProgram program) {
+  final int lineEnd = program.bytes.indexOf(10);
+  return lineEnd > 0 && program.bytes[lineEnd - 1] == 13 ? '\r\n' : '\n';
+}
+
 /// Validates a selected header and every enclosing layer before structural edits.
 void _qualifiedLayerHeader(AiNativeLayers model, AiNativeLayer layer) {
   model._requireOwned(layer);
@@ -70,8 +76,7 @@ AiNativeLayers _insertNativeLayer(AiNativeLayers model, AiNativeLayer after, Lis
   final List<AiSourceEdit> edits = _layerDeclarations(model, model.rootCount + (after.parentIndex == null ? 1 : 0), discardViewState);
   final List<int> name = _nativeLiteralString(nameBytes, program.limits.maxDecodedBytes);
   final List<int> dictionary = _newLayerDictionary(model, after, identifierBytes);
-  final int lineEnd = program.bytes.indexOf(10);
-  final String newline = lineEnd > 0 && program.bytes[lineEnd - 1] == 13 ? '\r\n' : '\n';
+  final String newline = _layerLineEnding(program);
   final BytesBuilder bytes = BytesBuilder(copy: false);
 
   /// Bounds the complete inserted wrapper before retaining copied source data.
@@ -106,6 +111,41 @@ AiNativeLayers _insertNativeLayer(AiNativeLayers model, AiNativeLayer after, Lis
   final AiNativeLayers result = AiNativeLayers.decode(drawing: drawing);
   if (result.layers.length != model.layers.length + 1 || result.rootCount != model.rootCount + (after.parentIndex == null ? 1 : 0) || !result.rootCountMatches) {
     throw const FormatException('Inserted layer changed unrelated ownership or root counts.');
+  }
+  return result;
+}
+
+/// Serializes an explicit empty layer at a complete root or layer boundary.
+AiNativeLayers _createNativeLayer(AiNativeLayers model, AiNativeLayerDefinition definition, AiNativeLayer? parent, bool discardViewState) {
+  if (parent != null) {
+    _qualifiedLayerHeader(model, parent);
+  } else if (!model.rootCountMatches) {
+    throw const FormatException('The declared native root-layer count disagrees with its owners.');
+  }
+  final AiProgram program = model.drawing.records.program;
+  final int rootCount = model.rootCount + (parent == null ? 1 : 0);
+  final List<AiSourceEdit> edits = _layerDeclarations(model, rootCount, discardViewState);
+  final List<int> name = _nativeLiteralString(definition.nameBytes, program.limits.maxDecodedBytes);
+  final List<int>? identifier = definition.identifierBytes == null ? null : _newNativeIdentity(definition.identifierBytes!, _nativeIdentityNames(model.structure), program.limits.maxDecodedBytes);
+  final String newline = _layerLineEnding(program);
+  final StringBuffer output = StringBuffer(
+    '$newline%AI5_BeginLayer$newline${definition.attributes.map((value) => value.toInt()).join(' ')} Lb$newline${latin1.decode(name)} Ln$newline${definition.expanded ? 1 : 0} AE$newline',
+  );
+  if (identifier != null) {
+    output.write('%_/ArtDictionary :$newline%_/XMLUID : ${latin1.decode(identifier)} ; (AI10_ArtUID) ,$newline%_;$newline');
+  }
+  output.write('LB$newline%AI5_EndLayer--$newline');
+  if (output.length > program.limits.maxDecodedBytes) {
+    throw const AiLimitException(message: 'Created layer exceeds the native output limit.');
+  }
+  final int position = parent?.source.end.start ?? program.bodyEnd;
+  final int changedPosition = position + edits.fold<int>(0, (offset, edit) => offset + (edit.end <= position ? edit.bytes.length - (edit.end - edit.start) : 0));
+  edits.add(AiSourceEdit(start: position, end: position, bytes: latin1.encode(output.toString())));
+  final AiNativeDrawing drawing = _pathLifecycleResult(model.drawing, edits, model.drawing.paths.length);
+  final AiNativeLayers result = AiNativeLayers.decode(drawing: drawing);
+  final List<AiNativeLayer> created = result.layers.where((layer) => layer.start >= changedPosition && layer.end <= changedPosition + output.length).toList();
+  if (result.layers.length != model.layers.length + 1 || result.rootCount != rootCount || !result.rootCountMatches || created.length != 1 || created.single.bindingIssue != null) {
+    throw const FormatException('Created layer changed unrelated ownership or root counts.');
   }
   return result;
 }
