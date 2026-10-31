@@ -498,6 +498,26 @@ groups and compound topology. There is no general modern object lifecycle API.
   Grouping/dissolution and broader reference-owner schemas remain outstanding;
   this task stays open. Adobe reopening and synthetic native SVG remain
   unqualified, and Focale integration is still deferred.
+  Mixed grouping and qualified parent dissolution are now implemented:
+  `groupArtwork` accepts consecutive sibling paths, groups and complete CC pairs,
+  retaining exact child source, point counts and both metadata alternatives.
+  `groupPaths` shares this qualification. Dissolution retains descendants and
+  removes parent metadata only with explicit disposal; only deleted parent IDs
+  undergo reference checks, so retained descendant aliases are not reassigned.
+  Both grouping APIs and dissolution require explicit inheritance for non-neutral
+  or unknown native/printing ancestor flags. Applied group styles and opaque
+  metadata/reference owners still reject. Twelve regressions cover mixed and
+  nested selections, flags in both streams, parent identities, aliases, unselected
+  source, stale/foreign handles and limits. Independent native-reader checks pass
+  18 fixed transactions: twelve original/derived-real cases across four pinned
+  programs, two synthetic edits and four exact refusals, checking requested native
+  topology, complete selected owners, exact byte changes and contour state.
+  Latest validation: 643 VM/642 Node tests and clean format/fix/analysis. The
+  existing ordinary group, artwork movement and direct-shape suites also pass
+  all 48 independent transactions, for 66 in this run.
+  Broader object/reference-owner schemas and applied-style dissolution still
+  require their declared contracts; this lifecycle task remains open. This lot
+  establishes native serialization only, without Adobe reopening or host rendering.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

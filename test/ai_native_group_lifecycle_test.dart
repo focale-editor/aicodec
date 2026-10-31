@@ -59,13 +59,13 @@ void main() {
   test('groups consecutive paths with counts and state changes in source order', () {
     final AiNativeDrawing source = _drawing(body: '0 A 0 g\n2 As 0 0 m 1 1 L N\n1 A 0.8 g\n2 2 m 3 3 L S');
     final List<AiNativePath> selected = source.paths.reversed.toList();
-    final AiNativeDrawing result = source.groupPaths(paths: selected);
+    final AiNativeDrawing result = source.groupPaths(paths: selected, inheritParentFlags: true);
     check(result.groups.single.paths).length.equals(2);
     check(_painted(result)).deepEquals(_painted(source));
     check(latin1.decode(result.records.program.bytes)).contains('u\n2 As');
     check(selected.first).identicalTo(source.paths.last);
     check(source.groups).isEmpty();
-    final AiNativeDrawing dissolved = result.ungroup(groups: result.groups);
+    final AiNativeDrawing dissolved = result.ungroup(groups: result.groups, inheritParentFlags: true);
     check(dissolved.groups).isEmpty();
     check(_painted(dissolved)).deepEquals(_painted(source));
   });
@@ -159,7 +159,8 @@ void main() {
     check(() => unknownFlags.duplicateGroups(groups: unknownFlags.groups)).throws<UnsupportedError>();
     final AiNativeDrawing source = _drawing(body: 'u 0 0 m 1 1 L N U\n0.2 g\nu 2 2 m 3 3 L f U');
     check(() => source.moveGroupAfter(group: source.groups.last, after: source.groups.first)).throws<UnsupportedError>();
-    check(source.ungroup(groups: source.groups).groups).isEmpty();
+    check(() => source.ungroup(groups: source.groups)).throws<UnsupportedError>();
+    check(source.ungroup(groups: source.groups, inheritParentFlags: true).groups).isEmpty();
   });
 
   test('rejects nonconsecutive paths, different parents and overlapping group selections', () {

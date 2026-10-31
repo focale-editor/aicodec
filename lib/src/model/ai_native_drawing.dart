@@ -319,15 +319,29 @@ final class AiNativeDrawing {
   ///
   /// Optional point counts and intervening qualified state stay with the paths.
   /// Qualified child metadata and identities stay with their paths. Unselected
-  /// siblings, private owners and unresolved metadata reject atomically.
-  AiNativeDrawing groupPaths({required List<AiNativePath> paths}) => _groupNativePaths(this, paths);
+  /// siblings, private owners and unresolved metadata reject atomically. The parent
+  /// inheritance policy of [groupArtwork] applies.
+  AiNativeDrawing groupPaths({required List<AiNativePath> paths, bool inheritParentFlags = false}) => groupArtwork(paths: paths, inheritParentFlags: inheritParentFlags);
 
-  /// Removes ordinary group boundaries while retaining their children and state.
+  /// Groups consecutive sibling paths, groups and complete native live shapes.
   ///
-  /// Groups must be anonymous independent owners, with no compound/clip members,
-  /// derived artwork or unresolved state instructions. An empty group dictionary
-  /// is removed; nonempty group metadata has no dissolution policy.
-  AiNativeDrawing ungroup({required List<AiNativeGroup> groups}) => _ungroupNativeGroups(this, groups);
+  /// Source order, child identities and complete authoring/printing pairs remain
+  /// unchanged. Select a paired shape through [liveShapes], not its private path
+  /// or printing group. The new anonymous parent inherits the flags at the first
+  /// selected owner. Non-neutral or unknown flags require [inheritParentFlags].
+  AiNativeDrawing groupArtwork({List<AiNativePath> paths = const [], List<AiNativeGroup> groups = const [], List<AiLiveShape> liveShapes = const [], bool inheritParentFlags = false}) =>
+      _groupNativeArtwork(this, paths, groups, liveShapes, inheritParentFlags);
+
+  /// Dissolves ordinary parents while retaining complete children and local state.
+  ///
+  /// Qualified CC pairs and their alternatives remain together. Nonempty parent
+  /// dictionaries require [discardMetadata]; deleted parent identities undergo a
+  /// whole-source reference check, while descendant identities remain unchanged.
+  /// Applied group styles and opaque owners reject. Non-neutral or unknown group
+  /// flags require [inheritParentFlags]: children then inherit the remaining
+  /// ancestors, without transferring the removed parent's flags onto children.
+  AiNativeDrawing ungroup({required List<AiNativeGroup> groups, bool discardMetadata = false, bool inheritParentFlags = false}) =>
+      _dissolveNativeGroups(this, groups, discardMetadata, inheritParentFlags);
 
   /// Copies complete ordinary groups with their qualified inherited state.
   ///

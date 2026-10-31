@@ -89,7 +89,7 @@ Future<void> main() async {
   final AiNativeGroup last = synthetic.groups[2];
   await record('synthetic-state', 'synthetic-state.original.ps', 'duplicate', synthetic, synthetic.duplicateGroups(groups: [first]), [1]);
   await record('synthetic-state', 'synthetic-state.original.ps', 'remove', synthetic, synthetic.removeGroups(groups: [first]), [1]);
-  await record('synthetic-state', 'synthetic-state.original.ps', 'ungroup', synthetic, synthetic.ungroup(groups: [first]), [1]);
+  await record('synthetic-state', 'synthetic-state.original.ps', 'ungroup', synthetic, synthetic.ungroup(groups: [first], inheritParentFlags: true), [1]);
   await record('synthetic-state', 'synthetic-state.original.ps', 'reorder', synthetic, synthetic.reorderGroups(groups: [last, first]), [2, 1]);
   await record('synthetic-state', 'synthetic-state.original.ps', 'move', synthetic, synthetic.moveGroupAfter(group: synthetic.groups.first, after: last, inheritParentFlags: true), [0], anchor: 2);
   await File('${output.path}/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert(rows));

@@ -41,3 +41,5 @@
 - Added mixed CC subtree copies with fresh identities for every ordinary object and paired metadata owner, separate native/printing input replay and retained shared resources; qualified parent metadata now permits subsequent native shape transforms.
 - Added mixed CC group/layer subtree reordering with exact retained identities and metadata alternatives, separate native/printing boundary-state replay and shared following-dependency checks for complete owners.
 - Added mixed CC group/layer subtree movement, nesting and lifting with retained identities, explicit parent inheritance, synchronized layer root counts and shared native/printing state retention; `moveGroupToGroup` also accepts ordinary parents and empty destinations.
+- Added mixed path/group/CC-pair grouping and qualified parent dissolution with explicit metadata disposal and parent-only identity-reference checks.
+- Required explicit parent inheritance when grouping or dissolving non-neutral or unknown native/printing lock and visibility flags, including ordinary path grouping.

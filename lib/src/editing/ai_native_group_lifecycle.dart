@@ -193,51 +193,6 @@ AiNativeDrawing _groupLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit
   return result;
 }
 
-/// Adds only boundaries around consecutive siblings and their consumed counts.
-AiNativeDrawing _groupNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths) {
-  final AiNativeStructure ownership = AiNativeStructure.decode(drawing: drawing);
-  final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, paths, ownership: ownership);
-  final List<AiNativePath> ordered = [...paths]..sort((a, b) => a.start.compareTo(b.start));
-  final int? parent = ownership.nodeFor(ordered.first).parentIndex;
-  if (ordered.any((path) => ownership.nodeFor(path).parentIndex != parent) ||
-      drawing.paths.where((path) => path.start >= ordered.first.start && path.end <= ordered.last.end).length != ordered.length) {
-    throw ArgumentError('Grouping requires consecutive paths with one immediate native owner.');
-  }
-  final int start = counts[ordered.first]?.start ?? ordered.first.start;
-  final int end = _ordinaryObject(drawing, ordered.last).end;
-  _groupInterval(drawing, start, end, nested: false);
-  final AiNativeDrawing result = _groupLifecycleResult(
-    drawing,
-    [
-      AiSourceEdit(start: start, end: start, bytes: latin1.encode('\nu\n')),
-      AiSourceEdit(start: end, end: end, bytes: latin1.encode('\nU\n')),
-    ],
-    paths: drawing.paths.length,
-    groups: drawing.groups.length + 1,
-  );
-  _ordinaryGroups(result, [result.groups.singleWhere((group) => group.start == start + 1)]);
-  return result;
-}
-
-/// Dissolves disjoint ordinary boundaries without removing their artwork.
-AiNativeDrawing _ungroupNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups) {
-  _ordinaryGroups(drawing, groups);
-  if (groups.any((group) => _ordinaryObject(drawing, group).styleApplication != null || (_ordinaryObject(drawing, group).dictionary?.entries.isNotEmpty ?? false))) {
-    throw UnsupportedError('Dissolving a group cannot discard its object metadata or applied style.');
-  }
-  return _groupLifecycleResult(
-    drawing,
-    [
-      for (final AiNativeGroup group in groups) ...[
-        AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: group.opening.end, bytes: [32]),
-        AiSourceEdit(start: group.closing.start, end: _ordinaryObject(drawing, group).end, bytes: [32]),
-      ],
-    ],
-    paths: drawing.paths.length,
-    groups: drawing.groups.length - groups.length,
-  );
-}
-
 /// Counts selected topology without rescanning unrelated groups for each owner.
 int _selectedGroupCount(List<AiNativeGroup> groups) {
   final List<AiNativeGroup> pending = [...groups];

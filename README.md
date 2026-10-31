@@ -52,6 +52,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   source owners and restoring each slot's native/printing boundary state.
 - Movement of qualified mixed subtrees between groups and layers, with explicit
   parent inheritance, retained identities and state checks at both edited boundaries.
+- Mixed path/group/CC-pair grouping and qualified parent dissolution, with explicit
+  metadata disposal, identity-reference checks and parent-flag inheritance.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

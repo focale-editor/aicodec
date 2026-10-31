@@ -570,6 +570,22 @@ dart run tool/check_native_image_geometry.dart
 python3 tool/verify_native_image_geometry.py --inkai-source /tmp/extension-ai
 ```
 
+## Mixed artwork grouping and dissolution
+
+The grouping suite uses four existing pinned real sources, declared exact wrappers
+and checksum-pinned synthetic fixtures. It checks 18 fixed transactions: twelve
+real/derived grouping and dissolution cases, two synthetic mixed/identified cases
+and four refusals. The unmodified native reader binds complete selected owners,
+requested parent topology, retained pair alternatives and local state. Exact byte
+checks restrict edits to group boundaries and explicitly discarded parent metadata;
+qualified identity removal preserves descendants. Both streams' parent flags are
+checked separately. Adobe reopening and host rendering are not established.
+
+```sh
+dart run tool/check_native_subtree_grouping.dart
+python3 tool/verify_native_subtree_grouping.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.
