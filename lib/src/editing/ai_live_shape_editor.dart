@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Plans synchronized edits against one immutable authoring snapshot.
-final class _LiveShapeTransform {
+final class _LiveShapeEditor {
   /// Drawing owning every selected source handle.
   final AiNativeDrawing drawing;
 
@@ -15,10 +15,13 @@ final class _LiveShapeTransform {
   final double deltaY;
 
   /// Creates an operation without mutating or partially updating the source.
-  _LiveShapeTransform({required this.drawing, required List<AiLiveShape> shapes, this.deltaX = 0, this.deltaY = 0, this.similarity}) : shapes = List.unmodifiable(shapes);
+  _LiveShapeEditor({required this.drawing, required List<AiLiveShape> shapes, this.deltaX = 0, this.deltaY = 0, this.similarity, this.gradientIsolation}) : shapes = List.unmodifiable(shapes);
 
   /// Optional rotation or uniform scaling; absent for translation.
   final _LiveShapeSimilarity? similarity;
+
+  /// Optional resource isolation, retaining geometry and all source appearances.
+  final _LiveShapeGradientIsolation? gradientIsolation;
 
   /// Validates all dependencies before applying one source-edit transaction.
   AiNativeDrawing apply() {
@@ -27,11 +30,13 @@ final class _LiveShapeTransform {
     }
     _checkDrawing();
     similarity?.validate();
+    gradientIsolation?.validate();
     if (similarity?.isIdentity ?? false) {
       return drawing;
     }
     final double scale = similarity?.factor ?? 1;
     final List<AiSourceEdit> edits = [
+      if (gradientIsolation != null) ...gradientIsolation!.resourceEdits(),
       if (scale != 1) ..._scaleLiveShapeStrokes(drawing, shapes, scale),
     ];
     final Set<AiNativePath> moved = {};
@@ -45,6 +50,7 @@ final class _LiveShapeTransform {
       if (!shape.isBound || !_shapeParameters.containsKey(shape.handler)) {
         throw UnsupportedError(shape.bindingIssue ?? 'Unsupported native live-shape handler: ${shape.handler}.');
       }
+      gradientIsolation?.validateShape(shape);
       _checkDictionary(shape.dictionary, shape.handler);
       for (final AiNativeContainer alternative in shape.alternativeDictionaries) {
         _checkDictionary(alternative, shape.handler);
@@ -60,6 +66,9 @@ final class _LiveShapeTransform {
           if (geometry == null || !_sameNativeMatrix(cached, geometry)) {
             throw UnsupportedError('Native shape metadata disagrees with its accumulated gradient transform.');
           }
+        }
+        if (gradientIsolation != null) {
+          continue;
         }
         if (similarity case final _LiveShapeSimilarity operation) {
           edits.addAll(operation.dictionaryEdits(shape, dictionary));
@@ -80,6 +89,9 @@ final class _LiveShapeTransform {
       for (final AiNativePath path in {shape.path!, ...shape.appearancePaths}) {
         if (!moved.add(path)) {
           throw const FormatException('Selected native shapes share an appearance path.');
+        }
+        if (gradientIsolation != null) {
+          continue;
         }
         for (final AiNativeInstruction command in path.geometry) {
           for (int index = 0; index < command.operands.length; index += 2) {
@@ -114,7 +126,7 @@ final class _LiveShapeTransform {
           String? name = copiedStyles[style];
           if (name == null) {
             int suffix = 1;
-            final String operation = scale != 1 ? 'scaled' : 'translated';
+            final String operation = gradientIsolation != null ? 'gradient' : (scale != 1 ? 'scaled' : 'translated');
             while (styleNames.contains('AiKit $operation $suffix')) {
               suffix++;
             }
@@ -146,7 +158,9 @@ final class _LiveShapeTransform {
         }
       }
     }
-    edits.addAll(_boundsEdits());
+    if (gradientIsolation == null) {
+      edits.addAll(_boundsEdits());
+    }
     return AiNativeDrawing.decode(
       records: AiNativeRecords.decode(
         program: AiNativeEditor.apply(program: drawing.records.program, edits: edits),
@@ -267,6 +281,9 @@ final class _LiveShapeTransform {
 
   /// Plans gradient edits while retaining relative authoring parameters.
   List<AiSourceEdit> _gradientEdits(AiNativeGradient gradient, {bool style = false}) {
+    if (gradientIsolation case final _LiveShapeGradientIsolation isolation) {
+      return isolation.instanceEdits(gradient);
+    }
     if (similarity case final _LiveShapeSimilarity operation) {
       return operation.gradientEdits(gradient, style: style);
     }

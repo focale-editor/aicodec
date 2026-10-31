@@ -201,7 +201,7 @@ final class AiNativeDrawing {
   /// Artboards stay fixed. The host must regenerate the PDF compatibility view
   /// and any cached previews before packaging the edited native program.
   AiNativeDrawing translateLiveShapes({required List<AiLiveShape> shapes, required double deltaX, required double deltaY}) =>
-      _LiveShapeTransform(drawing: this, shapes: shapes, deltaX: deltaX, deltaY: deltaY).apply();
+      _LiveShapeEditor(drawing: this, shapes: shapes, deltaX: deltaX, deltaY: deltaY).apply();
 
   /// Rotates native shapes and their appearances around a drawing-space pivot.
   ///
@@ -217,7 +217,7 @@ final class AiNativeDrawing {
   /// gradient layouts, positional styles and inconsistent accumulated matrices
   /// reject the edit. DSC bounds grow conservatively; artboards stay fixed.
   /// The host must regenerate PDF appearances and other cached previews.
-  AiNativeDrawing rotateLiveShapes({required List<AiLiveShape> shapes, required double radians, required double pivotX, required double pivotY}) => _LiveShapeTransform(
+  AiNativeDrawing rotateLiveShapes({required List<AiLiveShape> shapes, required double radians, required double pivotX, required double pivotY}) => _LiveShapeEditor(
     drawing: this,
     shapes: shapes,
     similarity: _LiveShapeSimilarity(drawing: this, radians: radians, pivotX: pivotX, pivotY: pivotY),
@@ -235,9 +235,29 @@ final class AiNativeDrawing {
   /// Nonuniform scaling, reflections and fixed-width/corner resizing require
   /// separate shape or appearance regeneration. The host must regenerate PDF
   /// appearances and other previews before packaging a visual edit.
-  AiNativeDrawing scaleLiveShapes({required List<AiLiveShape> shapes, required double factor, required double pivotX, required double pivotY}) => _LiveShapeTransform(
+  AiNativeDrawing scaleLiveShapes({required List<AiLiveShape> shapes, required double factor, required double pivotX, required double pivotY}) => _LiveShapeEditor(
     drawing: this,
     shapes: shapes,
     similarity: _LiveShapeSimilarity(drawing: this, factor: factor, pivotX: pivotX, pivotY: pivotY),
+  ).apply();
+
+  /// Gives selected live shapes their own copy of a named gradient resource.
+  ///
+  /// All appearances of [sourceNameBytes] within each selected object are
+  /// rebound to [nameBytes], including private notes and copied known styles.
+  /// Other objects, shared styles, swatches and original definitions remain
+  /// unchanged. Geometry, colors, ramps and focus initially stay identical.
+  /// The new byte name must be unused by both definitions and instances.
+  ///
+  /// Decode [AiNativeGradientResources] from the returned [records] to edit
+  /// the new resource with `replaceStops` or `setRadialFocus`. Each selected
+  /// shape must have a matching printable appearance and, when applicable,
+  /// a matching known style. Unsupported appearance dependencies or ambiguous
+  /// gradient banks reject the transaction. After a visual edit, the host must
+  /// synchronize PDF appearances and other cached previews before saving.
+  AiNativeDrawing isolateLiveShapeGradient({required List<AiLiveShape> shapes, required List<int> sourceNameBytes, required List<int> nameBytes}) => _LiveShapeEditor(
+    drawing: this,
+    shapes: shapes,
+    gradientIsolation: _LiveShapeGradientIsolation(drawing: this, sourceNameBytes: sourceNameBytes, nameBytes: nameBytes),
   ).apply();
 }

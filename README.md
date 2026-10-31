@@ -32,6 +32,8 @@ as self-contained AI7 PostScript.
   layers, compound paths, clipping, object opacity and group blend modes.
 - Classic linear/radial gradient fills and strokes in PDF, including focal
   ellipses, midpoint interpolation, stop opacity and synchronized color edits.
+- Isolated live-shape gradient resources for selected-object color/focus edits,
+  preserving other users, shared styles and swatches.
 - Binary native raster samples, separate alpha planes and synchronized image
   translation/PDF saving. Replace embedded pixels, alpha, depth and resolution
   while retaining placed extents and renewing changed sample identities.
@@ -135,6 +137,12 @@ updates every same-name definition and its compatibility records atomically,
 using explicit host-composed ramp intervals. Instance geometry stays intact;
 color management and flattened effects remain host work. Supported classic
 fills can be synchronized through `AiNativePdf`.
+
+`AiNativeDrawing.isolateLiveShapeGradient` copies a named resource and its shared
+styles for selected live shapes. Supply an unused byte name, then decode
+`AiNativeGradientResources` from the returned drawing to change that copy's
+stops or radial focus. All uses of the original name within the selection are
+rebound; other objects and swatches retain their original resources.
 
 `AiNativePdf.render(program:, bounds:)` builds a PDF page from supported native
 printable paths, using an explicit drawing-coordinate page rectangle.

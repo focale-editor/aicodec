@@ -449,8 +449,9 @@ Ramp composition, color profiles, tint/separation conversion and named-color
 registration belong to the host. AiKit requires explicit intervals to avoid
 retaining stale caches; it does not prove that caller-supplied samples reproduce
 the supplied stops. Replacing
-a global swatch changes all its users. Isolating a single object, adding/removing
-resources, hard stops, meshes, gradients along/across strokes and flattened appearance
+a global swatch changes all its users. Selected live shapes can first isolate a
+resource as described below. General resource creation/removal, hard stops,
+meshes, gradients along/across strokes and flattened appearance
 regeneration remain further work. `AiNativePdf` synchronizes supported classic
 gradient fills and page-aligned strokes; other gradient appearances still require
 host rendering. Definition-local comments are regenerated with the edited resource;
@@ -501,9 +502,10 @@ Only the focus operands change: stops, sampled ramps, geometry, named resource
 definitions and unrelated bytes remain intact. Procedures and embedded documents
 are not interpreted. Output growth remains bounded by the native byte limit.
 The host must regenerate the PDF appearance and flattened effects after editing;
-`AiNativePdf.save` synchronizes the supported printable subset. Independent gradient
-resize/rotation, isolated object focus and Illustrator reopening remain separate
-qualification work.
+`AiNativePdf.save` synchronizes the supported printable subset. For a local edit,
+first isolate the resource on selected live shapes as described below. Independent
+gradient resize/rotation and Illustrator reopening remain separate qualification
+work.
 
 The dedicated corpus checker edits all radial resources across the same 37
 pinned files. An independent parser verifies 45 printing instances and 173
@@ -515,6 +517,72 @@ maximum mean channel difference of 0.06791/255, matching the 0.06792/255 baselin
 from rounded rectangle edges. Flat pixels remain identical and smooth gradient
 fields differ by at most one channel level. These checks do not establish Adobe
 reopening or flattened-effect regeneration.
+
+### Selected live-shape gradient resources
+
+`AiNativeDrawing.isolateLiveShapeGradient(shapes:, sourceNameBytes:, nameBytes:)`
+gives a selection its own copy of a named resource. The resulting drawing can be
+passed to `AiNativeGradientResources.decode` before calling `replaceStops` or
+`setRadialFocus` on the new definition. Those global operations then affect only
+the selected users of that copy. This covers all occurrences of the source name
+within each selected object, including fills, strokes and private notes; it does
+not select an individual appearance part.
+
+The editor copies the complete definition in each matching counted `Bn` setup
+bank and increments that bank's count. Printing/nonprinting placement, ramps,
+fallback stops and original definitions are retained. Matching known styles are
+copied once per source style, receive unused names and are bound only to selected
+`XW` references. Original styles, swatches and unselected object bytes remain
+unchanged. Geometry, focus, colors, artboards and bounds initially stay identical.
+
+Both names are nonempty raw byte strings. The new name must differ from the
+source and be unused by every parsed definition and instance, including dangling
+references. Names are escaped without assuming a character encoding. Each
+selected shape must own a matching printable gradient and, if present, a matching
+known style. The same five live-shape families and resolved drawing/style
+dependencies required for native transformations apply. Missing or inconsistent
+bank counts, multiple matching definitions within one bank, mixed same-name
+linear/radial kinds, unresolved appearances and excessive output reject the
+transaction. Embedded documents, procedures and literal arrays/dictionaries
+cannot supply executable bank counts.
+
+For a radial selection, using names encoded with `dart:convert`:
+
+```dart
+final AiNativeDrawing isolated = drawing.isolateLiveShapeGradient(
+  shapes: [drawing.liveShapes.first],
+  sourceNameBytes: drawing.gradients.first.geometry.nameBytes,
+  nameBytes: latin1.encode('Selected gradient'),
+);
+final AiNativeGradientResources resources = AiNativeGradientResources.decode(
+  records: isolated.records,
+);
+final AiNativeGradientDefinition definition = resources.definitions.firstWhere(
+  (definition) => latin1.decode(definition.nameBytes) == 'Selected gradient',
+);
+final AiNativeGradientResources focused = resources.setRadialFocus(
+  definition: definition,
+  angle: 37,
+  length: 0.375,
+);
+```
+
+After a visual edit, regenerate PDF appearances and dependent previews before
+saving; `AiNativePdf.save` handles the supported printable subset. Plain-path
+selection, arbitrary appearance graphs, resource deletion and Adobe reopening
+remain separate work.
+
+The pinned CC linear/radial corpus selects three of fifteen and three of nine
+shapes respectively. Five variants cover isolation alone, selected colors and
+selected radial focus. Independent parsing checks original resources/styles,
+new bindings and every selected/unselected body command. All four native SVG
+comparisons are pixel-exact. Five saved native programs are recovered byte-exactly;
+ten Poppler comparisons use Adobe's PDF with only selected shading occurrences
+independently edited. Linear comparisons are exact. The maximum radial mean
+channel difference is below 0.06792/255, including isolation alone, matching the
+existing rounded-outline discrepancy. Flat pixels remain identical and smooth
+gradient fields differ by at most one level. These checks do not establish
+Illustrator reopening or arbitrary color-profile equivalence.
 
 ## Native raster images
 
@@ -1202,7 +1270,7 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate/rotate/uniformly scale five CC shape families with solid/gradient appearances; create AI7 paths | Nonuniform or fixed-stroke/corner resizing, shear/regeneration and remaining positional paints/effects |
-| Gradients | Inspect/translate instances; rotate/uniformly scale CC live-shape appearances and accumulated transforms; isolate positional styles; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, isolated object focus/colors, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
+| Gradients | Inspect/translate instances; rotate/uniformly scale CC live-shape appearances and accumulated transforms; isolate live-shape gradient resources for local colors/focus; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, plain-path appearance isolation, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |

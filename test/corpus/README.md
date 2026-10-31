@@ -369,6 +369,26 @@ dart run tool/check_native_gradient_focus.dart
 python3 tool/verify_native_gradient_focus.py --inkai-source /tmp/extension-ai
 ```
 
+Selected live-shape gradient isolation reuses `gradient_linear.ai` and
+`gradient_radial.ai`, selecting three of fifteen and three of nine shapes.
+Five variants isolate resources alone, change selected colors or move selected
+radial foci. The independent parser checks every original definition/style,
+new bindings, bank counts and selected/unselected body commands. Four SVG
+comparisons are pixel-exact. Five saved native programs are recovered exactly.
+Ten Poppler comparisons use Adobe's original PDF, cloning only the selected
+shading occurrences before applying expected colors or focal coordinates.
+The radial file's Black-only DeviceN space is retained when changing ink values.
+Linear comparisons are exact; radial means stay below 0.06792/255, including
+isolation alone, with the existing rounded-outline discrepancy. Flat pixels
+remain identical and smooth gradient fields differ by at most one level.
+Outputs stay in ignored `output/gradient-isolation`. This does not qualify
+plain-path selections, arbitrary effects or Illustrator reopening.
+
+```sh
+dart run tool/check_live_shape_gradients.dart
+python3 tool/verify_live_shape_gradients.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh
