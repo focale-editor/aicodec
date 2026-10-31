@@ -10,3 +10,4 @@ pubspec_overrides.yaml
 *.iml
 test/corpus/files/
 test/corpus/output/
+__pycache__/

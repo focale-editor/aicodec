@@ -306,11 +306,55 @@ name, copies the complete style with checked source edits and redirects only
 selected `XW` references. Unselected users retain the original resource bytes.
 All insertion and geometry edits share one bounded atomic transaction.
 
-This provides gradient inspection and synchronized translation, not a complete
-gradient editor. Color-stop replacement, regeneration of cached ramps, mesh
-gradients along/across strokes and arbitrary appearance filters remain open.
 Legacy positional-style copying has synthetic regression coverage; the external
 gradient fixtures exercise the recent CC operand layout.
+
+### Global gradient colors and printing ramps
+
+`AiNativeGradientResources.decode(records:)` reads setup `Bd`/`BD` definitions,
+including nonprinting swatches, from the bounded native token projection. It
+skips embedded documents, procedures and hierarchical records. Definitions retain
+byte names, linear/radial kind, source-order stops, lower-precision `BS` fallback
+stops and `Br` printing intervals. Native private `Bs` data takes precedence;
+legacy single-stop syntax is also recognized. Counts and color/channel layouts
+are checked rather than inferred from a successful tokenization.
+
+`AiNativeGradientColor` models gray, CMYK, RGB with an explicit CMYK alternative,
+custom CMYK/RGB and newer named CMYK/RGB colors. Names retain their byte encoding
+and tint semantics. `AiNativeGradientStop` separates color, opacity, midpoint and
+position, with an explicit opacity-wrapper flag. `AiNativeGradientRamp` handles
+the seven native process/custom-color channel layouts. Channels hold immutable
+samples or a native numeric constant; newer normalized constants are retained
+without silently converting them to legacy byte values.
+
+`replaceStops(definition:, stops:, ramps:)` replaces every definition sharing the
+selected byte name in one transaction. Supply stops in strictly increasing
+position order and one host-composed printing interval per adjacent pair, in
+increasing interval order. The writer updates the count, both stop
+representations and the complete printing ramp. Names, resource counts, gradient
+kind, instance geometry, other resources and drawing-body bytes remain unchanged.
+Unknown structural metadata/operators, mixed same-name kinds, foreign handles,
+coincident stops and excessive expansion reject the edit. Older stop syntax
+requires opaque style-zero-through-four colors without an opacity wrapper.
+
+Ramp composition, color profiles, tint/separation conversion and named-color
+registration belong to the host. AiKit requires explicit intervals to avoid
+retaining stale caches; it does not prove that caller-supplied samples reproduce
+the supplied stops or implement Illustrator's midpoint interpolation. Replacing
+a global swatch changes all its users. Isolating a single object, adding/removing
+resources, hard stops, mesh gradients along/across strokes, flattened appearance
+regeneration and synchronized PDF output remain further work. Definition-local
+comments are regenerated with the edited resource; external bytes are preserved.
+
+The independent corpus check compares all 378 definitions, 1,103 authoritative
+stops, their fallback records and 725 printing intervals across 37 files. It
+rewrites a resource in each of the 23 files containing gradients, checks seven
+color layouts and verifies that unrelated resources and body bytes are unchanged.
+For the linear/radial CC fixtures, 24 instances are independently converted to SVG
+and rendered against the original geometry with explicitly replaced expected
+stops: both pixel comparisons are exact. These checks cover RGB stops and opacity
+at midpoint 50, not Illustrator reopening, print-engine ramp interpolation or
+arbitrary color-profile equivalence.
 
 ## Source-backed editing
 
@@ -488,7 +532,7 @@ native reopening and complete editing compatibility remain unverified.
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
-| Gradients | Inspect native paint commands and instances; translate vectors/printing matrices; isolate shared positional styles | Edit stops/ramps, full appearance semantics and meshes |
+| Gradients | Inspect instances; translate vectors/printing matrices; isolate positional styles; atomically replace global stops, fallback records and host-composed ramps | Color-managed ramp composition, isolated object colors, full appearance semantics and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes | Complete import into typed scene nodes |
 | Meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |

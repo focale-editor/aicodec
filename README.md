@@ -116,6 +116,12 @@ intact. It updates the frame matrices and every corresponding native confinement
 path together, including selected frames within linked text. PDF appearances and
 effects still require host regeneration before saving a synchronized document.
 
+`AiNativeGradientResources` reads global gradient definitions, native and fallback
+color stops, opacity, named colors and sampled printing ramps. `replaceStops`
+updates every same-name definition and its compatibility records atomically,
+using explicit host-composed ramp intervals. Instance geometry stays intact;
+color management, flattened effects and PDF synchronization remain host work.
+
 ## Scope
 
 AI is not one uniform format. A PDF page can be a compatibility warning rather

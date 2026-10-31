@@ -98,6 +98,25 @@ cached glyph IDs, including four stories without an explicit character-run
 table. Its report is `output/native/native-text-report.json`. This does not
 validate changed text shaping, text appearance or reopening in Illustrator.
 
+The gradient-resource check reads all 37 fixtures and compares 378 definitions,
+1,103 native color stops, fallback records and 725 printing intervals with the
+same pinned independent reader. It replaces the first resource in each of the
+23 gradient-bearing files, including opacity and three stops with two new sampled
+intervals. Seven additional color-layout writes cover named and custom inks.
+Unrelated definitions and drawing bytes must remain unchanged. Two Inkscape
+render comparisons cover 15 linear and nine radial CC instances against the
+original SVG with only its expected stops replaced; both differences are zero.
+These renders use midpoint 50 and do not validate print-engine interpolation,
+color management, Adobe reopening or synchronized PDF appearances.
+
+```sh
+dart run tool/check_native_gradients.dart
+python3 tool/verify_native_gradients.py --inkai-source /tmp/extension-ai
+```
+
+Generated programs, samples, SVG/PNG comparisons and `oracle-report.json` remain
+under the ignored `output/gradients` directory.
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

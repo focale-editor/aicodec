@@ -51,13 +51,19 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   preserved; 26 frames and 13 paths are checked independently, plus one partial
   linked-frame selection. Complex confinement appearances and synchronized PDF
   saves still require further work.
+- Global gradient stop/opacity/color editing with paired native/compatibility
+  records and explicit host-composed printing intervals. All 378 definitions,
+  1,103 stops and 725 intervals are compared independently; 23 resource rewrites,
+  seven color layouts and 24 rendered CC instances are checked. Color-managed
+  ramp composition and flattened/PDF appearances remain host responsibilities.
 
 ## Next native editing work
 
 1. Extend live-shape editing beyond translation: resize/rotate/regenerate shape
    parameters, corners and dependent appearance geometry. Refine exact artwork
    bounds and support nested appearances and larger versioned alternatives.
-2. Complete known/active styles, multiple fills/strokes, gradient stops/ramps, transparency,
+2. Complete known/active styles, multiple fills/strokes, gradient ramp composition,
+   isolated object color edits, resource creation and hard stops, transparency,
    compound paths, clipping and appearance expansion without flattening editing
    data into a compatibility preview.
 3. Extend ATE resource/story/run views into synchronized content and feature

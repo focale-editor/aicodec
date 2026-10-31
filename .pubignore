@@ -1,5 +1,6 @@
 test/corpus/files/
 test/corpus/output/
+__pycache__/
 AGENTS.md
 pubspec_overrides.yaml
 pubspec_overrides.yaml.example
