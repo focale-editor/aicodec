@@ -772,6 +772,29 @@ named-ink interpolation, patch rendering, native/PDF cache synchronization,
 older mesh versions and Adobe reopening remain further work. `AiNativePdf`
 still rejects unresolved mesh operators instead of dropping them from a page.
 
+`tool/verify_native_mesh_interpolation.py` is a research reference for the next
+rendering step, not an enabled `AiNativePdf` path. It constructs tensor geometry
+from source corners/handles and computes color derivatives from projected
+boundary-control travel, limiting extrema and using parabolic boundary values.
+Corner handles follow cell traversal; intermediate knot handles follow the grid
+axes. Piecewise neighboring boundaries are retained when computing derivatives.
+The reference explicitly maps only this fixture's known process inks to CMYK;
+it does not provide general spot-color conversion or opacity interpolation.
+
+The independent comparison matches all sixteen controls of each PDF tensor
+against native subintervals. Searching dyadic positions through 1/64 avoids
+choosing an incorrect inverse branch on folded cells. All 163 simple native
+cells are covered by 1,624 PDF patches with no parameter-space holes or overlap.
+Their 6,496 corner samples have a maximum geometry error of 0.001100 point and
+a maximum color-component error of 0.002086. Eight repeated samples at two
+positions exceed half an 8-bit component step; every sample stays below one
+step. These measured tolerances are qualification evidence for a candidate,
+not proof of Adobe's internal algorithm or general Illustrator compatibility.
+The remaining 17 source cells contain intermediate boundary knots and correspond
+to 123 PDF patches outside this surface comparison. Their surface evaluation,
+non-unit weights, opacity, additional files and independent rendered comparison
+remain required before promoting the candidate to the native/PDF bridge.
+
 ## Native raster images
 
 `AiNativeRasters.decode(records:, bodyOnly:)` reads embedded binary `XI` image
@@ -1474,6 +1497,7 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 - [Adobe XMP media-management properties](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/xmpMM.md)
 - [Adobe DSC specification](https://web.mit.edu/PostScript/Adobe/Documents/5001.DSC_Spec.pdf), pages 45–46: counted data can include its invoking operator.
 - [Adobe PDF Reference 1.6](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.6.pdf), sections 4.6.3 and 4.9.1: shading patterns and initial form coordinate spaces.
+- [Adobe PDF Reference 1.7](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf), section 4.6.3: tensor-patch control ordering and bilinear PDF mesh colors.
 - [Adobe's AI format overview](https://www.adobe.com/creativecloud/file-types/image/vector/ai-file.html)
 - [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)
 - [Native data container observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/compression.md)

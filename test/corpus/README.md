@@ -42,10 +42,22 @@ dart run tool/check_native_meshes.dart
 python3 tool/verify_native_meshes.py
 python3 tool/verify_native_mesh_paint.py
 python3 tool/verify_native_mesh_inks.py
+python3 tool/verify_native_mesh_interpolation.py
 ```
 
 The independent check uses pypdf 3.x and Python zlib. Its detailed projections
 and report are under `output/meshes/`; a missing/changed fixture fails the check.
+
+The interpolation research check additionally uses NumPy (qualified with 2.4.6).
+It builds a candidate from native geometry/colors, then compares all sixteen
+PDF controls and corner colors. A bounded dyadic search identifies 1,624 PDF
+patches covering every part of all 163 simple cells, with no gaps or duplicate
+coverage. Geometry must agree within 0.0015 point and color components within
+one 8-bit step. Maximum observed errors are 0.001100 and 0.002086 respectively;
+eight corner occurrences slightly exceed half a component step. The output lists
+the 123 unmatched PDF patches explicitly. Complex cell surfaces, general color
+conversion, opacity and rendered comparisons remain unqualified; the research
+check does not enable mesh rendering in the package.
 
 `check_native_corpus.dart` requires extraction and structural parsing for all
 37 fixtures, verifies the nested layer fixture's names and flags, renames a

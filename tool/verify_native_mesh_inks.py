@@ -11,7 +11,7 @@ from pypdf import PdfReader
 from verify_native_meshes import CORPUS, OUTPUT
 
 
-def pdf_corners(path):
+def pdf_patches(path):
     """Read this pinned Illustrator type-seven stream, without a native parser."""
     page = PdfReader(path).pages[0]
     assert list(page.mediabox) == [0, 0, 822, 519]
@@ -30,16 +30,23 @@ def pdf_corners(path):
     assert len(decode) == 12 and decode[4:] == [0, 1] * 4
     data = shading.get_data()
     assert len(data) == 1747 * 145
-    corners = []
+    patches = []
     for offset in range(0, len(data), 145):
         assert data[offset] == 0  # The fixture stores complete patches only.
         coordinates = struct.unpack_from('>32I', data, offset + 1)
         points = [(decode[0] + coordinates[index] / 0xffffffff * (decode[1] - decode[0]),
                    -decode[2] - coordinates[index + 1] / 0xffffffff * (decode[3] - decode[2]) - 519)
                   for index in range(0, 32, 2)]
-        colors = data[offset + 129:offset + 145]
-        corners.extend((points[index * 3], [value / 255 for value in colors[index * 4:index * 4 + 4]]) for index in range(4))
-    return corners
+        components = data[offset + 129:offset + 145]
+        colors = [[value / 255 for value in components[index * 4:index * 4 + 4]] for index in range(4)]
+        patches.append({'points': points, 'colors': colors})
+    return patches
+
+
+def pdf_corners(path):
+    """Expose all corner samples without inferring any native patch mapping."""
+    return [(patch['points'][index * 3], patch['colors'][index])
+            for patch in pdf_patches(path) for index in range(4)]
 
 
 def main():
