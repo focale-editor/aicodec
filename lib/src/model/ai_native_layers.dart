@@ -146,18 +146,21 @@ final class AiNativeLayers {
   ///
   /// [identifiers] must supply a fresh native XML name for every identified layer
   /// in the copied subtrees, including descendants. Anonymous layers stay
-  /// anonymous. Optional [names] replace existing display names in copies only.
+  /// anonymous. [artworkIdentifiers] supplies fresh IDs for every identified
+  /// path/group descendant, keyed by its original drawing handle. Optional
+  /// [names] replace existing layer display names in copies only.
   /// Existing identities, references, paint state and unselected bytes remain.
   AiNativeLayers duplicate({
     required List<AiNativeLayer> layers,
     Map<AiNativeLayer, List<int>> identifiers = const {},
     Map<AiNativeLayer, List<int>> names = const {},
+    Map<AiNativeItem, List<int>> artworkIdentifiers = const {},
     bool discardViewState = false,
-  }) => _duplicateNativeLayers(this, layers, identifiers, names, discardViewState);
+  }) => _duplicateNativeLayers(this, layers, identifiers, names, artworkIdentifiers, discardViewState);
 
   /// Removes qualified subtrees while retaining their outgoing state assignments.
   ///
-  /// Identified layers require a fully qualified declarative reference scope;
+  /// Identified layers or artwork require a qualified declarative reference scope;
   /// opaque records, external executable sections and ambiguous identities reject.
   /// Anonymous subtrees retain local dependency checks. Root counts update and
   /// saved panel data requires explicit [discardViewState]. Bounds do not shrink.

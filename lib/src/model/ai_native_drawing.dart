@@ -230,7 +230,8 @@ final class AiNativeDrawing {
   ///
   /// Unselected bytes and paint/lock/visibility assignments remain unchanged.
   /// Existing drawing bounds remain conservative. Paths with unresolved native
-  /// owners or references reject; identified deletion remains unqualified.
+  /// owners or references reject. Identified paths require a fully qualified
+  /// declarative reference scope, including all unselected native owners.
   AiNativeDrawing removePaths({required List<AiNativePath> paths}) => _removeNativePaths(this, paths);
 
   /// Inserts geometry using each anchor's existing paint, flags and count layout.
@@ -292,7 +293,8 @@ final class AiNativeDrawing {
   /// Deletes ordinary groups and children while retaining outgoing state writes.
   ///
   /// Retained paint/lock/visibility assignments preserve following objects.
-  /// Drawing bounds stay conservative; referenced or derived groups reject.
+  /// Drawing bounds stay conservative. Identified groups or descendants require
+  /// a qualified whole-source reference scope; derived or unresolved owners reject.
   AiNativeDrawing removeGroups({required List<AiNativeGroup> groups}) => _removeNativeGroups(this, groups);
 
   /// Reorders selected ordinary sibling groups into their existing source slots.

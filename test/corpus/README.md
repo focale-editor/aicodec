@@ -193,6 +193,20 @@ dart run tool/check_native_objects.dart
 python3 tool/verify_native_objects.py --inkai-source /tmp/extension-ai
 ```
 
+Mixed layer/artwork identity lifecycle uses a separate checksum-pinned synthetic
+program with nested hidden layers, identified groups/paths, anonymous metadata
+and changing paint. Six transactions cover root/batch copies with new layer and
+artwork IDs, path/group removal, subtree deletion and removal of all roots. The
+unchanged external parser checks both inventories, complete topology, metadata,
+point counts, effective state, layer declarations and exact unselected bytes.
+The source has only qualified declarative owners. These checks do not establish
+reference decoding for resource-bearing CC files or Adobe reopening.
+
+```sh
+dart run tool/check_native_identity_lifecycle.dart
+python3 tool/verify_native_identity_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

@@ -199,13 +199,13 @@ void main() {
     }
   });
 
-  test('rejects identified deletion and layer copies without child identity contracts', () {
+  test('rejects unresolved identified deletion and missing copied child identities', () {
     final AiNativeDrawing source = _drawing(objectMetadataSource);
     check(() => source.removePaths(paths: [source.paths.first])).throws<UnsupportedError>();
     check(() => source.removeGroups(groups: source.groups)).throws<UnsupportedError>();
     final AiNativeDrawing nested = _drawing(objectSource(movementLayer('Layer', '${movementPath(10)}\n${objectDictionary(identifier: 'child')}')));
     final AiNativeLayers layers = AiNativeLayers.decode(drawing: nested);
-    check(() => layers.duplicate(layers: layers.layers, identifiers: {layers.layers.single: latin1.encode('LayerCopy')})).throws<UnsupportedError>();
+    check(() => layers.duplicate(layers: layers.layers, identifiers: {layers.layers.single: latin1.encode('LayerCopy')})).throws<ArgumentError>();
     check(() => layers.remove(layers: layers.layers)).throws<UnsupportedError>();
     check(latin1.decode(source.records.program.bytes)).equals(objectMetadataSource);
   });

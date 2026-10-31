@@ -36,26 +36,66 @@ List<AiNativeObject> _selectedNativeObjects(AiNativeDrawing drawing, List<AiNati
 ];
 
 /// Requires fresh identities for every identified object in copied subtrees.
-List<AiSourceEdit> _objectCopyEdits(AiNativeDrawing drawing, List<AiNativeItem> sources, Map<AiNativeItem, List<int>> identifiers) {
+List<AiSourceEdit> _objectCopyEdits(AiNativeDrawing drawing, List<AiNativeItem> sources, Map<AiNativeItem, List<int>> identifiers, {Set<String>? reserved, int? maxBytes}) {
   final List<AiNativeObject> objects = _selectedNativeObjects(drawing, sources).where((object) => object.identifier != null).toList();
   final Set<AiNativeItem> expected = objects.map((object) => object.source).toSet();
   if (identifiers.length != expected.length || identifiers.keys.any((source) => !expected.contains(source))) {
     throw ArgumentError('Copies require fresh identifiers for exactly their identified source objects and descendants.');
   }
-  final Set<String> reserved = _nativeIdentityNames(drawing._objects.structure);
+  final Set<String> names = reserved ?? _nativeIdentityNames(drawing._objects.structure);
   final List<AiSourceEdit> edits = [];
-  int remaining = drawing.records.program.limits.maxDecodedBytes;
+  int remaining = maxBytes ?? drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeObject object in objects) {
-    final AiSourceEdit edit = _nativeIdentityEdit(object.identifier!, identifiers[object.source]!, reserved, remaining);
+    final AiSourceEdit edit = _nativeIdentityEdit(object.identifier!, identifiers[object.source]!, names, remaining);
     edits.add(edit);
     remaining -= edit.bytes.length;
   }
   return edits;
 }
 
-/// Retains identified objects until every possible reference owner is qualified.
+/// Validates every deleted object identity against the complete reference scope.
 void _ordinaryObjectRemoval(AiNativeDrawing drawing, List<AiNativeItem> sources) {
-  if (_selectedNativeObjects(drawing, sources).any((object) => object.identifier != null)) {
-    throw UnsupportedError('Deleting identified artwork requires qualification of all native reference owners.');
+  final List<AiNativeObjectIdentifier> identifiers = [for (final AiNativeObject object in _selectedNativeObjects(drawing, sources)) ?object.identifier];
+  if (identifiers.isNotEmpty) {
+    final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+    _nativeRemovalReferences(layers, identifiers, _layerHeaderItems(layers));
+  }
+}
+
+/// Refuses identity deletion unless all possible native reference owners qualify.
+void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers) {
+  if (identifiers.isEmpty) {
+    return;
+  }
+  final Set<AiNativeContainer> dictionaries = {
+    for (final AiNativeLayer layer in model.layers)
+      if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,
+    for (final AiNativeObject object in model.drawing._objects.objects)
+      if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
+  };
+  if (model.drawing.records.roots.any((record) => !dictionaries.contains(record))) {
+    throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
+  }
+  final Map<String, int> occurrences = {};
+  for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
+    occurrences.update(latin1.decode(identifier.bytes), (count) => count + 1, ifAbsent: () => 1);
+  }
+  if (identifiers.any((identifier) => occurrences[latin1.decode(identifier.bytes)] != 1)) {
+    throw UnsupportedError('Deleting artwork requires an unambiguous native identity.');
+  }
+  final AiProgram program = model.drawing.records.program;
+  _layerInterval(model, program.bodyStart, program.bodyEnd, headers);
+  final Set<int> declarations = {if (model.rootCountHeader != null) model.rootCountHeader!.token.start, ...model.viewComments.map((token) => token.start)};
+  const Set<String> markers = {'%%EndComments', '%%BeginProlog', '%%EndProlog', '%%BeginSetup', '%%EndSetup', '%%PageTrailer', '%%Trailer', '%%EOF'};
+  const Set<String> fields = {'%%Creator', '%%Title', '%%For', '%%CreationDate', '%%BoundingBox', '%%HiResBoundingBox', '%%Pages', '%%Orientation', '%%PageOrder', '%%DocumentData', '%%LanguageLevel'};
+  final RegExp native = RegExp(r'^%{1,2}AI');
+  for (final AiToken token in model.drawing.records._projection.tokens) {
+    if (token.start >= program.bodyStart && token.start < program.bodyEnd) {
+      continue;
+    }
+    final bool unknown = native.hasMatch(token.lexeme) || token.lexeme.startsWith('%%') && !markers.contains(token.lexeme) && !fields.contains(token.lexeme.split(':').first);
+    if (token.kind != .comment || !declarations.contains(token.start) && unknown) {
+      throw UnsupportedError('Deleting identified artwork requires a declarative source without unqualified external reference sections.');
+    }
   }
 }

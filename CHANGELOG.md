@@ -27,3 +27,4 @@
 - Extended ordinary path reordering and movement across qualified paint-state changes, preserving outgoing state and requiring explicit inheritance for different ancestor-group flags or depth.
 - Added qualified path/group movement across layers and direct insertion into existing empty layers, preserving native state and layer declarations with explicit destination inheritance.
 - Added direct path/group metadata ownership, identity-aware copying and whole-object movement, preserving names and unselected bytes while rejecting unresolved references.
+- Added combined layer/artwork identity allocation for subtree copies and shared whole-source reference qualification for identified path, group and layer removal.

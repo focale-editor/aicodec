@@ -315,12 +315,16 @@ unqualified.
 
 ### Layer duplication and removal
 
-`duplicate(layers:, identifiers:, names:)` copies complete ordinary subtrees
-immediately after each selected original. Every identified descendant requires
-one entry in `identifiers`, keyed by its current `AiNativeLayer` handle. Values
+`duplicate(layers:, identifiers:, artworkIdentifiers:, names:)` copies complete
+ordinary subtrees immediately after each selected original. Every identified
+layer descendant requires one entry in `identifiers`, keyed by its current
+`AiNativeLayer` handle. Every identified path/group descendant requires an entry
+in `artworkIdentifiers`, keyed by its original drawing handle. Values
 must be fresh portable ASCII XML names, distinct from existing qualified artwork
 identities and every other copy in the transaction. Missing descendants, extra
-or foreign handles and collisions reject. Anonymous layers stay anonymous.
+or foreign handles and collisions reject. Both maps share one identity namespace
+and aggregate encoded-byte budget; a new artwork ID cannot reuse a new layer ID.
+Anonymous layers and objects stay anonymous.
 Optional `names` entries replace existing display-name byte strings in the copies;
 other display names and saved expansion flags remain unchanged.
 
@@ -338,16 +342,21 @@ native program. Drawing bounds remain conservative instead of shrinking.
 
 Removing an identity requires stronger reference qualification than copying it.
 The currently qualified identified-source subset contains ordinary declarative
-artwork and layer identity dictionaries only. Additional document/resource
+artwork and qualified layer/path/group metadata dictionaries only. Additional document/resource
 records, opaque owners, executable sections outside the body, unknown structured
 header/trailer comments and ambiguous selected identities reject. Known DSC
 metadata and layer count/view declarations are allowed. This deliberately does
 not infer the absence of references from a missing literal name: Adobe UID
-references can be stored in document dictionaries. Typical resource-bearing CC
+references can be stored in document dictionaries, as described by the
+[Adobe dictionary suite](https://ai-sdk-2020.84.nz/html/struct_a_i_dictionary_suite).
+Typical resource-bearing CC
 documents therefore retain a stricter removal restriction than duplication.
 Anonymous subtrees retain their local ownership/state checks and may be removed
 beside unrelated opaque siblings. An identified descendant still activates the
-reference checks even when the selected root is anonymous.
+reference checks even when the selected root is anonymous. The same whole-source
+check now governs identified path and group deletion, including every identified
+descendant of an anonymous group. Known names/rotation fields do not imply
+references, but unqualified fields or owners cannot be ignored.
 
 Both APIs validate disjoint owned selections, complete output/token budgets,
 root-count updates and explicit saved-view invalidation atomically. Capability
@@ -387,13 +396,14 @@ foreign handles and missing identities reject atomically. Anonymous objects stay
 anonymous. Only the copied identifier string tokens change; names, rotation,
 geometry, remaining dictionary bytes and references to originals stay exact.
 
-Anonymous deletion removes the attached dictionary with its object. Identified
-path/group deletion still requires a reference-ownership contract. Ungrouping
+Deletion removes the attached dictionary with its object. Identified path/group
+deletion uses the whole-source reference qualification described above; an
+unknown neighboring owner prevents it even outside the selected subtree. Ungrouping
 removes an empty group dictionary and preserves child metadata; it rejects a
 nonempty dictionary because there is no automatic destination for group-owned
-names, identities or rotation. Layer movement retains child object identities;
-layer duplication/removal currently rejects identified path/group descendants.
-The layer-specific identity map does not authorize copying those artwork IDs.
+names, identities or rotation. Layer movement retains child object identities.
+Layer duplication requires fresh child IDs through `artworkIdentifiers`; layer
+removal checks all child identities against the same qualified reference scope.
 
 Sixteen regressions cover whole-object edits, nested copies, repeated operations,
 immutable identity maps, stale handles, unknown dictionaries, counts, byte/token
@@ -402,8 +412,15 @@ verify five synthetic identity transactions, including complete topology, decode
 metadata, effective paint and exact unselected bytes. Six real-file rejections
 preserve `layers_and_sublayers.ai`: its three empty object dictionaries are valid,
 but the enclosing `XW` style remains outside the ordinary lifecycle contract.
-This is not evidence of successful identified-object editing in real CC files or
-Adobe reopening. Wider dependency support remains in the roadmap.
+Eleven further regressions cover combined layer/artwork identity allocation,
+copy-map ownership and cross-map collisions, identified deletion, anonymous owners
+with identified descendants, immutable inputs and aggregate byte/token ceilings.
+Six additional independently decoded synthetic transactions qualify root/batch
+copies and path/group/subtree/all-layer removals, comparing complete hierarchy,
+metadata, effective paint, point counts and exact unselected bytes. No new IDs or
+references are inferred for an unsupported resource owner.
+This is not evidence of successful identified-object editing in resource-bearing
+real CC files or Adobe reopening. Wider dependencies remain in the roadmap.
 
 ### Ordinary path lifecycle
 
@@ -428,8 +445,8 @@ reparse under the original source limits and return immutable snapshots.
 
 These APIs accept paths whose ownership, metadata and inherited appearance are
 isolated. Qualified attached identities move with their artwork and require
-fresh replacements for duplication, as described below. Identified deletion,
-private paths, live-shape expansions, gradients, compound/clip members, version
+fresh replacements for duplication, as described above. Identified deletion
+requires a qualified whole-source reference scope. Private paths, live-shape expansions, gradients, compound/clip members, version
 alternatives, tags, notes and unresolved metadata reject. Qualification includes ordinary parent groups/layers and postfix records,
 even when state assignments separate an object from its metadata. A completed
 bound live shape does not by itself make the next ordinary path an expansion.
@@ -507,8 +524,8 @@ remain conservative because these operations retain or remove existing geometry.
 Private/derived owners, compound/clip children, version alternatives, opaque
 metadata, tags, expansion flags, notes and unknown state reject. Known identities
 and names stay with their objects; nonempty group metadata prevents dissolution. Moving cannot cross opaque/private intervals; source and anchor
-groups cannot contain one another. Shared styles, effects and identified
-deletion need separate lifecycle contracts. Group capabilities therefore remain
+groups cannot contain one another. Shared styles, effects and references in
+resource-bearing documents need separate lifecycle contracts. Group capabilities therefore remain
 selection-dependent, with compound/private/clip topology explicitly unsupported.
 
 Sixteen focused regressions include changed inherited state, nested and empty
@@ -1099,7 +1116,7 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Object metadata | Direct path/group dictionaries, names and saved XML IDs | Whole-object movement/copy; anonymous removal; empty-dictionary dissolution | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion remains unqualified. |
+| Object metadata | Direct path/group dictionaries, names and saved XML IDs | Whole-object movement/copy; qualified identity removal; empty-dictionary dissolution | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree copy/remove/reorder/moves | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves, including empty destination layers | Anonymous owners only; unknown state, references and private/derived objects reject; different layers or ancestor flags require explicit inheritance. |

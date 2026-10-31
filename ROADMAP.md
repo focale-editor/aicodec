@@ -223,6 +223,18 @@ groups and compound topology. There is no general modern object lifecycle API.
   65 prior layer/path/group/cross-layer transactions rechecked independently,
   and capability checks repeated on 37 exact sources (41 layer headers and 181
   ordinary paths). No renderer or host integration was introduced.
+  Layer copies now accept `artworkIdentifiers` for identified group/path
+  descendants, sharing collision checks and an aggregate byte budget with layer
+  identities. Identified path/group/subtree deletion now uses one whole-source
+  reference qualification, including identified children of anonymous owners.
+  Eleven regressions cover mixed IDs, stale/extra handles, namespace collisions,
+  unknown reference owners, duplicate identities and byte/token bounds. Six
+  independently decoded synthetic transactions verify nested root/batch copies
+  and path/group/subtree/all-root removals, including metadata, hierarchy, state,
+  counts and unselected bytes. Resource-bearing CC reference resolution and
+  private/derived lifecycle remain outstanding; this task stays open.
+  Latest validation: 451 VM/450 Node tests, clean format/fix/analysis and all
+  76 previous lifecycle/metadata cases regenerated and independently rechecked.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

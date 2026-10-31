@@ -113,6 +113,11 @@ def copied_bytes(before, row, index):
             if node['start'] <= target['start'] < target['end'] <= node['end']:
                 encoded = b'(' + b''.join(b'\\%03o' % value for value in replacement['bytes']) + b')'
                 replacements.append((*target[key], encoded))
+    for replacement in row.get('artworkIdentifiers', []):
+        target = row['before']['artwork'][replacement['object']]
+        if node['start'] <= target['start'] < target['end'] <= node['end']:
+            encoded = b'(' + b''.join(b'\\%03o' % value for value in replacement['bytes']) + b')'
+            replacements.append((*target['identifierSpan'], encoded))
     result, position = b'', node['start']
     for start, end, value in sorted(replacements):
         assert position <= start < end <= node['end']
