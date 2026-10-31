@@ -352,6 +352,8 @@ final class AiNativeDrawing {
   /// Reorders selected ordinary sibling groups into their existing source slots.
   ///
   /// Known source assignments preserve incoming and outgoing state in each slot.
+  /// Qualified complete CC descendants retain both representations, metadata
+  /// alternatives and identities, with separate native/printing state replay.
   /// Unresolved inherited values or dependencies prevent the complete edit.
   AiNativeDrawing reorderGroups({required List<AiNativeGroup> groups}) => _reorderNativeGroups(this, groups);
 

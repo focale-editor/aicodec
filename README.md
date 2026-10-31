@@ -48,6 +48,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   preserving shared resources and state read by retained artwork in both views.
 - Copies of qualified mixed CC subtrees with fresh ordinary/paired identities, retained
   shared resources and separately restored native/printing input state.
+- Sibling reordering of qualified mixed group/layer subtrees, retaining complete
+  source owners and restoring each slot's native/printing boundary state.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

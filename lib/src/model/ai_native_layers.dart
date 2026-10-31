@@ -121,8 +121,9 @@ final class AiNativeLayers {
 
   /// Permutes selected sibling slots while retaining identities and child artwork.
   ///
-  /// The selected subtrees and intervening state must have qualified ordinary
-  /// ownership. Source assignments preserve inherited and outgoing paint state.
+  /// Selected ordinary parents may contain qualified complete CC pairs, including
+  /// their saved metadata alternatives. Native and printing state are checked
+  /// separately at each slot and wherever following artwork reads changed state.
   /// Saved view data requires explicit [discardViewState], as for insertion.
   AiNativeLayers reorder({required List<AiNativeLayer> layers, bool discardViewState = false}) => _reorderNativeLayers(this, layers, discardViewState);
 

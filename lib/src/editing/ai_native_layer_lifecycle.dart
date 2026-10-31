@@ -136,9 +136,18 @@ AiNativeLayers _reorderNativeLayers(AiNativeLayers model, List<AiNativeLayer> la
   if (slots.indexed.every((entry) => identical(entry.$2, layers[entry.$1]))) {
     return model;
   }
+  final List<_NativeSubtreeSpan> spans = [for (final AiNativeLayer layer in layers) (start: layer.start, end: layer.end)];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
   for (final AiNativeLayer layer in layers) {
-    _layerLifecyclePrefix(model, layer, headers);
+    _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
+  }
+  if (pairs.isNotEmpty) {
+    return _layerLifecycleResult(
+      model,
+      [..._layerDeclarations(model, model.rootCount, discardViewState), ..._reorderedNativeSubtrees(model, spans, pairs)],
+      roots: model.rootCount,
+    );
   }
   _layerInterval(model, slots.first.start, slots.last.end, headers);
   final Map<int, _NativeArtworkState> states = _layerStates(model, slots.expand((layer) => [layer.start, layer.end]), headers);

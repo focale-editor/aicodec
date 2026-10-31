@@ -285,6 +285,23 @@ dart run tool/check_native_subtree_copy.dart
 python3 tool/verify_native_subtree_copy.py --inkai-source /tmp/extension-ai
 ```
 
+Mixed subtree reordering uses declared nested wrappers around every complete pair
+in four existing pinned sources. Original pairs, resources and other source bytes
+remain exact in the derived fixtures; wrapper names/identities and layer headers
+are independently reconstructed. The 43 fixed transactions cover 24 derived-real
+and seven synthetic permutations, four unchanged orders and eight refusals. One
+synthetic parent contains several complete pairs. Checks bind complete sibling
+owners, both metadata alternatives, exact moved/unselected bytes, source-derived
+boundary replay, native/printing flags and the requested SVG parent order. Shared
+SVG resources are resolved at their uses; the existing disabled-stroke exception
+also requires identical librsvg pixels. Synthetic native SVG and Adobe reopening
+retain their documented qualification limits.
+
+```sh
+dart run tool/check_native_subtree_reordering.dart
+python3 tool/verify_native_subtree_reordering.py --inkai-source /tmp/extension-ai
+```
+
 Direct live-shape lifecycle reuses six files in `manifest.json` and
 `rotation_manifest.json`; `direct_shape_manifest.json` adds the pinned `styles.ai`
 fixture with its source attribution. Fourteen real-file copies/removals retain

@@ -451,6 +451,29 @@ groups and compound topology. There is no general modern object lifecycle API.
   reference-owner schemas remain outstanding; this task stays open.
   No Focale integration or Adobe reopening was introduced, and synthetic native
   SVG remains unqualified.
+  Qualified mixed sibling group/layer subtrees now support reordering into their
+  selected original slots. Nested ordinary owners, multiple complete CC pairs,
+  all saved metadata alternatives, panel flags, headers and identities move as
+  exact source bytes. Ordinary and paired siblings may share one permutation;
+  aliases and external references remain unchanged. Shared placement/dependency
+  logic preserves separate native/printing input and output state, using complete
+  owner intervals and source-derived replay; unknown differences still consumed
+  by following artwork reject atomically. Thirteen regressions cover complete
+  nested owners, several pairs under one parent, selected slots, ordinary/paired
+  batches, exact identities, separate state, view invalidation, malformed/foreign
+  handles and limits. Independent checks cover 43 fixed transactions: 24
+  derived-real and seven synthetic reorderings, four unchanged orders and eight
+  refusals. Exact recipes, both metadata branches, all moved/unselected bytes,
+  replay at original source/destination boundaries and native/printing flags are
+  independently bound. Real native/printing SVG and synthetic printing SVG keep
+  the requested parent order; shared resources resolve at their uses and the
+  disabled-stroke exception requires identical librsvg pixels. Latest validation:
+  613 VM/612 Node tests and clean format/fix/analysis. The existing paired-shape
+  reordering/movement/removal and subtree removal/copy suites also pass all 128
+  independent transactions, for 171 in this run plus a copied-shape translation.
+  Mixed-subtree reparenting, grouping/dissolution and broader reference-owner
+  schemas remain outstanding; this task stays open. No Focale integration or
+  Adobe reopening was introduced, and synthetic native SVG remains unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

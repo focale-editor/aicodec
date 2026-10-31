@@ -317,7 +317,9 @@ AiNativeDrawing _removeNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup>
 
 /// Moves group subtrees between sibling slots with per-slot state restoration.
 AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups) {
-  final AiNativeStructure ownership = _ordinaryGroups(drawing, groups);
+  final List<_NativeSubtreeSpan> spans = [for (final AiNativeGroup group in groups) (start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
+  final AiNativeStructure ownership = _ordinaryGroups(drawing, groups, pairs: pairs);
   final List<AiNativeGroup> slots = [...groups]..sort((a, b) => a.start.compareTo(b.start));
   final int? parent = ownership.nodeFor(slots.first).parentIndex;
   if (slots.any((group) => ownership.nodeFor(group).parentIndex != parent)) {
@@ -325,6 +327,14 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
   }
   if (slots.indexed.every((entry) => identical(entry.$2, groups[entry.$1]))) {
     return drawing;
+  }
+  if (pairs.isNotEmpty) {
+    return _groupLifecycleResult(
+      drawing,
+      _reorderedNativeSubtrees(AiNativeLayers.decode(drawing: drawing), spans, pairs, groups: true),
+      paths: drawing.paths.length,
+      groups: drawing.groups.length,
+    );
   }
   _groupInterval(drawing, _ordinaryObject(drawing, slots.first).start, _ordinaryObject(drawing, slots.last).end);
   final Map<int, _NativeArtworkState> states = _groupStates(drawing, groups.expand((group) => [group.start, _ordinaryObject(drawing, group).end]));
