@@ -849,6 +849,7 @@ rejects before editing.
 
 | Operation | Behavior |
 | --- | --- |
+| `createGroup(parent:, layer:, nameBytes:, identifierBytes:, inheritParentFlags:)` | Appends an empty ordinary group at the root or inside an owned group/layer without existing siblings. |
 | `groupPaths(paths:, inheritParentFlags:)` | Wraps consecutive sibling paths in one group, preserving source order, consumed point counts and intervening qualified assignments. |
 | `groupArtwork(paths:, groups:, liveShapes:, inheritParentFlags:)` | Wraps consecutive mixed sibling owners, keeping complete CC pairs and their alternatives together. |
 | `ungroup(groups:, discardMetadata:, inheritParentFlags:)` | Removes selected boundaries and explicitly discarded parent metadata; children and local state remain. |
@@ -866,6 +867,25 @@ are copied without conversion. Missing values stay unknown; no renderer or
 default graphics state is invented. An operation that needs to restore an unknown
 value rejects. Source values can become known again after an opaque boundary
 only through explicit assignments.
+
+`createGroup` requires at most one group or layer destination. It writes only the
+new `u`/`U` boundaries and explicitly supplied name/identity fields. Anonymous
+groups have no dictionary; names are escaped native bytes and identities must
+be fresh across all saved `XMLUID` owners and uses. Current object flags and
+ancestor flags remain inherited, with explicit `inheritParentFlags` for unknown
+or non-neutral current locking/visibility in either projection. It writes no
+paint assignments, layer declarations, view invalidations or derived artwork.
+The source's LF/CRLF convention is retained. Existing unowned `Ae`, point counts,
+notes and unresolved prefixes cannot become attached to the new owner.
+
+Eight regressions cover first creation, duplication/removal/recreation, empty and
+populated parents, newly created/hidden layers, metadata, complete CC siblings,
+explicit flags, stale handles and limits. Thirteen fixed independent transactions
+cover seven creations in three pinned real sources, five synthetic creations and
+one immutable refusal. Complete pair alternatives, contour flags in both
+projections, original layer headers and every unselected byte remain exact. The
+independent tree gains only the requested empty child and metadata. This qualifies
+native creation without a renderer; Adobe reopening remains unqualified.
 
 `A` retains its native locking flag. `Xw` retains the persistent visibility flag
 (0 visible, 1 hidden), also documented in the

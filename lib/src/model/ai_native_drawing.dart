@@ -228,6 +228,17 @@ final class AiNativeDrawing {
   /// unresolved attached metadata reject.
   AiNativeDrawing duplicatePaths({required List<AiNativePath> paths, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativePaths(this, paths, identifiers);
 
+  /// Creates an empty ordinary group without requiring existing child artwork.
+  ///
+  /// Specify either an owned [parent] group or [layer], or neither to append at
+  /// the document root. Optional name bytes and a fresh XML identity create only
+  /// the corresponding native metadata. Ancestor and current object flags are
+  /// inherited; unknown or non-neutral object flags require [inheritParentFlags].
+  /// Painting state, existing identities, layer headers and saved views stay
+  /// unchanged. Private, compound, clipping and unresolved owners reject.
+  AiNativeDrawing createGroup({AiNativeGroup? parent, AiLayer? layer, List<int>? nameBytes, List<int>? identifierBytes, bool inheritParentFlags = false}) =>
+      _createNativeGroup(this, parent, layer, nameBytes, identifierBytes, inheritParentFlags);
+
   /// Copies complete bound CC authoring/printing pairs after their originals.
   ///
   /// Private geometry, parameters, printing contours and saved alternatives stay

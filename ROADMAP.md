@@ -552,8 +552,18 @@ groups and compound topology. There is no general modern object lifecycle API.
   Twelve independent transactions verify six real and six synthetic creations,
   with exact source preservation and original/native parent ownership. Latest
   validation: 666 VM/665 Node tests and clean format/fix/analysis.
-  The lifecycle task remains open: path and group creation without an existing
-  sibling still need public contracts; broader
+  `createGroup` now appends a first/root group or an empty last child of an
+  ordinary group/layer, with explicit names, fresh optional identities and
+  inherited flags. No existing sibling is required. Original bytes, CC pairs,
+  layer headers, view declarations and drawing state remain exact; unowned
+  expansion/count/note prefixes cannot be captured by the new object. Eight
+  regressions cover creation followed by duplication/removal/recreation, empty and
+  populated/hidden owners, private-state inheritance and limits. Thirteen fixed
+  independent transactions verify seven real and five synthetic creations plus
+  one immutable refusal. Latest validation: 674 VM/673 Node tests and clean
+  format/fix/analysis. Adobe reopening remains unqualified.
+  The lifecycle task remains open: path creation without an existing sibling
+  still needs a public contract; broader
   reference isolation and appearance families also retain their later tasks.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.

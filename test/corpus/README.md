@@ -639,6 +639,20 @@ dart run tool/check_native_layer_creation.dart
 python3 tool/verify_native_layer_creation.py --inkai-source /tmp/extension-ai
 ```
 
+Group creation without existing siblings has thirteen fixed transactions. Seven
+append an empty group at the root, in a layer or in an ordinary parent in three
+original pinned files; five synthetic cases cover first creation, empty/populated
+parents, complete CC siblings and explicit flag inheritance. One missing-policy
+request refuses immutably. The independent reader binds original destinations,
+requires exactly one empty owner and its declared metadata, checks both contour
+state projections and retains every complete pair/version alternative, layer
+header and unselected byte. No renderer or derived representation is introduced.
+
+```sh
+dart run tool/check_native_group_creation.dart
+python3 tool/verify_native_group_creation.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.
