@@ -18,10 +18,11 @@ const String _artboards = '''%_/Document : /Dictionary : /Array :
 ''';
 
 /// Builds distinct native programs, a catalog alias and opaque reference chains.
-AiPdfDocument multipleNativePrograms() {
+AiPdfDocument multipleNativePrograms({bool thumbnails = false}) {
   final AiPdfDocument original = fixtures.nativePdf(
     compression: .zstandard,
     alias: true,
+    thumbnail: thumbnails,
     nativeProgram: fixtures.programText.replaceFirst('%%EndSetup', '$_artboards\n%%EndSetup').replaceFirst('1 Ap', '17 FuturePaint\n1 Ap'),
   );
   final PdfReference root = original.pdf.trailer['Root']! as PdfReference;
@@ -32,7 +33,8 @@ AiPdfDocument multipleNativePrograms() {
         values: {
           'Private': PdfDictionary(
             values: {
-              'AIPrivateData1': const PdfReference(objectNumber: 902),
+              'AIPrivateData1': PdfReference(objectNumber: thumbnails ? 903 : 902),
+              if (thumbnails) 'AIPrivateData2': const PdfReference(objectNumber: 902),
               'Opaque': const PdfReference(objectNumber: 900),
             },
           ),
@@ -49,6 +51,7 @@ AiPdfDocument multipleNativePrograms() {
         const PdfReference(objectNumber: 900): PdfArray(values: [const PdfReference(objectNumber: 901)]),
         const PdfReference(objectNumber: 901): PdfStream(dictionary: PdfDictionary(), data: [0, 255, 42]),
         const PdfReference(objectNumber: 902): PdfStream(dictionary: PdfDictionary(), data: latin1.encode(fixtures.programText.replaceFirst('Layer 1', 'Independent'))),
+        if (thumbnails) const PdfReference(objectNumber: 903): PdfStream(dictionary: PdfDictionary(), data: latin1.encode('%AI7_Thumbnail: 1 1 8\n')),
       },
     ),
   );
@@ -62,6 +65,28 @@ AiNativeReplacement _replacement(AiNativeSource source) {
     program: AiNativeEditor.updateLayer(program: program, layer: program.layers.first, name: 'Saved ${source.owners}').bytes,
   );
 }
+
+/// Resolves one owner's native block dictionary for exact thumbnail assertions.
+PdfDictionary _private(PdfDocument document, int pageIndex) {
+  final PdfDictionary pieces = document.dictionary(document.pages[pageIndex].dictionary['PieceInfo']!);
+  final PdfDictionary illustrator = document.dictionary(pieces['Illustrator']!);
+  return document.dictionary(illustrator['Private']!);
+}
+
+/// Supplies one valid RGB thumbnail without adding an image renderer.
+PdfStream _thumbnail(List<int> pixels) => PdfStream(
+  dictionary: PdfDictionary(
+    values: {
+      'Type': PdfName(value: 'XObject'),
+      'Subtype': PdfName(value: 'Image'),
+      'Width': PdfNumber(value: 1),
+      'Height': PdfNumber(value: 1),
+      'BitsPerComponent': PdfNumber(value: 8),
+      'ColorSpace': PdfName(value: 'DeviceRGB'),
+    },
+  ),
+  data: pixels,
+);
 
 /// Checks batch ownership, graph preservation and atomic rejection.
 void main() {
@@ -116,6 +141,46 @@ void main() {
     final AiNativeSource fresh = AiNativeData.extract(saved).last;
     final AiPdfDocument secondSave = AiNativeData.replace(source: fresh, program: _replacement(fresh).program, synchronizedPdf: saved.pdf);
     check(AiNativeData.extract(secondSave).first.bytes).deepEquals(AiNativeData.extract(saved).first.bytes);
+  });
+
+  test('drops selected native thumbnails and retains explicit host PDF thumbnail decisions', () {
+    final PdfEditor prepared = PdfEditor(document: multipleNativePrograms(thumbnails: true).pdf);
+    final PdfReference originalThumbnail = prepared.addObject(value: _thumbnail([10, 20, 30]));
+    for (final int pageIndex in [0, 1]) {
+      prepared.setPageAttributes(pageIndex: pageIndex, values: {'Thumb': originalThumbnail});
+    }
+    final AiPdfDocument original = AiPdfDocument(pdf: prepared.document);
+    final List<AiNativeSource> sources = AiNativeData.extract(original);
+    final AiNativeReplacement replacement = _replacement(sources.first);
+    final PdfDictionary unselectedPrivate = _private(original.pdf, 1);
+    for (final bool remove in [false, true]) {
+      final PdfEditor host = PdfEditor(document: original.pdf);
+      if (remove) {
+        host.setPageAttributes(pageIndex: 0, remove: {'Thumb'});
+      } else {
+        host.setPageAttributes(
+          pageIndex: 0,
+          values: {
+            'Thumb': host.addObject(value: _thumbnail([40, 50, 60])),
+          },
+        );
+      }
+      final AiPdfDocument saved = AiNativeData.replaceAll(replacements: [replacement], synchronizedPdf: host.document);
+      check(_private(saved.pdf, 1)).identicalTo(unselectedPrivate);
+      final AiPdfDocument reopened = const AiCodec().decode(const AiCodec().encode(saved)) as AiPdfDocument;
+      final PdfStream selectedBlock = reopened.pdf.resolve(_private(reopened.pdf, 0)['AIPrivateData1']!) as PdfStream;
+      check(selectedBlock.data).deepEquals(AiNativeData.encodeEnvelope(replacement.program, compression: sources.first.compression));
+      final PdfStream retainedBlock = reopened.pdf.resolve(_private(reopened.pdf, 1)['AIPrivateData1']!) as PdfStream;
+      check(retainedBlock.data).deepEquals(latin1.encode('%AI7_Thumbnail: 1 1 8\n'));
+      check(AiNativeData.extract(reopened).last.bytes).deepEquals(sources.last.bytes);
+      final PdfValue? selectedThumbnail = reopened.pdf.pages.first.dictionary['Thumb'];
+      if (remove) {
+        check(selectedThumbnail).isNull();
+      } else {
+        check((reopened.pdf.resolve(selectedThumbnail!) as PdfStream).data).deepEquals([40, 50, 60]);
+      }
+      check((reopened.pdf.resolve(reopened.pdf.pages.last.dictionary['Thumb']!) as PdfStream).data).deepEquals([10, 20, 30]);
+    }
   });
 
   test('rejects foreign graphs and reordered, inserted or removed owner pages', () {

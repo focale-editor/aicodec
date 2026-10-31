@@ -72,10 +72,17 @@ host-supplied PDF packaging exist. Diagnostics are currently distributed across
   **In progress:** `docs/HOST.md` now states each existing supply/invalidation
   policy. `withoutTextLayout` clears selected known text caches without changing
   the model or resources (three regressions and 20 independently decoded story
-  invalidations; latest full validation: 298 VM/297 Node tests, clean analysis).
-  General host-supplied printing-group attachment and
-  unresolved cache relationships still need qualification before this task is
-  complete.
+  invalidations). `withPrintingContours` attaches complete host-supplied geometry
+  to separate bound CC shape expansions, preserving authoring records, compound
+  groups, paint controls and resources. Seven printing regressions cover immutable
+  inputs, batches, limits and atomic rejection, including opaque embedded data.
+  Independent checks verify ten variants of five pinned files, 40 expansions and
+  84 paths with equivalent curves and unchanged unselected bytes. Thumbnail checks
+  qualify selected native invalidation, unselected preservation and host decisions
+  for PDF thumbnails; independent save checks cover both synthetic selections.
+  Latest full validation: 306 VM/305 Node tests and clean analysis, using xml 7.0.1.
+  General replacement of printing paint/resource topology and unresolved cache
+  relationships still need qualification before this task is complete.
 - [ ] Keep native/PDF packaging independent of a rendering operator whitelist;
   preserve unrelated metadata, references and unknown records.
 

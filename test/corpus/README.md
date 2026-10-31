@@ -61,12 +61,28 @@ Save checks rename layers without altering painted geometry, retaining existing
 PDF artwork and adding an unused host-supplied resource. Independent extraction
 and parsing verify 31 pinned PDF fixtures plus two synthetic partial/batch saves,
 35 exact native programs, shared owners, opaque metadata and supplied resources.
-The synthetic documents include two native artboards and independent programs;
-they test serialization, not visual equivalence or Adobe reopening.
+The synthetic documents include two native artboards, independent programs and
+native thumbnails. Selected programs drop their thumbnails; unselected programs
+retain every private block exactly. These cases test serialization, not visual
+equivalence or Adobe reopening.
 
 ```sh
 dart run tool/check_native_saves.dart
 python3 tool/verify_native_saves.py --inkai-source /tmp/extension-ai
+```
+
+Printing-contour attachment checks five pinned CC fixtures with ten first/all
+selections, covering 40 supplied shape expansions and 84 printing paths. The host
+tool subdivides existing curves without changing their appearance. Independent
+parsing evaluates the curves, preserves all paint commands and compares every
+byte outside selected groups except declared DSC bounds. External SVG comparisons
+require nonempty output and unchanged appearance, within the reader's coordinate
+rounding. These cases qualify geometry attachment with retained paints/resources;
+they do not qualify arbitrary replacement styles or Adobe reopening.
+
+```sh
+dart run tool/check_native_printing.dart
+python3 tool/verify_native_printing.py --inkai-source /tmp/extension-ai
 ```
 
 After `check_native_corpus.dart`, verify layer/native preservation, 32 ATE payloads,

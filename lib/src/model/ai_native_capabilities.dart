@@ -102,6 +102,9 @@ enum AiNativeEditOperation {
   /// Uniformly scale live-shape parameters and dependent geometry.
   liveShapeScaling,
 
+  /// Attach host-composed geometry to an existing separate printing expansion.
+  printingContours,
+
   /// Edit a gradient's stops with host-supplied printing intervals.
   gradientStops,
 

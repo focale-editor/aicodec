@@ -219,7 +219,10 @@ final class _NativeCapabilityReader {
         shape.end,
         .typed,
         'Native ${shape.handler} parameters and source associations.',
-        edits: conditional([.liveShapeTranslation, .liveShapeRotation, .liveShapeScaling], issue: shape.bindingIssue),
+        edits: [
+          ...conditional([.liveShapeTranslation, .liveShapeRotation, .liveShapeScaling], issue: shape.bindingIssue),
+          ...conditional([.printingContours], issue: shape.bindingIssue ?? (shape.appearanceGroup == null || shape.path?.isPrivate != true ? 'No separate native printing expansion is bound.' : null)),
+        ],
       );
       if (shape.bindingIssue case final String issue) {
         add(.liveShape, shape.start, shape.end, .unsupported, issue, selector: 'binding:${shape.start}');

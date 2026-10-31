@@ -103,8 +103,18 @@ def main():
         before = PdfReader(original)
         after = PdfReader(saved)
         assert len(before.pages) == len(after.pages)
-        for first, second in zip([before.trailer['/Root'], *before.pages], [after.trailer['/Root'], *after.pages]):
+        for owner, first, second in zip([None, *range(len(before.pages))], [before.trailer['/Root'], *before.pages], [after.trailer['/Root'], *after.pages]):
             assert metadata(first) == metadata(second), name
+            if row['synthetic']:
+                old_private = first['/PieceInfo']['/Illustrator']['/Private']
+                new_private = second['/PieceInfo']['/Illustrator']['/Private']
+                prefixes = (b'%%BoundingBox:', b'%%HiResBoundingBox:', b'%AI7_Thumbnail:')
+                assert stream_data(old_private['/AIPrivateData1']).startswith(prefixes)
+                selected = any(item['selected'] and owner in item['owners'] for item in row['programs'])
+                if selected:
+                    assert not stream_data(new_private['/AIPrivateData1']).startswith(prefixes)
+                else:
+                    assert value(old_private) == value(new_private)
         for index, (first, second) in enumerate(zip(before.pages, after.pages)):
             assert first.get_contents().get_data() == second.get_contents().get_data(), name
             old_resources = value(first['/Resources'])

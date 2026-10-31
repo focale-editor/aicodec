@@ -71,7 +71,7 @@ Future<void> main() async {
       await save(name, document);
     }
   }
-  await save('synthetic-batch', multipleNativePrograms(), synthetic: true);
-  await save('synthetic-selected', multipleNativePrograms(), firstOnly: true, synthetic: true);
+  await save('synthetic-batch', multipleNativePrograms(thumbnails: true), synthetic: true);
+  await save('synthetic-selected', multipleNativePrograms(thumbnails: true), firstOnly: true, synthetic: true);
   await File('${output.path}/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert(rows));
 }

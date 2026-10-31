@@ -188,6 +188,22 @@ final class AiNativeDrawing {
        gradients = List.unmodifiable(gradients),
        liveShapes = List.unmodifiable(liveShapes);
 
+  /// Attaches host-composed contours to separate native printing expansions.
+  ///
+  /// Every selected shape must have a bound private outline and a separate
+  /// printable group. Supply all its printing paths, with one or more contours
+  /// per path. Paint operations, compound nesting, resources, private geometry,
+  /// parameters and alternate dictionaries remain unchanged. The host must
+  /// compose the contours from that same authoring state and supply matching PDF
+  /// artwork; this method does not establish visual equivalence.
+  ///
+  /// Unresolved bindings, nested authoring records and unknown commands inside
+  /// the selected expansion reject. Opaque neighboring objects stay untouched.
+  /// Gradient and post-geometry paint wrappers retain one contour per source
+  /// path; splitting those wrappers requires a separate paint-topology edit.
+  /// This does not change paint/resource topology or create missing expansions.
+  AiNativeDrawing withPrintingContours({required List<AiNativePrintingReplacement> replacements}) => _replaceNativePrintingContours(this, replacements);
+
   /// Moves native shapes and their supported painted expansions atomically.
   ///
   /// Offsets use source drawing coordinates, with y increasing upwards. Native

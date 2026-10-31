@@ -13,3 +13,4 @@
 - Added bounded source-local capability reports with operation-specific qualifications and explicit preservation, unsupported-data and parser-limit diagnostics.
 - Added atomic multi-program saving and rejected stale native metadata, foreign graphs and implicit PDF page remapping.
 - Added explicit text-layout invalidation for changed host dependencies without rewriting text or resources.
+- Added bounded host-supplied CC printing contours while preserving native authoring records, paints, compound groups and shared resources.

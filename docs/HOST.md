@@ -9,7 +9,7 @@ models and serialization. Focale integration is a separate, deferred task.
 | Decode containers, native programs and metadata. | Map supported native data into its document model. |
 | Expose and edit native layers, paths, text, gradients, meshes and images within documented limits. | Provide tools, selection, undo/redo and interactive rendering. |
 | Preserve unknown records and reject unsafe edits. | Choose an explicit fallback for unsupported visual semantics. |
-| Write supplied text layouts, ramps, pixels and previews. | Shape text, compose layouts, manage color and generate derived representations. |
+| Write supplied printing contours, text layouts, ramps, pixels and previews. | Shape text, compose layouts, manage color and generate derived representations. |
 | Package edited native bytes with the supplied compatibility PDF. | Produce a matching PDF from the same edited document snapshot. |
 
 ## Saving an edited PDF-backed AI
@@ -51,7 +51,7 @@ The following contracts describe the currently qualified subsets:
 | Payload | Host input and serialization | Invalidation/preservation policy |
 | --- | --- | --- |
 | Compatibility PDF | Supply `synchronizedPdf` from the original graph to `replace`/`replaceAll`. | Rebuild affected artwork and resources; nonvisual edits may retain them. The kit verifies graph ownership, not visual equivalence. |
-| Native printing expansions | Existing qualified shape transforms update their bound private/printing records together; gradient edits accept explicit printing ramps. | General replacement of host-composed printing groups is still unqualified. Do not discard those groups or reuse stale expansions after an unsupported edit. |
+| Native printing expansions | `withPrintingContours` attaches host-composed geometry to separate, bound CC live-shape expansions while retaining their paint/resource topology. Qualified shape transforms update bound private/printing records together; gradient edits accept explicit printing ramps. | Cover every owned path once, retain native authoring data and supply the host-computed ink bounds. Arbitrary group/style replacement remains unqualified; do not discard groups or reuse stale expansions after an unsupported edit. |
 | Text composition | Supply `withTextLayout` frame/line/segment positions in the documented native coordinate space. | Content/feature edits clear known caches. `withoutTextLayout(story:)` also clears them after external dependency changes, preserving text/styles/frames. Recompose before saving; unknown view fields reject. |
 | Embedded image samples | Supply complete `AiNativeRasterSamples` through the raster editor or placement embedding operation. | Qualified replacements renew affected sample identities. Unknown dependent caches reject; the kit does not decode a replacement file or convert its profile. |
 | Linked-object preview | Supply explicit RGB/alpha samples to `relink`; retain the path/directory values to refresh only the preview's meaning. | Explicit `preview: null` removes the preview. Geometry edits may retain unchanged preview pixels. Unsupported layouts/dependencies reject. |
@@ -63,6 +63,16 @@ Cache invalidation is an intermediate editing state. It does not certify an
 Illustrator-ready save, and packaging complete native bytes is not a substitute
 for a qualified dependency update. General printing-group attachment and other
 unresolved cache relationships remain tracked in `ROADMAP.md`.
+
+Printing-contour attachment updates derived geometry only. It neither regenerates
+shape parameters nor checks that the supplied curves match them. Keep authoring
+records, supplied contours and the compatibility PDF on the same document revision.
+Existing compound groups and paint commands remain intact. Additional contours
+may repeat a self-contained paint operation; wrapped gradient/paint paths require
+one contour. Unknown local state, nested authoring metadata, incomplete ownership
+and stale handles reject atomically. Unknown neighboring objects stay unchanged.
+The host computes ink bounds including strokes, effects and inherited transforms;
+the kit conservatively expands DSC bounds without changing artboards or rendering.
 
 For explicit PDF interchange, `AiPdfDocument.forPdfInterchange` removes stale
 Illustrator authoring links. It does not synthesize CC native editing data.

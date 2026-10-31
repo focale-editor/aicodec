@@ -32,7 +32,9 @@ AiPdfDocument nativePdf({
   final Map<String, PdfValue> blocks = {};
   int number = 1;
   if (thumbnail) {
-    blocks['$prefix${number++}'] = PdfStream(dictionary: PdfDictionary(), data: latin1.encode('%%BoundingBox: 0 0 10 10\n%AI7_Thumbnail: 1 1 8\n'));
+    final PdfReference reference = PdfReference(objectNumber: 100 + number);
+    objects[reference] = PdfStream(dictionary: PdfDictionary(), data: latin1.encode('%%BoundingBox: 0 0 10 10\n%AI7_Thumbnail: 1 1 8\n'));
+    blocks['$prefix${number++}'] = reference;
   }
   for (int offset = 0; offset < envelope.length; offset += chunkBytes) {
     final PdfReference reference = PdfReference(objectNumber: 100 + number);
