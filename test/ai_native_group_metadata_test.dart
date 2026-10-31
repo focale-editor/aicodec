@@ -6,6 +6,7 @@ import 'package:test/test.dart';
 
 import 'ai_native_artwork_movement_test.dart' show movementLayer, movementPath;
 import 'ai_native_objects_test.dart' show objectDictionary, objectSource;
+import 'ai_native_subtree_reordering_test.dart' show subtreeReorderingFlags, subtreeReorderingGroups, subtreeReorderingSource;
 
 /// Supplies nested panel flags, default group styles and changing path opacity.
 String get groupMetadataSource => objectSource(
@@ -18,6 +19,23 @@ String get groupMetadataSource => objectSource(
   '${movementPath(50)}',
   setup: '',
 );
+
+/// Attaches neutral resets to identified parents containing complete CC pairs.
+String groupResetSource() {
+  final AiNativeDrawing source = _drawing(subtreeReorderingSource(following: true, reset: true));
+  final AiNativeObjects objects = AiNativeObjects.decode(drawing: source);
+  return latin1.decode(
+    AiNativeEditor.apply(
+      program: source.records.program,
+      edits: [
+        for (final AiNativeGroup group in subtreeReorderingGroups(source)) AiSourceEdit(start: objects.forSource(group).end, end: objects.forSource(group).end, bytes: latin1.encode('\n9 () XW\n')),
+      ],
+    ).bytes,
+  );
+}
+
+/// Retains nonunit child opacity around an empty reset-owning sibling.
+String get groupResetEmptySource => objectSource('0 0.8 0 0 0 Xy u ${movementPath(10)} U\n0 0.2 0 0 0 Xy\n1 Ae u U 9 () XW\n${movementPath(20)}', setup: '');
 
 /// Decodes a complete snapshot under the requested native parser limits.
 AiNativeDrawing _drawing(String source, {AiNativeLimits limits = const AiNativeLimits()}) => AiNativeDrawing.decode(
@@ -142,13 +160,68 @@ void main() {
     check(source.removeGroups(groups: source.groups).groups).isEmpty();
   });
 
-  test('dissolves panel flags with empty dictionaries but retains applied styles', () {
+  test('dissolves panel flags and neutral resets while retaining child opacity', () {
     final AiNativeDrawing source = _drawing(objectSource('1 Ae u ${movementPath(10)} U\n${objectDictionary()}'));
     final AiNativeDrawing result = source.ungroup(groups: source.groups);
     check(result.groups).isEmpty();
     check(result.items.whereType<AiNativeInstruction>().any((item) => item.operator == 'Ae')).isFalse();
     final AiNativeDrawing styled = _drawing(groupMetadataSource);
-    check(() => styled.ungroup(groups: [_groups(styled).first])).throws<UnsupportedError>();
+    final AiNativeDrawing dissolved = styled.ungroup(groups: [_groups(styled).first]);
+    check(_paths(dissolved)).deepEquals(_paths(styled));
+    check(dissolved.groups.length).equals(styled.groups.length - 1);
+    check(dissolved.items.whereType<AiNativeInstruction>().where((item) => item.operator == 'XW')).length.equals(2);
+  });
+
+  test('dissolves disjoint default-style parents while retaining nested reset ownership', () {
+    final AiNativeDrawing source = _drawing(groupMetadataSource);
+    final List<AiNativeGroup> groups = _groups(source);
+    final AiNativeDrawing result = source.ungroup(groups: [groups.first, groups.last]);
+    check(_paths(result)).deepEquals(_paths(source));
+    check(result.groups).length.equals(1);
+    check(AiNativeObjects.decode(drawing: result).forSource(result.groups.single).styleApplication!.operands.first.number).equals(9);
+    check(latin1.decode(source.records.program.bytes)).equals(groupMetadataSource);
+  });
+
+  test('dissolves empty default-style groups without attaching resets to earlier siblings', () {
+    final AiNativeDrawing source = _drawing(groupResetEmptySource);
+    final AiNativeDrawing result = source.ungroup(groups: [source.groups.last]);
+    check(result.groups).length.equals(1);
+    check(AiNativeObjects.decode(drawing: result).forSource(result.groups.single).styleApplication).isNull();
+    check(_paths(result)).deepEquals(_paths(source));
+    check(result.items.whereType<AiNativeInstruction>().any((item) => item.operator == 'XW')).isFalse();
+  });
+
+  test('dissolves mixed default-style parents with exact pairs and retained following state', () {
+    final String text = groupResetSource();
+    final AiNativeDrawing source = _drawing(text);
+    final AiNativeDrawing result = source.ungroup(groups: subtreeReorderingGroups(source), discardMetadata: true);
+    check(result.groups.length).equals(source.groups.length - 3);
+    check(result.liveShapes).length.equals(3);
+    for (final (int, AiLiveShape) entry in source.liveShapes.indexed) {
+      final AiLiveShape changed = result.liveShapes[entry.$1];
+      check(result.records.program.bytes.sublist(changed.start, changed.end)).deepEquals(source.records.program.bytes.sublist(entry.$2.start, entry.$2.end));
+    }
+    for (final bool private in [false, true]) {
+      check(subtreeReorderingFlags(result, private: private)).deepEquals(subtreeReorderingFlags(source, private: private));
+    }
+    check(latin1.decode(source.records.program.bytes)).equals(text);
+  });
+
+  test('keeps nondefault, named and private group-style applications rejected on dissolution', () {
+    for (final String style in ['1 (Named) XW', '2 () XW', '6 () XW', '7 () XW', '9 (Named) XW', '%_9 () XW', '9 0 XW', '9 () XW 9 () XW']) {
+      final String text = objectSource('u ${movementPath(10)} U\n$style', setup: '');
+      final AiNativeDrawing source = _drawing(text);
+      check(() => source.ungroup(groups: source.groups, discardMetadata: true, inheritParentFlags: true)).throws<UnsupportedError>();
+      check(latin1.decode(source.records.program.bytes)).equals(text);
+    }
+  });
+
+  test('rejects a default reset inside an enclosing gradient instance atomically', () {
+    final String text = objectSource('Bb\n1 (Ink) 0 0 0 100 1 0 0 1 0 0 Bg\n${movementPath(10)}\nu U 9 () XW\n${movementPath(20)}\n0 BB', setup: '');
+    final AiNativeDrawing source = _drawing(text);
+    check(source.gradients).length.equals(1);
+    check(() => source.ungroup(groups: source.groups, inheritParentFlags: true)).throws<UnsupportedError>();
+    check(latin1.decode(source.records.program.bytes)).equals(text);
   });
 
   test('preserves group metadata and opacity when moving across layer wrappers', () {

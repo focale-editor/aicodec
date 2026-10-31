@@ -77,8 +77,17 @@ AiNativeDrawing _dissolveNativeGroups(AiNativeDrawing drawing, List<AiNativeGrou
   final List<_NativeSubtreeSpan> spans = [for (final AiNativeGroup group in groups) (start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)];
   _ordinaryGroups(drawing, groups, pairs: _subtreeShapeBundles(drawing, spans));
   final List<AiNativeObject> objects = groups.map((group) => _ordinaryObject(drawing, group)).toList();
-  if (objects.any((object) => object.styleApplication != null || !discardMetadata && (object.dictionary?.entries.isNotEmpty ?? false))) {
-    throw UnsupportedError('Dissolving a group requires explicit metadata disposal and cannot discard an applied style.');
+  if (!discardMetadata && objects.any((object) => object.dictionary?.entries.isNotEmpty ?? false)) {
+    throw UnsupportedError('Dissolving a group requires explicit metadata disposal.');
+  }
+  // Ordinary ownership admits only the neutral mode-nine group reset. Removing
+  // it with its parent preserves child appearance and persistent scalar state;
+  // named styles, blend applications and private resets fail qualification.
+  for (final AiNativeObject object in objects) {
+    final AiNativeInstruction? reset = object.styleApplication;
+    if (reset != null && drawing.gradients.any((gradient) => gradient.start < reset.end && gradient.end > reset.start)) {
+      throw UnsupportedError('Dissolving a group reset inside a gradient instance requires its complete appearance owner.');
+    }
   }
   _nativeGroupingFlags(drawing, groups.map((group) => group.start), inheritParentFlags);
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);

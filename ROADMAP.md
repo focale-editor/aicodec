@@ -518,6 +518,22 @@ groups and compound topology. There is no general modern object lifecycle API.
   Broader object/reference-owner schemas and applied-style dissolution still
   require their declared contracts; this lifecycle task remains open. This lot
   establishes native serialization only, without Adobe reopening or host rendering.
+  Neutral default-group resets (`9 () XW`) now dissolve with their qualified
+  parents. Child opacity, nested resets, complete CC pairs and following state
+  remain unchanged; an empty removed group cannot leave its reset attached to an
+  earlier sibling. Nondefault/named/private/malformed style applications and resets
+  inside an enclosing gradient instance reject instead of being flattened. Five
+  regressions and 18 fixed independent
+  transactions cover one original real group, four declared real-pair wrappers,
+  five synthetic edits and eight refusals. Fifteen native/printing SVG comparisons
+  and exact 1024-wide RGBA comparisons pass, without changing the independent
+  reader. Latest validation: 648 VM/647 Node tests and clean format/fix/analysis. The
+  prior ordinary and mixed grouping suites also pass 31 transactions, for 49
+  independent transactions in this run.
+  This is a data/serialization change, with no host renderer or Adobe reopening.
+  The lifecycle task remains open: direct path reparenting into an empty group
+  and creation without an existing sibling still need public contracts; broader
+  reference isolation and appearance families also retain their later tasks.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

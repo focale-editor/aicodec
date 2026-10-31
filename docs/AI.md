@@ -508,8 +508,9 @@ preserves child metadata and removes empty group dictionaries. Discarding a
 nonempty qualified dictionary requires `discardMetadata: true`; group names,
 identities and rotation are then removed rather than transferred to a child.
 Only the removed parent identities undergo the whole-source reference check.
-Ungrouping removes an owned panel flag but rejects an applied group style, which
-requires a separate dissolution policy. Layer movement retains child object identities.
+Ungrouping removes an owned panel flag and the qualified neutral `9 () XW` group
+reset. Named styles, blend applications and private reset commands still require
+separate appearance contracts. Layer movement retains child object identities.
 Layer duplication requires fresh child IDs through `artworkIdentifiers`; layer
 removal checks all child identities against the same qualified reference scope.
 
@@ -861,7 +862,8 @@ that deliberately change such parent inheritance must now opt in.
 
 `ungroup(groups:)` accepts disjoint ordinary parents containing qualified complete
 CC pairs. It removes only the selected opening/closing boundaries and owned panel
-flag or empty dictionary. `discardMetadata: true` additionally permits removal of
+flag, empty dictionary and neutral mode-nine default reset. `discardMetadata: true`
+additionally permits removal of
 qualified names, rotation and identities, with a whole-source reference audit for
 only the deleted parent IDs. Descendant IDs, including retained aliases, are not
 reallocated or deleted. An ambiguous parent identity, unknown reference owner,
@@ -878,6 +880,26 @@ requested hierarchy, both streams' contour flags and parent policies, while
 requiring every unchanged byte and complete pair to remain exact. These establish
 native serialization contracts; Adobe reopening, interactive rendering and
 host-supplied PDF/preview regeneration remain separate acceptance work.
+
+Neutral group resets also have a separate acceptance gate. Only the existing
+ordinary-object schema's nonprivate `9 () XW` command with an empty name qualifies;
+other modes, named styles, malformed operands and repeated attachments reject.
+A reset inside an enclosing gradient instance also rejects because that appearance
+owner must be handled as a whole.
+Removing that command with its parent leaves child opacity, nested group resets,
+complete CC pairs and following scalar state unchanged. An empty group cannot
+leave its reset attached to an earlier sibling. No group appearance is distributed
+or composited by the kit.
+
+Five additional regressions cover disjoint parents, empty groups, complete paired
+descendants, enclosing gradient ownership and eight refused style forms. Independent checks verify 18 fixed
+transactions: one original real file (`layers_and_sublayers.ai`), four declared
+wrappers around pinned real CC pairs, five synthetic edits and eight refusals.
+Exact native byte/topology checks are complemented by 15 native/printing SVG
+comparisons and identical 1024-wide librsvg RGBA images. Only anonymous SVG groups
+without visual attributes, or with opacity exactly one, are normalized for the
+structural comparison; image comparisons use the original SVG trees. Synthetic
+native version-branch rendering and Adobe reopening remain unqualified.
 
 ### Mixed group/layer subtree removal
 

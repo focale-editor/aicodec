@@ -337,9 +337,10 @@ final class AiNativeDrawing {
   /// Qualified CC pairs and their alternatives remain together. Nonempty parent
   /// dictionaries require [discardMetadata]; deleted parent identities undergo a
   /// whole-source reference check, while descendant identities remain unchanged.
-  /// Applied group styles and opaque owners reject. Non-neutral or unknown group
-  /// flags require [inheritParentFlags]: children then inherit the remaining
-  /// ancestors, without transferring the removed parent's flags onto children.
+  /// Neutral default-group resets are removed; applied styles and opaque owners
+  /// reject. Non-neutral or unknown flags require [inheritParentFlags]: children
+  /// then inherit the remaining ancestors, without receiving the removed parent's
+  /// flags as local assignments.
   AiNativeDrawing ungroup({required List<AiNativeGroup> groups, bool discardMetadata = false, bool inheritParentFlags = false}) =>
       _dissolveNativeGroups(this, groups, discardMetadata, inheritParentFlags);
 

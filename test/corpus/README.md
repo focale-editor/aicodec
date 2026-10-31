@@ -186,7 +186,8 @@ Checks bind every reported object/dictionary/identifier/count span to the extern
 parse, compare complete trees and effective paint, and require exact unselected
 bytes and source assignment provenance. Five real CC path/group copies, removals
 and reordering cases now preserve their bound panel flag and default `XW` style.
-Styled-group dissolution still rejects. Five further checksum-pinned synthetic
+Dissolution accepts the qualified neutral mode-nine reset; named or nondefault
+style applications still reject. Five further checksum-pinned synthetic
 transactions verify nested panel/style metadata and retained path opacity. These
 16 cases do not establish general referenced-object editing or Adobe reopening.
 
@@ -584,6 +585,23 @@ checked separately. Adobe reopening and host rendering are not established.
 ```sh
 dart run tool/check_native_subtree_grouping.dart
 python3 tool/verify_native_subtree_grouping.py --inkai-source /tmp/extension-ai
+```
+
+## Neutral default-group reset dissolution
+
+This suite reuses five pinned real sources, four declared pair-wrapper recipes
+and checksum-pinned synthetic programs with explicit canvas origins. Eighteen
+fixed transactions cover original, nested, empty and mixed parent dissolution,
+plus eight style-ownership refusals. The unchanged reader verifies exact selected
+owners, topology, metadata disposal and retained children; 15 native/printing SVG
+comparisons and exact 1024-wide librsvg RGBA comparisons verify neutral reset
+removal. SVG normalization only unwraps anonymous groups with no visual attributes
+or opacity one, while pixel checks use the original trees. Synthetic native
+version-branch SVG and Adobe reopening remain unqualified.
+
+```sh
+dart run tool/check_native_group_resets.dart
+python3 tool/verify_native_group_resets.py --inkai-source /tmp/extension-ai
 ```
 
 ## Catalog XMP preservation

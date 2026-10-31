@@ -43,3 +43,4 @@
 - Added mixed CC group/layer subtree movement, nesting and lifting with retained identities, explicit parent inheritance, synchronized layer root counts and shared native/printing state retention; `moveGroupToGroup` also accepts ordinary parents and empty destinations.
 - Added mixed path/group/CC-pair grouping and qualified parent dissolution with explicit metadata disposal and parent-only identity-reference checks.
 - Required explicit parent inheritance when grouping or dissolving non-neutral or unknown native/printing lock and visibility flags, including ordinary path grouping.
+- Allowed dissolution of qualified neutral default-group resets, retaining child opacity, nested reset ownership and complete CC pairs while rejecting other style applications.

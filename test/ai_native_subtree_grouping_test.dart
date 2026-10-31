@@ -138,7 +138,7 @@ void main() {
   });
 
   test('retains applied styles and rejects unknown parent metadata even with disposal', () {
-    for (final String suffix in ['9 () XW', objectDictionary(extra: '(opaque) /String (Future) ,')]) {
+    for (final String suffix in ['6 () XW', objectDictionary(extra: '(opaque) /String (Future) ,')]) {
       final AiNativeDrawing source = _drawing(objectSource('u 0 0 m 1 1 L f U\n$suffix', setup: ''));
       check(() => source.ungroup(groups: source.groups, discardMetadata: true)).throws<UnsupportedError>();
     }

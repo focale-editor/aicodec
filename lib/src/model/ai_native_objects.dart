@@ -25,7 +25,7 @@ final class AiNativeObject extends AiNativeItem {
 
   /// Direct group style application, after its closing instruction/dictionary.
   ///
-  /// Ordinary lifecycle qualifies only an explicit mode-nine default style.
+  /// Ordinary lifecycle qualifies only an explicit neutral mode-nine group reset.
   final AiNativeInstruction? styleApplication;
 
   /// Saved panel expansion when the attached flag has valid boolean syntax.

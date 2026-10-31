@@ -67,10 +67,13 @@ def selection(data, items, nodes, pairs, selected):
         assert normalized(body(parsed(data[first:selected['openingEnd']]))) == normalized(fragment[:opening - start + 1])
         assert normalized(body(parsed(data[selected['closingStart']:last]))) == normalized(fragment[closing:])
         tail = fragment[closing + 1:]
+        if selected.get('reset', False):
+            assert tail[-1].command == 'XW' and tail[-1].tokens == [b'9', b''] and not tail[-1].is_pseudo_comment
+            tail = tail[:-1]
         if selected['name']:
             assert len(tail) == 1 and tail[0]['_type'] == 'ArtDictionary' and tail[0]['AI10_ArtUID'] == selected['name']
         else:
-            assert not tail
+            assert not tail or len(tail) == 1 and tail[0] == {'_type': 'ArtDictionary'}
         marker = 'node', index
     else:
         assert selected['kind'] == 'path' and fragment[-1]['AI10_ArtUID'] == selected['name']
