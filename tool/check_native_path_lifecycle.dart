@@ -131,5 +131,46 @@ Future<void> main() async {
     'before': _paths(grouped),
     'after': _paths(moved),
   });
+  final AiNativeDrawing state = AiNativeDrawing.decode(
+    records: AiNativeRecords.decode(
+      program: AiProgram.decode(
+        bytes: latin1.encode(_synthetic.replaceFirst('0.2 g', '0.2 g 0 G 1 w [] 0 d').replaceFirst('0 A 0 Xw\n0 G 3 w', 'U\n0 A 0 Xw 0.8 g 1 G 3 w [2 3] 1 d\nu')),
+      ),
+    ),
+  );
+  await File('${output.path}/synthetic-state.original.ps').writeAsBytes(state.records.program.bytes);
+  for (final String direction in ['forward', 'backward']) {
+    final int selected = direction == 'forward' ? 0 : 1;
+    final int anchor = 1 - selected;
+    final AiNativeDrawing result = state.movePathAfter(path: state.paths[selected], after: state.paths[anchor], inheritParentFlags: true);
+    final String file = 'synthetic-state.$direction.ps';
+    await File('${output.path}/$file').writeAsBytes(result.records.program.bytes);
+    rows.add({
+      'source': 'synthetic-state',
+      'original': 'synthetic-state.original.ps',
+      'result': file,
+      'operation': 'move',
+      'selected': [selected],
+      'anchor': anchor,
+      'inheritParentFlags': true,
+      'before': _paths(state),
+      'after': _paths(result),
+    });
+  }
+  final AiNativeDrawing siblings = AiNativeDrawing.decode(
+    records: AiNativeRecords.decode(program: AiProgram.decode(bytes: latin1.encode(_synthetic.replaceFirst('0.2 g', '0.2 g 0 G 1 w [] 0 d').replaceFirst('0 G 3 w', '0.8 g 1 G 3 w [2 3] 1 d')))),
+  );
+  final AiNativeDrawing reordered = siblings.reorderPaths(paths: siblings.paths.reversed.toList());
+  await File('${output.path}/synthetic-state-siblings.original.ps').writeAsBytes(siblings.records.program.bytes);
+  await File('${output.path}/synthetic-state-siblings.reorder.ps').writeAsBytes(reordered.records.program.bytes);
+  rows.add({
+    'source': 'synthetic-state-siblings',
+    'original': 'synthetic-state-siblings.original.ps',
+    'result': 'synthetic-state-siblings.reorder.ps',
+    'operation': 'reorder',
+    'selected': [0, 1],
+    'before': _paths(siblings),
+    'after': _paths(reordered),
+  });
   await File('${output.path}/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert(rows));
 }

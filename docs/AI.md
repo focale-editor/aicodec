@@ -372,7 +372,7 @@ stale selections reject before any source edit is applied.
 | `removePaths(paths:)` | Removes geometry/paint and its consumed point count. Persistent state and conservative drawing bounds remain. |
 | `insertPaths(insertions:)` | Inserts supplied geometry after each anchor, inheriting its paint, flags and count convention. Multiple insertions at the same anchor retain input order. |
 | `reorderPaths(paths:)` | Places selected siblings into their existing source slots in the requested order, carrying geometry, paint and count syntax together. |
-| `movePathAfter(path:, after:)` | Moves a path after an anchor, optionally across ordinary group boundaries within one containing layer. |
+| `movePathAfter(path:, after:, inheritParentFlags:)` | Moves a path after an anchor within one containing layer; different ancestor flags or depth require explicit destination inheritance. |
 
 `AiNativePathInsertion` freezes supplied `segments` and requires host-computed
 ink `bounds`. Geometry has one initial moveto and portable finite coordinates.
@@ -389,16 +389,31 @@ bound live shape does not by itself make the next ordinary path an expansion.
 Unselected opaque setup or sibling data can remain unchanged outside that scope.
 
 Persistent paint, lock and visibility assignments stay at their source positions.
-Reordering or moving additionally requires an interval with no state assignments,
-opaque data or metadata. Ordinary `u`/`U` boundaries do not save and restore paint;
-only `movePathAfter` may cross them. Cross-layer moves and moves across different
-paint states remain unsupported. These operations do not create or remove groups,
-layers, shared resources or referenced identities. Capabilities report all five
-operations as requiring selection-specific validation.
+Reordering and movement can replay known source assignments around the copied
+geometry to retain its own attributes and restore the destination's outgoing
+state. The qualified components are gray/RGB/CMYK fill and stroke, overprint,
+line width/dashes/caps/joins/miter, path/fill flags, locking and visibility.
+Color alternatives retain their exact syntax without conversion. Missing values
+stay unknown; moving a known value to a position where the original value cannot
+be restored rejects. Opaque intervals, interleaved metadata, malformed state and
+unowned point counts also reject atomically.
 
-Independent checks cover 13 variants across two pinned recent Illustrator files
-and synthetic counted/grouped sources, including retained ownership, inherited
-controls, exact unselected bytes and counts. Adobe reopening remains unqualified.
+Ordinary `u`/`U` boundaries do not save and restore paint; only `movePathAfter`
+may cross them. Ancestor groups retain their original flags. Different ancestor
+depth or lock/visibility flags require `inheritParentFlags: true`: the moved path
+keeps its own attributes and accepts destination-group inheritance. Equal known
+ancestor states, or values with the same unchanged unknown provenance, need no
+extra policy. Cross-layer moves remain unsupported. These operations do not
+create or remove groups, layers, shared resources or referenced identities.
+Capabilities report all five operations as requiring selection-specific validation.
+
+Nine additional regressions cover changed process paints, all qualified state
+components, ancestor inheritance, unknown/malformed state, unselected opaque
+bytes, budgets and a 150-path permutation. Independent checks cover 16 variants
+across two pinned recent Illustrator files and checksum-pinned synthetic
+counted/grouped/state sources, including retained ownership, effective path and
+owner flags, exact unselected bytes and counts. Added assignments must match
+original source values. Adobe reopening remains unqualified.
 Saving changed geometry requires matching PDF artwork supplied by the host.
 
 ### Ordinary group lifecycle
@@ -993,7 +1008,7 @@ These statuses do not imply complete Illustrator compatibility.
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree copy/remove/reorder/moves | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
-| Ordinary native paths | Source-backed geometry and paint | Geometry and qualified ordinary-path lifecycle | Moves across changed state, dependent or unresolved ownership reject. |
+| Ordinary native paths | Source-backed geometry and paint | Geometry and qualified ordinary-path lifecycle with retained source state | Unknown required state, cross-layer moves and dependent/unresolved ownership reject; changed ancestor flags require explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and same-layer moves | Anonymous owners only; unknown required state, references, private/derived objects and cross-layer moves reject. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

@@ -122,14 +122,20 @@ python3 tool/verify_native_layer_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
 Ordinary path lifecycle uses the anonymous free path in pinned `simple_shapes.ai`
-and `simple_shapes_cc.ai`, plus synthetic counted and grouped sources. Thirteen
+and `simple_shapes_cc.ai`, plus checksum-pinned counted, grouped and state sources. Sixteen
 variants cover insertion, duplication, removal, sibling reordering and movement
 between ordinary groups. Reordering starts from an independently verified
 insertion result. The unchanged native reader verifies geometry, paint, point
-counts, preceding persistent controls and owner order; byte checks preserve
+counts, effective attributes, owner flags and order; byte checks preserve
 every unselected region and allow only supplied ink-bound expansion. Private live
 shapes and their records remain untouched. Synthetic cases cover counted closed
-endpoints, hidden/locked owners, shared state and emptied groups; they do not
+endpoints, hidden/locked owners, shared state and emptied groups. Three added
+variants qualify reordering and movement in both directions across different
+gray/line/dash/lock/visibility assignments. Copies retain their original geometry
+and counts; extra assignments must exist in the original source. Changed ancestor
+flags require explicit destination inheritance. VM/Node cases additionally cover
+all supported state components, process-color alternatives, unknown/malformed
+state, output/token limits and a 150-path batch. These cases do not
 qualify an Adobe writer profile. These checks do not establish Adobe reopening,
 group/layer lifecycle or arbitrary referenced-object editing.
 

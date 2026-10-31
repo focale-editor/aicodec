@@ -22,6 +22,27 @@ const String _first = '3 As\n0 0 m\n10 0 L % ordinary source comment\n10 10 L\n0
 /// Several paths deliberately share attributes assigned before the first one.
 const String _body = '0 1 0 1 0 0 1 0 79 128 255 0 50 0 Lb (Hidden locked) Ln\n0 AE\n1 A\n1 Xw\n0.2 g\nu\n$_first\n2 As\n20 20 m 30 30 L S\nU\nLB';
 
+/// Observes retained paint/object assignments at each path's source position.
+List<Map<String, Object>> _painted(AiNativeDrawing drawing) {
+  final Map<String, Object> state = {};
+  final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.paint.start: path};
+  final List<Map<String, Object>> result = [];
+  for (final AiNativeInstruction command in drawing.items.whereType<AiNativeInstruction>()) {
+    if (const {'g', 'G', 'k', 'K', 'Xa', 'XA', 'A', 'Xw', 'w', 'd', 'O', 'R', 'XR', 'D', 'Ap', 'J', 'j', 'M'}.contains(command.operator)) {
+      final String key = const {'g', 'k', 'Xa'}.contains(command.operator)
+          ? 'fill'
+          : const {'G', 'K', 'XA'}.contains(command.operator)
+          ? 'stroke'
+          : command.operator;
+      state[key] = [command.operator, ...command.operands.map((operand) => operand.number ?? operand.lexeme)];
+    }
+    if (paths[command.start] case final AiNativePath path) {
+      result.add({...state, 'geometry': path.geometry.map((command) => command.numbers).toList(), 'paint': path.paint.operator});
+    }
+  }
+  return result;
+}
+
 /// Explicit host ink bounds and finite geometry with an implicit closing edge.
 AiNativePathInsertion _insertion(AiNativePath after, double x) => AiNativePathInsertion(
   after: after,
@@ -221,10 +242,10 @@ void main() {
     check(reversed.groups.last.children).isEmpty();
   });
 
-  test('rejects path movement across changed state, distinct layers or unresolved structure', () {
+  test('rejects path movement across unknown state, distinct layers or unresolved structure', () {
     final AiNativeDrawing unchangedState = _drawing();
     check(unchangedState.reorderPaths(paths: unchangedState.paths.reversed.toList()).paths.first.paint.operator).equals('S');
-    for (final String separator in ['0.5 g', '0 A', '0 Xw', '17 FuturePaint', '%AI3_Note: attached note']) {
+    for (final String separator in ['0 A', '0 Xw', '17 FuturePaint', '%AI3_Note: attached note']) {
       final AiNativeDrawing source = _drawing(body: '0 g\n0 0 m 1 1 L N\n$separator\n2 2 m 3 3 L N');
       final List<int> original = source.records.program.bytes.toList();
       check(() => source.reorderPaths(paths: source.paths.reversed.toList())).throws<UnsupportedError>();
@@ -237,6 +258,106 @@ void main() {
     const String layer = '1 1 1 1 0 0 1 0 79 128 255 0 50 0 Lb';
     final AiNativeDrawing layers = _drawing(body: '$layer 0 0 m 1 1 L N LB $layer 2 2 m 3 3 L N LB');
     check(() => layers.movePathAfter(path: layers.paths.first, after: layers.paths.last)).throws<UnsupportedError>();
+  });
+
+  test('reorders selected paths across state changes while preserving unselected paths and counts', () {
+    final AiNativeDrawing source = _drawing(body: '0 g 0 A\n$_first\n0.5 g 1 A\n20 20 m 30 30 L S\n0.9 g 0 A\n2 As 40 40 m 50 50 L N\n60 60 m 70 70 L N');
+    final List<Map<String, Object>> expected = _painted(source);
+    final List<int> original = source.records.program.bytes.toList();
+    final AiNativeDrawing result = source.reorderPaths(paths: [source.paths[2], source.paths[0]]);
+    check(_painted(result)).deepEquals([expected[2], expected[1], expected[0], expected[3]]);
+    check(result.items.whereType<AiNativeInstruction>().where((item) => item.operator == 'As').map((item) => item.numbers!.single)).deepEquals([2.0, 3.0]);
+    check(source.records.program.bytes).deepEquals(original);
+  });
+
+  test('moves paths in both directions across ordinary groups with distinct persistent state', () {
+    final AiNativeDrawing source = _drawing(body: '0 A 0 Xw 0.2 g 0 G 2 w [] 0 d\nu\n$_first\nU\n1 A 1 Xw 0.8 g 1 G 5 w [2 3] 1 d\nu\n2 As 20 20 m 30 30 L S\n40 40 m 50 50 L N\nU');
+    final List<Map<String, Object>> expected = _painted(source);
+    check(() => source.movePathAfter(path: source.paths[0], after: source.paths[1])).throws<UnsupportedError>();
+    final AiNativeDrawing forward = source.movePathAfter(path: source.paths[0], after: source.paths[1], inheritParentFlags: true);
+    check(_painted(forward)).deepEquals([expected[1], expected[0], expected[2]]);
+    check(forward.groups.map((group) => group.paths.length)).deepEquals([0, 3]);
+    final AiNativeDrawing backward = source.movePathAfter(path: source.paths[1], after: source.paths[0], inheritParentFlags: true);
+    check(_painted(backward)).deepEquals(expected);
+    check(backward.groups.map((group) => group.paths.length)).deepEquals([2, 1]);
+  });
+
+  test('requires explicit inheritance for different ancestor depth or an outer group flag', () {
+    for (final String body in [
+      '0 A 0 g 0 0 m 1 1 L N u 2 2 m 3 3 L N U',
+      '0 A 0 g u u 0 0 m 1 1 L N U U 1 A u 0 A u 2 2 m 3 3 L N U U',
+    ]) {
+      final AiNativeDrawing source = _drawing(body: body);
+      check(() => source.movePathAfter(path: source.paths.first, after: source.paths.last)).throws<UnsupportedError>();
+      final AiNativeDrawing result = source.movePathAfter(path: source.paths.first, after: source.paths.last, inheritParentFlags: true);
+      check(_painted(result)).deepEquals(_painted(source).reversed.toList());
+    }
+  });
+
+  test('preserves every qualified paint component and color syntax around a moved path', () {
+    const String first = '0 1 0 0 k 0.1 0.2 0.3 XA 0 A 1 Xw 0 O 1 R 0 XR 1 D 0 Ap 0 J 1 j 2 w 4 M [] 0 d';
+    const String second = '0.1 0.2 0.3 0.4 0.5 0.6 0.7 Xa 0.3 0.2 0.1 0 K 1 A 0 Xw 1 O 0 R 1 XR 0 D 1 Ap 2 J 2 j 8 w 10 M [2 3] -1 d';
+    final AiNativeDrawing source = _drawing(body: '$first\n$_first\n$second\n20 20 m 30 30 L S\n40 40 m 50 50 L N');
+    final List<Map<String, Object>> expected = _painted(source);
+    final AiNativeDrawing result = source.movePathAfter(path: source.paths.first, after: source.paths[1]);
+    check(_painted(result)).deepEquals([expected[1], expected[0], expected[2]]);
+    check(source.reorderPaths(paths: source.paths.reversed.toList()).paths).length.equals(3);
+  });
+
+  test('rejects restoring or inheriting a state value that is not known', () {
+    final AiNativeDrawing source = _drawing(body: '0 0 m 1 1 L N\n0.8 g\n2 2 m 3 3 L N');
+    final List<int> original = source.records.program.bytes.toList();
+    check(() => source.movePathAfter(path: source.paths.first, after: source.paths.last)).throws<UnsupportedError>();
+    check(() => source.movePathAfter(path: source.paths.last, after: source.paths.first)).throws<UnsupportedError>();
+    check(() => source.reorderPaths(paths: source.paths.reversed.toList())).throws<UnsupportedError>();
+    check(source.records.program.bytes).deepEquals(original);
+  });
+
+  test('rejects malformed state and orphaned counts within a movement interval', () {
+    for (final String separator in ['2 g', '3 A', '-1 w', '[0 0] 0 d', '0 M', '1 2 XA']) {
+      final AiNativeDrawing source = _drawing(body: '0 g 0 0 m 1 1 L N\n$separator\n2 2 m 3 3 L N');
+      check(() => source.movePathAfter(path: source.paths.first, after: source.paths.last)).throws<FormatException>();
+      check(() => source.reorderPaths(paths: source.paths.reversed.toList())).throws<FormatException>();
+    }
+    final AiNativeDrawing source = _drawing(body: '0 g 0 0 m 1 1 L N\n2 As u U\n2 2 m 3 3 L N');
+    check(() => source.movePathAfter(path: source.paths.first, after: source.paths.last)).throws<UnsupportedError>();
+  });
+
+  test('preserves opaque source outside the qualified movement interval', () {
+    final AiNativeDrawing source = _drawing(
+      setup: '/FutureResource : 17 /Value ;',
+      body: '17 FuturePaint\n0 g\n0 0 m 1 1 L N\n0.8 g\n2 2 m 3 3 L N\n4 4 m 5 5 L N\n/FutureOwner : (retained) /Value ;',
+    );
+    final AiNativeDrawing result = source.movePathAfter(path: source.paths[0], after: source.paths[1]);
+    check(_painted(result)).deepEquals([_painted(source)[1], _painted(source)[0], _painted(source)[2]]);
+    check(result.records.program.bytes.take(source.paths.first.start).toList()).deepEquals(source.records.program.bytes.take(source.paths.first.start).toList());
+    check(latin1.decode(result.records.program.bytes)).endsWith(latin1.decode(source.records.program.bytes.sublist(source.paths[1].end)));
+  });
+
+  test('bounds replayed state, geometry and count bytes before committing a movement', () {
+    const String body = '0 g\n$_first\n1 g\n20 20 m 30 30 L S';
+    final AiNativeDrawing original = _drawing(body: body);
+    final AiNativeDrawing bytes = _drawing(
+      body: body,
+      limits: AiNativeLimits(maxDecodedBytes: original.records.program.bytes.length),
+    );
+    check(() => bytes.movePathAfter(path: bytes.paths.first, after: bytes.paths.last)).throws<FormatException>();
+    check(() => bytes.reorderPaths(paths: bytes.paths.reversed.toList())).throws<FormatException>();
+    final int count = AiPostScript.tokenize(original.records.program.bytes).length;
+    final AiNativeDrawing tokens = _drawing(
+      body: body,
+      limits: AiNativeLimits(maxTokens: count),
+    );
+    check(() => tokens.movePathAfter(path: tokens.paths.first, after: tokens.paths.last)).throws<AiLimitException>();
+  });
+
+  test('reorders a batch with distinct source state without changing input handles', () {
+    final AiNativeDrawing source = _drawing(body: [for (int index = 0; index < 150; index++) '${index % 2} g 2 As $index 0 m $index 1 L N'].join('\n'));
+    final List<AiNativePath> paths = source.paths.reversed.toList();
+    final AiNativeDrawing result = source.reorderPaths(paths: paths);
+    check(_painted(result)).deepEquals(_painted(source).reversed.toList());
+    check(paths.first).identicalTo(source.paths.last);
+    check(result.items.whereType<AiNativeInstruction>().where((item) => item.operator == 'As')).length.equals(150);
   });
 
   test('freezes supplied geometry and bounds output bytes and aggregate tokens', () {

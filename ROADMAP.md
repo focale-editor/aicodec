@@ -183,9 +183,18 @@ groups and compound topology. There is no general modern object lifecycle API.
   copies and four removals, including synthetic identified deletion and a pinned
   anonymous AI7 regression: 22 lifecycle transactions now pass. Latest validation:
   404 VM/403 Node tests and clean format/fix/analysis, using xml 7.0.1. Identified
-  deletion in real resource-bearing CC documents, referenced artwork,
-  opaque/derived subtree lifecycle and path moves across different state remain
-  outstanding. Adobe reopening is unqualified.
+  deletion in real resource-bearing CC documents, referenced artwork and
+  opaque/derived subtree lifecycle remain outstanding. Ordinary path reordering
+  and movement now preserve source-backed paint/object state across qualified
+  assignments. Different ancestor-group flags or depth require explicit
+  destination inheritance; unknown required values, malformed state and opaque
+  intervals reject. Nine regressions cover all supported components, process
+  colors, ancestor flags, unselected bytes, bounds and a 150-path batch.
+  Independent checks qualify 16 path transactions, including changed-state
+  reordering and movement in both directions with exact source/count preservation.
+  Latest validation: 413 VM/412 Node tests, clean format/fix/analysis and all 22
+  layer transactions rechecked after sharing the bounded state serializer.
+  Cross-layer path/group movement remains outstanding. Adobe reopening is unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

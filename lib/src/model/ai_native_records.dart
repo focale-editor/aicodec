@@ -24,6 +24,7 @@ part '../codec/ai_native_printing_state.dart';
 part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_printing_editor.dart';
 part '../editing/ai_native_printing_group_editor.dart';
+part '../editing/ai_native_artwork_state.dart';
 part '../editing/ai_native_path_lifecycle.dart';
 part '../editing/ai_native_group_lifecycle.dart';
 part '../editing/ai_native_layer_editor.dart';

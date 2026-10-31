@@ -279,22 +279,18 @@ AiNativeDrawing _insertNativePaths(AiNativeDrawing drawing, List<AiNativePathIns
   return _pathLifecycleResult(drawing, edits, drawing.paths.length + insertions.length);
 }
 
-/// Requires a native interval whose paint and object state cannot change.
+/// Qualifies intervening ordinary artwork and declarative state assignments.
 void _pathMovementInterval(AiNativeDrawing drawing, int start, int end, {required bool groups}) {
-  for (final AiNativeItem item in drawing.items.where((item) => item.start >= start && item.end <= end)) {
-    if (item is! AiNativeInstruction ||
-        item.isPrivate ||
-        !_nativeGeometry.contains(item.operator) && !_nativePaint.contains(item.operator) && item.operator != 'As' && !(groups && const {'u', 'U'}.contains(item.operator))) {
-      throw UnsupportedError('Moving paths requires an interval without changing native state or opaque dependencies.');
+  final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).toList();
+  final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, paths);
+  final Set<AiNativeInstruction> geometry = {
+    for (final AiNativePath path in paths) ...[...path.geometry, path.paint],
+    ...counts.values.whereType<AiNativeInstruction>(),
+  };
+  for (final AiNativeInstruction item in _groupInterval(drawing, start, end, nested: groups)) {
+    if ((_nativeGeometry.contains(item.operator) || _nativePaint.contains(item.operator) || item.operator == 'As') && !geometry.contains(item)) {
+      throw UnsupportedError('Moving paths requires owned geometry and point counts throughout the interval.');
     }
-    if (const {'u', 'U'}.contains(item.operator) && item.operands.isNotEmpty) {
-      throw const FormatException('Ordinary native group boundaries cannot have operands.');
-    }
-  }
-  if (drawing.records._projection.tokens.any(
-    (token) => token.start < end && token.end > start && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%'))),
-  )) {
-    throw UnsupportedError('Moving paths requires an interval without unresolved metadata.');
   }
 }
 
@@ -312,7 +308,9 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
   }
   _pathMovementInterval(drawing, slots.first.start, slots.last.end, groups: false);
   final AiProgram program = drawing.records.program;
+  final Map<int, _NativeArtworkState> states = _nativeArtworkStates(drawing, slots.map((path) => path.start));
   final List<AiSourceEdit> edits = [];
+  int remaining = program.limits.maxDecodedBytes;
   for (final (int, AiNativePath) entry in slots.indexed) {
     final AiNativePath slot = entry.$2;
     final AiNativePath source = paths[entry.$1];
@@ -321,18 +319,24 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
     }
     final AiNativeInstruction? oldCount = counts[slot];
     final AiNativeInstruction? newCount = counts[source];
-    edits.add(
-      AiSourceEdit(
-        start: slot.start,
-        end: slot.end,
-        bytes: [
-          if (oldCount == null && newCount != null) ...[...program.bytes.sublist(newCount.start, newCount.end), 10],
-          ...program.bytes.sublist(source.start, source.end),
-        ],
-      ),
+    final List<int> placed = _placedNativeArtwork(
+      program,
+      [
+        if (oldCount == null && newCount != null) (start: newCount.start, end: newCount.end),
+        (start: source.start, end: source.end),
+      ],
+      [...source.geometry, source.paint],
+      states[source.start]!,
+      states[slot.start]!,
+      states[slot.start]!,
+      maxBytes: remaining - 1,
     );
+    edits.add(AiSourceEdit(start: slot.start, end: slot.end, bytes: [10, ...placed]));
+    remaining -= placed.length + 1;
     if (oldCount != null) {
-      edits.add(AiSourceEdit(start: oldCount.start, end: oldCount.end, bytes: newCount == null ? [32] : program.bytes.sublist(newCount.start, newCount.end)));
+      final List<int> replacement = newCount == null ? [32] : _nativeSourceSpans(program, [(start: newCount.start, end: newCount.end)], remaining);
+      edits.add(AiSourceEdit(start: oldCount.start, end: oldCount.end, bytes: replacement));
+      remaining -= replacement.length;
     }
   }
   return _pathLifecycleResult(drawing, edits, drawing.paths.length);
@@ -347,8 +351,19 @@ AiNativeStructureNode? _pathLayer(AiNativeStructure ownership, AiNativePath path
   return parent;
 }
 
-/// Moves geometry across ordinary group boundaries with an unchanged state stream.
-AiNativeDrawing _moveNativePath(AiNativeDrawing drawing, AiNativePath path, AiNativePath after) {
+/// Lists group ancestors while keeping shared layer inheritance separate.
+List<AiNativeGroup> _pathParentGroups(AiNativeStructure ownership, AiNativePath path) {
+  final List<AiNativeGroup> result = [];
+  AiNativeStructureNode? parent = ownership.parentOf(ownership.nodeFor(path));
+  while (parent != null && parent.kind != .layer) {
+    result.add(parent.source as AiNativeGroup);
+    parent = ownership.parentOf(parent);
+  }
+  return result;
+}
+
+/// Moves geometry across ordinary groups while preserving paint and object state.
+AiNativeDrawing _moveNativePath(AiNativeDrawing drawing, AiNativePath path, AiNativePath after, bool inheritParentFlags) {
   final AiNativeStructure ownership = AiNativeStructure.decode(drawing: drawing);
   final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, [path, after], ownership: ownership);
   if (!identical(_pathLayer(ownership, path), _pathLayer(ownership, after))) {
@@ -357,18 +372,33 @@ AiNativeDrawing _moveNativePath(AiNativeDrawing drawing, AiNativePath path, AiNa
   _pathMovementInterval(drawing, min(path.start, after.start), max(path.end, after.end), groups: true);
   final AiProgram program = drawing.records.program;
   final AiNativeInstruction? count = counts[path];
+  final List<AiNativeGroup> sourceParents = _pathParentGroups(ownership, path);
+  final List<AiNativeGroup> targetParents = _pathParentGroups(ownership, after);
+  final Map<int, _NativeArtworkState> states = _nativeArtworkStates(drawing, [path.start, after.end, ...sourceParents.map((group) => group.start), ...targetParents.map((group) => group.start)]);
+  if (!inheritParentFlags &&
+      (sourceParents.length != targetParents.length ||
+          sourceParents.indexed.any((entry) => const {'A', 'Xw'}.any((key) => !states[entry.$2.start]!.matches(states[targetParents[entry.$1].start]!, key))))) {
+    throw UnsupportedError('Changing ancestor-group flags or depth requires explicit inheritParentFlags.');
+  }
+  final List<int> placed = _placedNativeArtwork(
+    program,
+    [
+      if (count != null) (start: count.start, end: count.end),
+      (start: path.start, end: path.end),
+    ],
+    [...path.geometry, path.paint],
+    states[path.start]!,
+    states[after.end]!,
+    states[after.end]!,
+    maxBytes: program.limits.maxDecodedBytes - 1,
+  );
   return _pathLifecycleResult(drawing, [
     AiSourceEdit(start: path.start, end: path.end, bytes: [32]),
     if (count != null) AiSourceEdit(start: count.start, end: count.end, bytes: [32]),
     AiSourceEdit(
       start: after.end,
       end: after.end,
-      bytes: [
-        10,
-        if (count != null) ...[...program.bytes.sublist(count.start, count.end), 10],
-        ...program.bytes.sublist(path.start, path.end),
-        10,
-      ],
+      bytes: [10, ...placed],
     ),
   ], drawing.paths.length);
 }

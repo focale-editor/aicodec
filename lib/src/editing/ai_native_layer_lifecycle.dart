@@ -72,127 +72,30 @@ List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int en
   return commands;
 }
 
-/// Known persistent assignments and the last boundary invalidating unknown values.
-final class _NativeLayerState {
-  /// Last explicit source assignment for each qualified state component.
-  final Map<String, AiNativeInstruction> values;
+/// Reads state across qualified layer headers without resetting persistent paint.
+Map<int, _NativeArtworkState> _layerStates(AiNativeLayers model, Iterable<int> boundaries, Map<int, AiNativeLayer> headers) =>
+    _nativeArtworkStates(model.drawing, boundaries, structural: headers.entries.where((entry) => entry.value.bindingIssue == null).map((entry) => entry.key).toSet());
 
-  /// Opaque boundary identity; absent values across different barriers differ.
-  final int barrier;
-
-  /// Freezes a source state without guessing defaults after unknown instructions.
-  _NativeLayerState({required Map<String, AiNativeInstruction> values, required this.barrier}) : values = Map.unmodifiable(values);
-
-  /// Requires matching known values or the same unchanged unknown provenance.
-  bool matches(_NativeLayerState other, String key) => values[key] == null && other.values[key] == null ? barrier == other.barrier : _sameGroupState(values[key], other.values[key]);
-}
-
-/// Reads state across layer boundaries, which do not save or restore paint.
-Map<int, _NativeLayerState> _layerStates(AiNativeLayers model, Iterable<int> boundaries, Map<int, AiNativeLayer> headers) {
-  final List<int> positions = boundaries.toSet().toList()..sort();
-  final Map<int, _NativeLayerState> result = {};
-  final Map<String, AiNativeInstruction> state = {};
-  int index = 0;
-  int barrier = -1;
-  for (final int position in positions) {
-    while (index < model.drawing.items.length && model.drawing.items[index].end <= position) {
-      final AiNativeItem item = model.drawing.items[index++];
-      if (headers[item.start] case final AiNativeLayer owner when owner.bindingIssue == null) {
-        continue;
-      }
-      if (item is AiNativeInstruction && !item.isPrivate) {
-        try {
-          final String? key = _groupStateKey(item);
-          if (key != null) {
-            state[key] = item;
-            continue;
-          }
-          if (_nativeGeometry.contains(item.operator) || _nativePaint.contains(item.operator) || const {'u', 'U', 'As'}.contains(item.operator)) {
-            continue;
-          }
-        } on FormatException {
-          // Malformed unrelated state grants no inherited value to a later edit.
-        }
-      }
-      state.clear();
-      barrier = item.start;
-    }
-    result[position] = _NativeLayerState(values: state, barrier: barrier);
-  }
-  return result;
-}
-
-/// Serializes only owned source spans under an aggregate output budget.
-List<int> _layerSourceSpans(AiProgram program, Iterable<({int start, int end})> spans, int maxBytes, {List<AiSourceEdit> edits = const []}) {
-  final BytesBuilder result = BytesBuilder(copy: false);
-  for (final ({int start, int end}) span in spans) {
-    final List<AiSourceEdit> replacements = edits.where((edit) => edit.start >= span.start && edit.end <= span.end).toList();
-    final int length = span.end - span.start + replacements.fold(0, (count, edit) => count + edit.bytes.length - (edit.end - edit.start));
-    if (result.length + length + 1 > maxBytes) {
-      throw const AiLimitException(message: 'Layer lifecycle output exceeds the native byte limit.');
-    }
-    result.add(replacements.isEmpty ? Uint8List.sublistView(program.bytes, span.start, span.end) : AiNativeEditor.copyRange(program: program, start: span.start, end: span.end, edits: replacements));
-    result.addByte(10);
-  }
-  return result.takeBytes();
-}
-
-/// Replays source values around a moved subtree to retain both boundary states.
+/// Places a complete layer with optional identity edits and retained state.
 List<int> _placedLayer(
   AiNativeLayers model,
   AiNativeLayer layer,
   List<AiNativeInstruction> commands,
-  _NativeLayerState source,
-  _NativeLayerState incoming,
-  _NativeLayerState outgoing, {
+  _NativeArtworkState source,
+  _NativeArtworkState incoming,
+  _NativeArtworkState outgoing, {
   required int maxBytes,
   List<AiSourceEdit> sourceEdits = const [],
-}) {
-  final Set<String> required = {};
-  final Map<String, AiNativeInstruction> writes = {};
-  for (final AiNativeInstruction command in commands) {
-    final String? key = _groupStateKey(command);
-    if (key != null) {
-      writes[key] = command;
-    } else if (command.operator == 'u' || command.operator == 'm') {
-      required.addAll((command.operator == 'u' ? const {'A', 'Xw'} : _groupStateKeys).where((key) => !writes.containsKey(key)));
-    }
-  }
-  final Map<String, AiNativeInstruction> actual = Map.of(incoming.values);
-  final List<AiNativeInstruction> prefix = [];
-  for (final String key in required) {
-    if (!source.matches(incoming, key)) {
-      final AiNativeInstruction? value = source.values[key];
-      if (value == null) {
-        throw UnsupportedError('The placed layer requires an unknown inherited $key value.');
-      }
-      prefix.add(value);
-      actual[key] = value;
-    }
-  }
-  actual.addAll(writes);
-  final List<AiNativeInstruction> suffix = [];
-  final _NativeLayerState resulting = _NativeLayerState(values: actual, barrier: incoming.barrier);
-  for (final String key in _groupStateKeys) {
-    if (!resulting.matches(outgoing, key)) {
-      final AiNativeInstruction? value = outgoing.values[key];
-      if (value == null) {
-        throw UnsupportedError('The placed layer cannot restore an unknown outgoing $key value.');
-      }
-      suffix.add(value);
-    }
-  }
-  return _layerSourceSpans(
-    model.drawing.records.program,
-    [
-      for (final AiNativeInstruction item in prefix) (start: item.start, end: item.end),
-      (start: layer.start, end: layer.end),
-      for (final AiNativeInstruction item in suffix) (start: item.start, end: item.end),
-    ],
-    maxBytes,
-    edits: sourceEdits,
-  );
-}
+}) => _placedNativeArtwork(
+  model.drawing.records.program,
+  [(start: layer.start, end: layer.end)],
+  commands,
+  source,
+  incoming,
+  outgoing,
+  maxBytes: maxBytes,
+  sourceEdits: sourceEdits,
+);
 
 /// Requires distinct immutable handles with disjoint complete source subtrees.
 List<AiNativeLayer> _selectedLayers(AiNativeLayers model, List<AiNativeLayer> layers) {
@@ -233,7 +136,7 @@ AiNativeLayers _reorderNativeLayers(AiNativeLayers model, List<AiNativeLayer> la
     _layerLifecyclePrefix(model, layer, headers);
   }
   _layerInterval(model, slots.first.start, slots.last.end, headers);
-  final Map<int, _NativeLayerState> states = _layerStates(model, slots.expand((layer) => [layer.start, layer.end]), headers);
+  final Map<int, _NativeArtworkState> states = _layerStates(model, slots.expand((layer) => [layer.start, layer.end]), headers);
   final List<AiSourceEdit> edits = _layerDeclarations(model, model.rootCount, discardViewState);
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final (int, AiNativeLayer) entry in slots.indexed) {
@@ -275,9 +178,9 @@ AiNativeLayers _moveNativeLayer(AiNativeLayers model, AiNativeLayer layer, AiNat
   _layerLifecyclePrefix(model, layer, headers);
   _layerInterval(model, min(layer.start, position), max(layer.end, position), headers);
   final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
-  final Map<int, _NativeLayerState> states = _layerStates(model, [layer.start, position], headers);
+  final Map<int, _NativeArtworkState> states = _layerStates(model, [layer.start, position], headers);
   final int maxBytes = model.drawing.records.program.limits.maxDecodedBytes;
-  final List<int> retained = _layerSourceSpans(model.drawing.records.program, [
+  final List<int> retained = _nativeSourceSpans(model.drawing.records.program, [
     for (final AiNativeInstruction item in commands)
       if (_groupStateKey(item) != null) (start: item.start, end: item.end),
   ], maxBytes);
@@ -334,7 +237,7 @@ AiNativeLayers _duplicateNativeLayers(AiNativeLayers model, List<AiNativeLayer> 
   final int roots = model.rootCount + selected.where((layer) => layer.parentIndex == null).length;
   final List<AiSourceEdit> edits = _layerDeclarations(model, roots, discardViewState);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
-  final Map<int, _NativeLayerState> states = _layerStates(model, selected.expand((layer) => [layer.start, layer.end]), headers);
+  final Map<int, _NativeArtworkState> states = _layerStates(model, selected.expand((layer) => [layer.start, layer.end]), headers);
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in selected) {
     _layerLifecyclePrefix(model, layer, headers);
@@ -411,7 +314,7 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
   for (final AiNativeLayer layer in selected) {
     _layerLifecyclePrefix(model, layer, headers);
     final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
-    final List<int> state = _layerSourceSpans(model.drawing.records.program, [
+    final List<int> state = _nativeSourceSpans(model.drawing.records.program, [
       for (final AiNativeInstruction item in commands)
         if (_groupStateKey(item) != null) (start: item.start, end: item.end),
     ], remaining - 1);

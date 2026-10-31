@@ -239,18 +239,21 @@ final class AiNativeDrawing {
 
   /// Reorders selected sibling paths into their existing source positions.
   ///
-  /// [paths] gives the desired order. Persistent state must remain unchanged
-  /// throughout the interval; interleaved attribute assignments, metadata and
-  /// other object kinds reject. Geometry, paint and point counts move together.
+  /// [paths] gives the desired order. Source assignments preserve each path's
+  /// paint and object flags and restore the following artwork's state. Unknown
+  /// required values, metadata and other object kinds reject. Geometry, paint
+  /// and point counts move together without changing unrelated source bytes.
   AiNativeDrawing reorderPaths({required List<AiNativePath> paths}) => _reorderNativePaths(this, paths);
 
   /// Moves a path after an anchor, optionally into another ordinary group.
   ///
-  /// Both paths must share a layer and an interval without state assignments or
-  /// opaque dependencies. Ordinary group boundaries may be crossed. This narrow
-  /// contract preserves inherited paint/flags; moving across layers or changed
-  /// state requires an additional explicit appearance-state contract.
-  AiNativeDrawing movePathAfter({required AiNativePath path, required AiNativePath after}) => _moveNativePath(this, path, after);
+  /// Both paths must share a layer and a qualified ordinary interval. Source
+  /// assignments preserve the moved path's paint/object flags and restore state
+  /// at the destination. Unknown required values and opaque dependencies reject.
+  /// Ordinary group boundaries may be crossed; cross-layer movement still needs
+  /// an explicit policy for inherited layer flags. Different ancestor-group flags
+  /// or depths require [inheritParentFlags], accepting destination inheritance.
+  AiNativeDrawing movePathAfter({required AiNativePath path, required AiNativePath after, bool inheritParentFlags = false}) => _moveNativePath(this, path, after, inheritParentFlags);
 
   /// Groups contiguous ordinary sibling paths without changing their source order.
   ///
