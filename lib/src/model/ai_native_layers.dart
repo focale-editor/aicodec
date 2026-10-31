@@ -142,6 +142,27 @@ final class AiNativeLayers {
   AiNativeLayers moveInto({required AiNativeLayer layer, required AiNativeLayer parent, bool inheritParentFlags = false, bool discardViewState = false}) =>
       _moveNativeLayer(this, layer, parent, inside: true, inheritParentFlags: inheritParentFlags, discardViewState: discardViewState);
 
+  /// Duplicates selected ordinary subtrees immediately after their source layers.
+  ///
+  /// [identifiers] must supply a fresh native XML name for every identified layer
+  /// in the copied subtrees, including descendants. Anonymous layers stay
+  /// anonymous. Optional [names] replace existing display names in copies only.
+  /// Existing identities, references, paint state and unselected bytes remain.
+  AiNativeLayers duplicate({
+    required List<AiNativeLayer> layers,
+    Map<AiNativeLayer, List<int>> identifiers = const {},
+    Map<AiNativeLayer, List<int>> names = const {},
+    bool discardViewState = false,
+  }) => _duplicateNativeLayers(this, layers, identifiers, names, discardViewState);
+
+  /// Removes qualified subtrees while retaining their outgoing state assignments.
+  ///
+  /// Identified layers require a fully qualified declarative reference scope;
+  /// opaque records, external executable sections and ambiguous identities reject.
+  /// Anonymous subtrees retain local dependency checks. Root counts update and
+  /// saved panel data requires explicit [discardViewState]. Bounds do not shrink.
+  AiNativeLayers remove({required List<AiNativeLayer> layers, bool discardViewState = false}) => _removeNativeLayers(this, layers, discardViewState);
+
   /// Requires the exact immutable layer instance supplied by this inventory.
   void _requireOwned(AiNativeLayer layer) {
     if (layer.index >= layers.length || !identical(layers[layer.index], layer)) {

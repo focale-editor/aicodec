@@ -55,23 +55,33 @@ List<int> _layerString(List<int> value, int maxBytes) {
   return latin1.encode('(${value.map((byte) => '\\${byte.toRadixString(8).padLeft(3, '0')}').join()})');
 }
 
+/// Reserves qualified XML artwork identities without merging equal source owners.
+Set<String> _layerIdentityNames(AiNativeLayers model) => {
+  for (final AiNativeObjectIdentifier identifier in model.structure.identifiers)
+    if (identifier.kind == .xmlArt) latin1.decode(identifier.bytes),
+};
+
+/// Encodes one fresh identity and replaces only its source-owned string token.
+AiSourceEdit _layerIdentityEdit(AiNativeLayer layer, List<int> identifierBytes, Set<String> reserved, int maxBytes) {
+  final List<int> encoded = _layerString(identifierBytes, maxBytes);
+  if (identifierBytes.any((byte) => byte > 127) || !RegExp(r'^[A-Za-z_][A-Za-z0-9_.-]*$').hasMatch(latin1.decode(identifierBytes))) {
+    throw ArgumentError('New layer identifiers require a nonempty portable XML name.');
+  }
+  if (!reserved.add(latin1.decode(identifierBytes))) {
+    throw ArgumentError('The new layer identifier already belongs to the native source or this transaction.');
+  }
+  final AiNativeItem value = layer.identifier!.field.entry.container!.entries.single.items.single;
+  return AiSourceEdit(start: value.start, end: value.end, bytes: encoded);
+}
+
 /// Copies a header dictionary while assigning a distinct caller-owned XML name.
 List<int> _newLayerDictionary(AiNativeLayers model, AiNativeLayer layer, List<int>? identifierBytes) {
-  final AiNativeObjectIdentifier? identifier = layer.identifier;
-  if ((identifier == null) != (identifierBytes == null)) {
+  if ((layer.identifier == null) != (identifierBytes == null)) {
     throw ArgumentError('Identified layer templates require a fresh identifier; anonymous templates retain their layout.');
   }
   final List<AiSourceEdit> edits = [];
   if (identifierBytes != null) {
-    final List<int> encoded = _layerString(identifierBytes, model.drawing.records.program.limits.maxDecodedBytes);
-    if (identifierBytes.any((byte) => byte < 0 || byte > 127) || !RegExp(r'^[A-Za-z_][A-Za-z0-9_.-]*$').hasMatch(latin1.decode(identifierBytes))) {
-      throw ArgumentError('New layer identifiers require a nonempty portable XML name.');
-    }
-    if (model.structure.identifiers.any((existing) => existing.kind == .xmlArt && _sameNativeBytes(existing.bytes, identifierBytes))) {
-      throw ArgumentError('The new layer identifier already belongs to the native source.');
-    }
-    final AiNativeItem value = identifier!.field.entry.container!.entries.single.items.single;
-    edits.add(AiSourceEdit(start: value.start, end: value.end, bytes: encoded));
+    edits.add(_layerIdentityEdit(layer, identifierBytes, _layerIdentityNames(model), model.drawing.records.program.limits.maxDecodedBytes));
   }
   final AiNativeContainer? dictionary = layer.dictionary;
   if (dictionary == null) {

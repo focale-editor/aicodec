@@ -15,7 +15,7 @@ from corpus_support import REVISION, native_programs
 from verify_live_shapes import GEOMETRY, walk_body
 from verify_native_group_lifecycle import ATTRIBUTES, PAINT, attributes, parent
 from verify_native_layers import commands, layers, verified_inventory, verify_insertion
-from verify_native_structure import parsed
+from verify_native_structure import native_values, parsed
 
 SYNTHETIC_SHA256 = 'e916a0352622e057fd9b67452abd20dd4bd200317bfa14688ec155312acd3e81'
 
@@ -75,6 +75,21 @@ def expected_tree(tree, owners, row):
         replacements = [(parent(tree, owners[slot]), owners[source]) for slot, source in zip(slots, selected)]
         for (siblings, index), replacement in replacements:
             siblings[index] = replacement
+    elif row['operation'] == 'duplicate':
+        for index in selected:
+            memo = {}
+            copied = copy.deepcopy(owners[index], memo)
+            for field, key in [('identifiers', 'identifier'), ('names', 'name')]:
+                for replacement in row[field]:
+                    target = memo.get(id(owners[replacement['layer']]))
+                    if target is not None:
+                        target[key] = bytes(replacement['bytes']).decode() if key == 'identifier' else replacement['bytes']
+            siblings, position = parent(tree, owners[index])
+            siblings.insert(position + 1, copied)
+    elif row['operation'] == 'remove':
+        for index in selected:
+            siblings, position = parent(tree, owners[index])
+            siblings.pop(position)
     else:
         assert row['operation'] in ('after', 'inside') and len(selected) == 1
         moved, anchor = owners[selected[0]], owners[row['anchor']]
@@ -88,6 +103,24 @@ def expected_tree(tree, owners, row):
     return tree
 
 
+def copied_bytes(before, row, index):
+    """Permit only caller-requested string tokens inside an otherwise exact copy."""
+    node = row['before']['layers'][index]
+    replacements = []
+    for field, key in [('identifiers', 'identifierSpan'), ('names', 'nameSpan')]:
+        for replacement in row[field]:
+            target = row['before']['layers'][replacement['layer']]
+            if node['start'] <= target['start'] < target['end'] <= node['end']:
+                encoded = b'(' + b''.join(b'\\%03o' % value for value in replacement['bytes']) + b')'
+                replacements.append((*target[key], encoded))
+    result, position = b'', node['start']
+    for start, end, value in sorted(replacements):
+        assert position <= start < end <= node['end']
+        result += before[position:start] + value
+        position = end
+    return result + before[position:node['end']]
+
+
 def verify_bytes(before, after, row):
     """Allow only selected spans, copied source assignments and declared headers."""
     inventory = row['before']
@@ -99,6 +132,10 @@ def verify_bytes(before, after, row):
     if row['operation'] == 'reorder':
         slots = sorted(selected, key=lambda index: nodes[index]['start'])
         edits.extend((nodes[slot]['start'], nodes[slot]['end'], ('copy', source)) for slot, source in zip(slots, selected) if slot != source)
+    elif row['operation'] == 'duplicate':
+        edits.extend((nodes[index]['end'], nodes[index]['end'], ('copy', index)) for index in selected)
+    elif row['operation'] == 'remove':
+        edits.extend((nodes[index]['start'], nodes[index]['end'], ('remove', index)) for index in selected)
     else:
         index = selected[0]
         node, anchor = nodes[index], nodes[row['anchor']]
@@ -115,8 +152,14 @@ def verify_bytes(before, after, row):
         assert position <= start <= end <= len(before)
         replacement = assignment
         if isinstance(kind, tuple) and kind[0] == 'copy':
+            replacement += re.escape(copied_bytes(before, row, kind[1])) + assignment
+        elif isinstance(kind, tuple) and kind[0] == 'remove':
+            replacement = rb'\s*'
             node = nodes[kind[1]]
-            replacement += re.escape(before[node['start']:node['end']]) + assignment
+            for operator, operands, private in commands(parsed(before[node['start']:node['end']])):
+                if operator in ATTRIBUTES:
+                    assert not private
+                    replacement += rb'\s*'.join(re.escape(value) for value in (*operands, operator.encode())) + rb'\b\s*'
         elif kind == 'view':
             replacement = b''
         elif kind == 'count':
@@ -134,7 +177,7 @@ def verify_bytes(before, after, row):
         else:
             action, index = kind
             node = nodes[index]
-            source = before[node['start']:node['end']]
+            source = copied_bytes(before, row, index)
             if action == 'remove':
                 assert attributes(fragment) == [value for value in commands(parsed(source)) if value[0] in ATTRIBUTES]
             else:
@@ -157,10 +200,11 @@ def main():
     sys.path.insert(0, str(args.inkai_source.resolve()))
     inkai = importlib.import_module('inkai')
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(rows) == 14 and {row['result'] for row in rows} == ({
-        'layers_and_sublayers.ai.' + name + '.ps' for name in ('reorder', 'sibling', 'lift-subtree', 'lift-child', 'inside')
+    assert len(rows) == 22 and {row['result'] for row in rows} == ({
+        'layers_and_sublayers.ai.' + name + '.ps' for name in ('reorder', 'sibling', 'lift-subtree', 'lift-child', 'inside', 'copy-child', 'copy-subtree')
     } | {source + '.' + name + '.ps' for source in ('simple_shapes.ai', 'simple_shapes_cc.ai') for name in ('insert', 'inside')}
-    | {'synthetic-state.' + name + '.ps' for name in ('reorder', 'after', 'inside', 'empty-parent', 'backwards')})
+    | {'inkscape_minimized_ai7.ai.' + name + '.ps' for name in ('insert', 'remove')}
+    | {'synthetic-state.' + name + '.ps' for name in ('reorder', 'after', 'inside', 'empty-parent', 'backwards', 'copy-batch', 'remove', 'remove-child', 'remove-all')})
     manifest = json.loads(Path('test/corpus/manifest.json').read_text())['files']
     verified = set()
     for row in rows:
@@ -180,16 +224,21 @@ def main():
         changed_layers = verified_inventory(inkai, target, row['after'])
         if row['operation'] == 'insert':
             assert row['selected'] == [0]
-            variant = dict(selected=0, name=list(b'Inserted'), identifier=list(b'AiKit_inserted'), after=row['after'])
+            variant = dict(selected=0, name=list(b'Inserted'), identifier=list(b'AiKit_inserted') if original_layers[0]['identifier'] is not None else None, after=row['after'])
             verify_insertion(before, after, original_layers, changed_layers, row, variant)
         else:
-            original, owners = inventory(inkai.parse(str(source)))
+            document = inkai.parse(str(source))
+            original, owners = inventory(document)
             changed, _ = inventory(inkai.parse(str(target)))
+            if row['operation'] == 'duplicate':
+                old_identifiers = {value['AI10_ArtUID'] for value in native_values([document.setup, document.trailer]) if isinstance(value, dict) and 'AI10_ArtUID' in value}
+                new_identifiers = [bytes(replacement['bytes']).decode() for replacement in row['identifiers']]
+                assert len(set(new_identifiers)) == len(new_identifiers) and not old_identifiers.intersection(new_identifiers)
             assert expected_tree(original, owners, row) == changed, row['result']
             verify_bytes(before, after, row)
         verified.add(row['result'])
         print(row['result'], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=sorted(verified), moves=12, prerequisiteInsertions=2), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=sorted(verified), moves=12, prerequisiteInsertions=3, duplications=3, removals=4), indent=2) + '\n')
 
 
 if __name__ == '__main__':

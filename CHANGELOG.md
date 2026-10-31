@@ -23,3 +23,4 @@
 - Added ordinary group creation, ungrouping, duplication, removal, reordering and same-layer reparenting with source-backed incoming/outgoing paint and object-state preservation.
 - Added source-owned layer wrappers, names, identities and nested ownership, with qualified empty sibling insertion, synchronized root counts and explicit saved-view invalidation.
 - Added qualified layer subtree reordering and reparenting with retained identities, source-backed paint-state preservation, synchronized root counts and explicit destination inheritance.
+- Added atomic ordinary-layer duplication with fresh descendant identities and optional copied names, plus removal with explicit native-reference qualification and retained outgoing state.

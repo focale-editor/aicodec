@@ -21,9 +21,13 @@ Map<String, Object?> nativeLayerInventory(AiNativeLayers model) => {
         'parent': layer.parentIndex,
         'children': layer.childIndices,
         'name': layer.nameBytes?.toList(),
+        'nameSpan': layer.source.naming == null ? null : [layer.source.naming!.operands.single.start, layer.source.naming!.operands.single.end],
         'attributes': layer.source.begin.numbers,
         'expanded': layer.expanded,
         'identifier': layer.identifier?.bytes.toList(),
+        'identifierSpan': layer.identifier == null
+            ? null
+            : [layer.identifier!.field.entry.container!.entries.single.items.single.start, layer.identifier!.field.entry.container!.entries.single.items.single.end],
         'issue': layer.bindingIssue,
       },
   ],

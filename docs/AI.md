@@ -266,7 +266,8 @@ atomic refusal. Independent decoding checks all 50 original layers in 46 pinned
 sources and 40 inserted variants, including hidden/locked nested owners. Ten
 headers with additional private fields remain explicitly unsupported. Exact-byte
 checks preserve all unselected source and only allow the declared count/view
-edits. Layer removal, duplication and Adobe reopening remain unqualified.
+edits. The additional lifecycle contracts and their reference restrictions follow;
+Adobe reopening remains unqualified.
 
 ### Layer subtree movement
 
@@ -311,6 +312,53 @@ prerequisites across three pinned recent files and a checksum-pinned synthetic
 source. They compare complete decoded trees, identities, path geometry/counts,
 known effective attributes and exact unselected bytes. Adobe reopening remains
 unqualified.
+
+### Layer duplication and removal
+
+`duplicate(layers:, identifiers:, names:)` copies complete ordinary subtrees
+immediately after each selected original. Every identified descendant requires
+one entry in `identifiers`, keyed by its current `AiNativeLayer` handle. Values
+must be fresh portable ASCII XML names, distinct from existing qualified artwork
+identities and every other copy in the transaction. Missing descendants, extra
+or foreign handles and collisions reject. Anonymous layers stay anonymous.
+Optional `names` entries replace existing display-name byte strings in the copies;
+other display names and saved expansion flags remain unchanged.
+
+The copy retains exact geometry, counts, flags and nested order. Only supplied
+identity/name string tokens change inside the copied source span. Source-backed
+assignments preserve inherited and outgoing paint, as for movement. External
+references to original identities remain attached to the original objects; this
+API does not redirect those references to the copies. Opaque, derived or privately
+referenced artwork inside the selected subtree still requires another contract.
+
+`remove(layers:)` deletes complete selected subtrees and their consumed point
+counts, retaining persistent assignments needed by following artwork. Nested
+removal can leave an empty parent; selecting every root can leave a zero-layer
+native program. Drawing bounds remain conservative instead of shrinking.
+
+Removing an identity requires stronger reference qualification than copying it.
+The currently qualified identified-source subset contains ordinary declarative
+artwork and layer identity dictionaries only. Additional document/resource
+records, opaque owners, executable sections outside the body, unknown structured
+header/trailer comments and ambiguous selected identities reject. Known DSC
+metadata and layer count/view declarations are allowed. This deliberately does
+not infer the absence of references from a missing literal name: Adobe UID
+references can be stored in document dictionaries. Typical resource-bearing CC
+documents therefore retain a stricter removal restriction than duplication.
+Anonymous subtrees retain their local ownership/state checks and may be removed
+beside unrelated opaque siblings. An identified descendant still activates the
+reference checks even when the selected root is anonymous.
+
+Both APIs validate disjoint owned selections, complete output/token budgets,
+root-count updates and explicit saved-view invalidation atomically. Capability
+reports expose `layerDuplication` and `layerRemoval` as `requiresValidation`.
+Ten additional regressions cover immutable inputs, batch copies, identities,
+reference refusals, deletion, limits and remaining state. Independent checks add
+three duplications and four removals: recent native sublayer/subtree copies,
+synthetic nonempty identified deletion and an anonymous AI7 insertion/removal
+regression. They verify decoded identities, trees, geometry/counts, paint state
+and exact bytes outside authorized source/string spans. General referenced
+deletion, opaque/derived lifecycle and Adobe reopening remain unqualified.
 
 ### Ordinary path lifecycle
 
@@ -944,7 +992,7 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree reorder/moves | Additional private header fields, masks and unresolved ownership/state reject; reparenting and view invalidation require explicit policies; removal/copy remain unqualified. |
+| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree copy/remove/reorder/moves | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry and paint | Geometry and qualified ordinary-path lifecycle | Moves across changed state, dependent or unresolved ownership reject. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and same-layer moves | Anonymous owners only; unknown required state, references, private/derived objects and cross-layer moves reject. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
@@ -1001,6 +1049,7 @@ claims. Remaining package work is tracked in [ROADMAP.md](../ROADMAP.md).
 ## References
 
 - [Adobe Illustrator 7 file format specification (mirror)](https://13thmonkey.org/documentation/fonts/AI7FileFormat.pdf)
+- [Adobe SDK UID reference contract (documentation mirror)](https://ai-sdk-2020.84.nz/html/struct_a_i_u_i_d_r_e_f_suite)
 - [Adobe DSC specification (mirror)](https://web.mit.edu/PostScript/Adobe/Documents/5001.DSC_Spec.pdf)
 - [Adobe XMP resource references](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/XMPDataTypes/ResourceRef.md)
 - [Adobe XMP media-management properties](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/xmpMM.md)

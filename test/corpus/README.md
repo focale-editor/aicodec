@@ -106,7 +106,15 @@ added assignments to original source values; unselected bytes remain exact.
 Root counts and explicit view invalidation are checked in the same transaction.
 VM/Node regressions additionally cover process-color alternatives, dashes, prefix
 metadata, malformed/unknown state, explicit parent inheritance and a 100-layer
-batch. Removal, duplication and Adobe reopening remain unqualified.
+batch. The same script additionally verifies two recent native identified
+sublayer/subtree copies and one synthetic batch copy, changing only requested
+name/identity string spans. Three synthetic identified removals cover complete,
+nested and all-root deletion with retained outgoing state. A pinned anonymous AI7
+source supplies one further insertion/removal regression. In total, 22 transactions
+cover 12 movements, three duplications, four removals and three insertion
+prerequisites. Identity-removal qualification of real resource-bearing CC sources
+remains outstanding; their unknown document/resource references reject instead of
+being assumed absent. Adobe reopening remains unqualified.
 
 ```sh
 dart run tool/check_native_layer_lifecycle.dart

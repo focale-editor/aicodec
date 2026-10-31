@@ -85,6 +85,18 @@ def verified_inventory(inkai, path, reported):
         for key in ('parent', 'children', 'attributes', 'name', 'expanded'):
             assert node[key] == span[key], (path, key)
         assert node['identifier'] == (dec(bytes(span['identifier'])) if span['identifier'] is not None else None)
+        if span['nameSpan'] is not None:
+            assert span['opening'][1] <= span['nameSpan'][0] < span['nameSpan'][1] <= span['bodyStart']
+            naming = parsed(data[slice(*span['nameSpan'])] + b' Ln')
+            assert len(naming) == 1 and naming[0].command == 'Ln' and list(naming[0].tokens[0]) == span['name']
+        else:
+            assert span['name'] is None
+        if span['identifierSpan'] is not None:
+            assert span['opening'][1] <= span['identifierSpan'][0] < span['identifierSpan'][1] <= span['bodyStart']
+            identity = parsed(b'/ArtDictionary : /XMLUID : ' + data[slice(*span['identifierSpan'])] + b' ; (AI10_ArtUID) , ;')
+            assert identity == [{'_type': 'ArtDictionary', 'AI10_ArtUID': node['identifier']}]
+        else:
+            assert node['identifier'] is None
         start, end = span['start'], span['end']
         opening, closing = span['opening'], span['closing']
         assert start <= opening[0] < opening[1] <= span['bodyStart'] <= closing[0] < closing[1] <= end

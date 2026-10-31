@@ -99,6 +99,12 @@ enum AiNativeEditOperation {
   /// Move a layer subtree with explicit destination-parent attribute inheritance.
   layerReparenting,
 
+  /// Copy ordinary layer subtrees with fresh identities for every descendant.
+  layerDuplication,
+
+  /// Remove ordinary layer subtrees after qualifying their native references.
+  layerRemoval,
+
   /// Replace ordinary path coordinates with qualified geometry.
   pathGeometry,
 

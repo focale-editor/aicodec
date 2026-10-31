@@ -105,7 +105,13 @@ final class _NativeCapabilityReader {
           edits: [
             for (final AiNativeEditOperation operation in [AiNativeEditOperation.layerName, AiNativeEditOperation.layerFlags])
               AiNativeEditCapability._(operation: operation, support: .available, reason: 'Source-backed header edit; supplied names and flags remain validated.'),
-            ...conditional([AiNativeEditOperation.layerInsertion, AiNativeEditOperation.layerReordering, AiNativeEditOperation.layerReparenting]),
+            ...conditional([
+              AiNativeEditOperation.layerInsertion,
+              AiNativeEditOperation.layerReordering,
+              AiNativeEditOperation.layerReparenting,
+              AiNativeEditOperation.layerDuplication,
+              AiNativeEditOperation.layerRemoval,
+            ]),
           ],
         );
       }
