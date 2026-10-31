@@ -189,7 +189,23 @@ AiNativeLayers _moveNativeLayer(AiNativeLayers model, AiNativeLayer layer, AiNat
   final int roots = model.rootCount + (parent == null ? 1 : 0) - (layer.parentIndex == null ? 1 : 0);
   final List<AiSourceEdit> edits = _layerDeclarations(model, roots, discardViewState);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
-  _layerLifecyclePrefix(model, layer, headers);
+  final _NativeSubtreeSpan span = (start: layer.start, end: layer.end);
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, [span]);
+  _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
+  if (pairs.isNotEmpty) {
+    edits.addAll(
+      _relocatedNativeSubtree(
+        model,
+        model.structure.nodeFor(layer.source),
+        span,
+        pairs,
+        position,
+        parent == null ? null : model.structure.nodeFor(model.layers[parent].source),
+        inheritParentFlags,
+      ),
+    );
+    return _layerLifecycleResult(model, edits, roots: roots);
+  }
   _layerInterval(model, min(layer.start, position), max(layer.end, position), headers);
   final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
   final Map<int, _NativeArtworkState> states = _layerStates(model, [layer.start, position], headers);

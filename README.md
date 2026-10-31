@@ -50,6 +50,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   shared resources and separately restored native/printing input state.
 - Sibling reordering of qualified mixed group/layer subtrees, retaining complete
   source owners and restoring each slot's native/printing boundary state.
+- Movement of qualified mixed subtrees between groups and layers, with explicit
+  parent inheritance, retained identities and state checks at both edited boundaries.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

@@ -38,7 +38,6 @@ void _shapeFollowingDependencies(
   List<_NativeShapeBundle> slots,
   Map<AiLiveShape, _NativeShapeReplacement> replacements, {
   Map<int, _NativeShapeReplacement> insertions = const {},
-  List<_NativeSubtreeSpan> discarded = const [],
 }) => _sourceFollowingDependencies(
   drawing,
   {
@@ -46,7 +45,6 @@ void _shapeFollowingDependencies(
       if (replacements[slot.shape] case final _NativeShapeReplacement replacement) (start: slot.start, end: slot.shape.end): _shapeReplacementSource(replacement),
   },
   insertions: insertions.map((position, replacement) => MapEntry(position, _shapeReplacementSource(replacement))),
-  discarded: discarded,
 );
 
 /// Visits whole replacement owners and retained pairs in original source order.
@@ -54,7 +52,6 @@ void _sourceFollowingDependencies(
   AiNativeDrawing drawing,
   Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements, {
   Map<int, _NativeSourceReplacement> insertions = const {},
-  List<_NativeSubtreeSpan> discarded = const [],
 }) {
   if (replacements.isEmpty && insertions.isEmpty) {
     return;
@@ -89,7 +86,7 @@ void _sourceFollowingDependencies(
       }
       return;
     }
-    if (discard || discarded.any((span) => item.start >= span.start && item.end <= span.end)) {
+    if (discard) {
       return;
     }
     if (paths[item.start] case final AiNativePath path) {

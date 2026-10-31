@@ -362,7 +362,8 @@ final class AiNativeDrawing {
   /// The groups cannot contain each other. Different layers or ancestor-group
   /// flags/depths require [inheritParentFlags], accepting destination inheritance.
   /// Source assignments retain inherited state and restore following artwork.
-  /// The interval cannot cross opaque metadata, private art or unknown state.
+  /// Complete qualified CC descendants keep both representations and identities;
+  /// unresolved source ownership or required boundary state rejects the edit.
   AiNativeDrawing moveGroupAfter({required AiNativeGroup group, required AiNativeGroup after, bool inheritParentFlags = false}) => _moveNativeGroup(this, group, after, inheritParentFlags);
 
   /// Appends an ordinary group directly to an existing, possibly empty layer.
@@ -371,6 +372,13 @@ final class AiNativeDrawing {
   /// destination-inheritance contract of [moveGroupAfter] applies. The group
   /// retains its children and own flags; layer headers/panel data remain exact.
   AiNativeDrawing moveGroupToLayer({required AiNativeGroup group, required AiLayer layer, bool inheritParentFlags = false}) => _moveNativeGroupToLayer(this, group, layer, inheritParentFlags);
+
+  /// Appends a complete ordinary group inside another, possibly empty group.
+  ///
+  /// Qualified CC descendants retain both representations and their identities.
+  /// The source cannot contain [parent]. Different layers or ancestor flags and
+  /// depths require [inheritParentFlags]; unresolved boundary state rejects.
+  AiNativeDrawing moveGroupToGroup({required AiNativeGroup group, required AiNativeGroup parent, bool inheritParentFlags = false}) => _moveNativeGroupToGroup(this, group, parent, inheritParentFlags);
 
   /// Attaches host-composed contours to separate native printing expansions.
   ///

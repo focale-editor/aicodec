@@ -359,7 +359,14 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
 
 /// Relocates a group while retaining the state effects at its original position.
 AiNativeDrawing _moveNativeGroup(AiNativeDrawing drawing, AiNativeGroup group, AiNativeGroup after, bool inheritParentFlags) {
-  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group, after]);
+  final List<_NativeSubtreeSpan> spans = [
+    for (final AiNativeGroup owner in [group, after]) (start: _ordinaryObject(drawing, owner).start, end: _ordinaryObject(drawing, owner).end),
+  ];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
+  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group, after], pairs: pairs);
+  if (pairs.isNotEmpty) {
+    return _moveNativeGroupSubtree(drawing, group, _ordinaryObject(drawing, after).end, ownership.parentOf(ownership.nodeFor(after)), inheritParentFlags);
+  }
   final Map<int, _NativeArtworkState> states = _artworkMovementStates(
     drawing,
     ownership,
@@ -374,8 +381,12 @@ AiNativeDrawing _moveNativeGroup(AiNativeDrawing drawing, AiNativeGroup group, A
 /// Appends an ordinary group as the last direct artwork of an owned layer.
 AiNativeDrawing _moveNativeGroupToLayer(AiNativeDrawing drawing, AiNativeGroup group, AiLayer layer, bool inheritParentFlags) {
   _artworkLayerDestination(drawing, layer);
-  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group]);
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, [(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)]);
+  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group], pairs: pairs);
   final int position = layer.end.start;
+  if (pairs.isNotEmpty) {
+    return _moveNativeGroupSubtree(drawing, group, position, ownership.nodeFor(layer), inheritParentFlags);
+  }
   final Map<int, _NativeArtworkState> states = _artworkMovementStates(
     drawing,
     ownership,
@@ -385,6 +396,27 @@ AiNativeDrawing _moveNativeGroupToLayer(AiNativeDrawing drawing, AiNativeGroup g
     inheritParentFlags: inheritParentFlags,
   );
   return _relocateNativeGroup(drawing, group, states, position);
+}
+
+/// Appends a whole ordinary parent without separating its complete CC descendants.
+AiNativeDrawing _moveNativeGroupToGroup(AiNativeDrawing drawing, AiNativeGroup group, AiNativeGroup parent, bool inheritParentFlags) {
+  final AiNativeStructureNode target = drawing._objects.structure.nodeFor(parent);
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, [(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)]);
+  _ordinaryGroups(drawing, [group], pairs: pairs);
+  return _moveNativeGroupSubtree(drawing, group, parent.closing.start, target, inheritParentFlags);
+}
+
+/// Retains a complete group at its destination and persistent effects at its origin.
+AiNativeDrawing _moveNativeGroupSubtree(AiNativeDrawing drawing, AiNativeGroup group, int position, AiNativeStructureNode? parent, bool inheritParentFlags) {
+  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  final _NativeSubtreeSpan span = (start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end);
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, [span]);
+  return _groupLifecycleResult(
+    drawing,
+    _relocatedNativeSubtree(layers, layers.structure.nodeFor(group), span, pairs, position, parent, inheritParentFlags, groups: true),
+    paths: drawing.paths.length,
+    groups: drawing.groups.length,
+  );
 }
 
 /// Commits a qualified group relocation and retains old persistent assignments.

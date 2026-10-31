@@ -1,56 +1,65 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// Retains assignments and definite style scalars after a complete owner leaves.
+({List<int> bytes, _NativeSourceReplacement replacement}) _retainedSubtreeState(
+  List<AiNativeInstruction> ordinary,
+  List<_NativeShapeBundle> pairs,
+  Map<int, _NativeShapeInputs> states,
+  int maxBytes,
+) {
+  final List<AiNativeInstruction> commands = [...ordinary, for (final _NativeShapeBundle pair in pairs) ...pair.commands]..sort((first, second) => first.start.compareTo(second.start));
+  final Map<int, _NativeShapeBundle> styles = {for (final _NativeShapeBundle pair in pairs) pair.shape.end: pair};
+  final List<_NativeShapeReplay> replay = [];
+  final Set<String> unresolved = {};
+  final StringBuffer bytes = StringBuffer('\n');
+
+  /// Bounds retained scalar replay without retaining removed private geometry.
+  void append(AiNativeInstruction value, {required bool private}) {
+    final String text = _shapeStateText(value, private: private);
+    if (bytes.length + text.length > maxBytes) {
+      throw const AiLimitException(message: 'Retained subtree state exceeds the native byte limit.');
+    }
+    bytes.write(text);
+    replay.add((value: value, private: private));
+    unresolved.remove(_nativeArtworkStateKey(value));
+  }
+
+  for (final AiNativeInstruction command in commands) {
+    if (_nativeArtworkStateKey(command) != null) {
+      append(command, private: command.isPrivate);
+    } else if (styles[command.end] case final _NativeShapeBundle pair when _marker(command, 1)) {
+      final Map<String, AiNativeInstruction> restored = _restoredShapeStyle(pair, states[pair.shape.end]!);
+      for (final AiNativeInstruction value in restored.values) {
+        append(value, private: true);
+      }
+      unresolved.addAll(pair.styleWrites.difference(restored.keys.toSet()));
+    }
+  }
+  return (
+    bytes: latin1.encode(bytes.toString()),
+    replacement: (commands: [], styles: {}, prefix: replay, suffix: [], unresolved: unresolved, printingUnresolved: {}, discard: true),
+  );
+}
+
 /// Removes whole mixed subtrees while retaining both streams' persistent effects.
 List<AiSourceEdit> _removedNativeSubtrees(AiNativeLayers model, List<_NativeSubtreeSpan> spans, List<_NativeShapeBundle> pairs, {bool groups = false}) {
   final AiNativeDrawing drawing = model.drawing;
-  final Map<_NativeSubtreeSpan, List<AiNativeInstruction>> ordinary = {
-    for (final _NativeSubtreeSpan span in spans) span: _subtreeOrdinaryCommands(model, span.start, span.end, pairs, groups: groups),
-  };
   _nativeRemovalReferences(model, [
     for (final AiNativeObjectIdentifier identifier in model.structure.identifiers)
       if (spans.any((span) => identifier.field.owner.start >= span.start && identifier.field.owner.end <= span.end)) identifier,
   ], _layerHeaderItems(model));
   final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, pairs.map((pair) => pair.shape.end));
-  final Map<AiLiveShape, Map<String, AiNativeInstruction>> restored = {
-    for (final _NativeShapeBundle pair in pairs) pair.shape: _restoredShapeStyle(pair, states[pair.shape.end]!),
-  };
-  _shapeFollowingDependencies(drawing, pairs, {
-    for (final _NativeShapeBundle pair in pairs) pair.shape: _removedShapeReplacement(pair, restored[pair.shape]!),
-  }, discarded: spans);
   final List<AiSourceEdit> edits = [];
+  final Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements = {};
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final _NativeSubtreeSpan span in spans) {
-    final BytesBuilder bytes = BytesBuilder(copy: false);
-
-    /// Bounds state replay under the same aggregate limit as the source editor.
-    void append(List<int> value) {
-      if (bytes.length + value.length > remaining) {
-        throw const AiLimitException(message: 'Removed subtree state exceeds the native byte limit.');
-      }
-      bytes.add(value);
-    }
-
-    append([10]);
-    final List<AiNativeInstruction> commands = ordinary[span]!;
-    int index = 0;
-
-    /// Replays assignments in source order without retaining deleted geometry.
-    void through(int boundary) {
-      while (index < commands.length && commands[index].start < boundary) {
-        final AiNativeInstruction item = commands[index++];
-        if (_nativeArtworkStateKey(item) != null) {
-          append(latin1.encode(_shapeStateText(item, private: item.isPrivate)));
-        }
-      }
-    }
-
-    for (final _NativeShapeBundle pair in pairs.where((pair) => pair.start >= span.start && pair.shape.end <= span.end)) {
-      through(pair.start);
-      append(_removedShapeState(pair, restored[pair.shape]!, remaining - bytes.length));
-    }
-    through(span.end);
-    edits.add(AiSourceEdit(start: span.start, end: span.end, bytes: bytes.takeBytes()));
-    remaining -= edits.last.bytes.length;
+    final List<_NativeShapeBundle> selected = pairs.where((pair) => pair.start >= span.start && pair.shape.end <= span.end).toList();
+    final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, selected, groups: groups);
+    final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = _retainedSubtreeState(ordinary, selected, states, remaining);
+    edits.add(AiSourceEdit(start: span.start, end: span.end, bytes: retained.bytes));
+    replacements[span] = retained.replacement;
+    remaining -= retained.bytes.length;
   }
+  _sourceFollowingDependencies(drawing, replacements);
   return edits;
 }

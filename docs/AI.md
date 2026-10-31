@@ -296,8 +296,9 @@ position, without leaving its objects or point counts. Missing required values
 reject rather than using guessed defaults. Added assignments are copied from the
 original source; geometry, identities and shared resources are not regenerated.
 
-The selected subtree and intervening interval must contain qualified ordinary
-paths/groups, known process paint and layer headers/identity dictionaries.
+For ordinary-only moves, the selected subtree and intervening interval must
+contain qualified ordinary paths/groups, known process paint and layer
+headers/identity dictionaries.
 Private/derived artwork, compound or clipped geometry, unresolved prefixes or
 postfixes, conditional records, orphan point counts and unknown state operators
 reject. Unrelated opaque siblings outside the interval remain exact. Moving an
@@ -421,7 +422,7 @@ from the four complete donor files: those still reject their unqualified setup
 owners. Checks retain exact resource and unselected source bytes, both pair
 metadata branches, layer declarations and native/printing appearance. Synthetic
 native SVG remains limited by the external reader's version-branch dispatcher.
-Group/layer movement still rejects subtrees containing private paired artwork;
+Complete mixed-parent movement is described separately below;
 Adobe reopening and broader reference-owner schemas remain unqualified.
 
 Both APIs validate disjoint owned selections, complete output/token budgets,
@@ -793,6 +794,7 @@ rejects before editing.
 | `reorderGroups(groups:)` | Places selected siblings into their existing slots in the requested order, restoring each slot's original outgoing state. |
 | `moveGroupAfter(group:, after:, inheritParentFlags:)` | Moves a subtree after an anchor, with explicit inheritance for different layers or ancestor-group flags/depths. |
 | `moveGroupToLayer(group:, layer:, inheritParentFlags:)` | Appends a complete ordinary subtree directly to an existing, possibly empty layer. |
+| `moveGroupToGroup(group:, parent:, inheritParentFlags:)` | Appends a complete ordinary parent inside another, including an empty destination and qualified CC descendants. |
 
 Ordinary groups do not save and restore paint. The editor tracks explicit source
 assignments for gray/RGB/CMYK fill and stroke, overprint, width, dashes, caps,
@@ -815,7 +817,7 @@ the selected intervals and insertion points remain exact. Deletion retains the
 group's outgoing assignments even when its objects disappear. Drawing bounds
 remain conservative because these operations retain or remove existing geometry.
 
-Except for complete-pair subtree copy/removal/reordering below, private/derived owners,
+Except for complete-pair subtree lifecycle below, private/derived owners,
 compound/clip children, version alternatives, opaque
 metadata, tags, unbound expansion flags, notes and unknown state reject. Known identities,
 names, panel flags and default-style attachments stay with their objects; nonempty
@@ -840,8 +842,7 @@ printing expansion, private contour, native parameters, panel flag and saved
 metadata alternatives are removed together. Nested ordinary groups, layers and
 paths retain their ownership rules; partial pairs, unknown attachments, compound
 authoring parents and unresolved conditional owners reject the entire operation.
-Group dissolution and subtree movement do not yet accept
-these mixed subtrees.
+Group dissolution does not yet accept these mixed subtrees.
 
 Deletion retains explicit scalar assignments in their original source order and
 projection, plus definite scalar effects from removed native styles. Dependency
@@ -944,8 +945,8 @@ Thirteen focused regressions cover nested group/layer permutations, selected-slo
 ordering, multiple complete pairs under one parent, exact metadata and IDs,
 ordinary/paired sibling batches, opaque references, inherited flags, unknown
 following state, private/printing separation, saved-view invalidation,
-malformed/foreign handles and byte limits. Reparenting
-and group dissolution remain separate outstanding contracts. Save matching
+malformed/foreign handles and byte limits. Reparenting has a separate contract
+below; group dissolution remains outstanding. Save matching
 host-supplied PDF artwork for a changed order; AiKit produces no interactive or
 compatibility rendering as part of these edits.
 
@@ -959,6 +960,55 @@ requested parent order, resolving shared resources at each use. The existing
 disabled-stroke exception also requires identical librsvg pixels. First-pair
 unknown printing inputs and unresolved following native paint remain explicit
 refusals. Synthetic native SVG and Adobe reopening remain unqualified.
+
+### Mixed group/layer subtree movement
+
+`moveGroupAfter`, `moveGroupToLayer`, `AiNativeLayers.moveAfter` and
+`AiNativeLayers.moveInto` also move complete qualified mixed subtrees. The new
+`moveGroupToGroup(group:, parent:, inheritParentFlags:)` appends an ordinary parent
+inside a populated or empty group, retaining ordinary children and complete CC
+pairs. Native/printing representations, every metadata alternative, parent and
+child identities, names, panel flags and headers remain exact source bytes.
+No identity is removed or allocated, so retained aliases and opaque external
+references do not require the deletion-specific reference audit.
+
+Source and destination ancestors must have qualified ordinary ownership.
+Changing layer parents or ancestor-group flags/depth requires explicit
+`inheritParentFlags: true`, checked in both interpretations. The moved owner
+retains its own attributes and inherits its destination's ancestors; headers
+are not changed to approximate former effective visibility. Descendant/self
+destinations and partial printing/private owners reject. A layer may be lifted
+after an ancestor. Root counts and explicit saved-view invalidation follow the
+existing layer contract.
+
+The original location retains persistent literal assignments and definite native
+style scalars in source order, without geometry, point counts or orphaned style
+applications. The destination restores source inputs and its original outgoing
+state separately for native and printing interpretation. A single dependency
+pass checks both edits together, visiting complete moved/retained owners. Unknown
+differences still consumed before an assignment reject; no default paint or
+visibility is invented. This shared retention also applies to mixed-subtree
+deletion, whose identity-reference checks remain mandatory.
+
+Eighteen regressions cover forward/backward movement, several pairs under one
+parent, populated/empty destinations, same-depth native/printing ancestor flags,
+cross-layer moves, nested layer lifting, root counts, exact headers and identities,
+opaque references/aliases, required input and following-state refusals, view-state
+invalidation, source handles and bounds. The kit serializes the native changes;
+the host supplies matching PDF/preview representations. Grouping/dissolution,
+arbitrary private parent schemas and Adobe reopening remain separate work.
+
+Independent checks cover 51 fixed transactions: 24 moves of declared wrappers
+around four pinned real sources, 16 synthetic moves and 11 exact refusals.
+Complete source recipes and all original pair fragments are independently bound.
+The reader verifies the requested native parent tree, both saved metadata
+alternatives, all ordinary and paired contour flags, exact moved/unselected
+bytes, ordered retention at the origin and replay at the original boundaries.
+Root declarations and retained layer headers are independently decoded. Real
+native/printing SVG and synthetic printing SVG retain the requested whole-owner
+placement and resolved resources; disabled-stroke differences still require exact
+librsvg pixels. The synthetic native version-branch limitation remains explicit;
+these checks do not establish Adobe reopening or Focale integration.
 
 ### Cross-layer artwork movement
 
@@ -1541,9 +1591,9 @@ These statuses do not imply complete Illustrator compatibility.
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; empty-dictionary dissolution without applied styles | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
-| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
+| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
-| Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree copy/removal/reordering | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; mixed CC-subtree dissolution/movement remain incomplete. |
+| Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; mixed CC-subtree grouping/dissolution remain incomplete. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |

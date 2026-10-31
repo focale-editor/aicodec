@@ -474,6 +474,30 @@ groups and compound topology. There is no general modern object lifecycle API.
   Mixed-subtree reparenting, grouping/dissolution and broader reference-owner
   schemas remain outstanding; this task stays open. No Focale integration or
   Adobe reopening was introduced, and synthetic native SVG remains unqualified.
+  Qualified mixed group/layer subtrees now support movement and reparenting,
+  including group insertion into populated/empty groups, cross-layer group moves,
+  whole-layer nesting and lifting after ancestors. `moveGroupToGroup` also accepts
+  ordinary-only source parents. Complete native/printing pairs, metadata
+  alternatives, ordinary descendants, identities, aliases and headers stay exact.
+  Source-backed state retention is shared with mixed-subtree deletion, while
+  identity-reference audits remain specific to deletion. Both edited positions
+  are checked together; separate native/printing ancestor flags, explicit parent
+  inheritance, saved-view invalidation, root counts and required-state refusals
+  remain enforced. Eighteen regressions cover both movement directions, empty and
+  populated destinations, several pairs under one parent, nested layers, exact
+  metadata, unknown dependencies, source ownership and limits. Independent checks
+  pass 51 fixed transactions: 24 derived-real and 16 synthetic moves plus 11 exact
+  refusals. Recipes, requested native parent trees, both metadata alternatives,
+  all ordinary/paired contour flags, exact moved/unselected source, ordered
+  retention and source/destination state replay are independently bound. Real
+  native/printing SVG and synthetic printing SVG retain whole-owner placement and
+  resolved resources; inactive stroke differences require identical librsvg ink.
+  Latest validation: 631 VM/630 Node tests and clean format/fix/analysis. The
+  existing pair-movement, subtree-removal/reordering, group and layer lifecycle
+  suites also pass all 132 independent transactions, for 183 in this run.
+  Grouping/dissolution and broader reference-owner schemas remain outstanding;
+  this task stays open. Adobe reopening and synthetic native SVG remain
+  unqualified, and Focale integration is still deferred.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

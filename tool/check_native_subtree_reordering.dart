@@ -3,11 +3,10 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
-import '../test/ai_native_artwork_movement_test.dart' show movementLayer;
-import '../test/ai_native_objects_test.dart' show objectDictionary;
 import '../test/ai_native_subtree_reordering_test.dart' show subtreeBatchReorderingSource, subtreeReorderingGroups, subtreeReorderingSource;
 import 'check_native_shape_lifecycle.dart' show shapeLifecycleInventory;
 import 'native_layer_support.dart' show nativeLayerInventory;
+import 'native_subtree_support.dart' show wrapNativeSubtrees;
 
 /// Opens immutable native source without deriving host appearances.
 AiNativeDrawing _drawing(List<int> bytes) => AiNativeDrawing.decode(
@@ -19,31 +18,6 @@ Map<String, Object?> _inventory(AiNativeDrawing drawing) => {
   'layers': nativeLayerInventory(AiNativeLayers.decode(drawing: drawing)),
   'pairs': shapeLifecycleInventory(drawing).where((shape) => shape['printing'] != null).toList(),
 };
-
-/// Declares wrappers around unchanged pinned real pairs, without source templates.
-({AiNativeDrawing drawing, List<Map<String, Object?>> recipe}) _wrapped(AiNativeDrawing original, {required bool layers}) {
-  final AiNativeObjects objects = AiNativeObjects.decode(drawing: original);
-  final List<Map<String, Object?>> recipe = [];
-  final List<AiSourceEdit> edits = [];
-  for (final (int, AiLiveShape) entry in original.liveShapes.indexed) {
-    final int start = objects.forSource(entry.$2.appearanceGroup!).start;
-    final int end = entry.$2.end;
-    final String body = latin1.decode(original.records.program.bytes.sublist(start, end));
-    const String opening = '0 Ae\nu\nu\n';
-    final String closing = '\nU\n${objectDictionary(identifier: 'inner_${entry.$1}')}\nU\n${objectDictionary(identifier: 'outer_${entry.$1}')}';
-    final String group = '$opening$body$closing';
-    final String wrapper = layers ? movementLayer('Wrapped_${entry.$1}', group) : group;
-    final int offset = wrapper.indexOf(body);
-    recipe.add({'start': start, 'end': end, 'opening': wrapper.substring(0, offset), 'closing': wrapper.substring(offset + body.length)});
-    edits.add(AiSourceEdit(start: start, end: end, bytes: latin1.encode(wrapper)));
-  }
-  final AiProgram program = AiNativeEditor.apply(program: original.records.program, edits: edits);
-  final AiNativeDrawing wrapped = _drawing(program.bytes);
-  if (!AiNativeLayers.decode(drawing: wrapped).rootCountMatches) {
-    throw StateError('The declared wrappers changed the original root-layer count.');
-  }
-  return (drawing: wrapped, recipe: recipe);
-}
 
 /// Emits complete-owner permutations, exact preservation checks and refusals.
 Future<void> main() async {
@@ -98,7 +72,7 @@ Future<void> main() async {
   for (final String name in ['simple_shapes.ai', 'simple_shapes_cc.ai', 'gradient_linear.ai', 'gradient_radial.ai']) {
     final AiNativeDrawing original = _drawing(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single.bytes);
     for (final String operation in ['group', 'layer']) {
-      final ({AiNativeDrawing drawing, List<Map<String, Object?>> recipe}) fixture = _wrapped(original, layers: operation == 'layer');
+      final ({AiNativeDrawing drawing, List<Map<String, Object?>> recipe}) fixture = wrapNativeSubtrees(original, layers: operation == 'layer');
       final int first = name == 'gradient_linear.ai' ? 0 : 1;
       await record(name, operation, 'adjacent', fixture.drawing, [first + 1, first], recipe: fixture.recipe);
       await record(name, operation, 'ends', fixture.drawing, [original.liveShapes.length - 1, first], recipe: fixture.recipe);

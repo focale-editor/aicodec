@@ -133,6 +133,8 @@ final class AiNativeLayers {
   /// its own flags and explicitly inherits its destination ancestors' attributes.
   /// Persistent paint and object flags are preserved independently. An ancestor
   /// can be the anchor when lifting a child out; a descendant cannot be an anchor.
+  /// Qualified CC descendants retain their complete authoring/printing pairs and
+  /// metadata alternatives, with separate native and printing state validation.
   AiNativeLayers moveAfter({required AiNativeLayer layer, required AiNativeLayer after, bool inheritParentFlags = false, bool discardViewState = false}) =>
       _moveNativeLayer(this, layer, after, inside: false, inheritParentFlags: inheritParentFlags, discardViewState: discardViewState);
 
