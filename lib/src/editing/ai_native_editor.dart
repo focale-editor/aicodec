@@ -33,6 +33,34 @@ abstract final class AiNativeEditor {
     if (!deltaX.isFinite || !deltaY.isFinite) {
       throw ArgumentError('Translation requires finite coordinate offsets.');
     }
+    return _drawingBoundsEdits(
+      program,
+      (previous) => [
+        previous.left + (deltaX < 0 ? deltaX : 0),
+        previous.bottom + (deltaY < 0 ? deltaY : 0),
+        previous.right + (deltaX > 0 ? deltaX : 0),
+        previous.top + (deltaY > 0 ? deltaY : 0),
+      ],
+    );
+  }
+
+  /// Expands existing DSC drawing bounds to include an edited object's extent.
+  ///
+  /// Artboards, embedded documents and procedure comments remain unchanged.
+  /// Deferred declarations retain their trailer-based resolution. Bounds never
+  /// shrink because the remaining artwork may still occupy the original area.
+  static List<AiSourceEdit> includeBoundsEdits({required AiProgram program, required AiBoundingBox bounds}) => _drawingBoundsEdits(
+    program,
+    (previous) => [
+      if (previous.left < bounds.left) previous.left else bounds.left,
+      if (previous.bottom < bounds.bottom) previous.bottom else bounds.bottom,
+      if (previous.right > bounds.right) previous.right else bounds.right,
+      if (previous.top > bounds.top) previous.top else bounds.top,
+    ],
+  );
+
+  /// Plans source-backed bounds edits with one policy for every DSC variant.
+  static List<AiSourceEdit> _drawingBoundsEdits(AiProgram program, List<double> Function(AiBoundingBox) update) {
     final List<AiSourceEdit> edits = [];
     int embedded = 0;
     int procedure = 0;
@@ -58,14 +86,9 @@ abstract final class AiNativeEditor {
         continue;
       }
       final AiBoundingBox previous = AiBoundingBox.parse(value: match[2]!);
-      final List<double> bounds = [
-        previous.left + (deltaX < 0 ? deltaX : 0),
-        previous.bottom + (deltaY < 0 ? deltaY : 0),
-        previous.right + (deltaX > 0 ? deltaX : 0),
-        previous.top + (deltaY > 0 ? deltaY : 0),
-      ];
+      final List<double> bounds = update(previous);
       if (bounds.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
-        throw ArgumentError('Translation exceeds finite source-coordinate bounds.');
+        throw ArgumentError('Drawing bounds exceed finite source-coordinate limits.');
       }
       final bool precise = match[1] == '%%HiResBoundingBox:';
       final List<String> fields = [

@@ -444,6 +444,34 @@ alpha semantics. Use `AiNativePdf.save` with the resulting program to synchroniz
 PDF artwork and discard stale document thumbnails. Editing setup resources or
 private originals does not regenerate dependent opaque appearances.
 
+`rasters.setPlacement(image:, matrix:, rotationRadians:)` sets the complete affine
+placement without resampling. Both `XI` and `Xh` matrices update atomically. Pixel
+dimensions, source links, sample UUIDs, color/alpha planes and original-scale
+metadata remain unchanged. For `[a, b, c, d, tx, ty]`, an embedded pixel `(x, y)`
+maps to `(a*x - c*y + tx, b*x - d*y + ty)`. This supports host-composed resizing,
+rotation, reflection and shear. The matrix must be finite and nonsingular; all
+mapped corners must remain representable within the native coordinate limit.
+
+`image.frameRotationRadians` exposes the independent `BBAccumRotation` editing
+frame angle. The matrix does not determine this metadata uniquely. The setter
+therefore requires an explicit nullable `rotationRadians`: a finite angle within
+−2π to 2π updates/adds the field, while null preserves its absence and rejects an
+existing field. Changed angles use six decimal places, matching observed Adobe
+string records. Existing String, UnicodeString and Real field types are retained;
+new fields use String. Split strings update atomically. Qualified no-op edits
+retain exact source spelling, including higher-precision unchanged angles.
+
+Geometry edits accept only known identity/name fields, original scale and frame
+rotation. Unknown cache/relationship fields, including fuzzy-mask and accumulated
+shear metadata, reject the edit. A matrix can express shear without synthesizing
+those unqualified editing caches. Enclosing groups, clipping paths, effects,
+resource owners and artboards remain separate objects whose synchronization is a
+host responsibility. For printable body images, existing DSC bounds expand to
+include all four new corners and never shrink. Setup/private image edits do not
+expand printable bounds. Nested documents, procedures and deferred DSC headers
+remain intact. `AiNativeEditor.includeBoundsEdits` exposes the same conservative
+extent policy for other qualified editors.
+
 `AiNativePdf` writes these samples through PdfCore as process-color image
 XObjects with separate same-depth soft masks. The native matrix maps a top-left
 pixel origin with image y increasing downwards; the PDF image rectangle keeps
@@ -565,6 +593,17 @@ transform for host adapters using the same placed extent and origin policy.
 Unresolved links still reject native PDF rendering.
 External PDF/EPS placed artwork, older `XF` links, opaque effect-cache
 regeneration and Adobe reopening remain unqualified.
+
+`placements.setPlacement(object:, matrix:, rotationRadians:)` provides the same
+explicit affine/frame edit for qualified raster links. A linked matrix maps its
+existing local rectangle with `(a*x + c*y + tx, b*x + d*y + ty)`; its local y axis
+points down. The local rectangle, file path, relative directory, saved preview
+and declarations remain unchanged. `object.frameRotationRadians` reads its frame
+metadata. Render/save with `resolvePlacement` to regenerate the new PDF appearance
+while retaining the native link. Resizing pixels, changing a source file and
+changing its placed geometry are separate operations.
+Catalog XMP placement-resolution fields are preserved, not recomputed by the
+native geometry edit; update them separately when the host maintains that data.
 
 ### Catalog XMP dependencies
 
@@ -1009,6 +1048,19 @@ evidence of a linked Adobe artwork relink or Illustrator reopening. Focused test
 also cover manifest/ingredient selection, aliases, BOMs, unknown fields,
 source preservation, XML rejection and native/PDF saving before metadata attachment.
 
+`check_native_image_geometry.dart` and `verify_native_image_geometry.py` apply
+nonuniform resizing, a scaled quarter-turn, and combined reflection/shear to 22
+qualified embedded images and one real CC link. The 69 edits retain exact sample
+planes, UUIDs, original scale, local bounds and unrelated source bytes. Both
+redundant image matrices and explicit frame angles are checked independently.
+Two private fuzzy-mask images reject editing. The linked preview and all five
+setup images in that file remain unchanged. Six saved native programs are
+recovered exactly. Twelve Poppler comparisons use transformed original Adobe or
+Ghostscript reference appearances; the largest mean channel difference is below
+0.00981 on the 0–255 scale, with differences confined to the reference edge band
+and none in flat pixels. These checks qualify geometry, samples and PDF/native
+serialization, not Illustrator frame-tool behavior or dependent effect editing.
+
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
@@ -1018,8 +1070,8 @@ source preservation, XML rejection and native/PDF saving before metadata attachm
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
-| Raster images | Decode process samples and separate alpha; translate placement; replace pixels, depth, channels and resolution with sample UUID renewal; render and save synchronized native images | Placed-size editing, older ASCII layouts, broader color models, dependent effect caches and Adobe identity qualification |
-| Linked placements | Read CC paths and counted previews; translate, relink and refresh/remove previews; render and save with host-resolved pixels while retaining links, or explicitly embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |
+| Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
+| Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |
 | Catalog XMP | Inspect manifest/ingredient references; relink explicitly selected resources while preserving surrounding XML; attach the packet after native/PDF saving | Managed and part-specific relationships, automatic identity/history/pantry maintenance, PostScript packets and Adobe relink qualification |
 | Meshes, effects, plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |

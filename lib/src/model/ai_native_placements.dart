@@ -105,6 +105,12 @@ final class AiNativePlacedObject extends AiNativeItem {
   /// Original relative directory bytes, or null when no directory was stored.
   Uint8List? get relativeDirectoryBytes => relativeDirectory == null ? null : aiStringBytes(relativeDirectory!).asUnmodifiableView();
 
+  /// Independent editing-frame angle in radians, or null when absent.
+  ///
+  /// String, UnicodeString and Real fields are supported; unknown scalar
+  /// layouts reject access instead of deriving an angle from the matrix.
+  double? get frameRotationRadians => _imageFrameRotation(dictionary);
+
   /// Whether this object belongs to the printable body rather than private art.
   bool isPrintable({required AiProgram program}) => start >= program.bodyStart && end <= program.bodyEnd && !instruction.isPrivate;
 
@@ -166,6 +172,18 @@ final class AiNativePlacements {
 
   /// Moves placements without changing file references or cached sample rows.
   AiNativePlacements translate({required List<AiNativePlacedObject> objects, required double deltaX, required double deltaY}) => _translateNativePlacements(this, objects, deltaX, deltaY);
+
+  /// Sets linked raster geometry and its explicit editing-frame orientation.
+  ///
+  /// [matrix] maps the existing local rectangle to native drawing points using
+  /// `(a*x + c*y + tx, b*x + d*y + ty)`. Its local y axis points downwards.
+  /// Paths, previews, local bounds and original scale remain unchanged.
+  /// [rotationRadians] is the independent frame angle within -2π to 2π, stored
+  /// to six decimal places. Null is valid only when no source angle is present.
+  /// Unknown geometry caches reject editing; printable DSC bounds expand while
+  /// artboards and enclosing clipping paths stay fixed.
+  AiNativePlacements setPlacement({required AiNativePlacedObject object, required List<double> matrix, required double? rotationRadians}) =>
+      _setNativeLinkedPlacement(this, object, matrix, rotationRadians);
 
   /// Incorporates host-resolved pixels as an editable native embedded raster.
   ///

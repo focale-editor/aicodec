@@ -17,6 +17,7 @@ part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_gradient_editor.dart';
 part '../editing/ai_native_raster_editor.dart';
 part '../editing/ai_native_raster_samples_editor.dart';
+part '../editing/ai_native_image_geometry_editor.dart';
 part '../editing/ai_native_placement_editor.dart';
 part '../editing/ai_native_placement_links_editor.dart';
 part '../editing/ai_native_gradient_geometry_editor.dart';

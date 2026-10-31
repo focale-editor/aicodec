@@ -88,6 +88,12 @@ final class AiNativeRaster extends AiNativeItem {
   /// Separate alpha samples, or null when the image is opaque.
   Uint8List? get alphaSamples => hasAlpha ? Uint8List.sublistView(_samples, colorByteLength).asUnmodifiableView() : null;
 
+  /// Editing-frame angle in radians, or null when no angle is recorded.
+  ///
+  /// This metadata is independent of the image matrix. Unknown scalar layouts
+  /// reject access rather than guessing an angle from transformed image axes.
+  double? get frameRotationRadians => _imageFrameRotation(dictionary);
+
   /// Checks process-color placement and metadata before editing or rendering.
   ///
   /// Decoding preserves unknown fields; operations requiring known semantics
@@ -183,6 +189,18 @@ final class AiNativeRasters {
   /// unchanged. Enclosing clips, groups and artboards are independent objects.
   /// DSC drawing bounds expand conservatively to include the translated artwork.
   AiNativeRasters translate({required List<AiNativeRaster> images, required double deltaX, required double deltaY}) => _translateNativeRasters(this, images, deltaX, deltaY);
+
+  /// Sets an image's affine placement and explicit editing-frame orientation.
+  ///
+  /// For `[a, b, c, d, tx, ty]`, pixel `(x, y)` maps to
+  /// `(a*x - c*y + tx, b*x - d*y + ty)` in native drawing points. Both XI and
+  /// Xh matrices update together; pixels, sample UUIDs and original scale stay
+  /// unchanged. [rotationRadians] describes the editing frame independently of
+  /// the matrix, within -2π to 2π, and is stored to six decimal places. Pass null
+  /// only when the source has no `BBAccumRotation` field and none is requested.
+  /// Unknown object-cache fields reject the edit. Printable DSC bounds expand;
+  /// enclosing clips, groups and artboards remain independent objects.
+  AiNativeRasters setPlacement({required AiNativeRaster image, required List<double> matrix, required double? rotationRadians}) => _setNativeRasterPlacement(this, image, matrix, rotationRadians);
 
   /// Replaces embedded pixels while retaining their placed extent and object identity.
   ///

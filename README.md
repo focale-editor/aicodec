@@ -151,6 +151,12 @@ placement and its raw file references. Saving keeps those references and cached
 previews intact; missing pixels reject the operation. Using the saved preview
 through `(object) => object.preview?.toSamples()` is an explicit fallback.
 
+Embedded images and qualified raster links also expose `setPlacement` for
+host-composed affine geometry and an explicit editing-frame angle. This changes
+placed size/orientation while retaining pixels, identities, paths and previews.
+Unknown dependent cache fields reject the edit; PDF appearances are regenerated
+through `AiNativePdf`.
+
 `AiXmpMetadata` reads catalog manifest/ingredient references and relinks explicitly
 selected resources, with host-supplied paths and optional asset identifiers.
 It preserves surrounding XML and attaches the updated packet after native/PDF

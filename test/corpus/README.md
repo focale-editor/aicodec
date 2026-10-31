@@ -291,6 +291,23 @@ dart run tool/check_xmp_metadata.dart
 python3 tool/verify_xmp_metadata.py
 ```
 
+Affine image geometry uses the existing raster fixtures and linked PDF carrier
+from `check_native_placements.dart`. Three operations—nonuniform resize, scaled
+quarter-turn and reflection/shear—cover 66 embedded and three linked edits. The
+pinned reader verifies all sample planes and matrices, including `Xh`/`XI`
+agreement. UUIDs, local bounds, previews and unrelated source data remain exact;
+explicit frame angles update to six decimals. Two private fuzzy masks reject the
+edit. Six saved native programs are recovered independently. Twelve page
+comparisons against transformed original Adobe/Ghostscript appearances have a
+maximum mean channel difference below 0.00981/255 and no differences in flat
+pixels. This does not qualify Adobe reopening, frame-tool interactions or effect
+regeneration.
+
+```sh
+dart run tool/check_native_image_geometry.dart
+python3 tool/verify_native_image_geometry.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh
