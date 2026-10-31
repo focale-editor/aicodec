@@ -94,6 +94,25 @@ final class AiNativeTextFrameLayout {
 
 /// Writes host-composed source positions into native ATE layout records.
 extension AiNativeTextComposition on AiNativeTextDocument {
+  /// Invalidates one story's composed layout without changing its native model.
+  ///
+  /// Use this when an external dependency, such as a resolved font, changes.
+  /// Text, styles, frame references, other stories and the undo-free model stay
+  /// unchanged. Only known rendered-data and strike fields are removed; unknown
+  /// view fields reject. The host must supply new composition and matching
+  /// printing/PDF artwork before saving a synchronized document.
+  AiNativeTextDocument withoutTextLayout({required AiNativeTextStory story}) {
+    if (!stories.contains(story)) {
+      throw ArgumentError('Invalid or foreign Illustrator text story.');
+    }
+    final PsEngineDictionary view = _dictionary(_field(story.record, '1', 'View'));
+    _knownTextKeys(view, {'0', 'Frames', '1', 'RenderedData', '2', 'Strikes'}, 'view');
+    if (view.values.keys.every((key) => key == '0' || key == 'Frames')) {
+      return this;
+    }
+    return _withEngine(engine.replaceValues(replacements: {view: _textViewWithoutCaches(view)}));
+  }
+
   /// Replaces one story's layout with checked frame, line and segment positions.
   ///
   /// Frames must match the story's resource order, including empty linked frames.

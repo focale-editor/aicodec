@@ -7,6 +7,8 @@ import 'package:aikit/src/model/ai_document.dart';
 import 'package:pdfcore/pdfcore.dart';
 import 'package:zcodec/zcodec.dart';
 
+part 'ai_native_save.dart';
+
 /// Compression inside Illustrator's private PDF streams, after PDF filtering.
 enum AiNativeCompression {
   /// Plain authoring program, possibly compressed by the outer PDF filter.
@@ -82,6 +84,29 @@ final class AiNativeSource {
   ///
   /// This does not create a PDF preview or downgrade the Illustrator version.
   AiPostScriptDocument asPostScript({AiLimits limits = const AiLimits()}) => AiDecoder(limits: limits).convert(_bytes) as AiPostScriptDocument;
+}
+
+/// An immutable replacement of one extracted program and all its native owners.
+final class AiNativeReplacement {
+  /// Original extraction snapshot; all batch entries must share its document.
+  final AiNativeSource source;
+
+  /// Copied authoring bytes, independent of subsequent caller mutations.
+  final Uint8List _program;
+
+  /// Takes ownership of supplied native bytes without interpreting artwork.
+  AiNativeReplacement({required this.source, required List<int> program}) : _program = _copyProgram(program);
+
+  /// Authoring bytes to package with the host's synchronized representation.
+  Uint8List get program => _program.asUnmodifiableView();
+
+  /// Rejects out-of-range integers before copying into an unsigned buffer.
+  static Uint8List _copyProgram(List<int> program) {
+    if (program.any((byte) => byte < 0 || byte > 255)) {
+      throw const FormatException('Native replacement requires byte values.');
+    }
+    return Uint8List.fromList(program);
+  }
 }
 
 /// Reads and rewrites native Illustrator data without executing PostScript.
@@ -207,7 +232,9 @@ abstract final class AiNativeData {
   ///
   /// The caller must derive [synchronizedPdf] from the original PDF graph and
   /// regenerate its appearance from the same edit, retaining original metadata
-  /// object references. This API
+  /// objects and the catalog/page references in their original order. Foreign
+  /// graphs, stale native sources and implicit page remapping are rejected.
+  /// Reacquire sources after each save, or use [replaceAll] for one batch. This API
   /// cannot infer equivalence between native and PDF artwork. Stale thumbnail
   /// blocks are removed; private metadata and other producers are retained.
   /// All shared owners are updated. Unreferenced old objects are not redacted.
@@ -217,61 +244,26 @@ abstract final class AiNativeData {
     required PdfDocument synchronizedPdf,
     AiNativeLimits limits = const AiNativeLimits(),
     int blockBytes = 65536,
-  }) {
-    if (source.document is! AiPdfDocument || source.owners.isEmpty) {
-      throw ArgumentError('Native replacement requires a PDF extraction source.');
-    }
-    if (blockBytes <= 0 || blockBytes > limits.maxEncodedBytes) {
-      throw ArgumentError.value(blockBytes, 'blockBytes');
-    }
-    final Uint8List envelope = encodeEnvelope(program, compression: source.compression, limits: limits);
-    final PdfDocument original = (source.document as AiPdfDocument).pdf;
-    final List<_NativeOwner> originalOwners = _owners(original);
-    if (originalOwners.any((owner) => source.owners.contains(owner.pageIndex) && owner.prefix != source._prefix)) {
-      throw const FormatException('Cannot synchronize mixed Illustrator private-data families on one owner.');
-    }
-    final List<PdfPage> pages = synchronizedPdf.pages;
-    final PdfEditor editor = PdfEditor(document: synchronizedPdf);
-    final Map<String, PdfValue> blocks = {};
-    for (int offset = 0; offset < envelope.length; offset += blockBytes) {
-      final int end = offset + blockBytes < envelope.length ? offset + blockBytes : envelope.length;
-      final PdfReference reference = editor.addObject(
-        value: PdfStream(dictionary: PdfDictionary(), data: Uint8List.sublistView(envelope, offset, end)),
-      );
-      blocks['${source._prefix}${blocks.length + 1}'] = reference;
-    }
-    final Map<PdfReference, PdfValue> objects = {...editor.document.objects};
-    for (final int? index in source.owners) {
-      if (index != null && index >= pages.length) {
-        throw ArgumentError('The synchronized PDF is missing a native-data owner page.');
-      }
-      final _NativeOwner owner = originalOwners.firstWhere((owner) => owner.pageIndex == index && owner.prefix == source._prefix);
-      final PdfValue? ownerValue = index == null ? synchronizedPdf.trailer['Root'] : pages[index].reference;
-      if (ownerValue is! PdfReference) {
-        throw const FormatException('Native replacement requires an indirect catalog/page owner.');
-      }
-      final PdfReference reference = ownerValue;
-      final PdfDictionary dictionary = objects[reference]! as PdfDictionary;
-      final PdfDictionary pieces = dictionary['PieceInfo'] == null ? PdfDictionary() : synchronizedPdf.dictionary(dictionary['PieceInfo']!);
-      final PdfDictionary data = owner.data.copyWith(
-        remove: owner.data.values.keys.where(_blockPattern.hasMatch).toSet(),
-        values: {
-          ...blocks,
-          'NumBlock': PdfNumber(value: blocks.length),
-        },
-      );
-      objects[reference] = dictionary.copyWith(
-        values: {
-          'PieceInfo': pieces.copyWith(
-            values: {
-              'Illustrator': owner.illustrator.copyWith(values: {'Private': data}),
-            },
-          ),
-        },
-      );
-    }
-    return AiPdfDocument(pdf: synchronizedPdf.copyWith(objects: objects));
-  }
+  }) => replaceAll(
+    replacements: [AiNativeReplacement(source: source, program: program)],
+    synchronizedPdf: synchronizedPdf,
+    limits: limits,
+    blockBytes: blockBytes,
+  );
+
+  /// Atomically packages distinct programs from the same extraction document.
+  ///
+  /// All native owners and their referenced metadata must still belong to the
+  /// original immutable graph. The host may replace page artwork/resources,
+  /// but cannot reorder, remove, add or renumber pages through this API. Artboard
+  /// counts do not establish a page mapping. Unselected programs stay intact.
+  /// [limits] also bounds aggregate replacement bytes and metadata traversal.
+  static AiPdfDocument replaceAll({
+    required List<AiNativeReplacement> replacements,
+    required PdfDocument synchronizedPdf,
+    AiNativeLimits limits = const AiNativeLimits(),
+    int blockBytes = 65536,
+  }) => _replaceNativePrograms(replacements: replacements, synchronizedPdf: synchronizedPdf, limits: limits, blockBytes: blockBytes);
 }
 
 /// Adobe's zlib envelope marker, with no newline before the compressed bytes.

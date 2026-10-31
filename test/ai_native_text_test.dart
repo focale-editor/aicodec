@@ -215,6 +215,41 @@ void main() {
     check(() => document.replaceText(story: document.stories.single, start: 0, end: 0, text: '\r' * 100)).throws<FormatException>();
   });
 
+  test('invalidates only the selected story and rejects unknown view dependencies', () {
+    final AiNativeTextDocument original = _editDocument(text: 'ABC\r', lengths: [4]);
+    final PsEngineDictionary objects = (original.engine.root as PsEngineDictionary)['1']! as PsEngineDictionary;
+    final PsEngineArray stories = objects['1']! as PsEngineArray;
+    final AiNativeTextDocument document = AiNativeTextDocument.decode(
+      records: _records(
+        original.engine
+            .replaceValues(
+              replacements: {
+                stories: PsEngineArray(values: [...stories.values, ...stories.values]),
+              },
+            )
+            .bytes,
+      ),
+    );
+    final AiNativeTextDocument changed = document.withoutTextLayout(story: document.stories.first);
+    check(changed.stories.first.strikes).isEmpty();
+    check(PsEngineCodec.encode(value: changed.stories.last.record)).deepEquals(PsEngineCodec.encode(value: document.stories.last.record));
+    final PsEngineDictionary view = document.stories.first.record['1']! as PsEngineDictionary;
+    final AiNativeTextDocument unknown = AiNativeTextDocument.decode(
+      records: _records(
+        document.engine
+            .replaceValues(
+              replacements: {
+                view: PsEngineDictionary(values: {...view.values, 'FutureLayout': PsEngineNumber(value: 1)}),
+              },
+            )
+            .bytes,
+      ),
+    );
+    final List<int> before = unknown.records.program.bytes.toList();
+    check(() => unknown.withoutTextLayout(story: unknown.stories.first)).throws<UnsupportedError>();
+    check(unknown.records.program.bytes).deepEquals(before);
+  });
+
   for (final bool named in [false, true]) {
     test('appends and assigns a ${named ? 'named' : 'compact'} font without changing existing resources', () {
       final AiNativeTextDocument source = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
@@ -476,6 +511,32 @@ void main() {
       check(document.frames.single.kind).equals(AiNativeTextFrameKind.area);
       check(document.frames.single.matrix!).deepEquals([1.0, 0.0, 0.0, 1.0, 5.0, 6.0]);
       check(nodes.first.children.clear).throws<UnsupportedError>();
+    });
+
+    test('invalidates ${named ? 'named' : 'compact'} layout without changing source text or resources', () {
+      final AiNativeTextDocument document = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
+      final AiNativeTextStory story = document.stories.single;
+      final List<int> before = document.records.program.bytes.toList();
+      final AiNativeTextDocument invalidated = document.withoutTextLayout(story: story);
+      final AiNativeTextStory changed = invalidated.stories.single;
+      check(changed.strikes).isEmpty();
+      check(changed.modelText).equals(story.modelText);
+      check(changed.frameIndices).deepEquals(story.frameIndices);
+      check(PsEngineCodec.encode(value: changed.record[named ? 'Model' : '0']!)).deepEquals(PsEngineCodec.encode(value: story.record[named ? 'Model' : '0']!));
+      for (final String key in [if (named) 'DocumentResources' else '0', 'Future']) {
+        final PsEngineValue? original = (document.engine.root as PsEngineDictionary)[key];
+        if (original != null) {
+          check(PsEngineCodec.encode(value: (invalidated.engine.root as PsEngineDictionary)[key]!)).deepEquals(PsEngineCodec.encode(value: original));
+        }
+      }
+      check(invalidated.withoutTextLayout(story: changed)).identicalTo(invalidated);
+      check(() => invalidated.withoutTextLayout(story: story)).throws<ArgumentError>();
+      check(document.records.program.bytes).deepEquals(before);
+      final AiNativeTextDocument reopened = AiNativeTextDocument.decode(
+        records: AiNativeRecords.decode(program: AiProgram.decode(bytes: invalidated.records.program.bytes)),
+      );
+      check(reopened.stories.single.strikes).isEmpty();
+      check(reopened.referenceIssues).deepEquals(document.referenceIssues);
     });
   }
 

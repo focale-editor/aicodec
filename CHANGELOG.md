@@ -10,3 +10,6 @@
 - Native Separation/NChannel mesh tint editing with PDF-qualified component ordering and unchanged ink declarations.
 - Removed development native-to-PDF rendering and mesh interpolation APIs to keep rendering in the host application.
 - Retained native editing and serialization with host-supplied PDF appearances; documented the package/host contract and migration.
+- Added bounded source-local capability reports with operation-specific qualifications and explicit preservation, unsupported-data and parser-limit diagnostics.
+- Added atomic multi-program saving and rejected stale native metadata, foreign graphs and implicit PDF page remapping.
+- Added explicit text-layout invalidation for changed host dependencies without rewriting text or resources.

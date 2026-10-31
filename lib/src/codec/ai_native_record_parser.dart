@@ -128,7 +128,7 @@ final class _NativeRecordReader {
   /// Reads a complete container and all nested children within the depth bound.
   AiNativeContainer _container(int depth) {
     if (depth >= program.limits.maxDepth) {
-      throw const FormatException('Illustrator native record nesting exceeds the limit.');
+      throw const AiLimitException(message: 'Illustrator native record nesting exceeds the limit.');
     }
     final AiToken opening = tokens[position];
     final String type = opening.lexeme.substring(1);
@@ -180,7 +180,7 @@ final class _NativeRecordReader {
       }
       if (const {AiTokenKind.arrayStart, AiTokenKind.dictionaryStart, AiTokenKind.procedureStart}.contains(token.kind)) {
         if (depth + delimiters.length + 1 >= program.limits.maxDepth) {
-          throw const FormatException('Illustrator native value nesting exceeds the limit.');
+          throw const AiLimitException(message: 'Illustrator native value nesting exceeds the limit.');
         }
         delimiters.add(token.kind);
       } else if (const {AiTokenKind.arrayEnd, AiTokenKind.dictionaryEnd, AiTokenKind.procedureEnd}.contains(token.kind)) {

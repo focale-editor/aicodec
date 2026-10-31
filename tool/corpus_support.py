@@ -39,7 +39,10 @@ def native_programs(path):
                 blocks.append((int(match[1]), value.get_object().get_data()))
         if not blocks:
             continue
-        envelope = b''.join(value for _, value in sorted(blocks))
+        ordered = [value for _, value in sorted(blocks)]
+        while ordered and ordered[0].startswith((b'%%BoundingBox:', b'%%HiResBoundingBox:', b'%AI7_Thumbnail:')):
+            ordered.pop(0)
+        envelope = b''.join(ordered)
         if envelope.startswith(b'%AI24_ZStandard_Data'):
             data = zstandard.ZstdDecompressor().decompress(envelope[20:], max_output_size=128 * 1024 * 1024)
         elif envelope.startswith(b'%AI12_CompressedData'):

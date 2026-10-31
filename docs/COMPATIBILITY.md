@@ -10,7 +10,11 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
 - PDF/PostScript container detection, immutable snapshots and exact legacy bytes.
 - Plain, zlib and Zstandard native envelopes, shared-owner rewriting and saving
   with a host-supplied PDF. Zstandard uses published ZCodec 0.2.6.
+- Atomic multi-program saves preserve existing page identities and native graph
+  dependencies; stale/foreign sources and implicit page remapping reject.
 - Native layers, plain paths, hierarchical records and artboards.
+- Source-local capability reports distinguish typed data, qualified operations,
+  opaque preservation, unsupported structures, malformed data and inspection limits.
 - Qualified CC live-shape translation, rotation and uniform scaling, including
   dependent printing geometry, gradients and shared-style isolation.
 - ATE fonts, stories, UTF-16 runs and styles; native content/feature editing,

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:aikit/src/codec/ai_native_data.dart';
 import 'package:aikit/src/codec/ai_postscript.dart';
 import 'package:aikit/src/model/ai_document.dart';
+import 'package:aikit/src/model/ai_limit_exception.dart';
 
 part '../editing/ai_native_editor.dart';
 
@@ -231,7 +232,7 @@ final class AiProgram {
       }
       if (const {AiTokenKind.arrayStart, AiTokenKind.dictionaryStart, AiTokenKind.procedureStart}.contains(token.kind)) {
         if (delimiters.length >= limits.maxDepth) {
-          throw const FormatException('Illustrator operand nesting exceeds the limit.');
+          throw const AiLimitException(message: 'Illustrator operand nesting exceeds the limit.');
         }
         delimiters.add(token.kind);
       } else if (const {AiTokenKind.arrayEnd, AiTokenKind.dictionaryEnd, AiTokenKind.procedureEnd}.contains(token.kind)) {
@@ -270,7 +271,7 @@ final class AiProgram {
           throw const FormatException('Invalid Illustrator layer attributes.');
         }
         if (layerStack.length >= limits.maxDepth) {
-          throw const FormatException('Illustrator layer nesting exceeds the limit.');
+          throw const AiLimitException(message: 'Illustrator layer nesting exceeds the limit.');
         }
         if (layerStack.isNotEmpty) {
           layerStack.last.inHeader = false;
@@ -292,7 +293,7 @@ final class AiProgram {
           layerStack.last.inHeader = false;
         }
         if (groups.length >= limits.maxDepth) {
-          throw const FormatException('Illustrator group nesting exceeds the limit.');
+          throw const AiLimitException(message: 'Illustrator group nesting exceeds the limit.');
         }
         groups.add(operator);
       } else if (const {'U', '*U', 'Q'}.contains(operator)) {

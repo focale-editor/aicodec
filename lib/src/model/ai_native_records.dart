@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:aikit/src/codec/ai_postscript.dart';
 import 'package:aikit/src/model/ai_document.dart';
+import 'package:aikit/src/model/ai_limit_exception.dart';
 import 'package:aikit/src/model/ai_program.dart';
 import 'package:pdfcore/pdfcore.dart';
 
@@ -123,6 +124,24 @@ final class AiNativeEntry {
   }
 }
 
+/// Reports a unique-field lookup encountering preserved repeated values.
+///
+/// Repeated entries can be valid native data. This error marks an ambiguous
+/// typed lookup, without declaring the containing record malformed.
+final class AiNativeAmbiguousFieldError extends StateError {
+  /// Requested field whose multiple values cannot be selected implicitly.
+  final String key;
+
+  /// Inclusive start of the owning native container.
+  final int start;
+
+  /// Exclusive end of the owning native container.
+  final int end;
+
+  /// Retains the original StateError contract with explicit source context.
+  AiNativeAmbiguousFieldError({required this.key, required this.start, required this.end}) : super('Native Illustrator field "$key" is repeated.');
+}
+
 /// A native hierarchical container, including unknown future container types.
 final class AiNativeContainer extends AiNativeItem {
   /// Native name without its leading slash, such as ArtDictionary or Document.
@@ -151,7 +170,7 @@ final class AiNativeContainer extends AiNativeItem {
   AiNativeEntry? operator [](String key) {
     final List<AiNativeEntry> found = values(key);
     if (found.length > 1) {
-      throw StateError('Native Illustrator field "$key" is repeated.');
+      throw AiNativeAmbiguousFieldError(key: key, start: start, end: end);
     }
     return found.singleOrNull;
   }

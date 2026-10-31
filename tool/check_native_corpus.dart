@@ -75,6 +75,9 @@ Future<void> main() async {
           }
         }
         for (final AiNativeTextStory story in text.stories) {
+          final AiNativeTextDocument invalidated = text.withoutTextLayout(story: story);
+          await File('${output.path}/$name.story-${story.index}.invalidated.ate').writeAsBytes(invalidated.engine.bytes);
+          await File('${output.path}/$name.story-${story.index}.invalidated.ps').writeAsBytes(invalidated.records.program.bytes);
           final AiNativeTextDocument edited = text.replaceText(story: story, start: 0, end: story.text.length < 5 ? story.text.length : 5, text: 'Édité 🖋\u0003suite\r');
           if (edited.referenceIssues.isNotEmpty || edited.stories[story.index].strikes.isNotEmpty) {
             throw StateError('Native content edit retained stale layout or invalid references.');

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:aikit/src/model/ai_limit_exception.dart';
+
 part 'ai_raster_data.dart';
 part 'ai_placed_preview_data.dart';
 
@@ -82,7 +84,7 @@ abstract final class AiPostScript {
       throw ArgumentError('PostScript limits must be positive.');
     }
     if (input.length > maxBytes) {
-      throw const FormatException('PostScript exceeds the byte limit.');
+      throw const AiLimitException(message: 'PostScript exceeds the byte limit.');
     }
     if (input.any((byte) => byte < 0 || byte > 255)) {
       throw const FormatException('Input contains values outside the byte range.');
@@ -96,7 +98,7 @@ abstract final class AiPostScript {
     /// Adds a copied token without retaining mutable source memory.
     void add(AiTokenKind kind, int start, int end) {
       if (tokens.length >= maxTokens) {
-        throw const FormatException('PostScript exceeds the token limit.');
+        throw const AiLimitException(message: 'PostScript exceeds the token limit.');
       }
       tokens.add(AiToken(kind: kind, start: start, end: end, lexeme: latin1.decode(Uint8List.sublistView(bytes, start, end))));
     }
@@ -181,7 +183,7 @@ abstract final class AiPostScript {
             position++;
           } else if (next == 40) {
             if (++depth > maxDepth) {
-              throw const FormatException('PostScript string nesting exceeds the limit.');
+              throw const AiLimitException(message: 'PostScript string nesting exceeds the limit.');
             }
           } else if (next == 41) {
             depth--;
@@ -225,7 +227,7 @@ abstract final class AiPostScript {
         // Arrays and dictionaries are runtime operators in PostScript; they
         // can deliberately cross procedure boundaries in Illustrator prologs.
         if (byte == 123 && ++procedureDepth > maxDepth) {
-          throw const FormatException('PostScript nesting exceeds the limit.');
+          throw const AiLimitException(message: 'PostScript nesting exceeds the limit.');
         }
         add(
           switch (byte) {

@@ -498,6 +498,24 @@ def verify_compositions(before, name, output, text_parser, stream, inkai, binary
     return checked, hyphens
 
 
+def verify_layout_invalidation(before, name, output, text_parser, stream, inkai, binary_type):
+    """Clear only selected rendered data/strikes without changing model ownership."""
+    stories = field(field(before, '1', 'DocumentObjects'), '1', 'TextObjects') or []
+    for index in range(len(stories)):
+        expected = copy.deepcopy(before)
+        selected = field(field(expected, '1', 'DocumentObjects'), '1', 'TextObjects')[index]
+        view = field(selected, '1', 'View')
+        for cache in ('/1', '/RenderedData', '/2', '/Strikes'):
+            view.pop(cache, None)
+        payload = (output / f'{name}.story-{index}.invalidated.ate').read_bytes()
+        actual = text_parser.read_object(stream(io.BytesIO(payload)))
+        assert actual == expected, f'Invalidation changed text/resources or an unselected story: {name}/{index}'
+        parsed = inkai.parse(str(output / f'{name}.story-{index}.invalidated.ps'))
+        section = parsed.setup.first_subsection_of_type(b'%AI11_BeginTextDocument')
+        assert next(child.Data for child in section.children if isinstance(child, binary_type)) == payload
+    return len(stories)
+
+
 def main():
     """Require complete parsed equality except for the independently expected edits."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -548,12 +566,15 @@ def main():
         frames, confinements = verify_frame_translation(before, name, args.output, text_parser, stream, inkai, binary_type)
         assert frames == entry['translatedTextFrames']
         compositions, hyphens = verify_compositions(before, name, args.output, text_parser, stream, inkai, binary_type)
+        invalidations = verify_layout_invalidation(before, name, args.output, text_parser, stream, inkai, binary_type)
+        assert invalidations == len(stories)
         assert compositions == entry['composedStories']
         assert entry['rejectedPathLayouts'] == len(stories) - compositions
-        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "fontAdditions": font_additions, "translatedFrames": frames, "translatedConfinements": confinements, "compositions": compositions, "automaticHyphens": hyphens, "status": "passed"})
+        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "fontAdditions": font_additions, "translatedFrames": frames, "translatedConfinements": confinements, "compositions": compositions, "automaticHyphens": hyphens, "layoutInvalidations": invalidations, "status": "passed"})
     assert len(results) == 32, "The required text-document corpus was not fully exercised"
     content_edits = sum(result["contentEdits"] for result in results)
     assert content_edits == 20, "The required native stories were not all edited"
+    assert sum(result['layoutInvalidations'] for result in results) == 20
     feature_edits = sum(result["featureEdits"] for result in results)
     assert feature_edits == 60, "The required native stories and forced-break spans were not all formatted"
     font_additions = sum(result['fontAdditions'] for result in results)

@@ -110,7 +110,7 @@ final class _NativeCommandReader {
     _private = isPrivate;
     if (const {AiTokenKind.arrayStart, AiTokenKind.dictionaryStart, AiTokenKind.procedureStart}.contains(token.kind)) {
       if (_delimiters.length >= maxDepth) {
-        throw const FormatException('Native command operand nesting exceeds the limit.');
+        throw const AiLimitException(message: 'Native command operand nesting exceeds the limit.');
       }
       _delimiters.add(token.kind);
     } else if (const {AiTokenKind.arrayEnd, AiTokenKind.dictionaryEnd, AiTokenKind.procedureEnd}.contains(token.kind)) {

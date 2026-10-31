@@ -6,6 +6,8 @@ export 'package:aikit/src/codec/ai_native_data.dart';
 export 'package:aikit/src/codec/ai_postscript.dart' show AiPostScript, AiToken, AiTokenKind;
 export 'package:aikit/src/model/ai_artwork.dart';
 export 'package:aikit/src/model/ai_document.dart';
+export 'package:aikit/src/model/ai_limit_exception.dart';
+export 'package:aikit/src/model/ai_native_capabilities.dart';
 export 'package:aikit/src/model/ai_native_records.dart';
 export 'package:aikit/src/model/ai_native_text.dart';
 export 'package:aikit/src/model/ai_program.dart';

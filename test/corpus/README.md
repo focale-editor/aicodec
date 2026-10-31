@@ -45,13 +45,39 @@ to the application; see [the host contract](../../docs/HOST.md).
 
 ## Native text and shapes
 
+Capability reports check all 37 exact extracted sources and catalog/page owners
+with pypdf and independent compression decoding. The pinned native reader checks
+41 layer headers and 181 non-private paths, including text-frame confining art.
+Opaque findings do not confer editing support. The AI8 linked-image layout is
+explicitly unsupported by the binary raster model. These are inspection checks,
+not a claim that all reported objects are editable.
+
+```sh
+dart run tool/check_native_capabilities.dart
+python3 tool/verify_native_capabilities.py --inkai-source /tmp/extension-ai
+```
+
+Save checks rename layers without altering painted geometry, retaining existing
+PDF artwork and adding an unused host-supplied resource. Independent extraction
+and parsing verify 31 pinned PDF fixtures plus two synthetic partial/batch saves,
+35 exact native programs, shared owners, opaque metadata and supplied resources.
+The synthetic documents include two native artboards and independent programs;
+they test serialization, not visual equivalence or Adobe reopening.
+
+```sh
+dart run tool/check_native_saves.dart
+python3 tool/verify_native_saves.py --inkai-source /tmp/extension-ai
+```
+
 After `check_native_corpus.dart`, verify layer/native preservation, 32 ATE payloads,
 20 content edits, 60 feature edits, 64 font registrations, 17 supplied layouts
-and frame translations. Text composition is supplied data, not glyph rendering.
+and frame translations. Twenty explicit layout invalidations additionally check
+that source text, resources and unselected stories remain unchanged. Text
+composition is supplied data, not glyph rendering.
 Eight live-shape translation fixtures also compare independently converted SVGs.
 
 ```sh
-python3 tool/verify_native_text.py --inkai-source /tmp/extension-ai
+python3 tool/verify_native_text.py --reference /tmp/extension-ai
 python3 tool/verify_live_shapes.py --inkai-source /tmp/extension-ai
 ```
 
