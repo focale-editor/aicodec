@@ -108,6 +108,65 @@ void main() {
     check(operations.where((operation) => operation.operator == 'S')).length.equals(1);
   });
 
+  test('retains native curves, dashes, caps and joins in a gradient stroke pattern', () {
+    final PdfDocument pdf = _render(_program(body: '12 w 1 J 2 j 7 M [9 4] 3 d 10 20 m 30 80 60 80 90 20 C 1 Bb 1 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg 80 0 0 -80 10 90 Xm S 1 BB'));
+    final PdfDictionary pattern = pdf.objects.values.whereType<PdfDictionary>().singleWhere((value) => value.integer('PatternType') == 2);
+    check(_numbers(pattern['Matrix']!)).deepEquals([80, 0, 0, -80, 10, 90]);
+    check(pdf.dictionary(pattern['Shading']!).integer('ShadingType')).equals(2);
+    final PdfStream form = pdf.objects.values.whereType<PdfStream>().singleWhere((stream) => stream.dictionary.name('Subtype') == 'Form');
+    check(form.dictionary['Group']).isNull();
+    final List<PdfOperation> operations = PdfContent.decode(pdf.decodeStream(form));
+    final List<String> operators = operations.map((operation) => operation.operator).toList();
+    check(operators).containsEqualInOrder(['w', 'J', 'j', 'M', 'd', 'm', 'c', 'CS', 'SCN', 'S']);
+    check(operators.any((operator) => const {'h', 'W', 'W*', 'f', 'sh', 'cm'}.contains(operator))).isFalse();
+    check(_numbers(operations.singleWhere((operation) => operation.operator == 'd').operands.first)).deepEquals([9, 4]);
+    check((operations.singleWhere((operation) => operation.operator == 'd').operands.last as PdfNumber).value).equals(3);
+    check((operations.singleWhere((operation) => operation.operator == 'w').operands.single as PdfNumber).value).equals(12);
+  });
+
+  test('closes a gradient stroke only when the native path or BB requests it', () {
+    for (final String ending in ['S 1 BB', 'S 2 BB', 's 1 BB']) {
+      final PdfDocument pdf = _render(_program(body: '10 10 m 90 10 L 90 90 L 1 Bb 1 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg 80 0 0 -80 10 90 Xm $ending'));
+      final List<PdfOperation> operations = PdfContent.decode(pdf.decodeStream(pdf.objects.values.whereType<PdfStream>().singleWhere((stream) => stream.dictionary.name('Subtype') == 'Form')));
+      check(operations.where((operation) => operation.operator == 'S')).length.equals(1);
+      check(operations.any((operation) => operation.operator == 'h')).equals(ending != 'S 1 BB');
+    }
+  });
+
+  test('keeps radial stroke alpha and pattern matrices in the same native form space', () {
+    final AiProgram program = _program(
+      radial: true,
+      stops: '%_1 0 0.8 6 50 0 Bs\n%_0 0 0.2 6 50 100 Bs',
+      body: '0 0.5 0 0 0 Xy 20 w 10 10 m 90 10 L 90 90 L 1 Bb 0 0 90 0.5 Bh 1 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg 80 20 30 -40 10 90 Bm S 1 BB',
+    );
+    final PdfDocument pdf = AiNativePdf.render(program: program, bounds: AiBoundingBox(left: 10, bottom: 20, right: 110, top: 120));
+    final PdfDictionary pattern = pdf.objects.values.whereType<PdfDictionary>().singleWhere((value) => value.integer('PatternType') == 2);
+    check(_numbers(pattern['Matrix']!)).deepEquals([80, 20, 30, -40, 10, 90]);
+    final List<PdfStream> forms = pdf.objects.values.whereType<PdfStream>().where((form) => form.dictionary.name('Subtype') == 'Form').toList();
+    check(forms).length.equals(3); // Opacity field, stroke, object opacity.
+    final PdfStream mask = forms.singleWhere((form) => form.dictionary['Group'] != null && pdf.dictionary(form.dictionary['Group']!).name('CS') == 'DeviceGray');
+    check(_numbers(PdfArray(values: PdfContent.decode(pdf.decodeStream(mask)).first.operands))).deepEquals(_numbers(pattern['Matrix']!));
+    final PdfStream stroke = forms.singleWhere((form) => form.dictionary['Resources'] != null && pdf.dictionary(form.dictionary['Resources']!)['Pattern'] != null);
+    check(stroke.dictionary['Group']).isNull();
+    check(PdfContent.decode(pdf.decodeStream(stroke)).map((operation) => operation.operator).toList()).containsEqualInOrder(['gs', 'CS', 'SCN', 'S']);
+    final PdfDictionary alpha = pdf.objects.values.whereType<PdfDictionary>().singleWhere((state) => state['CA'] != null);
+    check((alpha['CA']! as PdfNumber).value).equals(0.5);
+    check(_numbers(PdfArray(values: PdfProgram.fromPage(document: pdf, pageIndex: 0).operations[1].operands))).deepEquals([1, 0, 0, 1, -10, -20]);
+  });
+
+  test('rejects ambiguous gradient stroke paint and clipping policies', () {
+    const String body = '10 10 m 90 10 L 90 90 L 1 Bb 1 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg 80 0 0 -80 10 90 Xm S 1 BB';
+    for (final String unsupported in [
+      body.replaceFirst('S 1 BB', 'B 1 BB'),
+      body.replaceFirst('S 1 BB', 'F 1 BB'),
+      body.replaceFirst('S 1 BB', 'S 0 BB'),
+      body.replaceFirst('1 (Ink)', '0 (Ink)'),
+      'q ${body.replaceFirst('S 1 BB', 'W S 1 BB')} Q',
+    ]) {
+      check(() => _render(_program(body: unsupported))).throws<UnsupportedError>();
+    }
+  });
+
   test('uses the last contour gradient for the whole compound and preserves its fill rule', () {
     for (final int rule in [0, 1]) {
       final PdfDocument pdf = _render(_program(body: '$rule XR $_compoundGradient'));

@@ -358,10 +358,11 @@ registration belong to the host. AiKit requires explicit intervals to avoid
 retaining stale caches; it does not prove that caller-supplied samples reproduce
 the supplied stops. Replacing
 a global swatch changes all its users. Isolating a single object, adding/removing
-resources, hard stops, mesh gradients along/across strokes, flattened appearance
+resources, hard stops, meshes, gradients along/across strokes and flattened appearance
 regeneration remain further work. `AiNativePdf` synchronizes supported classic
-gradient fills; other gradient appearances still require host rendering. Definition-local
-comments are regenerated with the edited resource; external bytes are preserved.
+gradient fills and page-aligned strokes; other gradient appearances still require
+host rendering. Definition-local comments are regenerated with the edited resource;
+external bytes are preserved.
 
 The independent corpus check compares all 378 definitions, 1,103 authoritative
 stops, their fallback records and 725 printing intervals across 37 files. It
@@ -451,6 +452,18 @@ restored; object opacity applies to the complete fill/stroke once. A complete
 `Bb`/`Bg`/`BB` appearance note with no painted path draws nothing and cannot leak
 into the next object. Its unused resource name does not require rendering.
 
+Unexpanded `1 Bb` gradient strokes retain native path geometry, width, dashes,
+caps, joins and miter limits through PDF shading patterns. They require one
+`S`/`s` appearance, `Bg` flag 1 and `BB` flag 1 or 2; flag 2 closes the stroke.
+Linear and radial fields use the same absolute printing matrices and interpolation
+as fills. A local Form XObject establishes the pattern's initial coordinate
+space so that page origins, artboard cropping and enclosing transparency groups
+move the path and gradient together. Stop opacity affects only this stroke;
+object and group opacity remain separate. Combined `B`/`b` paints inside a
+stroke-gradient instance reject export: separate native fill and stroke
+appearances are required. This covers gradients applied across page coordinates,
+not gradients following or crossing a curved centerline.
+
 Color stops become shared PDF functions in their process color space. Gray can
 join RGB or CMYK stops without a color-profile conversion; gray in an explicitly
 CMYK document becomes black ink only. RGB alternatives can join CMYK in a CMYK
@@ -477,7 +490,7 @@ in the graph; this is not data redaction.
 The edited program must already contain synchronized printable expansions, as
 produced by supported live-shape translations. `XW` known-style markers require
 a bound live shape with an existing printable appearance. This method does not
-regenerate those expansions from opaque authoring records. Gradient strokes,
+regenerate those expansions from opaque authoring records. Gradients along/across strokes,
 coincident stops, multiple independent appearances within a gradient,
 newer interpolation methods, text,
 rasters, patterns, spot colors, overprint, embedded drawing data, nested compound
@@ -649,19 +662,27 @@ printing samples, covering midpoints below and above fifty percent. This is
 This is evidence for classic interpolation, not general color-profile equivalence.
 
 The separate `pdf_manifest.json` adds two complete CC random-gradient drawings
-and one explicit rejection fixture. `check_native_pdf_compounds.dart` saves the
-two complete drawings, then edits all six painted gradient resources in each
-file to three RGB stops with opacity. Both documents include a gradient-filled
+and `styles.ai`, which contains an unexpanded gradient stroke. The
+`check_native_pdf_compounds.dart` tool saves all three complete drawings, then
+edits their six, six and two painted gradient resources respectively to three
+RGB stops with opacity. Both random-gradient documents include a gradient-filled
 compound used as an expanded stroke, transformed fields, appearance notes and
 solid strokes over gradients. Independent Poppler comparisons against the
 original PDFs, and against original PDFs with only their shading functions and
-opacity masks replaced, pass at 1,920 × 1,080. All four mean channel differences
+opacity masks replaced, pass at 1,920 × 1,080. All six mean channel differences
 are below 0.0004/255, with unchanged flat pixels and one-level agreement inside
 gradient fields. The independent reader verifies edited native stops and cached
-matrix coverage; pypdf and Python zlib/Zstandard recover all four saved programs.
+matrix coverage; pypdf and Python zlib/Zstandard recover all six saved programs.
 Eight further pixel probes require real nonzero/even-odd holes, grouped contours,
 object/stop opacity, strokes outside the fill clip and nonpainting gradient notes.
-The third file, `styles.ai`, still rejects its unexpanded `1 Bb` gradient stroke.
+For `styles.ai`, the reference retains Adobe's original shading pattern and
+geometry, replacing only shared color functions and adding a stroke opacity mask.
+Its mean channel differences are below 0.0001/255, before and after the edit.
+`check_native_pdf_strokes.dart` and `verify_native_pdf_strokes.py` additionally
+check 18 pixels for open/closed strokes, dashes, round/butt caps, cubic geometry,
+linear/radial fields and object/group/stop opacity. Two whole-page comparisons
+are exact after saving with different native drawing rectangles and nonzero PDF
+MediaBox origins; the saved native program is independently recovered unchanged.
 These are complete-page compatibility checks for these fixtures; they do not
 qualify arbitrary native effects or Adobe reopening.
 
@@ -672,14 +693,15 @@ qualify arbitrary native effects or Adobe reopening.
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
-| Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradient strokes, newer methods and meshes |
+| Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
-| PDF compatibility appearance | Regenerate supported printable paths and classic gradient fills, saving them with native data; preserve or replace other graphs explicitly | Text, gradient strokes, rasters, unresolved effects and host scene integration |
+| PDF compatibility appearance | Regenerate supported printable paths and classic gradient fills/strokes, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, rasters, unresolved effects and host scene integration |
 
 ## References
 
+- [Adobe PDF Reference 1.6](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.6.pdf), sections 4.6.3 and 4.9.1: shading patterns and initial form coordinate spaces.
 - [Adobe's AI format overview](https://www.adobe.com/creativecloud/file-types/image/vector/ai-file.html)
 - [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)
 - [Native data container observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/compression.md)

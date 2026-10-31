@@ -263,8 +263,8 @@ _PrintableNode _printablePath(List<PdfOperation> geometry, String paint, _Printa
   if (clip && operator != 'n' && (state.opacity != 1 || state.blend != 'Normal' || state.isolated || state.knockout)) {
     throw UnsupportedError('Painting a translucent clipping path requires separate appearances.');
   }
-  if (gradient != null && (clip || !const {'F', 'B'}.contains(paint.toUpperCase()))) {
-    throw UnsupportedError('Native gradient rendering requires a filled, non-clipping path.');
+  if (gradient != null && (clip || !(gradient.native.onStroke ? const {'S'} : const {'F', 'B'}).contains(paint.toUpperCase()))) {
+    throw UnsupportedError('Native gradient rendering requires its own non-clipping fill or stroke appearance.');
   }
   return _PrintableNode(
     operations: [
@@ -274,7 +274,7 @@ _PrintableNode _printablePath(List<PdfOperation> geometry, String paint, _Printa
       if (gradient == null) PdfOperation(operator: operator),
     ],
     gradient: gradient,
-    gradientStroke: gradient != null && (gradient.native.closing.numbers!.single > 0 || paint.toUpperCase() == 'B')
+    gradientStroke: gradient != null && !gradient.native.onStroke && (gradient.native.closing.numbers!.single > 0 || paint.toUpperCase() == 'B')
         ? [...state.attributes.values, ...geometry, if (gradient.native.closing.numbers!.single == 2) PdfOperation(operator: 'h'), PdfOperation(operator: 'S')]
         : const [],
     evenOdd: state.evenOdd,

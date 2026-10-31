@@ -14,7 +14,9 @@ Future<void> main() async {
   for (final Object? raw in manifest['files']! as List) {
     final Map<String, Object?> entry = (raw! as Map).cast<String, Object?>();
     final String name = entry['file']! as String;
-    final bool rejection = entry['expected'] == 'reject';
+    if (entry['expected'] != 'accept') {
+      throw StateError('This check requires complete renderable fixtures.');
+    }
     try {
       final AiPdfDocument original = const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes()) as AiPdfDocument;
       final AiNativeSource source = AiNativeData.extract(original).single;
@@ -30,39 +32,29 @@ Future<void> main() async {
       if (compounds != 1) {
         throw StateError('Expected one genuine gradient compound in each fixture.');
       }
-      try {
-        final AiPdfDocument rebuilt = AiNativePdf.save(source: source, program: program, pageBounds: [bounds]);
-        if (rejection) {
-          throw StateError('Expected native gradient stroke rejection.');
+      final AiPdfDocument rebuilt = AiNativePdf.save(source: source, program: program, pageBounds: [bounds]);
+      final Set<String> names = printed.map((gradient) => latin1.decode(gradient.geometry.nameBytes)).toSet();
+      final AiProgram colors = fixtures.replaceNativeGradientColors(program, names: names);
+      final AiPdfDocument edited = AiNativePdf.save(source: source, program: colors, pageBounds: [bounds]);
+      await File('${output.path}/$name.rebuilt.ai').writeAsBytes(const AiCodec().encode(rebuilt));
+      await File('${output.path}/$name.colors.ai').writeAsBytes(const AiCodec().encode(edited));
+      await File('${output.path}/$name.colors.ps').writeAsBytes(colors.bytes);
+      for (final (AiPdfDocument, AiProgram) pair in [(rebuilt, program), (edited, colors)]) {
+        final AiDocument reopened = const AiCodec().decode(const AiCodec().encode(pair.$1));
+        if (latin1.decode(AiNativeData.extract(reopened).single.bytes) != latin1.decode(pair.$2.bytes)) {
+          throw StateError('Native data and PDF source differ after saving.');
         }
-        final Set<String> names = printed.map((gradient) => latin1.decode(gradient.geometry.nameBytes)).toSet();
-        final AiProgram colors = fixtures.replaceNativeGradientColors(program, names: names);
-        final AiPdfDocument edited = AiNativePdf.save(source: source, program: colors, pageBounds: [bounds]);
-        await File('${output.path}/$name.rebuilt.ai').writeAsBytes(const AiCodec().encode(rebuilt));
-        await File('${output.path}/$name.colors.ai').writeAsBytes(const AiCodec().encode(edited));
-        await File('${output.path}/$name.colors.ps').writeAsBytes(colors.bytes);
-        for (final (AiPdfDocument, AiProgram) pair in [(rebuilt, program), (edited, colors)]) {
-          final AiDocument reopened = const AiCodec().decode(const AiCodec().encode(pair.$1));
-          if (latin1.decode(AiNativeData.extract(reopened).single.bytes) != latin1.decode(pair.$2.bytes)) {
-            throw StateError('Native data and PDF source differ after saving.');
-          }
-        }
-        report.add({
-          'file': name,
-          'status': 'accepted',
-          'compounds': compounds,
-          'printedGradients': printed.length,
-          'gradientResources': names.toList(),
-          'bounds': [bounds.left, bounds.bottom, bounds.right, bounds.top],
-        });
-        stdout.writeln('$name: complete drawing and edited gradient resources saved');
-      } on UnsupportedError catch (error) {
-        if (!rejection || !printed.any((gradient) => gradient.onStroke) || !error.toString().contains('gradient stroke')) {
-          rethrow;
-        }
-        report.add({'file': name, 'status': 'rejected', 'reason': error.toString()});
-        stdout.writeln('$name: unexpanded gradient stroke explicitly rejected');
       }
+      report.add({
+        'file': name,
+        'status': 'accepted',
+        'compounds': compounds,
+        'printedGradients': printed.length,
+        'gradientStrokes': printed.where((gradient) => gradient.onStroke).length,
+        'gradientResources': names.toList(),
+        'bounds': [bounds.left, bounds.bottom, bounds.right, bounds.top],
+      });
+      stdout.writeln('$name: complete drawing and edited gradient resources saved');
     } on Object catch (error, stack) {
       failures++;
       report.add({'file': name, 'status': 'failed', 'error': '$error'});

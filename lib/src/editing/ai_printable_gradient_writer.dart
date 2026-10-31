@@ -2,7 +2,7 @@ part of 'package:aikit/src/model/ai_native_pdf.dart';
 
 /// Writes vector shadings and matching opacity masks into the shared PDF graph.
 extension on _PrintablePdfWriter {
-  /// Paints a bounded fill, restoring its clip before the optional solid stroke.
+  /// Paints a bounded fill or native stroke with a matching stop-opacity field.
   _PrintableChunk _gradient(_PrintableNode node) {
     final _PrintableGradient gradient = node.gradient!;
     if (!gradientFunctions.containsKey(gradient.definition)) {
@@ -18,12 +18,16 @@ extension on _PrintablePdfWriter {
     final String shade = _name('AiNativeShade');
     final PdfReference shading = _add(_gradientShading(gradient, functions.$1, gradient.colorSpace));
     final _PrintableChunk result = _PrintableChunk();
-    result.resources['Shading'] = {shade: shading};
+    if (!gradient.native.onStroke) {
+      result.resources['Shading'] = {shade: shading};
+    }
     result.operations.addAll([
       PdfOperation(operator: 'q'),
       ...node.operations,
-      if (gradient.native.geometry.flag == 1) PdfOperation(operator: node.evenOdd ? 'W*' : 'W'),
-      PdfOperation(operator: 'n'),
+      if (!gradient.native.onStroke) ...[
+        if (gradient.native.geometry.flag == 1) PdfOperation(operator: node.evenOdd ? 'W*' : 'W'),
+        PdfOperation(operator: 'n'),
+      ],
     ]);
     final PdfReference? opacity = functions.$2;
     if (opacity != null) {
@@ -90,6 +94,46 @@ extension on _PrintablePdfWriter {
           operands: [PdfName(value: mask)],
         ),
       );
+    }
+    if (gradient.native.onStroke) {
+      final String pattern = _name('AiNativeStrokePattern');
+      result.resources['Pattern'] = {
+        pattern: _add(
+          PdfDictionary(
+            values: {
+              'Type': PdfName(value: 'Pattern'),
+              'PatternType': PdfNumber(value: 2),
+              'Shading': shading,
+              'Matrix': _pdfArray(gradient.matrix),
+            },
+          ),
+        ),
+      };
+      result.operations.addAll([
+        PdfOperation(
+          operator: 'CS',
+          operands: [PdfName(value: 'Pattern')],
+        ),
+        PdfOperation(
+          operator: 'SCN',
+          operands: [PdfName(value: pattern)],
+        ),
+        if (gradient.native.closing.numbers!.single == 2) PdfOperation(operator: 'h'),
+        PdfOperation(operator: 'S'),
+        PdfOperation(operator: 'Q'),
+      ]);
+      _charge(result.operations.length);
+      // Pattern matrices use a stream's initial space, not its current matrix.
+      // A local form keeps the pattern aligned through page and group placement.
+      final String name = _name('AiNativeStroke');
+      return _PrintableChunk()
+        ..resources['XObject'] = {name: _form(content: result)}
+        ..operations.add(
+          PdfOperation(
+            operator: 'Do',
+            operands: [PdfName(value: name)],
+          ),
+        );
     }
     result.operations.addAll([
       _pdfNumbers('cm', gradient.matrix),

@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageFilter, ImageStat
 from lxml import etree
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import ArrayObject, BooleanObject, DecodedStreamObject, DictionaryObject, FloatObject, NameObject, NumberObject
+from pypdf.generic import ArrayObject, BooleanObject, ContentStream, DecodedStreamObject, DictionaryObject, FloatObject, NameObject, NumberObject
 import zstandard
 
 REVISION = '1a5f42a0b0407fc869e032420570682048810108'
@@ -178,6 +178,51 @@ def recolor_original(source, destination):
     stream = DecodedStreamObject()
     stream.set_data(content)
     page[NameObject('/Contents')] = writer._add_object(stream)
+    patterns = resources.get('/Pattern', {})
+    if patterns:
+        # The styles fixture shares its stroke shading with a fill. Recoloring
+        # above has already changed that field; add opacity to its stroke only.
+        assert set(patterns) == {'/P0'}
+        pattern = patterns['/P0'].get_object()
+        assert pattern['/PatternType'] == 2
+        assert pattern['/Shading'].indirect_reference in resources['/Shading'].values()
+        mask_shading = DictionaryObject(pattern['/Shading'])
+        mask_shading[NameObject('/ColorSpace')] = NameObject('/DeviceGray')
+        mask_shading[NameObject('/Function')] = function([[1], [0.4], [1]])
+        form = DecodedStreamObject()
+        form.set_data((' '.join(str(value) for value in pattern['/Matrix']) + ' cm /MaskShade sh').encode())
+        form.update({
+            NameObject('/Type'): NameObject('/XObject'), NameObject('/Subtype'): NameObject('/Form'),
+            NameObject('/BBox'): page['/MediaBox'],
+            NameObject('/Resources'): DictionaryObject({NameObject('/Shading'): DictionaryObject({NameObject('/MaskShade'): mask_shading})}),
+            NameObject('/Group'): DictionaryObject({NameObject('/S'): NameObject('/Transparency'), NameObject('/CS'): NameObject('/DeviceGray'), NameObject('/I'): BooleanObject(True)}),
+        })
+        resources['/ExtGState'][NameObject('/ExpectedStrokeAlpha')] = DictionaryObject({
+            NameObject('/SMask'): DictionaryObject({NameObject('/S'): NameObject('/Luminosity'), NameObject('/G'): writer._add_object(form), NameObject('/BC'): array([0])}),
+        })
+        content = ContentStream(page['/Contents'], writer)
+        operations, stack = [], []
+        active, identity, strokes = False, True, 0
+        for operands, operator in content.operations:
+            if operator == b'q':
+                stack.append((active, identity))
+            elif operator == b'Q':
+                active, identity = stack.pop()
+            elif operator == b'cm':
+                identity = identity and list(operands) == [1, 0, 0, 1, 0, 0]
+            elif operator == b'CS':
+                active = False
+            elif operator == b'SCN':
+                active = operands == ['/P0']
+            if active and operator in (b'S', b's', b'B', b'b', b'B*', b'b*'):
+                assert identity and operator == b'S', 'Reference stroke must use page coordinates without a simultaneous fill'
+                operations.extend([([], b'q'), ([NameObject('/ExpectedStrokeAlpha')], b'gs'), (operands, operator), ([], b'Q')])
+                strokes += 1
+            else:
+                operations.append((operands, operator))
+        assert strokes == 1 and not stack
+        content.operations = operations
+        page[NameObject('/Contents')] = writer._add_object(content)
     writer.write(destination)
 
 

@@ -17,7 +17,7 @@ part '../editing/ai_printable_pdf_writer.dart';
 /// Rebuilds PDF compatibility artwork from native printable Illustrator paths.
 ///
 /// This interprets declarative process-color paths, layers, groups, compound
-/// paths, clipping, classic gradient fills and supported opacity records.
+/// paths, clipping, classic gradient fills/strokes and supported opacity records.
 /// It does not execute a prolog.
 /// Unsupported drawing operations reject the whole export. Private authoring
 /// paths remain in the native program and do not paint a second time.
@@ -27,8 +27,9 @@ abstract final class AiNativePdf {
   /// [bounds] specifies the page in native drawing points, with y upwards.
   /// It is explicit because artwork bounds and Illustrator artboards differ.
   /// Hidden or nonprinting layers do not paint; their authoring data is retained
-  /// only when packaging with [save]. Classic gradient fills require explicit
+  /// only when packaging with [save]. Classic gradients require explicit
   /// printing matrices and process colors; stop opacity uses a PDF soft mask.
+  /// Stroke appearances retain their curves, dashes, caps and joins as PDF paths.
   /// Compound contours share their final paint, including gradients and holes.
   /// Complete gradient appearance notes without a path do not paint.
   /// Text, rasters, patterns, spot colors and unresolved appearances reject export.
@@ -79,7 +80,7 @@ final class _PrintableNode {
   /// Whether layer visibility and printing flags allow this node to paint.
   final bool visible;
 
-  /// Native gradient fill and its absolute printing geometry, when present.
+  /// Native gradient fill or stroke and its absolute printing geometry.
   final _PrintableGradient? gradient;
 
   /// Stroke painted after the gradient clip has been restored.

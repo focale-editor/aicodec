@@ -30,8 +30,8 @@ as self-contained AI7 PostScript.
   shared style resources and versioned metadata.
 - Native process-color path rendering into PDF and synchronized saving, with
   layers, compound paths, clipping, object opacity and group blend modes.
-- Classic linear/radial gradient fills in PDF, including focal ellipses,
-  midpoint interpolation, stop opacity and synchronized color edits.
+- Classic linear/radial gradient fills and strokes in PDF, including focal
+  ellipses, midpoint interpolation, stop opacity and synchronized color edits.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -132,8 +132,8 @@ printable paths, using an explicit drawing-coordinate page rectangle.
 `AiNativePdf.save(source:, program:, pageBounds:)` regenerates existing PDF pages
 and rewrites their shared native program in one immutable snapshot. Metadata and
 annotations are retained; stale thumbnails are removed. This currently supports
-process-color paths, classic gradient fills and resolved live-shape expansions,
-including groups, clipping and opacity. Unsupported drawing commands reject
+process-color paths, classic gradient fills/strokes and resolved live-shape
+expansions, including groups, clipping and opacity. Unsupported drawing commands reject
 the complete save.
 
 ## Scope
@@ -152,9 +152,9 @@ gradient appearances; resizing,
 rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
-PDF bridge covers supported printable paths and classic gradient fills; text,
-rasters, gradient strokes and unresolved effects still need host regeneration
-before saving visual edits.
+PDF bridge covers supported printable paths and classic gradient fills/strokes;
+text, rasters, gradients along/across strokes and unresolved effects still need
+host regeneration before saving visual edits.
 No Adobe Illustrator reopening validation has been performed.
 
 See [docs/AI.md](docs/AI.md) for editing policies and

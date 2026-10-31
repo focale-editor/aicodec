@@ -28,8 +28,11 @@ final class _PrintableGradient {
 
   /// Requires explicit printing geometry and representable classic colors.
   _PrintableGradient({required this.native, required this.definition, required this.cmyk}) : stops = [...definition.stops]..sort((first, second) => first.position.compareTo(second.position)) {
-    if (native.onStroke || native.geometry.flag == 2 || native.paths.length != 1) {
-      throw UnsupportedError('Unsupported native gradient stroke, disabled paint or multiple appearances.');
+    if (native.geometry.flag == 2 || native.paths.length != 1) {
+      throw UnsupportedError('Unsupported native gradient disabled paint or multiple appearances.');
+    }
+    if (native.onStroke && (native.geometry.flag != 1 || native.closing.numbers!.single == 0)) {
+      throw UnsupportedError('Native gradient strokes require a bounded stroke appearance.');
     }
     for (int index = 1; index < stops.length; index++) {
       if (stops[index].position <= stops[index - 1].position) {

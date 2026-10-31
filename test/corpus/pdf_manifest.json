@@ -27,8 +27,7 @@
       "sha256": "ed6299f1ac0970ac05f8979be4b7156e85bbd363267776252e8de92da4cc584c",
       "revision": "1a5f42a0b0407fc869e032420570682048810108",
       "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
-      "expected": "reject",
-      "reason": "Unexpanded native gradient stroke requires a stroke renderer."
+      "expected": "accept"
     }
   ]
 }

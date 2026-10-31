@@ -147,21 +147,21 @@ python3 tool/verify_native_pdf.py --inkai-source /tmp/extension-ai
 These commands need Poppler (`pdftoppm`) and the oracle dependencies above.
 The PDFs, native programs, images and `independent-report.json` remain under
 the ignored `output/native-pdf` directory. This is printing-path validation;
-text, gradient strokes, newer gradient methods, raster/effect rendering and
+text, gradients along/across strokes, newer gradient methods, raster/effect rendering and
 Adobe reopening remain outside it.
 
 `pdf_manifest.json` pins three additional complete CC drawings for compound
 gradient and appearance-state validation. The two random linear/radial drawings
 are fully rebuilt and saved, then receive global color/opacity edits to their six
-painted gradient resources. The reference changes only the original PDF shading
-functions and opacity masks. Four 1,920 × 1,080 comparisons require unchanged flat
-pixels and matching gradient fields away from edges; maximum mean channel
-difference is below 0.0004/255. Native data from all four saves is decoded and
+painted gradient resources. `styles.ai` is also rebuilt, including its unexpanded
+`1 Bb` gradient stroke, then receives the same edit to its two painted resources.
+The reference changes only the original PDF shading functions and opacity masks,
+retaining the original stroke pattern and geometry. Six 1,920 × 1,080 comparisons
+require unchanged flat pixels and matching gradient fields away from edges; maximum mean channel
+difference is below 0.0004/255. Native data from all six saves is decoded and
 checked separately, including stops and printing-matrix coverage through the
 pinned reader. Eight additional pixel probes check nonzero/even-odd holes, grouped
 contours, object/stop opacity, solid strokes and nonpainting gradient notes.
-`styles.ai` remains an explicit rejection case because it contains an unexpanded
-gradient stroke (`1 Bb`); accepting its container is not full rendering support.
 This separate manifest retains the scope and counts of the original corpus.
 
 ```sh
@@ -173,6 +173,18 @@ python3 tool/verify_native_pdf_compounds.py --inkai-source /tmp/extension-ai
 The reports, native programs, PDFs and inspected PNGs remain under the ignored
 `output/native-pdf-compounds` directory. These checks use the original PDF
 compatibility pages, not a live Adobe Illustrator installation.
+
+Additional generated probes validate open and closed gradient strokes, dashes,
+round/butt caps, curves, linear/radial fields and object/group/stop opacity.
+Eighteen pixel assertions and two exact whole-page comparisons check nonzero
+native coordinates, two different PDF MediaBox origins and artboard cropping.
+The saved native program is recovered independently. These outputs and the
+report remain under the ignored `output/native-pdf-strokes` directory.
+
+```sh
+dart run tool/check_native_pdf_strokes.dart
+python3 tool/verify_native_pdf_strokes.py
+```
 
 To check the existing downloads without network access or rewriting files:
 

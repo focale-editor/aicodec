@@ -112,7 +112,7 @@ final class _PrintablePdfWriter {
       ]) {
     final int pageCount = document.pages.length;
     for (int index = 0; index < pageCount; index++) {
-      for (final String category in ['XObject', 'ExtGState', 'Shading']) {
+      for (final String category in ['XObject', 'ExtGState', 'Shading', 'Pattern']) {
         final PdfValue? value = editor.pageResources(pageIndex: index)[category];
         if (value != null && document.resolve(value) is! PdfNull) {
           names.addAll(document.dictionary(value).values.keys);
@@ -143,31 +143,15 @@ final class _PrintablePdfWriter {
         result.add(child);
         continue;
       }
-      final Uint8List data = PdfContent.encode(child.operations, limits: document.limits);
-      bytes += data.length;
-      if (bytes > document.limits.maxDecodedBytes) {
-        throw const FormatException('Printable opacity forms exceed the decoded byte limit.');
-      }
       final String name = _name('AiNativeForm');
-      final PdfReference form = _add(
-        PdfStreams.encode(
-          bytes: data,
-          limits: document.limits,
-          dictionary: PdfDictionary(
-            values: {
-              'Type': PdfName(value: 'XObject'),
-              'Subtype': PdfName(value: 'Form'),
-              'BBox': formBounds,
-              'Resources': child.dictionary,
-              'Group': PdfDictionary(
-                values: {
-                  'S': PdfName(value: 'Transparency'),
-                  'I': PdfBoolean(value: !node.group || node.isolated),
-                  'K': PdfBoolean(value: node.knockout),
-                },
-              ),
-            },
-          ),
+      final PdfReference form = _form(
+        content: child,
+        group: PdfDictionary(
+          values: {
+            'S': PdfName(value: 'Transparency'),
+            'I': PdfBoolean(value: !node.group || node.isolated),
+            'K': PdfBoolean(value: node.knockout),
+          },
         ),
       );
       final (String, PdfReference) alpha = opacities.putIfAbsent(
@@ -203,6 +187,30 @@ final class _PrintablePdfWriter {
       ]);
     }
     return result;
+  }
+
+  /// Encapsulates local coordinates and resources under the shared byte budget.
+  PdfReference _form({required _PrintableChunk content, PdfDictionary? group}) {
+    final Uint8List data = PdfContent.encode(content.operations, limits: document.limits);
+    bytes += data.length;
+    if (bytes > document.limits.maxDecodedBytes) {
+      throw const FormatException('Printable forms exceed the decoded byte limit.');
+    }
+    return _add(
+      PdfStreams.encode(
+        bytes: data,
+        limits: document.limits,
+        dictionary: PdfDictionary(
+          values: {
+            'Type': PdfName(value: 'XObject'),
+            'Subtype': PdfName(value: 'Form'),
+            'BBox': formBounds,
+            'Resources': content.dictionary,
+            'Group': ?group,
+          },
+        ),
+      ),
+    );
   }
 
   /// Enforces an aggregate operation budget before extending output buffers.

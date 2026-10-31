@@ -51,17 +51,15 @@ def main():
     assert {row['file']: row['status'] for row in report} == {
         'gradient_linear_random_test.ai': 'accepted',
         'gradient_radial_random_test.ai': 'accepted',
-        'styles.ai': 'rejected',
+        'styles.ai': 'accepted',
     }
     results = []
     owners = 0
     for row in report:
-        if row['status'] == 'rejected':
-            assert 'gradient stroke' in row['reason']
-            continue
         name = row['file']
-        assert row['compounds'] == 1 and len(row['gradientResources']) == 6
-        assert row['printedGradients'] == (7 if name.startswith('gradient_linear') else 8)
+        assert row['compounds'] == 1 and len(row['gradientResources']) == (2 if name == 'styles.ai' else 6)
+        assert row['printedGradients'] == {'gradient_linear_random_test.ai': 7, 'gradient_radial_random_test.ai': 8, 'styles.ai': 3}[name]
+        assert row['gradientStrokes'] == (1 if name == 'styles.ai' else 0)
         before = inkai.parse(str(args.output / f'{name}.native.ps'))
         after = inkai.parse(str(args.output / f'{name}.colors.ps'))
         first, second = before.setup.gradients, after.setup.gradients
@@ -90,12 +88,12 @@ def main():
             difference = compare(expected, actual, args.output / f'{name}.{label}.difference.png', 0.02, True)
             results.append({'file': name, 'variant': label, 'meanChannelDifference': difference})
             print(f'{name} {label}: mean channel difference {difference}')
-    assert owners == 4 and len(results) == 4
+    assert owners == 6 and len(results) == 6
     probes = check_probes(args.output)
     poppler = subprocess.run(['pdftoppm', '-v'], check=True, capture_output=True, text=True).stderr.splitlines()[0]
     result = {'oracleRevision': REVISION, 'poppler': poppler, 'nativeOwners': owners, 'compositionProbes': probes, 'renders': results}
     (args.output / 'independent-report.json').write_text(json.dumps(result, indent=2) + '\n')
-    print('Complete compound-gradient drawings: 4/4 comparisons, 4/4 native owners and 8 pixel probes passed')
+    print('Complete compound/stroke-gradient drawings: 6/6 comparisons, 6/6 native owners and 8 pixel probes passed')
 
 
 if __name__ == '__main__':
