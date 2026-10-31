@@ -14,12 +14,16 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
   final AiNativeDrawing drawing = AiNativeDrawing.decode(records: AiNativeRecords.decode(program: program));
   final Map<int, AiNativeGradient> gradients = {for (final AiNativeGradient gradient in drawing.gradients.where((gradient) => !gradient.opening.isPrivate)) gradient.opening.end: gradient};
   final Map<String, AiNativeGradientDefinition> definitions = {
-    if (gradients.isNotEmpty)
+    if (gradients.values.any((gradient) => gradient.paths.isNotEmpty))
       for (final AiNativeGradientDefinition definition in AiNativeGradientResources.decode(records: drawing.records).definitions) latin1.decode(definition.nameBytes): definition,
   };
   _PrintableGradient? gradient;
+  AiNativeGradient? gradientInstance;
   final _PrintableState state = _PrintableState();
+  _PrintableState? appearanceState;
   final List<_PrintableContainer> stack = [_PrintableContainer(end: '')];
+  _PrintableContainer? compound;
+  bool compoundGroupClosed = false;
   final List<PdfOperation> path = [];
   bool clip = false;
 
@@ -31,42 +35,47 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
     if (const {'n', 'f', 's', 'b'}.contains(operator)) {
       path.add(PdfOperation(operator: 'h'));
     }
-    if (stack.last.end == '*U') {
-      if (gradient != null) {
-        throw UnsupportedError('Gradient compound paths require a complete shared appearance.');
-      }
-      stack.last.compound.addAll(path);
-      stack.last.paint = operator;
-      stack.last.clip |= clip;
+    if (compound case final _PrintableContainer owner) {
+      owner.compound.addAll(path);
+      owner.paint = operator;
+      owner.paintState = _PrintableState.copy(source: state);
+      owner.gradient = gradient;
+      owner.clip |= clip;
+      compoundGroupClosed = false;
     } else {
       stack.last.children.add(_printablePath(path, operator, state, clip, gradient: gradient));
     }
     path.clear();
     clip = false;
+    appearanceState = null;
   }
 
   for (final AiInstruction instruction in program.instructions) {
     final String operator = instruction.operator;
     switch (operator) {
       case 'Bb':
-        if (colorModel != 1 && colorModel != 2) {
-          throw UnsupportedError('Unknown native gradient document color model.');
-        }
-        if (gradient != null) {
+        if (gradientInstance != null) {
           throw const FormatException('Nested printable gradient.');
         }
         final AiNativeGradient native = gradients[instruction.end] ?? (throw const FormatException('Missing printable gradient instance.'));
-        final AiNativeGradientDefinition definition = definitions[latin1.decode(native.geometry.nameBytes)] ?? (throw const FormatException('Missing native gradient definition.'));
-        gradient = _PrintableGradient(native: native, definition: definition, cmyk: colorModel == 2);
+        gradientInstance = native;
+        if (native.paths.isNotEmpty) {
+          if (colorModel != 1 && colorModel != 2) {
+            throw UnsupportedError('Unknown native gradient document color model.');
+          }
+          final AiNativeGradientDefinition definition = definitions[latin1.decode(native.geometry.nameBytes)] ?? (throw const FormatException('Missing native gradient definition.'));
+          gradient = _PrintableGradient(native: native, definition: definition, cmyk: colorModel == 2);
+        }
       case 'Bg' || 'Bh' || 'Xm' || 'Bm' || 'Bc':
-        if (gradient == null || instruction.end > gradient.native.closing.start) {
+        if (gradientInstance == null || instruction.end > gradientInstance.closing.start) {
           throw const FormatException('Gradient command outside its printable instance.');
         }
       case 'BB':
-        if (gradient == null || instruction.end != gradient.native.end || path.isNotEmpty) {
+        if (gradientInstance == null || instruction.end != gradientInstance.end || path.isNotEmpty) {
           throw const FormatException('Invalid printable gradient termination.');
         }
         gradient = null;
+        gradientInstance = null;
       case 'm' || 'l' || 'L' || 'c' || 'C' || 'v' || 'V' || 'y' || 'Y':
         final List<double> values = _printableNumbers(instruction);
         AiPathSegment(operator: operator, coordinates: values);
@@ -92,7 +101,7 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
         _printableArity(instruction, 0);
         paint(operator);
       case 'u' || 'q' || '*u' || 'Lb':
-        if (path.isNotEmpty || stack.last.end == '*U') {
+        if (path.isNotEmpty || compound != null && operator != 'u') {
           throw UnsupportedError('Nested or interrupted compound artwork requires its own renderer.');
         }
         if (stack.length > program.limits.maxDepth) {
@@ -106,17 +115,27 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
           _printableArity(instruction, 0);
         }
         stack.add(_PrintableContainer(end: operator == 'Lb' ? 'LB' : operator.toUpperCase(), visible: visible));
+        if (operator == '*u') {
+          compound = stack.last;
+        }
+        compoundGroupClosed = false;
+        appearanceState = null;
       case 'U' || 'Q' || '*U' || 'LB':
         _printableArity(instruction, 0);
         if (stack.length <= 1 || stack.last.end != operator || path.isNotEmpty) {
           throw const FormatException('Invalid printable group boundary.');
         }
         final _PrintableContainer completed = stack.removeLast();
+        appearanceState = null;
         if (operator == '*U') {
           if (completed.paint == null || completed.compound.isEmpty) {
             throw const FormatException('Empty or unpainted native compound path.');
           }
-          stack.last.children.add(_printablePath(completed.compound, completed.paint!, state, completed.clip));
+          stack.last.children.add(_printablePath(completed.compound, completed.paint!, completed.paintState!, completed.clip, gradient: completed.gradient));
+          compound = null;
+          compoundGroupClosed = false;
+        } else if (compound != null) {
+          compoundGroupClosed = true;
         } else {
           stack.last.children.add(_PrintableNode(children: completed.children, group: operator != 'LB', visible: completed.visible));
         }
@@ -191,34 +210,42 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
         if (operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(operands.last.kind)) {
           throw const FormatException('Invalid native appearance marker.');
         }
-        if (operands.first.number == 6 && aiStringBytes(operands.last).isEmpty) {
+        if (operands.first.number == 9 && aiStringBytes(operands.last).isEmpty && (compound != null ? compoundGroupClosed : stack.last.children.lastOrNull?.group == true)) {
+          // A plain group marker carries no independent appearance state.
+          compoundGroupClosed = false;
+        } else if (operands.first.number == 6 && aiStringBytes(operands.last).isEmpty) {
           final _PrintableNode? previous = stack.last.children.lastOrNull;
-          if (previous == null || !previous.group) {
-            throw const FormatException('Native group opacity has no preceding group.');
+          if (previous == null || previous.clip || !previous.group && (previous.operations.isEmpty || appearanceState == null)) {
+            throw const FormatException('Native appearance state has no preceding drawable object.');
           }
-          previous.opacity = state.opacity;
-          previous.blend = state.blend;
-          previous.isolated = state.isolated;
-          previous.knockout = state.knockout;
+          final _PrintableState appearance = appearanceState ?? state;
+          previous.opacity = appearance.opacity;
+          previous.blend = appearance.blend;
+          previous.isolated = appearance.isolated;
+          previous.knockout = appearance.knockout;
         } else if (operands.first.number != 1 || !drawing.liveShapes.any((shape) => shape.end == instruction.end && shape.isBound && shape.appearancePaths.isNotEmpty)) {
           throw UnsupportedError('Native appearance has no resolved printable expansion.');
         }
+        appearanceState = null;
       case 'D' || 'A' || 'AE' || 'Ae' || 'Ap' || 'As' || 'Xw' || 'Xd' || 'O' || 'R':
         final List<double> values = _printableArity(instruction, operator == 'Xd' ? 2 : 1);
         final bool valid = switch (operator) {
           'As' => values.single >= 0 && values.single % 1 == 0 && values.single <= program.limits.maxTokens,
-          'Xd' => const {0, 1}.contains(values.first) && values.last == 0,
+          'Xd' => values.every((value) => const {0, 1}.contains(value)),
           'O' || 'R' || 'Xw' => values.single == 0,
           _ => const {0, 1}.contains(values.single),
         };
         if (!valid) {
           throw UnsupportedError('Unsupported native $operator drawing state.');
         }
+        if (operator == 'Xd') {
+          appearanceState = _PrintableState.copy(source: state);
+        }
       default:
         throw UnsupportedError('Native PDF export cannot render $operator.');
     }
   }
-  if (stack.length != 1 || path.isNotEmpty || clip || gradient != null) {
+  if (stack.length != 1 || path.isNotEmpty || clip || gradientInstance != null) {
     throw const FormatException('Unterminated printable drawing.');
   }
   return stack.single.children;

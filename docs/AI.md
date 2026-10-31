@@ -425,10 +425,15 @@ Native drawing state persists across group boundaries until changed.
 
 The five-value `Xy` form supports opacity, the sixteen standard blend modes,
 group isolation and knockout, with its shape flag zero. A `6 () XW` modifier
-applies the current blend state to the preceding group. Fill and stroke are
+applies the blend state captured at `Xd` to the preceding path or group. Both
+`Xd` flags must be zero or one; they do not repaint an already expanded object.
+A group without `Xd` uses the current state. A `9 () XW` plain-group marker
+introduces no independent opacity. Fill and stroke are
 painted inside one transparency form before applying object opacity, avoiding
 double compositing where they overlap. Compound paths use their final paint
-state once. A clip persists only inside its enclosing mask group; translucent
+state once, including contours nested in ordinary `u`/`U` groups. Later state
+changes cannot rewrite that captured compound paint. A clip persists only inside
+its enclosing mask group; translucent
 paint on the clipping path itself is rejected. Nonprinting and hidden layers
 are validated even though they do not paint.
 
@@ -439,6 +444,12 @@ overall `Xm`, or a single full-interval `Bm` for a two-stop resource. Radial fil
 require one `Bm`; `Bh` angle and distance determine the unit focal point.
 The `Bg` clipping flag controls the fill clip, and `BB` can add a solid stroke
 after that clip is restored. Missing or singular printing geometry rejects export.
+A compound's final contour can carry the shared gradient: all contours then
+clip one shading, preserving holes under the native nonzero or even-odd rule.
+The optional solid stroke covers every contour after that shading clip is
+restored; object opacity applies to the complete fill/stroke once. A complete
+`Bb`/`Bg`/`BB` appearance note with no painted path draws nothing and cannot leak
+into the next object. Its unused resource name does not require rendering.
 
 Color stops become shared PDF functions in their process color space. Gray can
 join RGB or CMYK stops without a color-profile conversion; gray in an explicitly
@@ -467,10 +478,10 @@ The edited program must already contain synchronized printable expansions, as
 produced by supported live-shape translations. `XW` known-style markers require
 a bound live shape with an existing printable appearance. This method does not
 regenerate those expansions from opaque authoring records. Gradient strokes,
-coincident stops, gradient compound paths, multiple appearances within a gradient,
+coincident stops, multiple independent appearances within a gradient,
 newer interpolation methods, text,
 rasters, patterns, spot colors, overprint, embedded drawing data, nested compound
-groups and unknown drawing commands currently reject the entire export. This
+mask groups and unknown drawing commands currently reject the entire export. This
 includes unsupported commands inside hidden layers. No Adobe prolog executes.
 
 When replacing page artwork, use
@@ -636,6 +647,23 @@ compare generated PDF function values with their independently decoded Adobe
 printing samples, covering midpoints below and above fifty percent. This is
 471 samples across four channels, with maximum difference below 0.5/255.
 This is evidence for classic interpolation, not general color-profile equivalence.
+
+The separate `pdf_manifest.json` adds two complete CC random-gradient drawings
+and one explicit rejection fixture. `check_native_pdf_compounds.dart` saves the
+two complete drawings, then edits all six painted gradient resources in each
+file to three RGB stops with opacity. Both documents include a gradient-filled
+compound used as an expanded stroke, transformed fields, appearance notes and
+solid strokes over gradients. Independent Poppler comparisons against the
+original PDFs, and against original PDFs with only their shading functions and
+opacity masks replaced, pass at 1,920 × 1,080. All four mean channel differences
+are below 0.0004/255, with unchanged flat pixels and one-level agreement inside
+gradient fields. The independent reader verifies edited native stops and cached
+matrix coverage; pypdf and Python zlib/Zstandard recover all four saved programs.
+Eight further pixel probes require real nonzero/even-odd holes, grouped contours,
+object/stop opacity, strokes outside the fill clip and nonpainting gradient notes.
+The third file, `styles.ai`, still rejects its unexpanded `1 Bb` gradient stroke.
+These are complete-page compatibility checks for these fixtures; they do not
+qualify arbitrary native effects or Adobe reopening.
 
 | Area | Current contract | Remaining work |
 | --- | --- | --- |

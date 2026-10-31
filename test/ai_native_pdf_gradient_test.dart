@@ -33,6 +33,14 @@ List<PdfDictionary> _shadings(PdfDocument document) => document.objects.values.w
 /// Numeric PDF arrays for direct semantic expectations.
 List<double> _numbers(PdfValue value) => (value as PdfArray).values.cast<PdfNumber>().map((number) => number.value.toDouble()).toList();
 
+/// A CC gradient placed only around the final contour's paint instruction.
+const String _compoundGradient = '''*u
+0 g 30 30 m 30 70 L 70 70 L 70 30 L f
+10 10 m 90 10 L 90 90 L 10 90 L
+Bb 1 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg
+80 0 0 -80 10 90 Xm f 0 BB
+*U''';
+
 /// Checks native gradient geometry, exact process colors and alpha separation.
 void main() {
   test('writes axial shading bounded by the native fill and retains the printing matrix', () {
@@ -98,6 +106,71 @@ void main() {
     final List<PdfOperation> operations = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations;
     check(operations.map((operation) => operation.operator).toList()).containsEqualInOrder(['W', 'n', 'sh', 'Q', 'm', 'l', 'l', 'h', 'S']);
     check(operations.where((operation) => operation.operator == 'S')).length.equals(1);
+  });
+
+  test('uses the last contour gradient for the whole compound and preserves its fill rule', () {
+    for (final int rule in [0, 1]) {
+      final PdfDocument pdf = _render(_program(body: '$rule XR $_compoundGradient'));
+      final List<PdfOperation> operations = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations;
+      check(_shadings(pdf)).length.equals(1);
+      check(operations.where((operation) => operation.operator == 'sh')).length.equals(1);
+      check(operations.where((operation) => operation.operator == 'm')).length.equals(2);
+      check(operations.where((operation) => operation.operator == 'h')).length.equals(2);
+      check(operations.where((operation) => operation.operator == (rule == 1 ? 'W*' : 'W'))).length.equals(1);
+      check(operations.any((operation) => const {'f', 'f*', 'B', 'B*'}.contains(operation.operator))).isFalse();
+    }
+  });
+
+  test('collects grouped compound contours and snapshots the final paint before later state changes', () {
+    final String body = _compoundGradient.replaceFirst('*u', '*u u u').replaceFirst('Bb', '0 0.4 0 0 0 Xy Bb').replaceFirst('*U', 'U U 9 () XW 0 0.9 0 0 0 Xy *U');
+    final PdfDocument pdf = _render(_program(body: body));
+    final List<PdfStream> forms = pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Form').toList();
+    check(forms).length.equals(1);
+    final List<PdfOperation> operations = PdfContent.decode(pdf.decodeStream(forms.single));
+    check(operations.where((operation) => operation.operator == 'm')).length.equals(2);
+    check(operations.where((operation) => operation.operator == 'sh')).length.equals(1);
+    final PdfDictionary state = pdf.objects.values.whereType<PdfDictionary>().singleWhere((value) => value.name('Type') == 'ExtGState');
+    check((state['ca']! as PdfNumber).value).equals(0.4);
+  });
+
+  test('does not retain an earlier contour gradient when the final contour uses solid paint', () {
+    final String body = _compoundGradient.replaceFirst('*U', '1 0 0 Xa 15 15 m 20 15 L 20 20 L f *U');
+    final PdfDocument pdf = _render(_program(body: body));
+    final List<PdfOperation> operations = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations;
+    check(_shadings(pdf)).isEmpty();
+    check(operations.where((operation) => operation.operator == 'f')).length.equals(1);
+    check(operations.where((operation) => operation.operator == 'm')).length.equals(3);
+    check(_numbers(PdfArray(values: operations.singleWhere((operation) => operation.operator == 'rg').operands))).deepEquals([1, 0, 0]);
+  });
+
+  test('composites compound gradient alpha and a solid stroke once for the complete object', () {
+    final String body = '0 0.5 0 0 0 Xy 0 0 1 XA 10 w ${_compoundGradient.replaceFirst('0 BB', '2 BB')}';
+    final PdfDocument pdf = _render(_program(body: body, stops: '%_0 0 0.2 6 50 100 Bs\n%_1 0 0.8 6 50 0 Bs'));
+    check(_shadings(pdf)).length.equals(2);
+    final List<PdfStream> forms = pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Form').toList();
+    check(forms).length.equals(2);
+    final List<PdfOperation> paint = forms.map((form) => PdfContent.decode(pdf.decodeStream(form))).singleWhere((operations) => operations.any((operation) => operation.operator == 'S'));
+    check(paint.where((operation) => operation.operator == 'sh')).length.equals(1);
+    check(paint.where((operation) => operation.operator == 'm')).length.equals(4);
+    check(paint.where((operation) => operation.operator == 'S')).length.equals(1);
+    check(paint.map((operation) => operation.operator).toList()).containsEqualInOrder(['W', 'n', 'sh', 'Q', 'm', 'm', 'S']);
+    final PdfDictionary alpha = pdf.objects.values.whereType<PdfDictionary>().singleWhere((state) => state['ca'] != null);
+    check((alpha['ca']! as PdfNumber).value).equals(0.5);
+  });
+
+  test('keeps gradient appearance notes from painting or leaking into the next object', () {
+    for (final String selector in ['', '1 ']) {
+      final PdfDocument pdf = _render(_program(body: '${selector}Bb 2 (Missing note) 0 0 0 1 1 0 0 1 0 0 Bg 0 BB 1 0 0 Xa 10 10 m 90 10 L 90 90 L f'));
+      check(_shadings(pdf)).isEmpty();
+      check(PdfProgram.fromPage(document: pdf, pageIndex: 0).operations.where((operation) => operation.operator == 'f')).length.equals(1);
+    }
+    check(() => _render(_program(body: '10 10 m Bb 2 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg 0 BB'))).throws<FormatException>();
+  });
+
+  test('rejects independent paints inside one gradient and unsupported nested compound masks', () {
+    const String gradient = 'Bb 1 (Ink) 0 0 0 1 1 0 0 1 0 0 Bg 80 0 0 -80 10 90 Xm';
+    check(() => _render(_program(body: '$gradient 10 10 m 90 10 L 90 90 L f 20 20 m 30 20 L 30 30 L f 0 BB'))).throws<UnsupportedError>();
+    check(() => _render(_program(body: _compoundGradient.replaceFirst('*u', '*u q').replaceFirst('*U', 'Q *U')))).throws<UnsupportedError>();
   });
 
   test('rejects missing resources, singular matrices, unsupported colors and ambiguous stops', () {

@@ -39,7 +39,7 @@ Future<void> main() async {
         await File('${output.path}/$name.original.pdf').writeAsBytes(const AiCodec().encode(document));
         await File('${output.path}/$name.saved.ai').writeAsBytes(const AiCodec().encode(saved));
         if (name.startsWith('gradient_')) {
-          final AiProgram colors = _replaceGradient(program);
+          final AiProgram colors = replaceNativeGradientColors(program);
           final AiPdfDocument recolored = AiNativePdf.save(source: source, program: colors, pageBounds: [bounds]);
           await File('${output.path}/$name.colors.ps').writeAsBytes(colors.bytes);
           await File('${output.path}/$name.colors.ai').writeAsBytes(const AiCodec().encode(recolored));
@@ -100,9 +100,10 @@ f 0 BB
   }
 }
 
-/// Changes the shared CC resource to three explicit process colors and opacity.
-AiProgram _replaceGradient(AiProgram program) {
-  final AiNativeGradientResources resources = AiNativeGradientResources.decode(records: AiNativeRecords.decode(program: program));
+/// Changes selected shared CC resources to three explicit colors and opacity.
+AiProgram replaceNativeGradientColors(AiProgram program, {Iterable<String>? names}) {
+  AiNativeGradientResources resources = AiNativeGradientResources.decode(records: AiNativeRecords.decode(program: program));
+  final List<String> selected = names?.toList() ?? [latin1.decode(resources.definitions.first.nameBytes)];
   final List<List<double>> channels = [
     [0, 1, 1, 0, 1, 0, 0],
     [1, 0, 1, 0, 0, 1, 0],
@@ -126,7 +127,11 @@ AiProgram _replaceGradient(AiProgram program) {
         ],
       ),
   ];
-  return resources.replaceStops(definition: resources.definitions.first, stops: stops, ramps: ramps).records.program;
+  for (final String name in selected) {
+    final AiNativeGradientDefinition definition = resources.definitions.firstWhere((definition) => latin1.decode(definition.nameBytes) == name);
+    resources = resources.replaceStops(definition: definition, stops: stops, ramps: ramps);
+  }
+  return resources.records.program;
 }
 
 /// Writes independent pixel probes for opacity, blend groups and clipping scope.

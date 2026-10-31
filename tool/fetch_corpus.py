@@ -35,9 +35,10 @@ def main():
     """Resolve the manifest relative to this package, independently of the cwd."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--verify-only', action='store_true', help='Check local files without network access or writes')
+    parser.add_argument('--manifest', default='manifest.json', help='Manifest filename relative to test/corpus')
     args = parser.parse_args()
     corpus = ROOT / 'test/corpus'
-    manifest = json.loads((corpus / 'manifest.json').read_text())
+    manifest = json.loads((corpus / args.manifest).read_text())
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         results = list(pool.map(lambda entry: fetch(entry, corpus / 'files', args.verify_only), manifest['files']))
     print(f'{ROOT.name}: verified {len(results)} files')

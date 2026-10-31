@@ -29,6 +29,8 @@ abstract final class AiNativePdf {
   /// Hidden or nonprinting layers do not paint; their authoring data is retained
   /// only when packaging with [save]. Classic gradient fills require explicit
   /// printing matrices and process colors; stop opacity uses a PDF soft mask.
+  /// Compound contours share their final paint, including gradients and holes.
+  /// Complete gradient appearance notes without a path do not paint.
   /// Text, rasters, patterns, spot colors and unresolved appearances reject export.
   static PdfDocument render({required AiProgram program, required AiBoundingBox bounds, PdfLimits limits = const PdfLimits()}) {
     limits.validate();
@@ -137,6 +139,15 @@ final class _PrintableState {
 
   /// Initializes native style tracking with the default opaque normal paint.
   _PrintableState() : attributes = {}, evenOdd = false, opacity = 1, blend = 'Normal', isolated = false, knockout = false;
+
+  /// Captures the final subpath's paint before later instructions change state.
+  _PrintableState.copy({required _PrintableState source})
+    : attributes = Map.of(source.attributes),
+      evenOdd = source.evenOdd,
+      opacity = source.opacity,
+      blend = source.blend,
+      isolated = source.isolated,
+      knockout = source.knockout;
 }
 
 /// One native group or layer while the bounded instruction stream is compiled.
@@ -155,6 +166,12 @@ final class _PrintableContainer {
 
   /// Final compound paint, whose style applies to every subpath.
   String? paint;
+
+  /// Final subpath's complete style, shared by all compound contours.
+  _PrintableState? paintState;
+
+  /// Gradient declared on the final subpath, shared by the compound fill.
+  _PrintableGradient? gradient;
 
   /// Whether the compound group establishes a clipping path.
   bool clip = false;

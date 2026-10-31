@@ -111,6 +111,24 @@ void main() {
     check(PdfProgram.fromPage(document: pdf, pageIndex: 0).operations.where((operation) => operation.operator == 'f')).length.equals(1);
   });
 
+  test('captures appearance state at Xd and applies it to a preceding path exactly once', () {
+    final PdfDocument pdf = AiNativePdf.render(program: _program('0 0.8 0 0 0 Xy $_rectangle 0 1 Xd 0 0.3 0 0 0 Xy 6 () XW $_rectangle'), bounds: _bounds());
+    final List<PdfDictionary> states = pdf.objects.values.whereType<PdfDictionary>().where((value) => value['ca'] != null).toList();
+    check(states.map((state) => (state['ca']! as PdfNumber).value).toList()).deepEquals([0.8, 0.3]);
+    check(_forms(pdf)).length.equals(2);
+    for (final PdfStream form in _forms(pdf)) {
+      check(PdfContent.decode(pdf.decodeStream(form)).where((operation) => operation.operator == 'f')).length.equals(1);
+    }
+    check(() => AiNativePdf.render(program: _program('$_rectangle 0 1 Xd $_rectangle 6 () XW'), bounds: _bounds())).throws<FormatException>();
+    check(() => AiNativePdf.render(program: _program('$_rectangle 0 2 Xd 6 () XW'), bounds: _bounds())).throws<UnsupportedError>();
+  });
+
+  test('accepts plain group markers without inventing independent group opacity', () {
+    final PdfDocument pdf = AiNativePdf.render(program: _program('u 0 0.5 0 0 0 Xy $_rectangle U 9 () XW'), bounds: _bounds());
+    check(_forms(pdf)).length.equals(1);
+    check(() => AiNativePdf.render(program: _program('$_rectangle 9 () XW'), bounds: _bounds())).throws<UnsupportedError>();
+  });
+
   test('omits hidden and nonprinting layers while still rejecting unsupported content', () {
     const String hidden = '0 1 1 1 0 0 0 0 0 0 Lb (Hidden) Ln $_rectangle LB';
     const String nonprinting = '1 1 1 0 0 0 0 0 0 0 Lb (Nonprinting) Ln $_rectangle LB';

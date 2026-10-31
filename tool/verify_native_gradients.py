@@ -50,7 +50,7 @@ def gradient_instances(document):
     return result
 
 
-def verify_geometry(before, after, target, radial, previous, positions):
+def verify_geometry(before, after, target, radial, previous, positions, other_targets=()):
     """Check strip coverage and fixed exterior edges from independent operators."""
     original = gradient_instances(before)
     changed = gradient_instances(after)
@@ -66,6 +66,8 @@ def verify_geometry(before, after, target, radial, previous, positions):
 
     for first, second in zip(original, changed):
         geometry = next(command for command in first if command.command == 'Bg')
+        if geometry.name != target and geometry.name in other_targets:
+            continue
         strips = matrices(first, 'Bm')
         if geometry.name != target or radial or not strips:
             assert repr(first) == repr(second), geometry.name

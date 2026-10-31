@@ -103,7 +103,10 @@ The gradient-resource check reads all 37 fixtures and compares 378 definitions,
 same pinned independent reader. It replaces the first resource in each of the
 23 gradient-bearing files, including opacity and three stops with two new sampled
 intervals. Seven additional color-layout writes cover named and custom inks.
-Unrelated definitions and drawing bytes must remain unchanged. Two Inkscape
+Unrelated definitions and drawing commands must remain unchanged; linear
+printing matrices follow the edited stop intervals. The independent check also
+covers 139 rewritten caches across the first-resource edits, seven color variants
+and four real pattern variants with added/removed intervals. Two Inkscape
 render comparisons cover 15 linear and nine radial CC instances against the
 original SVG with only its expected stops replaced; both differences are zero.
 These renders use midpoint 50 and do not validate print-engine interpolation,
@@ -146,6 +149,30 @@ The PDFs, native programs, images and `independent-report.json` remain under
 the ignored `output/native-pdf` directory. This is printing-path validation;
 text, gradient strokes, newer gradient methods, raster/effect rendering and
 Adobe reopening remain outside it.
+
+`pdf_manifest.json` pins three additional complete CC drawings for compound
+gradient and appearance-state validation. The two random linear/radial drawings
+are fully rebuilt and saved, then receive global color/opacity edits to their six
+painted gradient resources. The reference changes only the original PDF shading
+functions and opacity masks. Four 1,920 × 1,080 comparisons require unchanged flat
+pixels and matching gradient fields away from edges; maximum mean channel
+difference is below 0.0004/255. Native data from all four saves is decoded and
+checked separately, including stops and printing-matrix coverage through the
+pinned reader. Eight additional pixel probes check nonzero/even-odd holes, grouped
+contours, object/stop opacity, solid strokes and nonpainting gradient notes.
+`styles.ai` remains an explicit rejection case because it contains an unexpanded
+gradient stroke (`1 Bb`); accepting its container is not full rendering support.
+This separate manifest retains the scope and counts of the original corpus.
+
+```sh
+python3 tool/fetch_corpus.py --manifest pdf_manifest.json
+dart run tool/check_native_pdf_compounds.dart
+python3 tool/verify_native_pdf_compounds.py --inkai-source /tmp/extension-ai
+```
+
+The reports, native programs, PDFs and inspected PNGs remain under the ignored
+`output/native-pdf-compounds` directory. These checks use the original PDF
+compatibility pages, not a live Adobe Illustrator installation.
 
 To check the existing downloads without network access or rewriting files:
 

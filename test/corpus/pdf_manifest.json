@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "scope": "Native PDF rendering, including compound gradients and appearance records.",
+  "files": [
+    {
+      "file": "gradient_linear_random_test.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/gradient_linear_random_test.ai",
+      "size": 240256,
+      "sha256": "ea79504a901e1b8d41d45d7b32c59a7359c96993fc7e3dc2783f1f1dc9aab8af",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "gradient_radial_random_test.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/gradient_radial_random_test.ai",
+      "size": 240686,
+      "sha256": "6c596475620385db629f70f1b797fee1e12473dd0b2c202d7575a789581aa849",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "styles.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/styles.ai",
+      "size": 220262,
+      "sha256": "ed6299f1ac0970ac05f8979be4b7156e85bbd363267776252e8de92da4cc584c",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "reject",
+      "reason": "Unexpanded native gradient stroke requires a stroke renderer."
+    }
+  ]
+}
