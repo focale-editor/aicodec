@@ -308,6 +308,24 @@ dart run tool/check_native_image_geometry.dart
 python3 tool/verify_native_image_geometry.py --inkai-source /tmp/extension-ai
 ```
 
+Radial focus editing reuses the 37 pinned native fixtures. The dedicated checker
+changes every radial resource to an interior focus, then saves three variants of
+the CC radial drawing: interior, centered and boundary. The independent reader
+verifies 45 printing instances and 173 authoring notes, including older CS
+matrix-free style notes, and unchanged source outside `Bh` operands. Three saved
+native programs are recovered exactly. Six Poppler comparisons use Adobe's
+original PDF with independently changed focal coordinates. Their maximum mean
+channel difference is below 0.06791/255, against the unedited 0.06792/255 baseline
+caused by rounded rectangle edges. Flat pixels must be identical; smooth fields
+may differ by at most one level. Outputs stay in ignored `output/gradient-focus`.
+This qualifies a global focus edit, not isolated object editing, arbitrary
+gradient transforms, flattened effects or Illustrator reopening.
+
+```sh
+dart run tool/check_native_gradient_focus.dart
+python3 tool/verify_native_gradient_focus.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

@@ -382,6 +382,48 @@ stops: both pixel comparisons are exact. These checks cover RGB stops and opacit
 at midpoint 50, not Illustrator reopening, print-engine ramp interpolation or
 arbitrary color-profile equivalence.
 
+### Global radial gradient focus
+
+`AiNativeGradientResources.setRadialFocus(definition:, angle:, length:)` changes
+the focus of every instance referencing the selected resource's byte name.
+This is an explicit global operation, including shared styles, swatches, private
+art and setup patterns; it does not isolate one object's appearance. The native
+angle is in degrees, from -360 through 360, and the length is a fraction of the
+unit radius in 0..1. The same-name definitions must all be radial and the handle
+must belong to the source snapshot.
+
+Each printable instance must have one nonsingular `Bm` matrix and no linear
+printing matrices. Its four `Bh` operands retain both the polar authoring focus
+and the redundant Cartesian printing offset. The latter is the linear part of
+`Bm` applied to `(length*cos(angle), -length*sin(angle))`; the gradient center
+is not added. This handles rotated, elliptical, reflected and skewed axes.
+Existing offsets must agree with the old polar values within serialization
+tolerance. Nonprinting flag-two style notes with no imaging matrix retain zero
+offsets, including the older CS layout without an aspect-ratio operand. Other
+matrix-free layouts, conflicting offsets and singular or excessive coordinates
+reject the entire transaction.
+
+An absent `Bh` denotes a centered focus and is inserted when needed, preserving
+private comment prefixes. Exact polar no-ops keep original source precision.
+Only the focus operands change: stops, sampled ramps, geometry, named resource
+definitions and unrelated bytes remain intact. Procedures and embedded documents
+are not interpreted. Output growth remains bounded by the native byte limit.
+The host must regenerate the PDF appearance and flattened effects after editing;
+`AiNativePdf.save` synchronizes the supported printable subset. General gradient
+resize/rotation, isolated object focus and Illustrator reopening remain separate
+qualification work.
+
+The dedicated corpus checker edits all radial resources across the same 37
+pinned files. An independent parser verifies 45 printing instances and 173
+authoring notes, with exact preservation outside the focus operands. Three
+synchronized CC saves cover centered, angled/interior and boundary foci; their
+native programs are recovered byte-exactly. Six Poppler comparisons against
+Adobe's original PDF with independently changed shading coordinates have a
+maximum mean channel difference of 0.06791/255, matching the 0.06792/255 baseline
+from rounded rectangle edges. Flat pixels remain identical and smooth gradient
+fields differ by at most one channel level. These checks do not establish Adobe
+reopening or flattened-effect regeneration.
+
 ## Native raster images
 
 `AiNativeRasters.decode(records:, bodyOnly:)` reads embedded binary `XI` image
@@ -1068,7 +1110,7 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
-| Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
+| Gradients | Inspect/translate instances; isolate positional styles; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, isolated object focus/colors, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |

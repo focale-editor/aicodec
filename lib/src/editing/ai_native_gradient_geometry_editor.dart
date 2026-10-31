@@ -30,78 +30,12 @@ final class _GradientGeometryEditor {
       }
     }
     final List<AiSourceEdit> result = [];
-    for (final AiNativeGradient instance in _instances()) {
+    for (final AiNativeGradient instance in _readGradientInstances(resources.records)) {
       if (_gradientBytesEqual(instance.geometry.nameBytes, definition.nameBytes)) {
         result.addAll(_instance(instance, previous, next));
       }
     }
     return result;
-  }
-
-  /// Reads isolated Bb/BB syntax, including swatches, patterns and private art.
-  ///
-  /// Only complete gradient instances are interpreted. Procedures, embedded
-  /// documents, binary payloads and strings cannot supply executable references.
-  Iterable<AiNativeGradient> _instances() sync* {
-    final List<AiNativeInstruction> commands = [];
-    final _NativeCommandReader reader = _NativeCommandReader(maxDepth: resources.records.program.limits.maxDepth);
-    int procedure = 0;
-    int embedded = 0;
-    AiToken? previous;
-    int numericOperands = 0;
-    for (final AiToken token in resources.records._projection.tokens) {
-      if (token.kind == .comment) {
-        if (procedure == 0 && token.lexeme.startsWith('%%BeginDocument')) {
-          embedded++;
-          previous = null;
-          numericOperands = 0;
-        } else if (procedure == 0 && token.lexeme == '%%EndDocument') {
-          embedded--;
-        }
-        if (embedded != 0 && commands.isNotEmpty) {
-          throw UnsupportedError('Embedded artwork interrupts a native gradient instance.');
-        }
-        continue;
-      }
-      if (embedded != 0) {
-        continue;
-      }
-      if (token.kind == .procedureStart) {
-        procedure++;
-        if (commands.isNotEmpty) {
-          throw UnsupportedError('Executable procedures inside native gradients require host interpretation.');
-        }
-      } else if (token.kind == .procedureEnd) {
-        procedure--;
-      }
-      if (procedure != 0) {
-        continue;
-      }
-      if (commands.isEmpty) {
-        if (token.kind == .executableName && token.lexeme == 'Bb') {
-          if (numericOperands > 1) {
-            throw const FormatException('Invalid native gradient selector operands.');
-          }
-          commands.add(AiNativeInstruction._(token: token, operands: [if (previous?.kind == .number) previous!], isPrivate: resources.records._projection.isPrivate(token.start)));
-        } else if (token.kind == .executableName && const {'Bg', 'Bm', 'Bc', 'Bh', 'Xm', 'BB'}.contains(token.lexeme)) {
-          throw FormatException('Native gradient command has no matching beginning at ${token.start}.');
-        }
-      } else {
-        final AiNativeInstruction? command = reader.add(token, isPrivate: resources.records._projection.isPrivate(token.start));
-        if (command != null && _gradientCommands.contains(command.operator)) {
-          commands.add(command);
-          if (command.operator == 'BB') {
-            yield _readNativeGradients(instructions: commands, paths: []).single;
-            commands.clear();
-          }
-        }
-      }
-      numericOperands = token.kind == .number ? numericOperands + 1 : 0;
-      previous = token;
-    }
-    if (commands.isNotEmpty || embedded != 0 || procedure != 0) {
-      throw const FormatException('Unterminated native gradient instance.');
-    }
   }
 
   /// Repartitions cached ramp strips without moving their overall native axis.

@@ -241,6 +241,23 @@ final class AiNativeGradientResources {
   /// colors with style codes zero through four.
   AiNativeGradientResources replaceStops({required AiNativeGradientDefinition definition, required List<AiNativeGradientStop> stops, required List<AiNativeGradientRamp> ramps}) =>
       _replaceGradientStops(this, definition, stops, ramps);
+
+  /// Sets the normalized focus of every instance of a named radial gradient.
+  ///
+  /// This is a global operation: drawing instances, shared styles, swatches and
+  /// nested native art referencing the same byte name all change atomically.
+  /// [angle] is the native focus angle in degrees, between -360 and 360; [length]
+  /// is the distance from the center as a fraction of the unit radius, in 0..1.
+  /// The printing matrix maps `(length*cos(angle), -length*sin(angle))` to the
+  /// corresponding highlight offset, including elliptical or skewed gradients.
+  ///
+  /// Printing instances require one nonsingular `Bm` and coherent existing
+  /// highlight offsets. Nonprinting style notes retain zero offsets. Unknown
+  /// layouts reject the entire edit. Absent highlights are inserted when needed;
+  /// unchanged values preserve their exact source syntax. Stops, ramps, geometry
+  /// and unrelated bytes remain intact. The host must regenerate PDF appearances
+  /// and any flattened effects before saving the resulting native program.
+  AiNativeGradientResources setRadialFocus({required AiNativeGradientDefinition definition, required double angle, required double length}) => _setNativeGradientFocus(this, definition, angle, length);
 }
 
 /// Whether a native unit-range component is finite and valid.
