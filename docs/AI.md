@@ -421,7 +421,7 @@ from the four complete donor files: those still reject their unqualified setup
 owners. Checks retain exact resource and unselected source bytes, both pair
 metadata branches, layer declarations and native/printing appearance. Synthetic
 native SVG remains limited by the external reader's version-branch dispatcher.
-Group/layer copy, reordering and movement still reject subtrees containing private paired artwork;
+Group/layer reordering and movement still reject subtrees containing private paired artwork;
 Adobe reopening and broader reference-owner schemas remain unqualified.
 
 Both APIs validate disjoint owned selections, complete output/token budgets,
@@ -815,7 +815,7 @@ the selected intervals and insertion points remain exact. Deletion retains the
 group's outgoing assignments even when its objects disappear. Drawing bounds
 remain conservative because these operations retain or remove existing geometry.
 
-Except for complete-pair subtree removal below, private/derived owners,
+Except for complete-pair subtree copy/removal below, private/derived owners,
 compound/clip children, version alternatives, opaque
 metadata, tags, unbound expansion flags, notes and unknown state reject. Known identities,
 names, panel flags and default-style attachments stay with their objects; nonempty
@@ -840,7 +840,7 @@ printing expansion, private contour, native parameters, panel flag and saved
 metadata alternatives are removed together. Nested ordinary groups, layers and
 paths retain their ownership rules; partial pairs, unknown attachments, compound
 authoring parents and unresolved conditional owners reject the entire operation.
-Group dissolution, subtree copying, reordering and movement do not yet accept
+Group dissolution, subtree reordering and movement do not yet accept
 these mixed subtrees.
 
 Deletion retains explicit scalar assignments in their original source order and
@@ -872,6 +872,53 @@ branches, exact unselected bytes, source-derived scalar order/privacy, topology
 and flags. Native/printing SVG is compared for real-derived fixtures; synthetic
 fixtures retain the external reader's documented native version-branch limitation
 and compare printing SVG. Adobe reopening remains unqualified.
+
+### Mixed group/layer subtree copies
+
+`duplicateGroups(groups:, identifiers:)` and `AiNativeLayers.duplicate(...)`
+also copy the qualified mixed parents described above, inserting each complete
+copy immediately after its original. The printing expansion, private contour,
+parameters, panel state and all metadata alternatives stay together. Shared
+styles and gradients retain their original names and definitions. Every byte
+outside the inserted copies and explicitly updated layer declarations remains
+unchanged, including the original parents and their descendants.
+
+Ordinary paths/groups retain their existing identity-map keys. For complete CC
+pairs, supply fresh XML names using each identified `AiNativeContainer` handle
+in `identifiers` or `artworkIdentifiers`: the main dictionary, redundant printing
+dictionary and older alternatives are distinct saved owners. Layer identities
+still use `AiNativeLayer` keys in the separate layer map. Missing/extra keys,
+collisions with any saved source XML name, and repeated source aliases reject.
+Optional layer names change only the copied header's string. No identities are
+allocated implicitly, and resource names do not become artwork IDs.
+
+The complete subtree's read-before-write dependencies are tracked in source
+order for printing and native interpretation separately. Copies restore only
+incoming components that their source can change. Literal assignments and
+definite unanimous style scalars establish known values before later child reads;
+potential or hidden style effects do not. Unknown required input values reject
+instead of receiving graphics defaults. Repeating the complete source graph from
+the qualified input preserves its outgoing effects without discarding styles or
+reconstructing private appearance. The aggregate byte/token limits still apply.
+
+Qualified ordinary parent dictionaries containing identities, names and other
+supported scalar metadata no longer block subsequent native shape transforms.
+Unresolved parent metadata or applied appearance still rejects, using the same
+ordinary-owner qualification as lifecycle operations.
+
+Seventeen regressions cover nested/group/layer batches, fresh IDs in both saved
+layouts, source-wide reservations, private/public flags, definite/hidden style
+effects, following artwork, bounds and editable copies. Independent checks cover
+23 fixed transactions: eight derived-real copies, ten synthetic copies and five
+exact refusals. Real wrappers and document/resource assemblies are reconstructed
+from pinned original bytes. Checks bind every selected owner and replacement
+string, exact copied/unselected bytes, source-derived input scalars, both metadata
+branches, native flags and real native/printing SVG. Synthetic printing SVG is
+checked with the existing native version-branch limitation. A follow-up edit
+also checks the copied shape's private/printing geometry, main and redundant
+centers, unchanged older metadata and all unselected source bytes. The remaining
+opacity-source refusal has unresolved inherited input; no Adobe reopening or
+general mixed-subtree reordering/reparenting is inferred.
 
 ### Cross-layer artwork movement
 
@@ -1454,9 +1501,9 @@ These statuses do not imply complete Illustrator compatibility.
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; empty-dictionary dissolution without applied styles | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
-| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree removal | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
+| Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
-| Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree removal | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; mixed CC-subtree copy/reordering/movement remain incomplete. |
+| Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree copy/removal | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; mixed CC-subtree dissolution/reordering/movement remain incomplete. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |

@@ -335,6 +335,8 @@ final class AiNativeDrawing {
   /// and the following object's state; unknown required values reject the batch.
   /// [identifiers] supplies fresh XML names for every identified copied group
   /// and path, including descendants, using their original source handles.
+  /// Complete qualified CC pairs retain both representations and alternatives;
+  /// their IDs use the owning [AiNativeContainer] handles in [identifiers].
   /// Qualified direct live-shape children retain their native parameters.
   AiNativeDrawing duplicateGroups({required List<AiNativeGroup> groups, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativeGroups(this, groups, identifiers);
 

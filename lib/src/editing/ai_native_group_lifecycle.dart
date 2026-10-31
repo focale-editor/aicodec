@@ -252,7 +252,19 @@ int _selectedGroupCount(List<AiNativeGroup> groups) {
 
 /// Duplicates disjoint groups with restored inputs and unchanged outgoing state.
 AiNativeDrawing _duplicateNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups, Map<AiNativeItem, List<int>> identifiers) {
-  _ordinaryGroups(drawing, groups);
+  final List<_NativeSubtreeSpan> spans = [for (final AiNativeGroup group in groups) (start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
+  _ordinaryGroups(drawing, groups, pairs: pairs);
+  if (pairs.isNotEmpty) {
+    final List<AiSourceEdit> replacements = _subtreeCopyEdits(drawing, groups, spans, pairs, identifiers);
+    return _groupLifecycleResult(
+      drawing,
+      _copiedNativeSubtrees(AiNativeLayers.decode(drawing: drawing), spans, pairs, replacements, groups: true),
+      paths: drawing.paths.length + groups.fold(0, (count, group) => count + group.paths.length),
+      groups: drawing.groups.length + _selectedGroupCount(groups),
+      liveShapes: drawing.liveShapes.length + _subtreeLiveShapeCount(drawing, spans),
+    );
+  }
   final List<AiSourceEdit> replacements = _objectCopyEdits(drawing, groups, identifiers);
   final Map<int, _NativeArtworkState> states = _groupStates(drawing, groups.expand((group) => [group.start, _ordinaryObject(drawing, group).end]));
   final List<AiSourceEdit> edits = [];

@@ -3,12 +3,11 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
-import '../test/ai_native_artwork_movement_test.dart' show movementLayer;
 import '../test/ai_native_subtree_removal_test.dart' show subtreeRemovalSource;
-import 'check_native_reference_resources.dart' show mixedReferenceSource;
 import 'check_native_shape_lifecycle.dart' show shapeLifecycleInventory;
 import 'native_layer_support.dart' show nativeLayerInventory;
 import 'native_object_support.dart' show nativeObjectInventory;
+import 'native_subtree_support.dart';
 
 /// Opens immutable native source without composing derived document appearances.
 AiNativeDrawing _drawing(List<int> bytes) => AiNativeDrawing.decode(
@@ -74,42 +73,8 @@ Future<void> main() async {
     stdout.writeln('$target passed');
   }
 
-  final AiNativeDrawing base = _drawing(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/units-20x40mm_origin_topleft_CC.ai').readAsBytes())).single.bytes);
-  for (final String name in ['simple_shapes.ai', 'simple_shapes_cc.ai', 'opacity.ai', 'gradient_linear.ai', 'gradient_radial.ai']) {
-    final AiNativeDrawing donor = _drawing(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single.bytes);
-    final AiNativeObjects objects = AiNativeObjects.decode(drawing: donor);
-    final List<AiLiveShape> pairs = donor.liveShapes.where((shape) => shape.appearanceGroup != null && shape.path?.isPrivate == true).toList();
-    final int start = objects.forSource(pairs.first.appearanceGroup!).start;
-    final int end = pairs[pairs.length > 1 ? 1 : 0].end;
-    final String text = latin1.decode(donor.records.program.bytes);
-    const String opening = 'u\nu\n';
-    const String closing = '\nU\nU\n';
-    final String wrapped = '${text.substring(0, start)}$opening${text.substring(start, end)}$closing${text.substring(end)}';
-    await record('group-$name', 'group', _drawing(latin1.encode(wrapped)), [0], provenance: {'donor': name, 'start': start, 'end': end, 'opening': opening, 'closing': closing});
-    if (name == 'opacity.ai') {
-      continue;
-    }
-    final ({AiNativeDrawing drawing, Map<String, Object?> provenance}) mixed = mixedReferenceSource(base, donor);
-    final AiLiveShape pair = mixed.drawing.liveShapes.single;
-    final int boundary = AiNativeObjects.decode(drawing: mixed.drawing).forSource(pair.appearanceGroup!).start;
-    final String combined = latin1.decode(mixed.drawing.records.program.bytes);
-    final String body = combined.substring(boundary, pair.end);
-    final String layer = movementLayer('Derived', 'u\n$body\nU');
-    final AiNativeDrawing source = _drawing(latin1.encode(combined.replaceRange(boundary, pair.end, layer).replaceFirst('%AI5_NumLayers: 1', '%AI5_NumLayers: 2')));
-    await record(
-      'layer-$name',
-      'layer',
-      source,
-      [1],
-      provenance: {
-        ...mixed.provenance,
-        'donor': name,
-        'start': boundary,
-        'end': pair.end,
-        'opening': layer.substring(0, layer.indexOf(body)),
-        'closing': layer.substring(layer.indexOf(body) + body.length),
-      },
-    );
+  for (final NativeSubtreeFixture fixture in await nativeSubtreeSources()) {
+    await record(fixture.name, fixture.operation, fixture.drawing, [if (fixture.operation == 'group') 0 else 1], provenance: fixture.provenance);
   }
   final AiNativeDrawing synthetic = _drawing(latin1.encode(subtreeRemovalSource()));
   await record('synthetic', 'group', synthetic, [0]);

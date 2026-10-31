@@ -424,6 +424,33 @@ groups and compound topology. There is no general modern object lifecycle API.
   Mixed-subtree copying, reordering and reparenting, plus broader reference-owner
   schemas, remain outstanding; this task stays open. No Focale integration or
   Adobe reopening was introduced, and synthetic native SVG remains unqualified.
+  Qualified mixed group/layer subtrees now support copying immediately after
+  their original owners. Both representations, native parameters, panel state
+  and saved alternatives stay together; shared styles/resources remain exact.
+  Ordinary objects retain their source-handle identity keys, while paired IDs
+  require the owning metadata dictionaries, including older alternatives. Every
+  new name is reserved against the complete source; missing/extra mappings and
+  repeated source aliases reject. Input replay tracks both interpretations across
+  the whole subtree, distinguishing definite scalar writes from potential/hidden
+  style effects. Known ordinary parent metadata no longer prevents subsequent
+  native shape transforms; unresolved parent appearances still reject. Seventeen
+  regressions cover nested batches, both saved metadata layouts, source-wide ID
+  reservations, distinct private/public flags, definite/hidden styles, opaque
+  neighbors, bounds and continued editing. Independent checks verify 23 fixed
+  transactions: eight derived-real and ten synthetic copies plus five refusals.
+  Recipes, copied/unselected bytes, every replacement string, original input
+  scalars, native flags and both metadata branches are independently bound. Real
+  native/printing SVG and synthetic printing SVG retain the requested duplication;
+  one follow-up edit also checks private/printing geometry, main/redundant centers
+  and unchanged older metadata. The opacity-source refusal retains its unresolved
+  inherited-input limit. Latest validation: 600 VM/599 Node tests and clean
+  format/fix/analysis. The existing subtree-removal, paired-shape, group, layer
+  and direct-shape suites also pass all 100 independent transactions, bringing
+  this validation run to 123 transactions plus the follow-up translation.
+  Mixed-subtree reordering/reparenting, grouping/dissolution and broader
+  reference-owner schemas remain outstanding; this task stays open.
+  No Focale integration or Adobe reopening was introduced, and synthetic native
+  SVG remains unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

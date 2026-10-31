@@ -67,7 +67,9 @@ def provenance(inkai, source, row, programs, directory):
         donor = directory / name
         donor.write_bytes(original)
         selected = bundles(SimpleNamespace(trailer=parsed(original[first:last])))
-        expected = bundles(inkai.parse(str(donor)))[:2]
+        offset = recipe.get('firstPair', 0)
+        assert offset in (0, 1)
+        expected = bundles(inkai.parse(str(donor)))[offset:offset + 2]
         assert len(selected) == len(expected)
         assert [normalized(bundle['items']) for bundle in selected] == [normalized(bundle['items']) for bundle in expected]
     else:

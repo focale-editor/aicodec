@@ -148,7 +148,9 @@ final class AiNativeLayers {
   /// [identifiers] must supply a fresh native XML name for every identified layer
   /// in the copied subtrees, including descendants. Anonymous layers stay
   /// anonymous. [artworkIdentifiers] supplies fresh IDs for every identified
-  /// path/group descendant, keyed by its original drawing handle. Optional
+  /// path/group descendant, keyed by its original drawing handle. Complete
+  /// qualified CC pairs instead use each identified metadata dictionary's
+  /// [AiNativeContainer] handle, including saved alternatives. Optional
   /// [names] replace existing layer display names in copies only.
   /// Existing identities, references, paint state and unselected bytes remain.
   AiNativeLayers duplicate({

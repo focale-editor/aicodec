@@ -266,8 +266,10 @@ _NativeShapeAccess _shapeAccess(AiNativeDrawing drawing, _NativeShapeBundle copy
 }
 
 /// Restores only read-before-write values that the preceding original can change.
-List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _NativeShapeInputs inputs, int maxBytes) {
-  final _NativeShapeAccess access = _shapeAccess(drawing, copy);
+List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _NativeShapeInputs inputs, int maxBytes) => _nativeCopyPrefix(_shapeAccess(drawing, copy), inputs, maxBytes);
+
+/// Restores read-before-write inputs of a qualified interval in both projections.
+List<int> _nativeCopyPrefix(_NativeShapeAccess access, _NativeShapeInputs inputs, int maxBytes) {
   final Set<String> printingNeeded = access.printingReads.intersection(access.printingWrites);
   final Set<String> nativeNeeded = access.nativeReads.intersection(access.nativeWrites);
   final StringBuffer prefix = StringBuffer();
@@ -276,7 +278,7 @@ List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _Na
   void append(AiNativeInstruction value, {bool private = false}) {
     final String text = _shapeStateText(value, private: private);
     if (prefix.length + text.length > maxBytes) {
-      throw const AiLimitException(message: 'Shape copy state exceeds the native byte limit.');
+      throw const AiLimitException(message: 'Native copy state exceeds the native byte limit.');
     }
     prefix.write(text);
   }
@@ -284,14 +286,14 @@ List<int> _shapeCopyPrefix(AiNativeDrawing drawing, _NativeShapeBundle copy, _Na
   for (final String key in printingNeeded) {
     final AiNativeInstruction? value = inputs.printing[key];
     if (value == null) {
-      throw UnsupportedError('The shape copy requires an unknown inherited printing $key value.');
+      throw UnsupportedError('The native copy requires an unknown inherited printing $key value.');
     }
     append(value);
   }
   for (final String key in nativeNeeded) {
     final AiNativeInstruction? value = inputs.native[key];
     if (value == null) {
-      throw UnsupportedError('The shape copy requires an unknown inherited native $key value.');
+      throw UnsupportedError('The native copy requires an unknown inherited native $key value.');
     }
     if (printingNeeded.contains(key) && _sameNativeArtworkState(value, inputs.printing[key])) {
       continue;

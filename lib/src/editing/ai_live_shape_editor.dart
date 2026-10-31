@@ -212,7 +212,11 @@ final class _LiveShapeEditor {
       for (final AiNativeGroup group in drawing.groups.where((group) => group.start < shape.start && group.end > shape.end)) {
         final int closing = drawing.items.indexWhere((item) => item.end == group.end);
         if (closing >= 0 && closing + 1 < drawing.items.length && drawing.items[closing + 1] is AiNativeContainer) {
-          throw UnsupportedError('Native transformation requires synchronizing the parent appearance.');
+          final AiNativeObject owner = drawing._objects.forSource(group);
+          if (group.opening.operator != 'u' || group.opening.isPrivate || owner.bindingIssue != null) {
+            throw UnsupportedError('Native transformation requires synchronizing the parent appearance.');
+          }
+          _ordinaryObjectFollowing(drawing, group);
         }
       }
     }

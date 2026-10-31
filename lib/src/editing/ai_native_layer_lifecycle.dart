@@ -243,17 +243,29 @@ AiNativeLayers _duplicateNativeLayers(
   bool discardViewState,
 ) {
   final List<AiNativeLayer> selected = _selectedLayers(model, layers);
+  final List<_NativeSubtreeSpan> spans = [for (final AiNativeLayer layer in selected) (start: layer.start, end: layer.end)];
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
   final List<AiNativeLayer> descendants = _layerDescendants(model, selected);
   final Set<String> reserved = identifiers.isEmpty && artworkIdentifiers.isEmpty ? {} : _nativeIdentityNames(model.structure);
   final List<AiSourceEdit> replacements = _layerCopyEdits(model, descendants, identifiers, names, reserved);
   replacements.addAll(
-    _objectCopyEdits(
-      model.drawing,
-      selected,
-      artworkIdentifiers,
-      reserved: reserved,
-      maxBytes: model.drawing.records.program.limits.maxDecodedBytes - replacements.fold(0, (count, edit) => count + edit.bytes.length),
-    ),
+    pairs.isNotEmpty
+        ? _subtreeCopyEdits(
+            model.drawing,
+            selected,
+            spans,
+            pairs,
+            artworkIdentifiers,
+            reserved: reserved,
+            maxBytes: model.drawing.records.program.limits.maxDecodedBytes - replacements.fold(0, (count, edit) => count + edit.bytes.length),
+          )
+        : _objectCopyEdits(
+            model.drawing,
+            selected,
+            artworkIdentifiers,
+            reserved: reserved,
+            maxBytes: model.drawing.records.program.limits.maxDecodedBytes - replacements.fold(0, (count, edit) => count + edit.bytes.length),
+          ),
   );
   final int roots = model.rootCount + selected.where((layer) => layer.parentIndex == null).length;
   final List<AiSourceEdit> edits = _layerDeclarations(model, roots, discardViewState);
@@ -261,7 +273,10 @@ AiNativeLayers _duplicateNativeLayers(
   final Map<int, _NativeArtworkState> states = _layerStates(model, selected.expand((layer) => [layer.start, layer.end]), headers);
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in selected) {
-    _layerLifecyclePrefix(model, layer, headers);
+    _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
+    if (pairs.isNotEmpty) {
+      continue;
+    }
     final List<int> bytes = _placedLayer(
       model,
       layer,
@@ -275,6 +290,9 @@ AiNativeLayers _duplicateNativeLayers(
     edits.add(AiSourceEdit(start: layer.end, end: layer.end, bytes: [10, ...bytes]));
     remaining -= bytes.length + 1;
   }
+  if (pairs.isNotEmpty) {
+    edits.addAll(_copiedNativeSubtrees(model, spans, pairs, replacements));
+  }
   final ({int paths, int groups}) count = _layerArtworkCounts(model, selected);
   return _layerLifecycleResult(
     model,
@@ -283,7 +301,7 @@ AiNativeLayers _duplicateNativeLayers(
     layers: model.layers.length + descendants.length,
     paths: model.drawing.paths.length + count.paths,
     groups: model.drawing.groups.length + count.groups,
-    liveShapes: model.drawing.liveShapes.length + _selectedLiveShapeCount(model.drawing, selected),
+    liveShapes: model.drawing.liveShapes.length + _subtreeLiveShapeCount(model.drawing, spans),
   );
 }
 

@@ -38,3 +38,4 @@
 - Added complete CC pair movement after other pairs or into ordinary groups and layers, preserving source state, identities and alternatives with explicit parent-flag inheritance.
 - Unified identified-object removal beside complete CC pairs, literal shared styles and counted gradient banks, preserving resource namespaces and qualified layer boundaries while rejecting unresolved references.
 - Added complete mixed group/layer subtree removal with CC authoring/printing pairs, all saved metadata alternatives and retained native/printing state dependencies.
+- Added mixed CC subtree copies with fresh identities for every ordinary object and paired metadata owner, separate native/printing input replay and retained shared resources; qualified parent metadata now permits subsequent native shape transforms.

@@ -267,6 +267,24 @@ dart run tool/check_native_subtree_removal.dart
 python3 tool/verify_native_subtree_removal.py --inkai-source /tmp/extension-ai
 ```
 
+Mixed parent copies reuse the same wrapper construction and pinned sources,
+selecting later complete pairs where their inherited inputs are known. The 23
+fixed transactions cover eight derived-real and ten synthetic copies plus five
+refusals, including an unresolved first opacity pair. Every copied XML ID and
+optional layer name is bound to its original token; only fresh caller-supplied
+names and source-derived input assignments may differ from the selected bytes.
+Both saved alternatives, exact unselected bytes, native flags and native/printing
+SVG for real-derived sources are checked independently. Synthetic printing SVG
+retains the documented native version-branch limitation. A follow-up translation
+checks that a copied shape remains editable beneath qualified parent metadata,
+including private/printing geometry and unchanged older metadata. No Adobe
+reopening or application rendering is inferred.
+
+```sh
+dart run tool/check_native_subtree_copy.dart
+python3 tool/verify_native_subtree_copy.py --inkai-source /tmp/extension-ai
+```
+
 Direct live-shape lifecycle reuses six files in `manifest.json` and
 `rotation_manifest.json`; `direct_shape_manifest.json` adds the pinned `styles.ai`
 fixture with its source attribution. Fourteen real-file copies/removals retain
