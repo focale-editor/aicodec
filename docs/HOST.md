@@ -78,6 +78,10 @@ snapshots, text ruler origin and unused typography resources stay byte-exact.
 Changing the first board does not move the drawing or infer a new text origin.
 Populated text and other unresolved dependency families still require their own
 qualification; preservation of an unused resource does not make it editable.
+Qualified ordinary compound and clipping groups can also remain exact during an
+artboard edit. Their geometry, masks, metadata and child order stay in place;
+this does not grant the host independent path/group lifecycle operations on
+their members. Text-based and multilayer masks remain unqualified.
 
 ## Derived representations
 

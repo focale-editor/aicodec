@@ -1,0 +1,110 @@
+part of 'package:aikit/src/model/ai_native_records.dart';
+
+/// Qualifies unchanged geometry without granting its children independent edits.
+void _artboardArtworkInterval(AiNativeLayers layers, int start, int end, Map<int, AiNativeLayer> headers) {
+  final AiNativeDrawing drawing = layers.drawing;
+  final Map<int, AiNativePath> paths = {for (final AiNativePath path in _pathInterval(drawing.paths, start, end, (path) => path.start)) path.start: path};
+  final Map<int, AiNativeGroup> groups = {for (final AiNativeGroup group in drawing.groups.where((group) => group.start >= start && group.start < end)) group.start: group};
+  final Set<AiNativeInstruction> endings = {for (final AiNativeGroup group in drawing.groups) group.closing};
+  final List<AiNativeItem> items = _pathInterval(drawing.items, start, end, (item) => item.start).toList();
+  AiNativeInstruction? count;
+  for (int index = 0; index < items.length; index++) {
+    final AiNativeItem item = items[index];
+    if (item.end > end) {
+      throw UnsupportedError('Artboard dependency inspection crosses an unfinished native object.');
+    }
+    if (paths[item.start] case final AiNativePath path) {
+      if (path.isPrivate || path.end > end || layers.structure.nodeFor(path).versions.isNotEmpty) {
+        throw UnsupportedError('Retained paths require ordinary unconditional ownership.');
+      }
+      _ordinaryObject(drawing, path);
+      final int first = index;
+      while (index + 1 < items.length && items[index + 1].start < path.end) {
+        index++;
+      }
+      _artboardRetainedPath(layers, path, items.sublist(first, index + 1), count);
+      count = null;
+      continue;
+    }
+    if (headers[item.start] case final AiNativeLayer layer) {
+      if (count != null || layer.bindingIssue != null) {
+        throw UnsupportedError('A retained layer has unresolved metadata or point-count ownership.');
+      }
+      continue;
+    }
+    if (_ordinaryObjectAttachment(drawing, item)) {
+      if (count != null) {
+        throw UnsupportedError('A retained point count crosses object metadata.');
+      }
+      continue;
+    }
+    if (item is! AiNativeInstruction) {
+      throw UnsupportedError('Artboard dependencies include an unresolved artwork owner.');
+    }
+    if (groups[item.start] case final AiNativeGroup group) {
+      _ordinaryObject(drawing, group);
+      if (layers.structure.nodeFor(group).versions.isNotEmpty) {
+        throw UnsupportedError('Retained group topology requires unconditional ownership.');
+      }
+    }
+    if (groups.containsKey(item.start) || endings.contains(item)) {
+      if (count != null || item.isPrivate || item.operands.isNotEmpty) {
+        throw UnsupportedError('Retained group boundaries require ordinary syntax and no pending point count.');
+      }
+    } else if (item.operator == 'As') {
+      if (count != null || item.isPrivate || item.numbers?.length != 1 || item.numbers!.single < 0 || item.numbers!.single != item.numbers!.single.truncateToDouble()) {
+        throw const FormatException('Invalid retained native point count.');
+      }
+      count = item;
+    } else if (_nativeArtworkStateKey(item) == null) {
+      throw UnsupportedError('Artboard dependency inspection does not cover ${item.operator}.');
+    }
+  }
+  if (count != null) {
+    throw const FormatException('A retained native point count has no path.');
+  }
+  final Set<int> wrappers = {
+    for (final AiNativeLayer layer in layers.layers) ...[
+      if (layer.openingComment != null) layer.openingComment!.start,
+      if (layer.closingComment != null) layer.closingComment!.start,
+    ],
+  };
+  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any(
+    (token) => token.kind == .data || token.kind == .comment && !wrappers.contains(token.start) && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')),
+  )) {
+    throw UnsupportedError('Retained artwork contains unresolved annotations or opaque payloads.');
+  }
+}
+
+/// Keeps compound and clipping geometry in its original global coordinate basis.
+void _artboardRetainedPath(AiNativeLayers layers, AiNativePath path, List<AiNativeItem> items, AiNativeInstruction? count) {
+  if (path.geometry.skip(1).any((command) => command.operator == 'm') ||
+      path.geometry.any((command) => command.numbers!.any((value) => value.abs() > 9007199254740991)) ||
+      items.length < path.geometry.length + 1 ||
+      path.geometry.indexed.any((entry) => !identical(entry.$2, items[entry.$1])) ||
+      !identical(items.last, path.paint)) {
+    throw UnsupportedError('Retained paths require contiguous portable geometry and one owned paint.');
+  }
+  final List<AiNativeItem> controls = items.sublist(path.geometry.length, items.length - 1);
+  bool closed = path.closed;
+  if (controls.isNotEmpty) {
+    final List<AiNativeStructureNode> parents = _artworkParents(layers.structure, layers.structure.parentOf(layers.structure.nodeFor(path)));
+    if (controls.length != 2 ||
+        controls.first is! AiNativeInstruction ||
+        controls.last is! AiNativeInstruction ||
+        !const {'h', 'H'}.contains((controls.first as AiNativeInstruction).operator) ||
+        (controls.last as AiNativeInstruction).operator != 'W' ||
+        controls.cast<AiNativeInstruction>().any((command) => command.isPrivate || command.operands.isNotEmpty) ||
+        !parents.any((parent) => parent.kind == .clip)) {
+      throw UnsupportedError('Retained path masks require h/H W before paint inside an owned clipping group.');
+    }
+    closed |= (controls.first as AiNativeInstruction).operator == 'h';
+  }
+  if (count != null) {
+    final List<double> first = path.geometry.first.numbers!;
+    final List<double> last = path.geometry.last.numbers!;
+    if (count.numbers!.single != path.geometry.length - (closed ? 1 : 0) || closed && (path.geometry.length == 1 || first[0] != last[last.length - 2] || first[1] != last.last)) {
+      throw const FormatException('Retained native point count disagrees with its path.');
+    }
+  }
+}

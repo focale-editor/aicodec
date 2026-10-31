@@ -1453,6 +1453,17 @@ or artwork dependencies reject. The qualified text payloads are retained as
 unused data; this does not establish a populated-text lifecycle contract.
 Artwork identity deletion retains its separate, stricter reference qualification.
 
+The retained body may contain ordinary compound paths (`*u`/`*U`) and clipping
+groups (`q`/`Q`), including nested groups, direct metadata and hidden/locked layer
+owners. Path masks retain their exact `h`/`H`, `W` and paint sequence within an
+owned clipping group. Geometry must remain contiguous; saved point counts must
+belong to one path and match its explicit closure convention. Private/versioned
+ordinary paths, stray mask controls, text/multilayer masks, unknown commands and
+opaque annotations remain unqualified. Complete CC pairs use their existing
+internal dependency checks; neighboring retained compounds are checked separately.
+This permits artboard changes without granting deletion, movement or independent
+editing of the compound/clip children.
+
 The operations edit native data only: host-supplied compatibility pages and
 cached headers must also be synchronized before a complete save. The save APIs now
 update qualified PDF `AIMetaData` header copies and accept explicit PDF page
@@ -1475,12 +1486,21 @@ definitions, identity collisions, unknown dependencies and aggregate limits.
 Thirteen dependency-scope regressions additionally cover retained setup/text
 owners, namespace separation, exact global coordinates, unchanged artwork-deletion
 refusals, malformed data and aggregate binary inspection limits. Forty independent
-lifecycle transactions qualify thirty edits in five pinned CC sources and ten
+lifecycle transactions initially qualified thirty edits in five pinned CC sources and ten
 synthetic edits, including complete CC pairs and shared gradients. The real set
 includes the RGB and CMYK rectangle documents with their complete original setup
 inventories and empty text-engine snapshots. The independent reader compares complete Document values,
 exact retained dictionaries/separator trivia and every byte outside the declared
 array/scalar/crop edits.
+
+Eight further regressions cover retained compound/clip topology, complete CC
+pairs on either side, exact metadata, malformed masks/counts, unchanged child-edit
+refusals and a 250-compound batch. The lifecycle suite now checks 48 transactions:
+30 in the same five real sources and 18 synthetic edits. The added topology
+fixture is synthetic and checksum-pinned; all six outcomes also retain the exact
+independently parsed drawing commands, including one compound, two clipping
+groups, three mask paths and five point counts. These checks do not qualify a
+real Adobe-produced clipped document or editable compound/clip topology.
 
 ### Native print selections during artboard edits
 

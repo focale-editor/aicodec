@@ -113,9 +113,15 @@ void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers
 }
 
 /// Returns owned artwork dictionaries after checking ordinary and paired bodies.
-Set<AiNativeContainer> _nativeReferenceBody(AiNativeLayers model, Map<int, AiNativeLayer> headers) {
+Set<AiNativeContainer> _nativeReferenceBody(
+  AiNativeLayers model,
+  Map<int, AiNativeLayer> headers, {
+  void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>) inspect = _referenceArtworkInterval,
+  bool qualifyShapeNeighbors = true,
+}) {
   final List<_NativeShapeBundle> shapes = [
-    for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true)) _shapeBundle(model.drawing, shape, model.structure),
+    for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true))
+      _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors),
   ];
   final Set<AiNativeContainer> dictionaries = {
     for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
@@ -127,9 +133,9 @@ Set<AiNativeContainer> _nativeReferenceBody(AiNativeLayers model, Map<int, AiNat
   final AiProgram program = model.drawing.records.program;
   int position = program.bodyStart;
   for (final _NativeShapeBundle bundle in shapes) {
-    _referenceArtworkInterval(model, position, bundle.start, headers);
+    inspect(model, position, bundle.start, headers);
     position = bundle.shape.end;
   }
-  _referenceArtworkInterval(model, position, program.bodyEnd, headers);
+  inspect(model, position, program.bodyEnd, headers);
   return dictionaries;
 }

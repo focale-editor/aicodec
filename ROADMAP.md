@@ -664,6 +664,20 @@ groups and compound topology. There is no general modern object lifecycle API.
   edits with shared resources. Full validation: 750 VM/749 Node tests and clean
   format, fix and analysis. Populated text and complex resource/object-family
   isolation still remain, so this task stays open.
+  Retained-body inspection now separates artboard edits from independent path
+  lifecycle permission. Ordinary compound and clipping groups, nested path masks,
+  hidden/locked layers and direct identities retain exact source and ordering.
+  Complete CC pairs keep their internal checks while their unmodified neighbors
+  receive separate whole-body qualification. Eight regressions cover masks,
+  geometry/count ownership, opaque neighbors, unchanged child-edit refusals,
+  adjacent CC pairs and 250 compounds. Independent lifecycle verification now
+  covers 48 transactions (30 pinned real, 18 synthetic), including all retained
+  operators and operands in six synthetic compound/clip outcomes. Actual producer
+  clipping fixtures and broader object/resource isolation remain unqualified;
+  the separate compound/clip editing task below has not been completed by this
+  preservation-only extension. Full validation: 758 VM/757 Node tests and clean
+  format, fix and analysis. The 19 state/rectangle/refusal transactions and 20
+  print-selection transactions were also regenerated and independently rechecked.
   No host integration or native renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.

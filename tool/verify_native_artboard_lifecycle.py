@@ -11,11 +11,15 @@ import subprocess
 import sys
 
 from corpus_support import REVISION, native_programs
-from verify_native_artboards import SYNTHETIC, inventory
+from verify_native_artboards import SYNTHETIC as BASE_SYNTHETIC, inventory
 from verify_native_artboards import verify as verify_resize
 from verify_native_path_lifecycle import patch
 from verify_native_reference_scope import documents, values
 from verify_native_structure import parsed
+from verify_live_shapes import walk_body
+from verify_native_group_lifecycle import command
+
+SYNTHETIC = dict(BASE_SYNTHETIC, **{'synthetic-topology': '118973911f47666aa8c542d09c1eb7103626cf2b0252724ab7cb6ef76b06647e'})
 
 
 def requests(names):
@@ -30,7 +34,7 @@ def requests(names):
         ):
             result[name, variant] = predecessor
     for name in SYNTHETIC:
-        for variant in ('reorder', 'remove-active', 'remove-first', 'create-middle', 'create-active'):
+        for variant in ('resize', 'reorder', 'remove-active', 'remove-first', 'create-middle', 'create-active'):
             result[name, variant] = 'original'
     return result
 
@@ -96,6 +100,15 @@ def checked_inventory(data, document, reported):
 
 def verify(inkai, source, target, row):
     """Check the whole Document, exact retained records and all external bytes."""
+    if row['source'] == 'synthetic-topology':
+        original_commands = [command(item) for item in walk_body(inkai.parse(str(source)).trailer)]
+        changed_commands = [command(item) for item in walk_body(inkai.parse(str(target)).trailer)]
+        assert original_commands == changed_commands
+        operators = [item[0] for item in original_commands]
+        assert operators.count('*u') == operators.count('*U') == 1
+        assert operators.count('q') == operators.count('Q') == 2
+        assert operators.count('W') == 3 and operators.count('h') == 2 and operators.count('H') == 1
+        assert operators.count('m') == operators.count('As') == 5
     if row['variant'] == 'resize':
         verify_resize(inkai, source, target, dict(row, selected=0, crop=False, origin=False, rejected=False), {})
         return
@@ -145,7 +158,7 @@ def main():
     manifest.update({entry['file']: entry for entry in json.loads(Path('test/corpus/manifest.json').read_text())['files'] if entry['file'] in ('rgb_rectangle.ai', 'cmyk_rectangle.ai')})
     expected = requests(manifest)
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(manifest) == 5 and len(rows) == len(expected) == 40
+    assert len(manifest) == 5 and len(rows) == len(expected) == 48
     assert {(row['source'], row['variant']) for row in rows} == expected.keys()
     for name in (*manifest, *SYNTHETIC):
         original = (args.output / f'{name}.original.ps').read_bytes()
@@ -164,7 +177,7 @@ def main():
         verify(inkai, args.output / row['original'], args.output / row['result'], row)
         checked.append(f'{name}/{variant}')
         print(checked[-1], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, realTransactions=30, syntheticTransactions=10), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, realTransactions=30, syntheticTransactions=18), indent=2) + '\n')
 
 
 if __name__ == '__main__':

@@ -55,7 +55,9 @@ void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeCo
 }
 
 /// Qualifies a complete source bundle rather than its individual private paths.
-_NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure) {
+///
+/// Only whole-source retained-body inspection can qualify neighbors separately.
+_NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure, {bool qualifyNeighbors = true}) {
   final AiNativeGroup group = _printingShapeGroup(drawing, shape);
   if (!_shapeParameters.containsKey(shape.handler)) {
     throw UnsupportedError('Shape copies require a known native shape handler.');
@@ -68,32 +70,34 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
   final AiNativeStructureNode owner = structure.nodeFor(group);
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
-  int boundary = drawing.liveShapes.where((other) => other.isBound && other.end <= start).fold(drawing.records.program.bodyStart, (end, other) => max(end, other.end));
-  for (int index = _pathOffset(drawing.items, start, (item) => item.start) - 1; index >= 0 && drawing.items[index].end > boundary; index--) {
-    final AiNativeItem item = drawing.items[index];
-    if (_ordinaryObjectAttachment(drawing, item)) {
-      boundary = item.end;
-      break;
+  if (qualifyNeighbors) {
+    int boundary = drawing.liveShapes.where((other) => other.isBound && other.end <= start).fold(drawing.records.program.bodyStart, (end, other) => max(end, other.end));
+    for (int index = _pathOffset(drawing.items, start, (item) => item.start) - 1; index >= 0 && drawing.items[index].end > boundary; index--) {
+      final AiNativeItem item = drawing.items[index];
+      if (_ordinaryObjectAttachment(drawing, item)) {
+        boundary = item.end;
+        break;
+      }
+      if (headers[item.start] case final AiNativeLayer layer when layer.bindingIssue == null && item.start == layer.source.end.start) {
+        boundary = layer.end;
+        break;
+      }
+      if (headers[item.start] case final AiNativeLayer layer when layer.bindingIssue == null && item.start != layer.source.begin.start && item.start != layer.source.end.start) {
+        continue;
+      }
+      if (item is! AiNativeInstruction) {
+        throw UnsupportedError('The copied shape has unresolved preceding metadata.');
+      }
+      if (_nativePaint.contains(item.operator) || const {'u', 'U', 'Lb', 'LB'}.contains(item.operator)) {
+        boundary = item.end;
+        break;
+      }
+      if (_nativeArtworkStateKey(item) == null) {
+        throw UnsupportedError('The copied shape has an unqualified prefix ${item.operator}.');
+      }
     }
-    if (headers[item.start] case final AiNativeLayer layer when layer.bindingIssue == null && item.start == layer.source.end.start) {
-      boundary = layer.end;
-      break;
-    }
-    if (headers[item.start] case final AiNativeLayer layer when layer.bindingIssue == null && item.start != layer.source.begin.start && item.start != layer.source.end.start) {
-      continue;
-    }
-    if (item is! AiNativeInstruction) {
-      throw UnsupportedError('The copied shape has unresolved preceding metadata.');
-    }
-    if (_nativePaint.contains(item.operator) || const {'u', 'U', 'Lb', 'LB'}.contains(item.operator)) {
-      boundary = item.end;
-      break;
-    }
-    if (_nativeArtworkStateKey(item) == null) {
-      throw UnsupportedError('The copied shape has an unqualified prefix ${item.operator}.');
-    }
+    _ordinaryGroupMetadata(drawing, boundary, start);
   }
-  _ordinaryGroupMetadata(drawing, boundary, start);
   if (structure.versions.memberships(start: start, end: shape.end).isNotEmpty || structure.nodeFor(shape.path!).parentIndex != owner.parentIndex) {
     throw UnsupportedError('Shape copies require one unconditional lexical owner.');
   }
@@ -105,7 +109,9 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
       if (group.opening.isPrivate) {
         throw UnsupportedError('A shape copy cannot inherit a private enclosing group.');
       }
-      _ordinaryObjectFollowing(drawing, group);
+      if (qualifyNeighbors) {
+        _ordinaryObjectFollowing(drawing, group);
+      }
     } else if (parent.source case final AiLayer layer) {
       _qualifiedLayerHeader(layers, layers.layerFor(layer));
     }
@@ -189,14 +195,16 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
       throw UnsupportedError('Shape copies require uniquely resolved unconditional shared resources.');
     }
   }
-  _ordinaryPathFollowing(drawing.items, shape.end);
-  final AiNativeInstruction? following = drawing.items
-      .whereType<AiNativeInstruction>()
-      .where((item) => item.start >= shape.end && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator))
-      .firstOrNull;
-  final AiNativeLayer? layer = following == null ? null : headers[following.start];
-  final int next = layer != null && layer.bindingIssue == null && following!.start == layer.source.begin.start ? layer.start : following?.start ?? drawing.records.program.bodyEnd;
-  _ordinaryGroupMetadata(drawing, shape.end, next);
+  if (qualifyNeighbors) {
+    _ordinaryPathFollowing(drawing.items, shape.end);
+    final AiNativeInstruction? following = drawing.items
+        .whereType<AiNativeInstruction>()
+        .where((item) => item.start >= shape.end && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator))
+        .firstOrNull;
+    final AiNativeLayer? layer = following == null ? null : headers[following.start];
+    final int next = layer != null && layer.bindingIssue == null && following!.start == layer.source.begin.start ? layer.start : following?.start ?? drawing.records.program.bodyEnd;
+    _ordinaryGroupMetadata(drawing, shape.end, next);
+  }
   return _NativeShapeBundle(shape: shape, start: start, commands: commands, styleWrites: style.writes, styleReads: style.reads);
 }
 

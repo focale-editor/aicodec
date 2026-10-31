@@ -696,9 +696,9 @@ dart run tool/check_native_artboards.dart
 python3 tool/verify_native_artboards.py --inkai-source /tmp/extension-ai
 ```
 
-The lifecycle suite checks forty transactions: thirty resizes, creations,
+The lifecycle suite checks forty-eight transactions: thirty resizes, creations,
 reorderings and removals across the three pinned CC unit/origin examples and the
-RGB/CMYK rectangle fixtures already pinned in `manifest.json`, plus ten
+RGB/CMYK rectangle fixtures already pinned in `manifest.json`, plus eighteen
 checksum-pinned synthetic transactions with independent active/selection/crop
 state and mixed CC/resource owners. The unmodified reader checks complete
 Document values, exact retained board records and separator trivia, and all bytes
@@ -709,6 +709,14 @@ retain their full plug-in/style/palette inventories, unused text resources and
 separate main/undo-free snapshots. Exact external-byte comparisons also retain
 their text ruler origins, template boxes and canvas declarations while the first
 board is resized, inserted before, reordered or removed.
+
+The added `synthetic-topology` source contains a hidden layer, nested ordinary
+and compound groups, three path masks inside two clipping groups, five counted
+paths and direct object identities. All six native edit variants retain exact
+independently parsed operators and operands as well as complete external bytes.
+The fixture's SHA-256 is pinned in the verifier. These synthetic masks follow the
+AI file-format `h/H W` path-mask contract; no new real producer clipping fixture
+or Adobe reopen result is implied by their acceptance.
 
 ```sh
 dart run tool/check_native_artboard_lifecycle.dart

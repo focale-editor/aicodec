@@ -3,7 +3,8 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Qualifies retained owners separately from artwork identity deletion.
 void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: model.records));
-  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(layers, _layerHeaderItems(layers));
+  // The retained-body checker owns every interval outside each complete pair.
+  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(layers, _layerHeaderItems(layers), inspect: _artboardArtworkInterval, qualifyShapeNeighbors: false);
   final List<({int start, int end})> independent = _referenceGradientRanges(layers);
   independent.addAll(_artboardSetupRanges(layers));
   independent.addAll(_artboardEmptyTextScope(layers));
