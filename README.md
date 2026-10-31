@@ -151,6 +151,13 @@ placement and its raw file references. Saving keeps those references and cached
 previews intact; missing pixels reject the operation. Using the saved preview
 through `(object) => object.preview?.toSamples()` is an explicit fallback.
 
+`AiXmpMetadata` reads catalog manifest/ingredient references and relinks explicitly
+selected resources, with host-supplied paths and optional asset identifiers.
+It preserves surrounding XML and attaches the updated packet after native/PDF
+saving. Mapping XMP references to placed objects remains explicit; managed or
+part-specific relationships reject this edit. See the technical reference for
+the supported structures and preservation policy.
+
 ## Scope
 
 AI is not one uniform format. A PDF page can be a compatibility warning rather

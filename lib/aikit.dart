@@ -10,6 +10,7 @@ export 'package:aikit/src/model/ai_native_pdf.dart';
 export 'package:aikit/src/model/ai_native_records.dart';
 export 'package:aikit/src/model/ai_native_text.dart';
 export 'package:aikit/src/model/ai_program.dart';
+export 'package:aikit/src/model/ai_xmp_metadata.dart';
 export 'package:pdfcore/pdfcore.dart';
 export 'package:pscore/pscore.dart'
     show PsEngineArray, PsEngineBoolean, PsEngineCodec, PsEngineDictionary, PsEngineDocument, PsEngineLimits, PsEngineName, PsEngineNull, PsEngineNumber, PsEngineString, PsEngineToken, PsEngineValue;

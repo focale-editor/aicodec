@@ -274,6 +274,23 @@ dart run tool/check_native_relinks.dart
 python3 tool/verify_native_relinks.py --inkai-source /tmp/extension-ai
 ```
 
+Catalog XMP has a separate pinned corpus. Adobe's `BlueSquare.ai` (Illustrator CS2)
+provides a real packet without a dependency manifest. ExifTool's `XMP3.xmp` provides
+a manifest plus unrelated non-XMP RDF extensions, which remain opaque. The checker
+retains the Adobe packet and relinks one ExifTool reference. lxml and ExifTool
+independently verify the result, while pypdf checks source preservation and saved
+catalog packets. Two Poppler comparisons require zero pixel differences. The
+ExifTool packet attached to Adobe artwork is a synthetic metadata carrier, not a
+real Illustrator linked-resource edit. Adobe reopening and automatic native/XMP
+mapping remain unqualified. Dependencies: lxml, pypdf, Pillow, zstandard, ExifTool
+and Poppler, as used by the existing PDF verifier.
+
+```sh
+python3 tool/fetch_corpus.py --manifest xmp_manifest.json
+dart run tool/check_xmp_metadata.dart
+python3 tool/verify_xmp_metadata.py
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

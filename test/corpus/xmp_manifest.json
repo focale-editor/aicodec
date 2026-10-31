@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "scope": "XML dependency references and PDF catalog metadata; not a native CC linked-artwork fixture or an Adobe reopening qualification.",
+  "files": [
+    {
+      "file": "xmp/BlueSquare.ai",
+      "url": "https://raw.githubusercontent.com/adobe/XMP-Toolkit-SDK/7093513bd3caaad29da01db0f275d88a39d6bcc2/samples/testfiles/BlueSquare.ai",
+      "size": 1186535,
+      "sha256": "453bc5718d1965224e7321106a7b8a964caeaaebe4e2cad5a1e380041e17b01b",
+      "revision": "7093513bd3caaad29da01db0f275d88a39d6bcc2",
+      "license": "BSD-3-Clause; Copyright (c) 2020 Adobe. License at the pinned repository root.",
+      "scope": "Illustrator CS2 packet preservation; no dependency manifest.",
+      "expected": "accept"
+    },
+    {
+      "file": "xmp/XMP3.xmp",
+      "url": "https://raw.githubusercontent.com/exiftool/exiftool/980409314fddbd83d9092b5c160fafab7f67fd52/t/images/XMP3.xmp",
+      "size": 2402,
+      "sha256": "d55ad81cf5d4efad1dec1d86942b6ac5915086dc9f8377d4ce65a70e935b1e5f",
+      "revision": "980409314fddbd83d9092b5c160fafab7f67fd52",
+      "license": "Artistic-1.0-Perl OR GPL-1.0-or-later; Copyright 2003-2026 Phil Harvey. Terms in the pinned README.",
+      "scope": "Manifest editing only; this fixture deliberately contains non-XMP RDF node IDs in unrelated properties, which remain opaque.",
+      "expected": "accept"
+    }
+  ]
+}

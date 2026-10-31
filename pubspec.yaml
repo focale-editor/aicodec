@@ -24,6 +24,7 @@ dependencies:
       url: https://github.com/focale-editor/pdfcore.git
       ref: b251fd4fa12441279a5d0b9ec2d03033eb696c50
   pscore: ^0.2.2
+  xml: '>=7.1.0 <8.0.0'
   zcodec: ^0.2.6
 
 dev_dependencies:
