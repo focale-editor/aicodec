@@ -125,6 +125,8 @@ def main():
                         'space': space if corner else None,
                         'deviceName': device if corner else None,
                         'inks': inks(space) if corner else [],
+                        'inkTints': [{'name': ink['name'], 'tint': tint}
+                                     for ink, tint in zip(reversed(inks(space)), color)] if corner else [],
                     }
                     if corner:
                         if device:

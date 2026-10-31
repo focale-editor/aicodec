@@ -35,6 +35,12 @@ AiNativeMeshVertex _vertex(AiNativeMesh mesh, int first, int second) => mesh.ver
 /// Provides a known device replacement with a different source component count.
 AiNativeMeshProcessColor _red() => AiNativeMeshProcessColor(space: .rgb, components: [1, 0, 0]);
 
+/// Declares inks in stack order, with deliberately different tint values.
+const String _inks = '[[0 0 0 1 /DeviceCMYK (Bl\\141ck) /Separation] [0 1 0 0 /DeviceCMYK <4d6167656e7461> /Separation] 2 /NChannel]';
+
+/// Keeps every corner in a two-ink space without changing grid geometry.
+String _inkGrid() => _grid().replaceFirst('/DeviceCMYK /CS', '$_inks /CS').replaceAll('0 0.5 1 0 1', '0.4 0.7 1');
+
 /// Checks duplicated-corner edits, local color scope and explicit rejections.
 void main() {
   test('indexes shared Cartesian vertices and edits all selected corner copies', () {
@@ -141,6 +147,7 @@ void main() {
     check(space.inks.map((ink) => latin1.decode(ink.nameBytes))).deepEquals(['Black', 'Magenta']);
     check(space.inks.first.components).deepEquals([0.0, 0.0, 0.0, 1.0]);
     check(space.inks.clear).throws<UnsupportedError>();
+    check(mesh.vertices.first.corners.first.inkTints.map((component) => (latin1.decode(component.ink.nameBytes), component.tint))).deepEquals([('Magenta', 0.4), ('Black', 0.7)]);
     final AiNativeMeshes changed = source.paintVertices(
       mesh: mesh,
       changes: [AiNativeMeshVertexPaint(vertex: _vertex(mesh, 1, 1), color: _red())],
@@ -164,6 +171,137 @@ void main() {
     check(_decode(separation).meshes.single.vertices.first.corners.first.colorSpace!.inks.single.deviceName).equals('DeviceRGB');
     check(() => _decode(grid.replaceFirst('2 /NChannel', '3 /NChannel'))).throws<FormatException>();
     check(() => _decode(grid.replaceFirst('0.4 0.7 1', '0.4 1'))).throws<FormatException>();
+  });
+
+  test('changes NChannel tints in component order across all shared copies', () {
+    final AiNativeMeshes source = _decode(_inkGrid());
+    final AiNativeMesh mesh = source.meshes.single;
+    final List<double> tints = [0.2, 0.9];
+    final AiNativeMeshVertexPaint paint = AiNativeMeshVertexPaint(vertex: _vertex(mesh, 1, 1), tints: tints, opacity: 0.6);
+    tints[0] = 1;
+    check(paint.tints!).deepEquals([0.2, 0.9]);
+    check(paint.tints!.clear).throws<UnsupportedError>();
+    final AiNativeMeshes changed = source.paintVertices(mesh: mesh, changes: [paint]);
+    check(changed.meshes.single.fields.length).equals(mesh.fields.length);
+    for (final AiNativeMeshVertex vertex in changed.meshes.single.vertices) {
+      final bool selected = vertex.firstIndex == 1 && vertex.secondIndex == 1;
+      for (final AiNativeMeshNode corner in vertex.corners) {
+        check(corner.inkTints.map((component) => latin1.decode(component.ink.nameBytes))).deepEquals(['Magenta', 'Black']);
+        check(corner.inkTints.map((component) => component.tint)).deepEquals(selected ? [0.2, 0.9] : [0.4, 0.7]);
+        check(corner.opacity).equals(selected ? 0.6 : 1.0);
+        check(corner.inkTints.clear).throws<UnsupportedError>();
+      }
+    }
+    final String before = latin1.decode(source.records.program.bytes);
+    final String after = latin1.decode(changed.records.program.bytes);
+    check(after).equals(before.replaceAll('0.4 0.7 1 10 10', '0.2 0.9 0.6 10 10'));
+    check(
+      identical(
+        changed.paintVertices(
+          mesh: changed.meshes.single,
+          changes: [
+            AiNativeMeshVertexPaint(vertex: _vertex(changed.meshes.single, 1, 1), tints: [0.2, 0.9]),
+          ],
+        ),
+        changed,
+      ),
+    ).isTrue();
+  });
+
+  test('retains Separation alternatives and exact unchanged component lexemes', () {
+    final String grid = _grid().replaceFirst('/DeviceCMYK /CS', '[0.1 0.2 0.3 /DeviceRGB (Spot\\000ink) /Separation] /CS').replaceAll('0 0.5 1 0 1', '6e-1 1');
+    final AiNativeMeshes source = _decode(grid);
+    final AiNativeMesh mesh = source.meshes.single;
+    final AiNativeMeshNode corner = mesh.vertices.first.corners.first;
+    check(corner.inkTints.single.ink.nameBytes).deepEquals([83, 112, 111, 116, 0, 105, 110, 107]);
+    check(corner.inkTints.single.ink.components).deepEquals([0.1, 0.2, 0.3]);
+    final AiNativeMeshes changed = source.paintVertices(
+      mesh: mesh,
+      changes: [
+        AiNativeMeshVertexPaint(vertex: mesh.vertices.first, tints: [0.8]),
+      ],
+    );
+    check(latin1.decode(changed.records.program.bytes)).equals(latin1.decode(source.records.program.bytes).replaceFirst('6e-1 1', '0.8 1'));
+    check(
+      identical(
+        source.paintVertices(
+          mesh: mesh,
+          changes: [
+            AiNativeMeshVertexPaint(vertex: mesh.vertices.first, tints: [0.6]),
+          ],
+        ),
+        source,
+      ),
+    ).isTrue();
+    final AiNativeMeshes two = _decode(_inkGrid().replaceAll('0.4 0.7 1', '4e-1 .700 1'));
+    final AiNativeMeshes oneChanged = two.paintVertices(
+      mesh: two.meshes.single,
+      changes: [
+        AiNativeMeshVertexPaint(vertex: two.meshes.single.vertices.first, tints: [0.4, 0.3]),
+      ],
+    );
+    check(latin1.decode(oneChanged.records.program.bytes)).equals(latin1.decode(two.records.program.bytes).replaceFirst('4e-1 .700 1', '4e-1 0.3 1'));
+    check(_decode(_grid()).meshes.single.vertices.first.corners.first.inkTints).isEmpty();
+  });
+
+  test('rejects incompatible inks at shared corners atomically', () {
+    const String center = '%_[0.4 0.7 1 10 10 10 10 1 10 10 1] /N X#';
+    final List<String> incompatible = [
+      _inks.replaceFirst('(Bl\\141ck)', '(Different)'),
+      _inks.replaceFirst('0 0 0 1', '0.1 0 0 1'),
+      '[[0 1 0 0 /DeviceCMYK <4d6167656e7461> /Separation] [0 0 0 1 /DeviceCMYK (Bl\\141ck) /Separation] 2 /NChannel]',
+      '/UnknownSpace',
+    ];
+    for (final String space in incompatible) {
+      final AiNativeMeshes source = _decode(_inkGrid().replaceFirst(center, '%_$space /CS X#\n$center\n%_$_inks /CS X#'));
+      final AiNativeMesh mesh = source.meshes.single;
+      final List<int> bytes = source.records.program.bytes.toList();
+      check(
+        () => source.paintVertices(
+          mesh: mesh,
+          changes: [
+            AiNativeMeshVertexPaint(vertex: mesh.vertices.first, opacity: 0.3),
+            AiNativeMeshVertexPaint(vertex: _vertex(mesh, 1, 1), tints: [0.2, 0.9]),
+          ],
+        ),
+      ).throws<UnsupportedError>();
+      check(source.records.program.bytes).deepEquals(bytes);
+    }
+    final AiNativeMeshes process = _decode(_grid());
+    check(
+      () => process.paintVertices(
+        mesh: process.meshes.single,
+        changes: [
+          AiNativeMeshVertexPaint(vertex: process.meshes.single.vertices.first, tints: [0, 0, 0, 0]),
+        ],
+      ),
+    ).throws<UnsupportedError>();
+  });
+
+  test('validates tint input and reserves aggregate output growth', () {
+    final AiNativeMeshes source = _decode(_inkGrid());
+    final AiNativeMeshVertex vertex = source.meshes.single.vertices.first;
+    for (final List<double> tints in <List<double>>[
+      [],
+      [0],
+      [0, 0, 0],
+      [0, -0.1],
+      [1.1, 0],
+      [double.nan, 0],
+      [0, double.infinity],
+    ]) {
+      check(() => AiNativeMeshVertexPaint(vertex: vertex, tints: tints)).throws<ArgumentError>();
+    }
+    check(() => AiNativeMeshVertexPaint(vertex: vertex, tints: [0, 0], color: _red())).throws<ArgumentError>();
+    final AiNativeMeshes bounded = _decode(_inkGrid(), limits: AiNativeLimits(maxDecodedBytes: source.records.program.bytes.length + 1));
+    check(
+      () => bounded.paintVertices(
+        mesh: bounded.meshes.single,
+        changes: [
+          AiNativeMeshVertexPaint(vertex: bounded.meshes.single.vertices.first, tints: [0.123456789, 0.9]),
+        ],
+      ),
+    ).throws<FormatException>();
   });
 
   test('finds body meshes after mark-based setup gradients and preserves resources', () {

@@ -52,7 +52,7 @@ def main():
         original = native_program(CORPUS / 'files' / row['file'])
         packet, fields, corners = mesh_records(original)
         assert len(corners) == 720
-        for variant in ['painted', 'translucent']:
+        for variant in ['painted', 'translucent', 'inked']:
             changed = (OUTPUT / f"{row['file']}.{variant}.ps").read_bytes()
             edited_packet, edited_fields, edited_corners = mesh_records(changed)
             assert original[:packet.start()] == changed[:edited_packet.start()]
@@ -65,6 +65,15 @@ def main():
                 if variant == 'translucent':
                     expected['opacity'] = 0.5
                     affected += 1
+                elif variant == 'inked':
+                    if before['vertex'] == (5, 11):
+                        assert [bytes(ink['name']) for ink in before['inks']] == [b'Yellow', b'Magenta', b'Cyan']
+                        expected['color'] = [0.21, 0.43, 0.65]
+                        affected += 1
+                    elif before['vertex'] == (8, 7):
+                        assert [bytes(ink['name']) for ink in before['inks']] == [b'Black']
+                        expected.update(color=[0.45], opacity=0.6)
+                        affected += 1
                 elif before['vertex'] in changes:
                     space, color, opacity = changes[before['vertex']]
                     if color is not None:
@@ -73,7 +82,11 @@ def main():
                         expected['opacity'] = opacity
                     affected += 1
                 assert expected == after, (variant, before['vertex'])
-            assert affected == (14 if variant == 'painted' else 720)
+            assert affected == {'painted': 14, 'translucent': 720, 'inked': 8}[variant]
+            if variant == 'inked':
+                # Tint edits must not change even the original CS spelling.
+                declarations = lambda data: re.findall(rb'%_([^\r\n]+ /CS X#)', data)
+                assert declarations(original) == declarations(changed)
             report.append({'file': row['file'], 'variant': variant, 'updatedCorners': affected, 'status': 'passed'})
     (OUTPUT / 'paint-oracle-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

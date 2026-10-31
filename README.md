@@ -183,7 +183,9 @@ the supported structures and preservation policy.
 `AiNativeMeshes` inspects version-two Cartesian mesh patches, colored corners,
 intermediate anchors, control points and opacity. Color-space changes and named
 ink declarations retain their exact source fields. Selected logical vertices
-support process-color and opacity edits across every neighboring corner copy.
+support process-color, named-ink tint and opacity edits across every neighboring
+corner copy. `inkTints` pairs NChannel components with their correct ink names;
+tint edits preserve the original declarations and device alternatives.
 Mesh geometry editing and PDF regeneration remain unfinished.
 
 ## Scope

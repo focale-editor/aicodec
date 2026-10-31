@@ -688,16 +688,26 @@ decoded without interpreting or converting their components. The `R` record,
 non-unit weights and unknown fields are retained
 without claiming their evaluation.
 
+`inks` retains lexical declaration order. In NChannel that order is reversed
+when the operand stack supplies the color components. Each corner's `inkTints`
+pairs ink definitions with tint values in component order. For example, lexical
+Yellow/Magenta/Cyan declarations and `[0.14 0.79 0.67]` components mean Cyan 0.14,
+Magenta 0.79 and Yellow 0.67. Separation has one component. This accessor returns
+an empty list for process/unknown spaces and non-corner nodes. It does not
+convert arbitrary spot inks to their device alternatives.
+
 The dedicated SHA-256-pinned CC 21.1 example has 180 patches, 720 colored corners,
 eight additional anchors and eleven subdivision points. An independent Python
 reader extracts the native stream with pypdf/zlib and compares every field,
 source span and node. It verifies three gray, 671 CMYK and 46 NChannel corners;
 the NChannel declarations contain either Black or Yellow/Magenta/Cyan ink
 alternatives. The recovered 3,609,317 native bytes match exactly. The PDF includes
-a type-seven shading, but this check does not compare its rendering with native
-mesh geometry. The external artwork is ignored and excluded from publication;
-its manifest records the public source and absence of an explicit redistribution
-license.
+a type-seven shading. A separate independent check decodes its 1,747 tensor
+patches and verifies all 46 named-ink corner assignments against the stored
+CMYK components, within half an 8-bit component step. This checks corner colors,
+not interpolation or rendered native mesh geometry. The external artwork is
+ignored and excluded from publication; its manifest records the public source
+and absence of an explicit redistribution license.
 
 `mesh.vertices` indexes the Cartesian grid's logical vertices. Corner order
 maps a patch `(i, j)` to `(i, j)`, `(i+1, j)`, `(i+1, j+1)`, `(i, j+1)`.
@@ -707,14 +717,23 @@ agree exactly; a mismatch throws rather than welding by proximity. The CC
 fixture independently verifies all 208 logical vertices and their ownership.
 
 `paintVertices(mesh:, changes:)` accepts `AiNativeMeshVertexPaint` selections
-with an explicit `AiNativeMeshProcessColor` and/or normalized opacity. Gray, RGB
-and CMYK input has an explicit model and component count; no color conversion is
-implicit. Every selected vertex's occurrences change together. Other native
+with an explicit `AiNativeMeshProcessColor`, named-ink `tints`, and/or normalized
+opacity. Gray, RGB and CMYK input has an explicit model and component count; no
+color conversion is implicit. Every selected vertex's occurrences change together. Other native
 colors, weights, geometry and intermediate nodes stay intact. A new `/CS` switch
 is restricted to the changed corner, restoring the previous declaration for
 subsequent nodes, including named-ink alternatives. Already local switches are
 reused during repeated edits. Opacity-only changes preserve color syntax exactly;
 qualified exact no-ops return the same snapshot.
+
+`tints` replaces components in `vertex.corners.first.inkTints` order and is
+mutually exclusive with `color`. Every corner copy must use the same ordered
+named inks, including byte-exact names and equal device alternatives; mismatches
+reject atomically. Tint edits update only changed numeric tokens, preserving
+all `/CS` declarations and unchanged component spelling. The immutable input
+must have the source component count and finite values between zero and one.
+Process colors and unresolved spaces reject tint editing instead of guessing
+an ink mapping.
 
 ```dart
 final AiNativeMesh mesh = meshes.meshes.single;
@@ -740,8 +759,9 @@ dictionaries and unresolved parent appearances reject the transaction. Plain
 group `9 () XW` markers carry no extra appearance and remain supported.
 Foreign or repeated selections reject atomically; output remains bounded by the
 source program's limits. The corpus makes five selected vertex edits covering
-14 corner occurrences, plus a separate whole-mesh opacity edit covering all
-720 corners. An independent reader checks every affected/unaffected color and
+14 corner occurrences, a separate whole-mesh opacity edit covering all
+720 corners, and a named-ink edit of two vertices covering eight corner copies.
+An independent reader checks every affected/unaffected color and
 ink declaration, every retained geometry token, and exact surrounding bytes.
 Global and body-only inventory are also compared after mark-based setup ramps.
 
@@ -1443,7 +1463,7 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |
 | Catalog XMP | Inspect manifest/ingredient references; relink explicitly selected resources while preserving surrounding XML; attach the packet after native/PDF saving | Managed and part-specific relationships, automatic identity/history/pantry maintenance, PostScript packets and Adobe relink qualification |
-| Meshes | Inspect version-two Cartesian patches, shared vertices, intermediate nodes and typed ink alternatives; edit selected vertex process colors and opacity | Geometry/topology editing, color-managed interpolation, rendering and synchronized native/PDF output |
+| Meshes | Inspect version-two Cartesian patches, shared vertices, intermediate nodes and typed ink alternatives; edit selected vertex process colors, named-ink tints and opacity | Geometry/topology editing, color-managed interpolation, rendering and synchronized native/PDF output |
 | Effects and plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
 | PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, unresolved links/unsupported images, unresolved effects and host scene integration |

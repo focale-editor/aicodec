@@ -30,11 +30,22 @@ AiNativeMeshes _paintMeshVertices(AiNativeMeshes source, AiNativeMesh mesh, List
   }
 
   for (final AiNativeMeshVertexPaint change in changes) {
+    if (change.tints != null) {
+      _validateMeshTintSpaces(change.vertex);
+    }
     for (final AiNativeMeshNode corner in change.vertex.corners) {
       final List<AiToken> values = corner.field.values;
       if (change.opacity case final double opacity when opacity != corner.opacity) {
         final AiToken previous = values[corner.color.length + 1];
         replace(previous.start, previous.end, latin1.encode(opacity.toString()));
+      }
+      if (change.tints case final List<double> tints) {
+        for (final (int, double) component in tints.indexed) {
+          if (component.$2 != corner.color[component.$1]) {
+            final AiToken previous = values[component.$1 + 1];
+            replace(previous.start, previous.end, latin1.encode(component.$2.toString()));
+          }
+        }
       }
       final AiNativeMeshProcessColor? color = change.color;
       if (color == null) {
@@ -88,6 +99,28 @@ AiNativeMeshes _paintMeshVertices(AiNativeMeshes source, AiNativeMesh mesh, List
     ),
     bodyOnly: source.bodyOnly,
   );
+}
+
+/// Requires the same ordered named inks at every occurrence of one vertex.
+void _validateMeshTintSpaces(AiNativeMeshVertex vertex) {
+  final List<AiNativeMeshInk> expected = vertex.corners.first.colorSpace!.inks;
+  if (expected.isEmpty) {
+    throw UnsupportedError('Mesh tint editing requires qualified Separation or NChannel inks.');
+  }
+  for (final AiNativeMeshNode corner in vertex.corners) {
+    final List<AiNativeMeshInk> actual = corner.colorSpace!.inks;
+    if (actual.length != expected.length ||
+        actual.indexed.any((entry) {
+          final AiNativeMeshInk previous = expected[entry.$1];
+          final AiNativeMeshInk current = entry.$2;
+          return !_gradientBytesEqual(previous.nameBytes, current.nameBytes) ||
+              previous.deviceName != current.deviceName ||
+              previous.components.length != current.components.length ||
+              current.components.indexed.any((component) => component.$2 != previous.components[component.$1]);
+        })) {
+      throw UnsupportedError('Mesh tint editing requires matching ordered ink declarations at shared corners.');
+    }
+  }
 }
 
 /// Rejects unqualified native copies, extensions and dependent appearance data.

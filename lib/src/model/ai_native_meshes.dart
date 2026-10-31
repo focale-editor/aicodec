@@ -46,7 +46,10 @@ final class AiNativeMeshColorSpace {
   /// Known component count; null when the declaration needs further semantics.
   final int? componentCount;
 
-  /// Separation or NChannel inks in source order; empty for other spaces.
+  /// Separation or NChannel declarations in lexical order; empty otherwise.
+  ///
+  /// NChannel builds its component list from the operand stack, reversing this
+  /// order. Use [AiNativeMeshNode.inkTints] to associate inks with components.
   final List<AiNativeMeshInk> inks;
 
   /// Retains named ink alternatives and order in [field], without flattening.
@@ -95,6 +98,16 @@ final class AiNativeMeshNode {
 
   /// Space in force at this corner; null for non-corner nodes.
   final AiNativeMeshColorSpace? colorSpace;
+
+  /// Named inks paired with their tints in the corner's component order.
+  ///
+  /// NChannel declarations are consumed in reverse lexical order. Separation
+  /// has one component. Other spaces and uncolored nodes return an empty list;
+  /// no spot ink is converted to its device-color alternative.
+  List<({AiNativeMeshInk ink, double tint})> get inkTints {
+    final List<AiNativeMeshInk> inks = colorSpace?.inks ?? const [];
+    return List.unmodifiable(inks.reversed.indexed.map((item) => (ink: item.$2, tint: color[item.$1])));
+  }
 
   /// Creates an immutable view after checking the version-specific layout.
   AiNativeMeshNode._({
@@ -238,15 +251,30 @@ final class AiNativeMeshVertexPaint {
   /// Explicit new device color; null retains every source color declaration.
   final AiNativeMeshProcessColor? color;
 
+  /// Replacement named-ink tints in [AiNativeMeshNode.inkTints] order.
+  ///
+  /// Mutually exclusive with [color]. Every source corner must have the same
+  /// ordered ink names and alternatives. Declarations remain byte-for-byte
+  /// intact; this never converts named inks to process colors.
+  final List<double>? tints;
+
   /// New normalized opacity; null retains each occurrence's source opacity.
   final double? opacity;
 
   /// Requires at least one finite paint change.
-  AiNativeMeshVertexPaint({required this.vertex, this.color, this.opacity}) {
-    if (color == null && opacity == null || opacity != null && !_gradientUnit(opacity!)) {
-      throw ArgumentError('A mesh vertex paint edit needs a color or normalized opacity.');
+  AiNativeMeshVertexPaint({required this.vertex, this.color, List<double>? tints, this.opacity}) : tints = tints == null ? null : _checkedMeshTints(vertex, tints) {
+    if (color == null && tints == null && opacity == null || color != null && tints != null || opacity != null && !_gradientUnit(opacity!)) {
+      throw ArgumentError('A mesh vertex paint edit needs either process color or ink tints, and/or normalized opacity.');
     }
   }
+}
+
+/// Bounds replacement tint storage by the selected source corner's arity.
+List<double> _checkedMeshTints(AiNativeMeshVertex vertex, List<double> tints) {
+  if (tints.isEmpty || tints.length != vertex.corners.first.color.length || tints.any((value) => !_gradientUnit(value))) {
+    throw ArgumentError('Mesh tints must match the source component count and lie between zero and one.');
+  }
+  return List.unmodifiable(tints);
 }
 
 /// Bounded native mesh inventory independent of the PDF compatibility view.
@@ -279,6 +307,8 @@ final class AiNativeMeshes {
   ///
   /// Color-space switches are local to each changed corner: subsequent source
   /// colors keep their declarations, including Separation and NChannel inks.
+  /// Named-ink tint edits retain declarations and require matching ordered inks
+  /// across every selected vertex's corner copies.
   /// Geometry, weights, intermediate nodes and unrelated source bytes survive.
   /// Only direct printable body meshes without dependent appearance metadata
   /// are qualified. Unknown fields and unresolved parent appearances reject

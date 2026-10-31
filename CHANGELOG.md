@@ -7,3 +7,4 @@
 - Relative CC gradient placement editing with synchronized native and printing geometry.
 - Source-backed CC mesh inspection with mixed color spaces and intermediate boundary nodes.
 - Shared mesh vertex color/opacity editing, typed ink alternatives and global resource scanning fixes.
+- Native Separation/NChannel mesh tint editing with PDF-qualified component ordering and unchanged ink declarations.

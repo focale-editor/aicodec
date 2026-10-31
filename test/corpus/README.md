@@ -27,6 +27,11 @@ with an independent restricted-format Python reader. It checks complete field
 tokens/spans, mixed gray/CMYK/NChannel declarations, typed ink alternatives,
 208 logical vertices and exact native extraction. The paint check changes five
 vertices (14 corner occurrences), then separately changes all 720 opacities.
+It also edits two named-ink vertices (eight corner occurrences), keeping every
+color-space declaration byte-for-byte intact. The ink-order check independently
+decodes the original PDF's 1,747 tensor patches and matches the 46 NChannel
+corners' positions and CMYK components to the native `inkTints` projection.
+That check establishes component order; it does not qualify mesh interpolation.
 Every other color, geometry token and surrounding byte must remain intact.
 Edited native files are not packaged with the original PDF. Mesh rendering and
 Adobe reopening remain separate acceptance checks.
@@ -36,6 +41,7 @@ python3 tool/fetch_corpus.py --manifest mesh_manifest.json
 dart run tool/check_native_meshes.dart
 python3 tool/verify_native_meshes.py
 python3 tool/verify_native_mesh_paint.py
+python3 tool/verify_native_mesh_inks.py
 ```
 
 The independent check uses pypdf 3.x and Python zlib. Its detailed projections

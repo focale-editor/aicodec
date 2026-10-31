@@ -44,8 +44,16 @@ Future<void> main() async {
       mesh: selected,
       changes: selected.vertices.map((vertex) => AiNativeMeshVertexPaint(vertex: vertex, opacity: 0.5)).toList(),
     );
+    final AiNativeMeshes inked = source.paintVertices(
+      mesh: selected,
+      changes: [
+        AiNativeMeshVertexPaint(vertex: selected.vertices.singleWhere((vertex) => vertex.firstIndex == 5 && vertex.secondIndex == 11), tints: [0.21, 0.43, 0.65]),
+        AiNativeMeshVertexPaint(vertex: selected.vertices.singleWhere((vertex) => vertex.firstIndex == 8 && vertex.secondIndex == 7), tints: [0.45], opacity: 0.6),
+      ],
+    );
     await File('${output.path}/$name.painted.ps').writeAsBytes(painted.records.program.bytes);
     await File('${output.path}/$name.translucent.ps').writeAsBytes(translucent.records.program.bytes);
+    await File('${output.path}/$name.inked.ps').writeAsBytes(inked.records.program.bytes);
     report.add({
       'file': name,
       'meshes': [
@@ -83,6 +91,9 @@ Future<void> main() async {
                         'deviceName': node.colorSpace?.deviceName,
                         'inks': [
                           for (final AiNativeMeshInk ink in node.colorSpace?.inks ?? <AiNativeMeshInk>[]) {'name': ink.nameBytes.toList(), 'deviceName': ink.deviceName, 'components': ink.components},
+                        ],
+                        'inkTints': [
+                          for (final component in node.inkTints) {'name': component.ink.nameBytes.toList(), 'tint': component.tint},
                         ],
                       },
                   ],
