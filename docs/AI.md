@@ -66,6 +66,112 @@ Names and text use explicit bytes; `entry.text(encoding: ...)` lets the caller
 select the encoding. Integer edits preserve integer syntax and are restricted
 to exactly representable values on both VM and JavaScript.
 
+### Native text documents
+
+`AiNativeTextDocument.decode(records: ...)` decodes an `AI11TextDocument` through
+PsCore's shared EngineData parser. Select a container explicitly when a program
+contains multiple text documents. The separate `AI11UndoFreeTextDocument` remains
+opaque to this semantic view; it is not silently merged into the current model.
+The reader accepts named CS keys and compact numeric keys without normalizing
+the retained source. A dictionary containing both aliases for a recognized
+field is rejected as ambiguous.
+
+The view exposes ordered fonts, character/paragraph styles, frame resources,
+stories and `AI11Text` drawing references. `story.modelText` retains the mandatory
+final carriage return, while `story.text` removes only that final mark. Run
+lengths and offsets count UTF-16 code units, including the final mark. An omitted
+character/paragraph run table inherits the corresponding normal style; its
+explicit run list stays empty. Present run tables must cover the text exactly;
+empty/incomplete tables, zero lengths, overflow and boundaries within surrogate
+pairs are rejected. Known story text requires a UTF-16 BOM. Unknown
+fields, inline style overrides, UUIDs, glyph strikes and layout caches remain
+available through immutable PsCore values and the original engine bytes.
+
+`characterStyleAt`, `paragraphStyleAt` and `styledRanges` resolve normal styles,
+bounded parent chains and local overrides, splitting ranges at both run tables.
+Character resolution applies inherited paragraph `DefaultStyle` layers above
+the shared normal character features, then explicit character-style overrides.
+Partial paragraph character defaults preserve unrelated parent features. Feature
+layers remain immutable and source-backed, including unknown keys. Missing
+values remain null rather than receiving guessed application defaults. Common
+font/size/scale/spacing fields and explicit OpenType Boolean switches are exposed;
+optical kerning, script-specific composition, synthesized styles and font fallback
+still require host logic.
+
+`referenceIssues` reports unresolved story/frame/style/font references, cyclic
+or excessive style inheritance and drawing references selecting the undo-free
+model. It does not validate every cached glyph field or typography rule.
+
+`story.strikes` reads the retained story/frame/row/line/segment/glyph hierarchy,
+accepting named and abbreviated stream tags. It exposes native origins, bounds,
+frame indices, source-character mappings, glyph IDs and shadow-style dictionaries
+without inferring missing advances or treating glyphs as one-to-one characters.
+Frame views expose type, explicit origin, matrix and original path coordinates.
+These are saved layout observations, not the output of newly shaped text.
+
+`renameStyle` edits only the selected source-backed display name, preserving the
+other decoded engine bytes. `records.replaceBinary` uses PdfCore's bounded
+ASCII85 encoder and retains the container header, trailing fields and unrelated
+native records. Both reject foreign/stale handles. These edits return a new
+native snapshot; callers still own the surrounding file-save transaction.
+Style naming does not change artwork.
+
+`replaceText(story:, start:, end:, text:)` edits the native model for subsequent
+recomposition. Offsets address UTF-16 code units in `story.text`, excluding its
+mandatory terminal CR. New characters inherit the character style at the start
+offset, including its inline overrides. Each resulting paragraph has its own
+run and inherits the style at its first character; inserted CRs split paragraphs,
+while deleting a CR joins them. Missing character tables remain inherited. An
+omitted paragraph table is materialized from the normal paragraph resource when
+multiple paragraphs require separate runs. Source run metadata and unknown style
+features survive. Empty CS auxiliary tables are resized; active auxiliary features
+and unknown model/view keys reject the edit. LF input, malformed UTF-16, split
+surrogate pairs and removal of the terminal CR are rejected. String and run
+expansion are bounded before constructing all output dictionaries.
+
+Only the selected model and view are rewritten. Its frames remain, while
+`RenderedData` and `Strikes` are removed because their source-character offsets,
+glyph IDs and geometry are no longer valid. Other stories, resource tables,
+drawing references and the undo-free document stay unchanged. A no-op retains
+the original snapshot and cache bytes. This operation does not shape text,
+regenerate its display or update the PDF: the host must recompose the affected
+story and synchronize its printable/PDF artwork before a complete visual save.
+External PROOF experiments report model-driven recomposition in Illustrator
+29.2.1, including with absent/incorrect caches; that is a format observation,
+not an Adobe reopening qualification of AiKit's own output.
+
+`setCharacterFeatures` applies `AiNativeCharacterChanges` to a UTF-16 selection,
+including its paragraph marks if selected. It supports a source-owned font,
+point size, leading, horizontal/vertical scale, tracking, baseline displacement,
+rotation, kerning modes and explicit OpenType switches/sets. Native point size
+and `RefFontSize` are changed together; an active non-point reference mode is
+rejected until font-metric conversion is available. Explicit leading defaults
+to disabling automatic leading; an explicit `automaticLeading` argument controls
+that choice. An omitted table is materialized without flattening normal-style or
+paragraph-default inheritance. Resource selections become inline overrides with
+their original parent index. Unknown style features and run metadata survive.
+Active alternate-glyph overrides reject a font change.
+
+`setParagraphFeatures` applies `AiNativeParagraphChanges` to complete paragraphs
+touched by the selection. Its end is exclusive; an empty selection selects the
+caret paragraph. Each affected paragraph gets its own run. Alignment, indents,
+paragraph spacing, automatic-leading factor, hyphenation, every-line composition,
+direction and composer can be changed independently. `inherit` in either change
+model removes local overrides and exposes the existing parent/default values;
+it does not edit named resources or clear their features. The new API does not
+implement the compositor implied by these settings.
+
+Both operations preserve other stories and resource dictionaries and remove only
+the selected story's rendered-data/glyph caches. Modified inline styles with
+UUIDs receive fresh version-four identities; unchanged fragments retain theirs,
+and collisions against the source engine are checked. Applying already-present
+local values preserves the original snapshot, layout bytes and UUIDs. Invalid
+values, foreign/stale fonts/stories, surrogate boundaries, unknown model/view
+fields and paragraph-style boundaries inside a paragraph reject the operation.
+Host recomposition and PDF synchronization are still mandatory for visual saves.
+Shared parsing defaults to 128 MiB, one million values, 64 nesting levels and
+64 MiB per decoded string, with caller-selected tighter limits available.
+
 These are record-level edits. Renaming an artboard changes no painted geometry;
 changing a live-shape dimension requires updating its path and appearance too.
 The record API does not claim to perform those dependent changes automatically.
@@ -227,7 +333,7 @@ Malformed containers raise `FormatException`; invalid limits raise
 
 ## Compatibility evidence
 
-The external corpus contains 27 upstream Inkscape extension-ai fixtures across
+The external corpus contains 37 upstream Inkscape extension-ai fixtures across
 AI3, AI7, AI9, AI10, CS–CS6 and CC/current samples: paths, gradients, layers,
 colors, raster content, text and opacity. Container checks cover exact legacy
 preservation, tokenization, PDF graph rewrite and private-block byte preservation.
@@ -235,7 +341,7 @@ Native checks require extraction and structural parsing on every file, verify
 the six-layer fixture's names and flags, then rename a layer where present and
 read hierarchical records and binary resources, rename native artboards where
 present, and reopen rewritten native data. Python zlib and reference Zstandard independently
-decode both original and rewritten envelopes (21 PDF fixtures).
+decode both original and rewritten envelopes (31 PDF fixtures).
 
 The drawing reader associates all 39 live shapes in the corpus. Eight fixtures
 exercise translation of those 39 solid/gradient shapes, including 35 private
@@ -253,6 +359,26 @@ reader and fails when any fixture/output is missing. Its upstream reader reports
 some unsupported operators, so this is focused translation evidence, not full
 appearance or Adobe reopening validation.
 
+Text validation covers 32 native ATE payloads, with 20 stories across CS–CC
+examples. `tool/verify_native_text.py` uses the same pinned independent reader to
+decode rewritten ASCII85 and compare entire ATE trees, allowing only the selected
+style name to differ. It also compares fonts, frame geometry, run lengths and
+every retained glyph-layout node against exported typed projections. The
+transformed-text fixture contains ten stories, sixteen frames, twenty-four
+effective style ranges, 387 layout nodes and 4,003 cached glyph IDs. Four stories
+omit explicit character runs and inherit their style. Named CS point text and
+its compact successors resolve the same font and point size. Twenty separate
+content edits insert non-BMP characters and a paragraph across all native stories;
+the independent checker reconstructs run ownership per UTF-16 unit and compares
+the entire engine tree, including untouched stories and removed caches. These
+edited native programs are not combined with their original PDF previews.
+Forty additional native edits change character and paragraph features separately;
+the independent checker verifies complete trees, UTF-16 selection coverage,
+inherited run ownership, both size fields and fresh inline UUIDs. Neither the
+original resources nor unselected feature values may change.
+Newly shaped text,
+altered text appearance and Adobe reopening remain outside this check.
+
 Unit tests cover compressed and uncompressed envelopes, split markers, owner
 aliases, independent page programs, limits, malformed syntax, atomic edits and
 explicit geometry rejection. A VM test renders authored AI7 using Ghostscript
@@ -265,10 +391,11 @@ native reopening and complete editing compatibility remain unverified.
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
 | Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
+| Native ATE text | Stories, UTF-16 runs, resources, retained layout, style naming, content and character/paragraph feature edits with cache invalidation | Shaping, layout regeneration, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect native paint commands and instances; translate vectors/printing matrices; isolate shared positional styles | Edit stops/ramps, full appearance semantics and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes | Complete import into typed scene nodes |
-| Text, meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
+| Meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
 | PDF compatibility appearance | Preserve, replace with caller-synchronized graph, or explicit interchange | Native scene rendering belongs to host integration |
 
@@ -278,6 +405,8 @@ native reopening and complete editing compatibility remain unverified.
 - [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)
 - [Native data container observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/compression.md)
 - [Native hierarchy observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/hierarchy.md)
+- [Native text structure observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/text_documents.md)
+- [PROOF point-text writing and recomposition experiments](https://github.com/vurglepuddle/PROOF/blob/d822dc5dea265675a0fd5dec550e3e0dcd5988f0/doc/PROOF-ai-native-records.md#point-type-written-2026-10-23)
 - [Document/artboard observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/document_data.md)
 - [Live-shape structure observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/live_shapes.md)
 - [CC gradient observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/gradients.md)

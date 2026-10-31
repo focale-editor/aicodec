@@ -243,6 +243,96 @@
       "revision": "1a5f42a0b0407fc869e032420570682048810108",
       "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
       "expected": "accept"
+    },
+    {
+      "file": "text_transforms.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/text_transforms.ai",
+      "size": 260268,
+      "sha256": "33e9812eebc9381ff1a506f815471569b618d393d74c5bdef2093e31d69624b6",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_v2020.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_v2020.ai",
+      "size": 215259,
+      "sha256": "4d34993c0406c5371f96979e6da54cfe3875d5d1946a632fa61f0342cce3869a",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cs.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cs.ai",
+      "size": 367824,
+      "sha256": "338321370a28aac841eac881a4c666fc9b6322a092de58abbd26c7a7ee39404a",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cs2.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cs2.ai",
+      "size": 330675,
+      "sha256": "270afeecf069b9bf42dffba137b2ba0ed764689b5a24f6bbde3c61a812a2b94a",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cs3.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cs3.ai",
+      "size": 331203,
+      "sha256": "f7848612b2e8ef7ee99bc35328a46116414211d97640e3c93b0ed1c30d72bfab",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cs4.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cs4.ai",
+      "size": 329834,
+      "sha256": "26dcfd038cfafa1f885b455dfdd8668a86fa6fd29bda85b254d772018c80217a",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cs5.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cs5.ai",
+      "size": 330422,
+      "sha256": "526976df9b5bf59edb9ebf12060d5c0aafa8e942d36bfaa05071b9479cca8b31",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cs6.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cs6.ai",
+      "size": 331424,
+      "sha256": "8cef84d9f7fd954477652724c65df49a583c9363c30162cc4aab70fbcca11f5f",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_cc_legacy.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_cc_legacy.ai",
+      "size": 360655,
+      "sha256": "e0a2374b5fa3c1ec47ee5ff649fb1446e4392bcf79ad5b1f6ad201ad1d182143",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "simple_v2020_no_pdf_data.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/simple_v2020_no_pdf_data.ai",
+      "size": 218743,
+      "sha256": "531c36419d305d75bc9c6808800150a029ea0e550bec05c4dfade1c3acdf611f",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
     }
   ]
 }

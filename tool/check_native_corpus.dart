@@ -24,6 +24,58 @@ Future<void> main() async {
       final AiProgram program = AiProgram.decode(bytes: source.bytes);
       final AiNativeRecords records = AiNativeRecords.decode(program: program);
       final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
+      int textDocuments = 0;
+      int textStories = 0;
+      for (final AiNativeContainer container in records.containers.where((record) => record.type == 'AI11TextDocument')) {
+        final AiNativeTextDocument text = AiNativeTextDocument.decode(records: records, container: container);
+        if (text.referenceIssues.isNotEmpty) {
+          throw StateError('Native text resources or references differ from the pinned fixture.');
+        }
+        final AiNativeTextDocument renamed = text.characterStyles.isEmpty
+            ? AiNativeTextDocument.decode(
+                records: records.replaceBinary(container: container, bytes: text.engine.bytes),
+              )
+            : text.renameStyle(style: text.characterStyles.first, name: 'AiKit corpus style 🖋');
+        if (renamed.characterStyles.isNotEmpty && renamed.characterStyles.first.name != 'AiKit corpus style 🖋' || renamed.referenceIssues.isNotEmpty) {
+          throw StateError('Native text style rename failed to retain valid references.');
+        }
+        textDocuments++;
+        textStories += text.stories.length;
+        await File('${output.path}/$name.text-model.json').writeAsString(const JsonEncoder.withIndent('  ').convert(_textModel(text)));
+        await File('${output.path}/$name.text-renamed.ps').writeAsBytes(renamed.records.program.bytes);
+        await File('${output.path}/$name.ate').writeAsBytes(text.engine.bytes);
+        await File('${output.path}/$name.renamed.ate').writeAsBytes(renamed.engine.bytes);
+        for (final AiNativeTextStory story in text.stories) {
+          final AiNativeTextDocument edited = text.replaceText(story: story, start: 0, end: story.text.length < 5 ? story.text.length : 5, text: 'Édité 🖋\r');
+          if (edited.referenceIssues.isNotEmpty || edited.stories[story.index].strikes.isNotEmpty) {
+            throw StateError('Native content edit retained stale layout or invalid references.');
+          }
+          await File('${output.path}/$name.story-${story.index}.edited.ate').writeAsBytes(edited.engine.bytes);
+          await File('${output.path}/$name.story-${story.index}.edited.ps').writeAsBytes(edited.records.program.bytes);
+          final AiNativeTextDocument characters = text.setCharacterFeatures(
+            story: story,
+            start: 1,
+            end: story.modelText.length < 4 ? story.modelText.length : 4,
+            changes: AiNativeCharacterChanges(fontSize: 24, tracking: 35, leading: 29, ligatures: false),
+          );
+          final AiNativeTextDocument paragraphs = text.setParagraphFeatures(
+            story: story,
+            start: 2,
+            end: 3,
+            changes: AiNativeParagraphChanges(justification: 2, firstLineIndent: -4, spaceAfter: 6, direction: 0, composer: 1, hyphenate: false),
+          );
+          for (final (String suffix, AiNativeTextDocument formatted) in [('characters', characters), ('paragraphs', paragraphs)]) {
+            if (formatted.referenceIssues.isNotEmpty || formatted.stories[story.index].strikes.isNotEmpty) {
+              throw StateError('Native feature edit retained stale layout or invalid references.');
+            }
+            await File('${output.path}/$name.story-${story.index}.$suffix.ate').writeAsBytes(formatted.engine.bytes);
+            await File('${output.path}/$name.story-${story.index}.$suffix.ps').writeAsBytes(formatted.records.program.bytes);
+          }
+        }
+      }
+      if (name == 'flowtext.ai' && (textDocuments != 1 || textStories != 1)) {
+        throw StateError('The native area-text fixture lost its story.');
+      }
       int binaryBytes = 0;
       for (final AiNativeContainer record in records.containers.where((record) => record.hasBinary)) {
         binaryBytes += record.decodeBinary(maxOutputBytes: program.limits.maxDecodedBytes).length;
@@ -116,6 +168,8 @@ Future<void> main() async {
         'paths': program.paths.length,
         'nativeRecords': records.containers.length,
         'nativeBinaryBytes': binaryBytes,
+        'textDocuments': textDocuments,
+        'textStories': textStories,
         'artboards': records.artboards.length,
         'nativePaths': drawing.paths.length,
         'liveShapes': drawing.liveShapes.length,
@@ -138,6 +192,54 @@ Future<void> main() async {
     exitCode = 1;
   }
 }
+
+/// Exports typed text projections for comparison with an independent ATE reader.
+Map<String, Object?> _textModel(AiNativeTextDocument document) => {
+  'fonts': [
+    for (final AiNativeTextFont font in document.fonts) {'name': font.postScriptName, 'version': font.version},
+  ],
+  'frames': [
+    for (final AiNativeTextFrame frame in document.frames) {'kind': frame.kind.name, 'position': frame.position, 'matrix': frame.matrix, 'path': frame.pathCoordinates},
+  ],
+  'stories': [
+    for (final AiNativeTextStory story in document.stories)
+      {
+        'text': story.modelText,
+        'frames': story.frameIndices,
+        'characterRuns': [for (final AiNativeTextRun run in story.characterRuns) run.length],
+        'paragraphRuns': [for (final AiNativeTextRun run in story.paragraphRuns) run.length],
+        'ranges': [
+          for (final AiNativeStyledTextRange range in document.styledRanges(story: story))
+            {
+              'start': range.start,
+              'end': range.end,
+              'font': range.characterStyle.font?.postScriptName,
+              'fontSize': range.characterStyle.fontSize,
+              'horizontalScale': range.characterStyle.horizontalScale,
+              'verticalScale': range.characterStyle.verticalScale,
+              'tracking': range.characterStyle.tracking,
+              'baselineShift': range.characterStyle.baselineShift,
+              'rotation': range.characterStyle.rotation,
+              'justification': range.paragraphStyle.justification,
+            },
+        ],
+        'strikes': [
+          for (final AiNativeTextStrike root in story.strikes)
+            for (final AiNativeTextStrike node in root.descendants)
+              {
+                'tag': node.tag,
+                'origin': node.origin,
+                'bounds': node.bounds,
+                'frame': node.frameIndex,
+                'start': node.firstCharacterIndex,
+                'characters': node.characterCount,
+                'glyphs': node.glyphIds,
+                'visualBounds': node.visualBounds,
+              },
+        ],
+      },
+  ],
+};
 
 /// Pinned files whose live-shape sets support solid/gradient translation.
 const Map<String, int> _translatedFixtures = {

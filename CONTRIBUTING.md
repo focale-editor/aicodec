@@ -10,14 +10,16 @@ Bug reports, focused fixes, documentation improvements, and well-scoped features
 
 ## Development setup
 
-Use a Dart SDK compatible with [`pubspec.yaml`](pubspec.yaml). Clone
-[PdfCore](https://github.com/focale-editor/pdfcore) into a sibling `PdfCore`
-directory. From the AiKit checkout:
+Use a Dart SDK compatible with [`pubspec.yaml`](pubspec.yaml). From the package checkout:
 
 ```sh
-cp pubspec_overrides.yaml.example pubspec_overrides.yaml
 dart pub get
 ```
+
+PdfCore resolves from a pinned Git revision until its first pub.dev release.
+For work that also modifies PdfCore, clone it as a sibling `PdfCore` directory
+and copy `pubspec_overrides.yaml.example` to the ignored `pubspec_overrides.yaml`.
+The regular checkout does not require that override or a sibling directory.
 
 Follow [`AGENTS.md`](AGENTS.md) and keep each change focused on one fix or feature.
 
@@ -52,12 +54,17 @@ rsvg-convert screenshots/overview.svg -o screenshots/overview.png
 ```
 
 The package follows the sibling kits' `docs/` layout, which Pub's dry-run
-validator reports as a naming warning.
-AiKit uses an ignored local PdfCore override during development; resolve that
-dependency release before publishing AiKit. ZCodec is resolved from pub.dev.
+validator reports as a naming warning. Publication is disabled while PdfCore is
+a Git dependency. Replace it with its hosted release and remove `publish_to: none`
+before publishing AiKit. ZCodec and PsCore already
+resolve from pub.dev. Development overrides must remain untracked.
 
 ## Pull requests
 
 Explain the problem and solution, link a related issue when applicable, and describe the checks and platforms exercised. Call out compatibility, performance, licensing, or migration implications. If a check cannot run in your environment, explain why.
 
-Use Conventional Commits for commit messages and pull request titles, such as `fix:`, `feat:`, `docs:`, `test:`, or `refactor:`. Keep review follow-up changes on the same branch. Routine validation does not include package publication or a release-version change.
+Use Conventional Commits for commit messages and pull request titles, with a
+capital after the scope and a final period, for example
+`feat(text): Added native text feature editing.` Keep review follow-up changes on
+the same branch. Routine validation does not include package publication or a
+release-version change.

@@ -5,7 +5,8 @@
 # AiKit
 
 AiKit reads and writes Adobe Illustrator containers in pure Dart. PdfCore handles
-the PDF representation; ZCodec opens compressed native authoring programs.
+the PDF representation; ZCodec opens compressed native authoring programs and
+PsCore supplies the Adobe text-engine grammar shared with PsdKit.
 Source-backed edits preserve unknown records, and typed artwork can be written
 as self-contained AI7 PostScript.
 
@@ -19,6 +20,10 @@ as self-contained AI7 PostScript.
 - Native nested layers, names, visibility, locking and printing flags.
 - Native hierarchical records, typed artboards and bounded ASCII85 resources.
 - Source-preserving numeric/string record edits, including artboard renaming.
+- Native ATE stories, UTF-16 style runs, fonts, styles, frames and drawing
+  references; source-preserving style renaming and bounded binary replacement.
+- Named CS and compact CC text dictionaries, inherited character/paragraph
+  styles, OpenType switches and retained glyph-layout trees.
 - Source-preserving layer edits and plain-path geometry replacement.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
@@ -32,23 +37,20 @@ as self-contained AI7 PostScript.
 
 ## Installation
 
-Use the GitHub repository and select PdfCore from its repository:
+Use the sibling checkouts while these native APIs are under development:
 
 ```yaml
 dependencies:
   aikit:
-    git: https://github.com/focale-editor/aikit
-
-dependency_overrides:
-  pdfcore:
-    git: https://github.com/focale-editor/pdfcore
+    path: ../FocalePackages/AiKit
 ```
 
-Zstandard uses the hosted ZCodec 0.2.6 release. PdfCore is not yet published
-on pub.dev, so its Git dependency override is required. To develop AiKit itself,
-clone PdfCore into a sibling `PdfCore` directory and copy
+Adjust the paths to your Dart or Flutter project. Zstandard uses hosted
+ZCodec 0.2.6; text-engine parsing uses hosted PsCore 0.2.2. Until its first
+pub.dev release, PdfCore resolves from the pinned Git revision in `pubspec.yaml`.
+To work on a sibling PdfCore checkout while developing AiKit, copy
 [`pubspec_overrides.yaml.example`](pubspec_overrides.yaml.example) to the ignored
-`pubspec_overrides.yaml`, then run `dart pub get`.
+`pubspec_overrides.yaml`. Otherwise, `dart pub get` needs no local override.
 
 ## Quick start
 
@@ -75,6 +77,31 @@ final List<int> preserved = const AiCodec().encode(document);
 [example](example/aikit_example.dart) for native artwork creation, layer editing
 and explicit PDF interchange.
 
+Native text is available independently of the PDF appearance:
+
+```dart
+final AiNativeRecords records = AiNativeRecords.decode(program: program);
+final AiNativeTextDocument text = AiNativeTextDocument.decode(records: records);
+for (final AiNativeTextStory story in text.stories) {
+  for (final AiNativeStyledTextRange range in text.styledRanges(story: story)) {
+    print('${range.start}–${range.end}: ${range.characterStyle.font?.postScriptName}');
+  }
+}
+```
+
+Select a container explicitly when several `AI11TextDocument` records exist.
+Named CS and compact CC fields retain their original syntax; omitted character
+runs inherit the document's normal style. Saved glyph layouts remain accessible
+through `story.strikes` and are not treated as regenerated text.
+
+`replaceText(story:, start:, end:, text:)` edits UTF-16 content and its style
+coverage, splitting paragraphs and removing stale layout caches. The caller
+must recompose the changed story and regenerate the PDF appearance before
+saving a synchronized document. This API does not provide a shaping engine.
+`setCharacterFeatures` and `setParagraphFeatures` update local typography with
+typed change objects, preserve inherited styles and support returning individual
+features to inheritance. Their changed stories also require recomposition.
+
 ## Scope
 
 AI is not one uniform format. A PDF page can be a compatibility warning rather
@@ -82,8 +109,10 @@ than the artwork; `AiNativeData.extract` accesses the native program separately.
 `AiProgram` interprets a structural subset and reports unhandled operators and
 private extensions. It does not execute arbitrary PostScript or provide a renderer.
 
-Modern text/ATE records, plug-ins, effects, meshes, gradient and raster authoring
-semantics are preserved but not fully modeled. Live rectangles, ellipses,
+ATE text resources, stories and runs are modeled, while glyph shaping, layout
+regeneration and synchronized text-content editing remain unfinished. Plug-ins,
+effects, meshes, gradient and raster authoring semantics are preserved but not
+fully modeled. Live rectangles, ellipses,
 polygons, stars and lines support translation with solid and linear/radial
 gradient appearances; resizing,
 rotation and parameter-driven regeneration remain unfinished. Geometry edits
@@ -115,7 +144,7 @@ dart test --platform node
 ```
 
 The optional corpus checks extraction, layer renaming and native recompression
-on 27 pinned files. Independent zlib/Zstandard decoding checks the resulting
+on 37 pinned files. Independent zlib/Zstandard decoding checks the resulting
 bytes. Eight fixtures also check live-shape translations against a pinned
 independent reader and renderer. These checks do not establish complete native
 Illustrator compatibility.

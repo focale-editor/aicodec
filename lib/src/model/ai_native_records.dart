@@ -107,8 +107,15 @@ final class AiNativeContainer extends AiNativeItem {
   /// Encoded binary content when the container uses ASCII85Decode.
   final Uint8List? _binary;
 
+  /// First source byte of the comment-prefixed binary payload.
+  final int? _binaryStart;
+
+  /// Source byte immediately after the ASCII85 terminator line.
+  final int? _binaryEnd;
+
   /// Creates a source-backed container after checking its terminator and depth.
-  AiNativeContainer._({required super.start, required super.end, required this.type, required List<AiNativeEntry> entries, this._binary}) : entries = List.unmodifiable(entries);
+  AiNativeContainer._({required super.start, required super.end, required this.type, required List<AiNativeEntry> entries, this._binary, this._binaryStart, this._binaryEnd})
+    : entries = List.unmodifiable(entries);
 
   /// Returns all values for a key without losing repeated filter parts.
   List<AiNativeEntry> values(String key) => List.unmodifiable(entries.where((entry) => entry.key == key && !entry.isQualifier));
@@ -207,6 +214,33 @@ final class AiNativeRecords {
       }
     }
     return List.unmodifiable(result);
+  }
+
+  /// Replaces an owned binary payload while retaining its header and fields.
+  ///
+  /// This low-level operation does not synchronize dependent drawing or text
+  /// layout records. ASCII85 encoding is shared with PdfCore.
+  AiNativeRecords replaceBinary({required AiNativeContainer container, required List<int> bytes}) {
+    if (!containers.contains(container) || !container.hasBinary) {
+      throw ArgumentError('Invalid or foreign Illustrator binary record edit.');
+    }
+    final Uint8List encoded = PdfFilters.encodeAscii85(
+      bytes: bytes,
+      limits: PdfLimits(maxStreamBytes: program.limits.maxDecodedBytes),
+    );
+    final BytesBuilder output = BytesBuilder(copy: false);
+    for (int offset = 0; offset < encoded.length - 2; offset += 80) {
+      output.addByte(37);
+      output.add(Uint8List.sublistView(encoded, offset, offset + 80 < encoded.length - 2 ? offset + 80 : encoded.length - 2));
+      output.addByte(10);
+    }
+    output.add([37, 126, 62]);
+    return AiNativeRecords.decode(
+      program: AiNativeEditor.apply(
+        program: program,
+        edits: [AiSourceEdit(start: container._binaryStart!, end: container._binaryEnd!, bytes: output.takeBytes())],
+      ),
+    );
   }
 
   /// Replaces string bytes while retaining the native key and scalar type.

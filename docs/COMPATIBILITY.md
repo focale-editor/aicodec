@@ -22,6 +22,21 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   independently checked translation fixtures.
 - Self-contained AI7 creation for layers, groups and simple path appearance,
   checked with Ghostscript.
+- Published PsCore 0.2.2 EngineData grammar reused by PsdKit and AiKit. Typed ATE fonts,
+  styles, stories, UTF-16 runs and frame references; preserved unknown layout,
+  source-backed style naming and bounded ASCII85 rewriting.
+- Named CS and compact CC text keys, omitted run tables inheriting normal styles,
+  bounded parent-style resolution and paragraph character defaults. Typed cached
+  layout nodes and glyph IDs, frame matrices and paths. The expanded corpus has
+  37 files, including transformed, linked-area, path and point text.
+- Native UTF-16 content replacement with style inheritance, paragraph splitting,
+  explicit cache invalidation, bounded expansion and rejection of unresolved
+  auxiliary features. Twenty story edits checked by an independent decoder;
+  composing the new display and PDF remains host work.
+- Native character/paragraph overrides, selected-run splitting, inherited-feature
+  restoration, paired point-size fields and separate inline style identities.
+  Forty formatting edits compared independently across the twenty stories;
+  typography settings are authored, not implemented as a new compositor.
 
 ## Next native editing work
 
@@ -31,9 +46,10 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
 2. Complete known/active styles, multiple fills/strokes, gradient stops/ramps, transparency,
    compound paths, clipping and appearance expansion without flattening editing
    data into a compatibility preview.
-3. Interpret ATE text documents, resources, stories, style runs, frames and layout
-   records. Reuse the shared Adobe text-engine work in Focale packages where its
-   contracts fit; preserve unknown fields and validate run/index consistency.
+3. Extend ATE resource/story/run views into synchronized content and feature
+   editing: complete advanced composition semantics, shape glyphs, regenerate
+   frames and cached strikes, and synchronize printable/PDF output. Extend
+   typography fixtures beyond Latin text and cover undo-free references.
 4. Model linked/embedded raster data, meshes, brushes, patterns, symbols, effects
    and plug-in records with explicit editing contracts.
 5. Synchronize native artwork and PDF compatibility output through the host scene

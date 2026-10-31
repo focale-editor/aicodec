@@ -137,8 +137,12 @@ final class _NativeRecordReader {
     final List<AiNativeItem> pending = [];
     final List<AiTokenKind> delimiters = [];
     Uint8List? binary;
+    int? binaryStart;
+    int? binaryEnd;
     if (_binaryRecordTypes.contains(type)) {
       binary = _binary();
+      binaryStart = _binaryStart;
+      binaryEnd = tokens[position - 1].end;
     }
     while (position < tokens.length) {
       final AiToken token = tokens[position];
@@ -159,7 +163,7 @@ final class _NativeRecordReader {
             }
           }
         }
-        return AiNativeContainer._(start: opening.start, end: token.end, type: type, entries: entries, binary: binary);
+        return AiNativeContainer._(start: opening.start, end: token.end, type: type, entries: entries, binary: binary, binaryStart: binaryStart, binaryEnd: binaryEnd);
       }
       if (delimiters.isEmpty && token.lexeme == ',') {
         if (pending.isEmpty) {
@@ -201,6 +205,7 @@ final class _NativeRecordReader {
       throw const FormatException('Unsupported Illustrator native binary encoding.');
     }
     position += 2;
+    _binaryStart = position < tokens.length ? tokens[position].start : null;
     final BytesBuilder encoded = BytesBuilder();
     while (position < tokens.length) {
       final AiToken token = tokens[position++];
@@ -216,6 +221,9 @@ final class _NativeRecordReader {
     }
     throw const FormatException('Truncated Illustrator ASCII85 payload.');
   }
+
+  /// Start of the most recently read binary payload.
+  int? _binaryStart;
 
   /// Separates typed dictionary values from keys while preserving other syntax.
   AiNativeEntry _entry({required String type, required List<AiNativeItem> items}) {

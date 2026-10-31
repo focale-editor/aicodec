@@ -1,6 +1,7 @@
 name: aikit
 description: Pure Dart Adobe Illustrator containers, compressed native programs, source-preserving layer edits, and typed AI7 artwork creation.
 version: 0.1.0
+publish_to: none
 homepage: https://github.com/focale-editor/aikit
 repository: https://github.com/focale-editor/aikit
 
@@ -18,7 +19,11 @@ environment:
   sdk: '>=3.13.0 <4.0.0'
 
 dependencies:
-  pdfcore: ^0.1.0
+  pdfcore:
+    git:
+      url: https://github.com/focale-editor/pdfcore.git
+      ref: b251fd4fa12441279a5d0b9ec2d03033eb696c50
+  pscore: ^0.2.2
   zcodec: ^0.2.6
 
 dev_dependencies:
