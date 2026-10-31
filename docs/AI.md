@@ -169,6 +169,30 @@ local values preserves the original snapshot, layout bytes and UUIDs. Invalid
 values, foreign/stale fonts/stories, surrogate boundaries, unknown model/view
 fields and paragraph-style boundaries inside a paragraph reject the operation.
 Host recomposition and PDF synchronization are still mandatory for visual saves.
+
+`withTextLayout` accepts immutable `AiNativeTextFrameLayout`,
+`AiNativeTextLineLayout` and `AiNativeTextSegmentLayout` data from a host compositor.
+Coordinates are native points with y down: frame origins use the retained layout
+space, line origins are frame-relative, and segment origins are line-relative.
+The API writes the observed PC/F/R/R/L/S source-position hierarchy. It does not
+measure fonts, shape glyphs, break lines or invent GlyphStrike caches. Optional
+selection metrics and local line bounds are written only when supplied.
+The story's model, font/style resources, frame geometry/references and other
+stories stay unchanged; old rendered-data and glyph caches are removed.
+
+All frames must belong to the same snapshot and match the story's complete
+resource order. Lines progress through the logical source; their segments may
+use visual order, with explicit UTF-16 ranges. Gaps, overlaps, split surrogate
+pairs, breaks inside a line, coordinate overflow and excessive node allocation
+reject the write. `overflowStart` explicitly declares an uncomposed suffix;
+without it, coverage must include the final CR. Empty linked frames and wholly
+uncomposed stories are represented explicitly. Compact word-reorder mappings can
+be authored for right-to-left segments. Compact automatic-hyphen insertion maps
+retain a terminal generated hyphen without inserting it into editable text;
+this form requires a terminal BMP source character and the end of a composed line.
+Named CS reordered/hyphenated mappings and per-glyph path geometry remain explicit
+refusals. Host shaping, glyph adjustments, print/PDF synchronization and Adobe
+reopening qualification remain separate work.
 Shared parsing defaults to 128 MiB, one million values, 64 nesting levels and
 64 MiB per decoded string, with caller-selected tighter limits available.
 
@@ -376,6 +400,13 @@ Forty additional native edits change character and paragraph features separately
 the independent checker verifies complete trees, UTF-16 selection coverage,
 inherited run ownership, both size fields and fresh inline UUIDs. Neither the
 original resources nor unselected feature values may change.
+Seventeen point/area stories also have their frame/line/segment positions
+reauthored through the composition API. The independent reader compares absolute
+origins (allowing only 1e-8 point floating-point regrouping), source ranges, bounds,
+selection metrics and fourteen automatic-hyphen insertions. Other engine data
+must remain identical. Three path-layout writes explicitly reject missing
+per-glyph geometry. These are source-position checks; old glyph caches are not
+represented as newly shaped text, and no new rendered appearance is claimed.
 Newly shaped text,
 altered text appearance and Adobe reopening remain outside this check.
 
@@ -391,7 +422,7 @@ native reopening and complete editing compatibility remain unverified.
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
 | Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
-| Native ATE text | Stories, UTF-16 runs, resources, retained layout, style naming, content and character/paragraph feature edits with cache invalidation | Shaping, layout regeneration, advanced typography and synchronized text-content saves |
+| Native ATE text | Stories, UTF-16 runs, resources, style/content/feature edits and host-composed point/area source-position records | Shaping, glyph-cache generation, path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect native paint commands and instances; translate vectors/printing matrices; isolate shared positional styles | Edit stops/ramps, full appearance semantics and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes | Complete import into typed scene nodes |

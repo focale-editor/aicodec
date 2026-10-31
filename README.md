@@ -101,6 +101,10 @@ saving a synchronized document. This API does not provide a shaping engine.
 `setCharacterFeatures` and `setParagraphFeatures` update local typography with
 typed change objects, preserve inherited styles and support returning individual
 features to inheritance. Their changed stories also require recomposition.
+`withTextLayout` writes point/area frame, line and segment positions supplied by
+the host, including explicit overflow and compact automatic-hyphen maps. It
+validates UTF-16 coverage and resource ownership; it does not generate glyph
+shapes or synchronize the PDF appearance.
 
 ## Scope
 

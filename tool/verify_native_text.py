@@ -6,6 +6,7 @@ import copy
 import importlib
 import io
 import itertools
+import math
 import json
 from pathlib import Path
 import subprocess
@@ -292,6 +293,92 @@ def verify_feature_edits(before, name, output, text_parser, stream, inkai, binar
     return len(stories) * 2
 
 
+def composition_events(story, authored=False):
+    """Read absolute positions from the independent tree, ignoring old glyph caches."""
+    events = []
+    def walk(node, parent_x, parent_y):
+        tag = field(node, "99", "StreamTag").removeprefix('/')
+        transform = field(node, "0", "Transform") or {}
+        assert set(transform) <= {'/0', '/Origin'}, "Extend the projection for a non-origin transform"
+        origin = field(transform, "0", "Origin") or [0, 0]
+        x, y = parent_x + origin[0], parent_y + origin[1]
+        if tag in ('F', 'FrameStrike'):
+            events.append(('frame', field(node, '10', 'Frame'), x, y))
+        elif tag in ('L', 'LineStrike'):
+            events.append(('line', x, y, field(node, '1', 'Bounds'), field(node, '14', 'SelectionAscent'), field(node, '15', 'SelectionDescent')))
+        elif tag in ('S', 'Segment'):
+            mapping = field(node, '15', 'Mapping')
+            count = field(mapping, '0', 'CharacterCount')
+            hyphen = any((entry.get('/0'), entry.get('/1'), entry.get('/2')) == (2, count - 1, 2) for entry in mapping.get('/1', []))
+            if authored:
+                assert type(count) is int and count > 0
+                assert type(field(mapping, '5', 'WRValid')) is bool
+                assert field(mapping, '2', 'GlyphCount') == (1 if hyphen else 0)
+                assert set(mapping) <= {'/0', '/CharacterCount', '/1', '/2', '/GlyphCount', '/5', '/WRValid', '/7'}
+                if field(mapping, '5', 'WRValid'):
+                    assert mapping['/7'] == {'/0': count}
+                else:
+                    assert '/7' not in mapping
+                if hyphen:
+                    assert mapping['/1'] == [{'/0': 2, '/1': count - 1, '/2': 2}]
+            events.append(('segment', x, y, field(node, '20', 'FirstCharacterIndexInSegment') or 0, count, field(mapping, '5', 'WRValid') or False, hyphen))
+        if authored:
+            assert tag in ('PC', 'PathSelectGroupCharacter', 'F', 'FrameStrike', 'R', 'RowColStrike', 'L', 'LineStrike', 'S', 'Segment')
+            common = {'/99', '/StreamTag', '/0', '/Transform', '/5', '/ChildProcession', '/6', '/Children'}
+            specific = {'/10', '/Frame'} if tag in ('F', 'FrameStrike') else {'/1', '/Bounds', '/14', '/SelectionAscent', '/15', '/SelectionDescent'} if tag in ('L', 'LineStrike') else {'/20', '/FirstCharacterIndexInSegment', '/15', '/Mapping'} if tag in ('S', 'Segment') else set()
+            assert set(node) <= common | specific
+        for child in field(node, '6', 'Children') or []:
+            if field(child, '99', 'StreamTag') not in ('/G', '/GlyphStrike'):
+                walk(child, x, y)
+            else:
+                assert not authored, "Composition must not pretend to regenerate original glyph strikes"
+    view = field(story, '1', 'View')
+    for root in field(view, '2', 'Strikes') or []:
+        walk(root, 0, 0)
+    return events
+
+
+def close_positions(first, second):
+    """Allow only floating-point regrouping when flattening nested row origins."""
+    if isinstance(first, (list, tuple)):
+        return isinstance(second, (list, tuple)) and len(first) == len(second) and all(close_positions(a, b) for a, b in zip(first, second))
+    if isinstance(first, (float, int)) and not isinstance(first, bool):
+        return isinstance(second, (float, int)) and math.isclose(first, second, rel_tol=0, abs_tol=1e-8)
+    return first == second
+
+
+def verify_compositions(before, name, output, text_parser, stream, inkai, binary_type):
+    """Require unchanged models/resources and retained independent line positions."""
+    frames = resources(before, '8', 'TextFrameSet')
+    stories = field(field(before, '1', 'DocumentObjects'), '1', 'TextObjects') or []
+    checked = 0
+    hyphens = 0
+    for index, story in enumerate(stories):
+        view = field(story, '1', 'View')
+        frame_ids = [field(frame, '0', 'Resource') for frame in field(view, '0', 'Frames') or []]
+        if any(field(field(frames[frame], '2', 'Data'), '0', 'Type') == 2 for frame in frame_ids):
+            continue
+        payload = (output / f'{name}.story-{index}.layout.ate').read_bytes()
+        actual = text_parser.read_object(stream(io.BytesIO(payload)))
+        rewritten = field(field(actual, '1', 'DocumentObjects'), '1', 'TextObjects')[index]
+        expected = copy.deepcopy(before)
+        expected_view = field(field(field(expected, '1', 'DocumentObjects'), '1', 'TextObjects')[index], '1', 'View')
+        for cache in ('/1', '/RenderedData'):
+            expected_view.pop(cache, None)
+        expected_view[key(expected_view, '2', 'Strikes')] = field(field(rewritten, '1', 'View'), '2', 'Strikes')
+        assert actual == expected, f'Composition modified data outside the selected layout: {name} / {index}'
+        original_events = composition_events(story)
+        rewritten_events = composition_events(rewritten, authored=True)
+        assert close_positions(original_events, rewritten_events), f'Composition positions or source spans differ: {name} / {index}'
+        hyphens += sum(event[0] == 'segment' and event[-1] for event in original_events)
+        parsed = inkai.parse(str(output / f'{name}.story-{index}.layout.ps'))
+        section = parsed.setup.first_subsection_of_type(b'%AI11_BeginTextDocument')
+        decoded = next(child.Data for child in section.children if isinstance(child, binary_type))
+        assert decoded == payload
+        checked += 1
+    return checked, hyphens
+
+
 def main():
     """Require complete parsed equality except for the independently expected edits."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -338,15 +425,22 @@ def main():
                 assert sum(run["/1"] for run in model[key]["/0"]) == 76
         edits = verify_content_edits(before, name, args.output, text_parser, stream, inkai, binary_type)
         feature_edits = verify_feature_edits(before, name, args.output, text_parser, stream, inkai, binary_type)
-        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "status": "passed"})
+        compositions, hyphens = verify_compositions(before, name, args.output, text_parser, stream, inkai, binary_type)
+        assert compositions == entry['composedStories']
+        assert entry['rejectedPathLayouts'] == len(stories) - compositions
+        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "compositions": compositions, "automaticHyphens": hyphens, "status": "passed"})
     assert len(results) == 32, "The required text-document corpus was not fully exercised"
     content_edits = sum(result["contentEdits"] for result in results)
     assert content_edits == 20, "The required native stories were not all edited"
     feature_edits = sum(result["featureEdits"] for result in results)
     assert feature_edits == 40, "The required native stories were not all formatted"
+    compositions = sum(result['compositions'] for result in results)
+    assert compositions == 17, "The required point/area stories were not all composed"
+    hyphens_by_fixture = {result['file']: result['automaticHyphens'] for result in results if result['automaticHyphens']}
+    assert hyphens_by_fixture == {'flowtext.ai': 1, 'text_transforms.ai': 13}, f"Unexpected automatic hyphen mappings: {hyphens_by_fixture}"
     report = {"referenceRevision": revision, "python": sys.version.split()[0], "fixtures": results}
     (args.output / "native-text-report.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(f"Native text: {len(results)} style rewrites, {content_edits} content edits and {feature_edits} feature edits independently passed")
+    print(f"Native text: {len(results)} style rewrites, {content_edits} content edits, {feature_edits} feature edits and {compositions} compositions independently passed")
 
 
 if __name__ == "__main__":

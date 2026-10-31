@@ -65,6 +65,11 @@ Forty additional outputs change character and paragraph features separately.
 Their complete native trees, UTF-16 coverage, size/reference fields and fresh
 inline style identifiers are checked independently; source resources and
 unselected features must remain intact. These checks do not render new text.
+Seventeen point/area stories also receive reauthored source-position layouts.
+The oracle compares frame/line/segment origins, character coverage, bounds,
+selection metrics and fourteen automatic hyphens, while requiring other model
+and resource data to remain unchanged. Three path-text compositions must reject
+missing per-glyph geometry. This validates position records, not a glyph renderer.
 Verify these outputs with the same pinned external checkout:
 
 ```sh

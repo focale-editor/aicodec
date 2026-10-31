@@ -37,6 +37,10 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   restoration, paired point-size fields and separate inline style identities.
   Forty formatting edits compared independently across the twenty stories;
   typography settings are authored, not implemented as a new compositor.
+- Host-composed point/area frame, line and segment position writing, with source
+  coverage, linked-frame ownership, explicit overflow, compact reordered ranges
+  and automatic-hyphen maps. Seventeen layouts and fourteen hyphens checked
+  independently; glyph shaping, path geometry and synchronized PDF remain pending.
 
 ## Next native editing work
 

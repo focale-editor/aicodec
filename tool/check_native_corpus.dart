@@ -26,6 +26,8 @@ Future<void> main() async {
       final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
       int textDocuments = 0;
       int textStories = 0;
+      int composedStories = 0;
+      int rejectedPathLayouts = 0;
       for (final AiNativeContainer container in records.containers.where((record) => record.type == 'AI11TextDocument')) {
         final AiNativeTextDocument text = AiNativeTextDocument.decode(records: records, container: container);
         if (text.referenceIssues.isNotEmpty) {
@@ -70,6 +72,34 @@ Future<void> main() async {
             }
             await File('${output.path}/$name.story-${story.index}.$suffix.ate').writeAsBytes(formatted.engine.bytes);
             await File('${output.path}/$name.story-${story.index}.$suffix.ps').writeAsBytes(formatted.records.program.bytes);
+          }
+          if (story.frameIndices.any((index) => text.frames[index].kind == .path)) {
+            try {
+              text.withTextLayout(
+                story: story,
+                frames: [for (final int index in story.frameIndices) AiNativeTextFrameLayout(frame: text.frames[index], x: 0, y: 0, lines: [])],
+                overflowStart: 0,
+              );
+              throw StateError('Path composition was accepted without per-glyph geometry.');
+            } on UnsupportedError {
+              rejectedPathLayouts++;
+            }
+          } else {
+            final List<AiNativeTextFrameLayout> frames = _retainedTextLayout(text, story);
+            int visibleEnd = 0;
+            for (final AiNativeTextFrameLayout frame in frames) {
+              for (final AiNativeTextLineLayout line in frame.lines) {
+                for (final AiNativeTextSegmentLayout segment in line.segments) {
+                  if (segment.end > visibleEnd) {
+                    visibleEnd = segment.end;
+                  }
+                }
+              }
+            }
+            final AiNativeTextDocument composed = text.withTextLayout(story: story, frames: frames, overflowStart: visibleEnd);
+            await File('${output.path}/$name.story-${story.index}.layout.ate').writeAsBytes(composed.engine.bytes);
+            await File('${output.path}/$name.story-${story.index}.layout.ps').writeAsBytes(composed.records.program.bytes);
+            composedStories++;
           }
         }
       }
@@ -170,6 +200,8 @@ Future<void> main() async {
         'nativeBinaryBytes': binaryBytes,
         'textDocuments': textDocuments,
         'textStories': textStories,
+        'composedStories': composedStories,
+        'rejectedPathLayouts': rejectedPathLayouts,
         'artboards': records.artboards.length,
         'nativePaths': drawing.paths.length,
         'liveShapes': drawing.liveShapes.length,
@@ -191,6 +223,61 @@ Future<void> main() async {
   if (failures != 0) {
     exitCode = 1;
   }
+}
+
+/// Reauthors observed positions as host data without retaining old glyph caches.
+List<AiNativeTextFrameLayout> _retainedTextLayout(AiNativeTextDocument document, AiNativeTextStory story) {
+  final List<AiNativeTextStrike> nodes = story.strikes.expand((node) => node.descendants).toList();
+  for (final AiNativeTextStrike root in story.strikes) {
+    if (root.kind != .story || root.origin != null && root.origin!.any((value) => value != 0)) {
+      throw StateError('The corpus projection requires unshifted story roots.');
+    }
+  }
+  final List<AiNativeTextFrameLayout> frames = [];
+  for (final int index in story.frameIndices) {
+    final AiNativeTextStrike source = nodes.singleWhere((node) => node.kind == .frame && node.frameIndex == index);
+    final List<AiNativeTextLineLayout> lines = [];
+
+    /// Accumulates row origins while retaining the source line/segment order.
+    void visit(AiNativeTextStrike node, double parentX, double parentY) {
+      final double x = parentX + (node.origin?[0] ?? 0);
+      final double y = parentY + (node.origin?[1] ?? 0);
+      if (node.kind == .line) {
+        final List<AiNativeTextSegmentLayout> segments = [];
+
+        /// Keeps source indices and segment origins without claiming glyph parity.
+        void segment(AiNativeTextStrike child, double parentX, double parentY) {
+          final double x = parentX + (child.origin?[0] ?? 0);
+          final double y = parentY + (child.origin?[1] ?? 0);
+          if (child.kind == .segment) {
+            final int start = child.firstCharacterIndex ?? 0;
+            segments.add(
+              AiNativeTextSegmentLayout(start: start, end: start + child.characterCount!, x: x, y: y, rightToLeft: child.wordReorderValid ?? false, automaticHyphen: child.hasTerminalHyphenInsertion),
+            );
+          } else {
+            for (final AiNativeTextStrike nested in child.children) {
+              segment(nested, x, y);
+            }
+          }
+        }
+
+        for (final AiNativeTextStrike child in node.children) {
+          segment(child, 0, 0);
+        }
+        lines.add(AiNativeTextLineLayout(x: x, y: y, ascent: node.selectionAscent == null ? null : -node.selectionAscent!, descent: node.selectionDescent, bounds: node.bounds, segments: segments));
+      } else {
+        for (final AiNativeTextStrike child in node.children) {
+          visit(child, x, y);
+        }
+      }
+    }
+
+    for (final AiNativeTextStrike child in source.children) {
+      visit(child, 0, 0);
+    }
+    frames.add(AiNativeTextFrameLayout(frame: document.frames[index], x: source.origin?[0] ?? 0, y: source.origin?[1] ?? 0, lines: lines));
+  }
+  return frames;
 }
 
 /// Exports typed text projections for comparison with an independent ATE reader.

@@ -8,6 +8,7 @@ part 'ai_native_text_layout.dart';
 part 'ai_native_text_edit.dart';
 part 'ai_native_text_feature_edit.dart';
 part 'ai_native_text_changes.dart';
+part 'ai_native_text_composition.dart';
 
 /// The resource table supplying an Illustrator text style.
 enum AiNativeTextStyleKind {

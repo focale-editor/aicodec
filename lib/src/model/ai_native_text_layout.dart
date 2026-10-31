@@ -117,6 +117,52 @@ final class AiNativeTextStrike {
 
   /// Canvas-space visual bounds of a glyph strike, when explicitly stored.
   List<double>? get visualBounds => kind == .glyphs ? _coordinates(_field(record, '8', 'VisualBounds'), 4) : null;
+
+  /// Native signed selection ascent for line and glyph nodes, when present.
+  double? get selectionAscent => switch (kind) {
+    .line => _number(_field(record, '14', 'SelectionAscent')),
+    .glyphs => _number(_field(record, '12', 'SelectionAscent')),
+    _ => null,
+  };
+
+  /// Native signed selection descent for line and glyph nodes, when present.
+  double? get selectionDescent => switch (kind) {
+    .line => _number(_field(record, '15', 'SelectionDescent')),
+    .glyphs => _number(_field(record, '13', 'SelectionDescent')),
+    _ => null,
+  };
+
+  /// Whether a segment declares a valid native word-reorder mapping.
+  bool? get wordReorderValid => kind != .segment
+      ? null
+      : switch (_at(record, [('15', 'Mapping'), ('5', 'WRValid')])) {
+          null => null,
+          PsEngineBoolean(:final bool value) => value,
+          _ => throw const FormatException('Invalid Illustrator word-reorder validity flag.'),
+        };
+
+  /// Whether a compact segment map contains the recognized terminal hyphen insertion.
+  ///
+  /// This tests the insertion record, not a glyph/character count difference:
+  /// ligatures can offset an extra glyph. Other native mapping entries remain
+  /// accessible in [record] and are not inferred from this Boolean result.
+  bool get hasTerminalHyphenInsertion {
+    if (kind != .segment) {
+      return false;
+    }
+    final PsEngineDictionary? mapping = _optionalDictionary(_field(record, '15', 'Mapping'));
+    final int? count = characterCount;
+    if (mapping == null || count == null) {
+      return false;
+    }
+    for (final PsEngineValue entry in _array(mapping['1'])) {
+      final PsEngineDictionary item = _dictionary(entry);
+      if (_optionalIndex(item['0']) == 2 && _optionalIndex(item['1']) == count - 1 && _optionalIndex(item['2']) == 2) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
 
 /// Reads a finite coordinate array with an exact format-defined arity.

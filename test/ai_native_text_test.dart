@@ -216,6 +216,47 @@ void main() {
   });
 
   for (final bool named in [false, true]) {
+    test('writes ${named ? 'named CS' : 'compact CC'} composed lines without altering the source model', () {
+      final AiNativeTextDocument initial = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
+      final AiNativeTextDocument document = initial.replaceText(story: initial.stories.single, start: 0, end: 2, text: 'A🖋\rB\u0003C');
+      final AiNativeTextStory story = document.stories.single;
+      final AiNativeTextFrameLayout frame = AiNativeTextFrameLayout(
+        frame: document.frames.single,
+        x: 100,
+        y: 200,
+        lines: [
+          AiNativeTextLineLayout(
+            x: 5,
+            ascent: 10,
+            descent: 3,
+            bounds: [0, -10, 50, 3],
+            segments: [AiNativeTextSegmentLayout(start: 0, end: 1), AiNativeTextSegmentLayout(start: 1, end: 4, x: 8)],
+          ),
+          AiNativeTextLineLayout(y: 20, segments: [AiNativeTextSegmentLayout(start: 4, end: 6)]),
+          AiNativeTextLineLayout(y: 40, segments: [AiNativeTextSegmentLayout(start: 6, end: 8)]),
+        ],
+      );
+      final AiNativeTextDocument composed = document.withTextLayout(story: story, frames: [frame]);
+      final List<AiNativeTextStrike> nodes = composed.stories.single.strikes.single.descendants.toList();
+      check(nodes.where((node) => node.kind == .segment).map((node) => node.firstCharacterIndex)).deepEquals([0, 1, 4, 6]);
+      check(nodes.where((node) => node.kind == .segment).map((node) => node.characterCount)).deepEquals([1, 3, 2, 2]);
+      check(nodes.where((node) => node.kind == .glyphs)).isEmpty();
+      final AiNativeTextStrike line = nodes.firstWhere((node) => node.kind == .line);
+      check(line.origin!).deepEquals([5.0, 0.0]);
+      check(line.bounds!).deepEquals([0.0, -10.0, 50.0, 3.0]);
+      check(line.selectionAscent).equals(-10);
+      check(line.selectionDescent).equals(3);
+      check(nodes.firstWhere((node) => node.kind == .frame).origin!).deepEquals([100.0, 200.0]);
+      final PsEngineValue oldModel = story.record[named ? 'Model' : '0']!;
+      final PsEngineValue newModel = composed.stories.single.record[named ? 'Model' : '0']!;
+      check(document.engine.bytes.sublist(oldModel.start!, oldModel.end)).deepEquals(composed.engine.bytes.sublist(newModel.start!, newModel.end));
+      check(composed.referenceIssues).isEmpty();
+      check(frame.lines.clear).throws<UnsupportedError>();
+      check(frame.lines.first.segments.clear).throws<UnsupportedError>();
+      check(frame.lines.first.bounds!.clear).throws<UnsupportedError>();
+      check(() => composed.withTextLayout(story: composed.stories.single, frames: [frame])).throws<ArgumentError>();
+    });
+
     test('edits ${named ? 'named' : 'compact'} character features without flattening inherited styles', () {
       final AiNativeTextDocument document = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
       final AiNativeCharacterChanges changes = AiNativeCharacterChanges(fontSize: 22, tracking: 50, ligatures: false, stylisticSets: 5, leading: 26, font: document.fonts.single);
@@ -349,6 +390,203 @@ void main() {
       check(nodes.first.children.clear).throws<UnsupportedError>();
     });
   }
+
+  test('requires explicit overflow and keeps visual segment order independent of UTF-16 order', () {
+    final AiNativeTextDocument document = _editDocument(text: 'אבA\r', lengths: [4]);
+    final AiNativeTextFrameLayout frame = AiNativeTextFrameLayout(
+      frame: document.frames.single,
+      x: 0,
+      y: 0,
+      lines: [
+        AiNativeTextLineLayout(segments: [AiNativeTextSegmentLayout(start: 2, end: 4), AiNativeTextSegmentLayout(start: 0, end: 2, x: 20, rightToLeft: true)]),
+      ],
+    );
+    final AiNativeTextDocument composed = document.withTextLayout(story: document.stories.single, frames: [frame]);
+    final List<AiNativeTextStrike> segments = composed.stories.single.strikes.single.descendants.where((node) => node.kind == .segment).toList();
+    check(segments.map((segment) => segment.firstCharacterIndex)).deepEquals([2, 0]);
+    check(segments.map((segment) => segment.wordReorderValid)).deepEquals([false, true]);
+    final PsEngineDictionary mapping = segments.last.record['15']! as PsEngineDictionary;
+    check(((mapping['7']! as PsEngineDictionary)['0']! as PsEngineNumber).value).equals(2);
+    final AiNativeTextFrameLayout clipped = AiNativeTextFrameLayout(
+      frame: document.frames.single,
+      x: 0,
+      y: 0,
+      lines: [
+        AiNativeTextLineLayout(segments: [AiNativeTextSegmentLayout(start: 0, end: 2, rightToLeft: true)]),
+      ],
+    );
+    check(() => document.withTextLayout(story: document.stories.single, frames: [clipped])).throws<ArgumentError>();
+    final AiNativeTextDocument overflow = document.withTextLayout(story: document.stories.single, frames: [clipped], overflowStart: 2);
+    check(overflow.stories.single.modelText).equals('אבA\r');
+    final AiNativeTextDocument hidden = document.withTextLayout(
+      story: document.stories.single,
+      frames: [AiNativeTextFrameLayout(frame: document.frames.single, x: 0, y: 0, lines: [])],
+      overflowStart: 0,
+    );
+    check(hidden.stories.single.strikes.single.descendants.where((node) => node.kind == .segment)).isEmpty();
+  });
+
+  test('retains generated hyphens without inserting them in editable text', () {
+    final AiNativeTextDocument document = _editDocument(text: 'hyphen\r', lengths: [7]);
+    final AiNativeTextDocument composed = document.withTextLayout(
+      story: document.stories.single,
+      frames: [
+        AiNativeTextFrameLayout(
+          frame: document.frames.single,
+          x: 0,
+          y: 0,
+          lines: [
+            AiNativeTextLineLayout(segments: [AiNativeTextSegmentLayout(start: 0, end: 2, automaticHyphen: true)]),
+            AiNativeTextLineLayout(y: 15, segments: [AiNativeTextSegmentLayout(start: 2, end: 7)]),
+          ],
+        ),
+      ],
+    );
+    final List<AiNativeTextStrike> segments = composed.stories.single.strikes.single.descendants.where((node) => node.kind == .segment).toList();
+    check(segments.map((segment) => segment.hasTerminalHyphenInsertion)).deepEquals([true, false]);
+    check(composed.stories.single.modelText).equals('hyphen\r');
+    final PsEngineDictionary mapping = segments.first.record['15']! as PsEngineDictionary;
+    check((mapping['2']! as PsEngineNumber).value).equals(1);
+    final PsEngineDictionary insertion = (mapping['1']! as PsEngineArray).values.single as PsEngineDictionary;
+    check(insertion.values.values.map((value) => (value as PsEngineNumber).value)).deepEquals([2, 1, 2]);
+  });
+
+  test('preserves linked frame order and rejects missing or reordered resources', () {
+    final AiNativeTextDocument initial = _editDocument(text: 'ABCD\r', lengths: [5]);
+    final PsEngineDictionary root = initial.engine.root as PsEngineDictionary;
+    final PsEngineDictionary resources = root['0']! as PsEngineDictionary;
+    final PsEngineArray frames = (resources['8']! as PsEngineDictionary)['0']! as PsEngineArray;
+    final PsEngineArray references = initial.stories.single.view!['0']! as PsEngineArray;
+    final PsEngineDocument expanded = initial.engine.replaceValues(
+      replacements: {
+        frames: PsEngineArray(
+          values: [
+            ...frames.values,
+            PsEngineDictionary(values: {'0': PsEngineDictionary(values: {})}),
+          ],
+        ),
+        references: PsEngineArray(
+          values: [
+            ...references.values,
+            PsEngineDictionary(values: {'0': PsEngineNumber(value: 1)}),
+          ],
+        ),
+      },
+    );
+    final AiNativeTextDocument document = AiNativeTextDocument.decode(records: _records(expanded.bytes));
+    final List<AiNativeTextFrameLayout> layout = [
+      AiNativeTextFrameLayout(
+        frame: document.frames[0],
+        x: 100,
+        y: 200,
+        lines: [
+          AiNativeTextLineLayout(segments: [AiNativeTextSegmentLayout(start: 0, end: 2)]),
+        ],
+      ),
+      AiNativeTextFrameLayout(
+        frame: document.frames[1],
+        x: 300,
+        y: 400,
+        lines: [
+          AiNativeTextLineLayout(segments: [AiNativeTextSegmentLayout(start: 2, end: 5)]),
+        ],
+      ),
+    ];
+    final AiNativeTextDocument composed = document.withTextLayout(story: document.stories.single, frames: layout);
+    check(composed.stories.single.strikes.single.descendants.where((node) => node.kind == .frame).map((node) => node.frameIndex)).deepEquals([0, 1]);
+    check(() => document.withTextLayout(story: document.stories.single, frames: layout.reversed.toList())).throws<ArgumentError>();
+    check(() => document.withTextLayout(story: document.stories.single, frames: layout.take(1).toList())).throws<ArgumentError>();
+  });
+
+  test('rejects unmapped path geometry and named CS word-reorder output', () {
+    final AiNativeTextDocument named = AiNativeTextDocument.decode(records: _records(_styleEngine(named: true)));
+    check(
+      () => named.withTextLayout(
+        story: named.stories.single,
+        frames: [
+          AiNativeTextFrameLayout(
+            frame: named.frames.single,
+            x: 0,
+            y: 0,
+            lines: [
+              AiNativeTextLineLayout(segments: [AiNativeTextSegmentLayout(start: 0, end: 3, rightToLeft: true)]),
+            ],
+          ),
+        ],
+      ),
+    ).throws<UnsupportedError>();
+    final AiNativeTextDocument initial = _editDocument(text: 'AB\r', lengths: [3]);
+    final PsEngineDictionary frame = initial.frames.single.record;
+    final PsEngineDocument changed = initial.engine.replaceValues(
+      replacements: {
+        frame: PsEngineDictionary(
+          values: {
+            ...frame.values,
+            '2': PsEngineDictionary(values: {'0': PsEngineNumber(value: 2)}),
+          },
+        ),
+      },
+    );
+    final AiNativeTextDocument path = AiNativeTextDocument.decode(records: _records(changed.bytes));
+    check(
+      () => path.withTextLayout(
+        story: path.stories.single,
+        frames: [AiNativeTextFrameLayout(frame: path.frames.single, x: 0, y: 0, lines: [])],
+        overflowStart: 0,
+      ),
+    ).throws<UnsupportedError>();
+  });
+
+  test('rejects invalid composition coverage, surrogate boundaries, breaks and limits', () {
+    final AiNativeTextDocument document = _editDocument(text: 'A🖋\rB\r', lengths: [6]);
+    for (final List<(int, int)> ranges in [
+      [(1, 6)],
+      [(0, 4), (3, 6)],
+      [(0, 2), (2, 6)],
+      [(0, 7)],
+      [(0, 6)],
+    ]) {
+      final AiNativeTextFrameLayout frame = AiNativeTextFrameLayout(
+        frame: document.frames.single,
+        x: 0,
+        y: 0,
+        lines: [
+          AiNativeTextLineLayout(
+            segments: [for (final (int start, int end) in ranges) AiNativeTextSegmentLayout(start: start, end: end)],
+          ),
+        ],
+      );
+      check(() => document.withTextLayout(story: document.stories.single, frames: [frame])).throws<ArgumentError>();
+    }
+    for (final Object Function() create in [
+      () => AiNativeTextSegmentLayout(start: 1, end: 1),
+      () => AiNativeTextSegmentLayout(start: 0, end: 1, x: double.nan),
+      () => AiNativeTextLineLayout(segments: []),
+      () => AiNativeTextLineLayout(ascent: -1, segments: [AiNativeTextSegmentLayout(start: 0, end: 1)]),
+      () => AiNativeTextLineLayout(bounds: [2, 0, 1, 0], segments: [AiNativeTextSegmentLayout(start: 0, end: 1)]),
+    ]) {
+      check(create).throws<ArgumentError>();
+    }
+    final AiNativeTextDocument source = _editDocument(text: 'abcdefghi\r', lengths: [10]);
+    final AiNativeTextDocument bounded = AiNativeTextDocument.decode(records: source.records, limits: const PsEngineLimits(maxNodes: 150));
+    check(
+      () => bounded.withTextLayout(
+        story: bounded.stories.single,
+        frames: [
+          AiNativeTextFrameLayout(
+            frame: bounded.frames.single,
+            x: 0,
+            y: 0,
+            lines: [
+              AiNativeTextLineLayout(
+                segments: [for (int index = 0; index < 10; index++) AiNativeTextSegmentLayout(start: index, end: index + 1)],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).throws<FormatException>();
+  });
 
   test('refuses invalid feature values and font-metric-dependent size edits', () {
     for (final Object Function() create in [
