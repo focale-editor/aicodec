@@ -604,6 +604,26 @@ dart run tool/check_native_group_resets.dart
 python3 tool/verify_native_group_resets.py --inkai-source /tmp/extension-ai
 ```
 
+Path-to-group movement appends counted ordinary paths or direct live shapes to
+empty/populated parents. Three manifest-pinned real sources receive one declared
+empty group at a fixed layer boundary; their original bytes remain exact. Four
+synthetic programs pin changed scalar state, identified/hidden parents and mixed
+CC siblings. The independent verifier fixes all 15 requests, binds complete path
+and metadata owners, checks point counts, both projections' consumed state,
+native topology and all unselected bytes. Four real and eight synthetic moves
+pass; three requests refuse atomically when inheritance or following state is
+unresolved. Fifteen SVG and exact 1024-wide RGBA comparisons cover eleven moves.
+The counted-state fixture is checked as native data only: upstream SVG
+`PathContextManager.attach_path` clears persistent fill on a stroke-only path,
+which prevents a correct comparison of the following reused fill. Synthetic
+native version-branch SVG and Adobe reopening remain unqualified. The reader is
+unchanged. Generated programs, SVGs, images and reports stay outside publication.
+
+```sh
+dart run tool/check_native_path_group_movement.dart
+python3 tool/verify_native_path_group_movement.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

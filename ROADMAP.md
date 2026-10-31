@@ -531,8 +531,19 @@ groups and compound topology. There is no general modern object lifecycle API.
   prior ordinary and mixed grouping suites also pass 31 transactions, for 49
   independent transactions in this run.
   This is a data/serialization change, with no host renderer or Adobe reopening.
-  The lifecycle task remains open: direct path reparenting into an empty group
-  and creation without an existing sibling still need public contracts; broader
+  `movePathToGroup` now appends complete ordinary paths, consumed counts and
+  direct live-shape metadata into populated or empty groups. Both state streams
+  retain consumed paint and flags, including assignments between a count and its
+  geometry. Qualified CC siblings retain exact bytes and saved alternatives;
+  cross-layer or changed ancestor inheritance remains explicit. Ten regressions
+  and 15 independent transactions cover four real-source moves, eight synthetic
+  moves and three immutable refusals. Fifteen SVG/pixel comparisons pass for
+  eleven moves. The counted-state fixture has native-data validation only because
+  the pinned SVG reader clears persistent fill after stroke-only paths. Synthetic
+  native branches and Adobe reopening remain unqualified. Latest validation:
+  658 VM/657 Node tests and clean format/fix/analysis.
+  The lifecycle task remains open: creation without an existing sibling still
+  needs public contracts; broader
   reference isolation and appearance families also retain their later tasks.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.

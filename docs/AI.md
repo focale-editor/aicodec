@@ -732,6 +732,7 @@ stale selections reject before any source edit is applied.
 | `reorderPaths(paths:)` | Places selected siblings into their existing source slots in the requested order, carrying geometry, paint and count syntax together. |
 | `movePathAfter(path:, after:, inheritParentFlags:)` | Moves a path after an anchor; different layers, ancestor flags or depth require explicit destination inheritance. |
 | `movePathToLayer(path:, layer:, inheritParentFlags:)` | Appends a path directly to an existing, possibly empty layer without changing its header or saved panel data. |
+| `movePathToGroup(path:, group:, inheritParentFlags:)` | Appends a complete path and its metadata inside an existing ordinary group, including an empty destination. |
 
 `AiNativePathInsertion` freezes supplied `segments` and requires host-computed
 ink `bounds`. Geometry has one initial moveto and portable finite coordinates.
@@ -760,8 +761,8 @@ stay unknown; moving a known value to a position where the original value cannot
 be restored rejects. Opaque intervals, interleaved metadata, malformed state and
 unowned point counts also reject atomically.
 
-Ordinary `u`/`U` boundaries do not save and restore paint; only `movePathAfter`
-may cross them. Ancestor groups retain their original flags. Different ancestor
+Ordinary `u`/`U` boundaries do not save and restore paint; movement can cross
+them while retaining source state. Ancestor groups retain their original flags. Different ancestor
 depth or lock/visibility flags require `inheritParentFlags: true`: the moved path
 keeps its own attributes and accepts destination-group inheritance. Equal known
 ancestor states, or values with the same unchanged unknown provenance, need no
@@ -779,6 +780,29 @@ counted/grouped/state sources, including retained ownership, effective path and
 owner flags, exact unselected bytes and counts. Added assignments must match
 original source values. Adobe reopening remains unqualified.
 Saving changed geometry requires matching PDF artwork supplied by the host.
+
+`movePathToGroup` carries the complete consumed `As` count, any qualified scalar
+assignments between that count and geometry, and attached path metadata. Their
+persistent effects remain at the old slot for following artwork. At the new slot,
+only consumed incoming state is replayed, and outgoing destination state is
+restored. Native and printing projections are checked separately. Qualified
+direct live shapes retain their parameter dictionary; partial CC pairs cannot be
+selected as paths. Complete neighboring CC pairs may be crossed without changing
+their bytes or saved alternatives. This also supports appending within the same
+parent and crossing layers with explicit inheritance. Compound, clipping, private
+and unresolved destination groups remain unsupported.
+
+Ten regressions cover empty/populated parents, both directions, counted state,
+direct shapes, identified references, hidden layers, stale handles and limits.
+Independent checks cover 15 fixed transactions: four successful moves in three
+pinned real sources, eight synthetic moves and three immutable refusals. Native
+topology, point counts, consumed paint in both projections, all pair alternatives
+and moved/unselected bytes are checked. Fifteen SVG/pixel comparisons qualify the
+requested placement for the other eleven successful moves. The counted-state
+case has native-data validation only: the pinned SVG reader's `attach_path`
+incorrectly clears persistent fill after a stroke-only path, so its following
+fill cannot serve as an appearance oracle. Synthetic native version branches and
+Adobe reopening remain unqualified; no reader or host rendering code is changed.
 
 ### Ordinary group lifecycle
 

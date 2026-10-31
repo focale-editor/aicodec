@@ -315,6 +315,14 @@ final class AiNativeDrawing {
   /// order, flags and saved panel declarations remain unchanged.
   AiNativeDrawing movePathToLayer({required AiNativePath path, required AiLayer layer, bool inheritParentFlags = false}) => _moveNativePathToLayer(this, path, layer, inheritParentFlags);
 
+  /// Appends a complete ordinary path to a populated or empty ordinary group.
+  ///
+  /// Geometry, point counts and qualified direct metadata move together. Native
+  /// and printing state are preserved separately, including around complete CC
+  /// siblings. Unknown required state and unresolved dependencies reject. Changed
+  /// ancestor flags, depth or layers require explicit [inheritParentFlags].
+  AiNativeDrawing movePathToGroup({required AiNativePath path, required AiNativeGroup group, bool inheritParentFlags = false}) => _moveNativePathToGroup(this, path, group, inheritParentFlags);
+
   /// Groups contiguous ordinary sibling paths without changing their source order.
   ///
   /// Optional point counts and intervening qualified state stay with the paths.

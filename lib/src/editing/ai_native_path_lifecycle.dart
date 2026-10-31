@@ -405,3 +405,22 @@ AiNativeDrawing _relocateNativePath(AiNativeDrawing drawing, AiNativePath path, 
     ),
   ], drawing.paths.length);
 }
+
+/// Moves one counted path while retaining both streams at its old and new slots.
+AiNativeDrawing _moveNativePathToGroup(AiNativeDrawing drawing, AiNativePath path, AiNativeGroup group, bool inheritParentFlags) {
+  final AiNativeLayers model = AiNativeLayers.decode(drawing: drawing);
+  final AiNativeStructureNode parent = model.structure.nodeFor(group);
+  final AiNativeInstruction? count = _ordinaryPathCounts(drawing, [path], ownership: model.structure)[path];
+  final AiNativeObject object = _ordinaryObject(drawing, path);
+  final List<AiSourceEdit> edits = _relocatedNativeSubtree(
+    model,
+    model.structure.nodeFor(path),
+    (start: count?.start ?? object.start, end: object.end),
+    const [],
+    group.closing.start,
+    parent,
+    inheritParentFlags,
+    groups: true,
+  );
+  return _groupLifecycleResult(drawing, edits, paths: drawing.paths.length, groups: drawing.groups.length);
+}
