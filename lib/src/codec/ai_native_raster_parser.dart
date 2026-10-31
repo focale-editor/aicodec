@@ -62,7 +62,7 @@ List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly) 
           commands: commands,
           data: data,
           declaration: declaration,
-          dictionary: _rasterDictionary(projection, item.$1 + 1, dictionaries, operators.single.isPrivate),
+          dictionary: _attachedArtDictionary(projection, item.$1 + 1, dictionaries, operators.single.isPrivate),
           samples: Uint8List.sublistView(records.program.bytes, data.start, data.end),
         ),
       );
@@ -97,7 +97,7 @@ List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly) 
 }
 
 /// Attaches only the immediately following dictionary, optionally after bare N.
-AiNativeContainer? _rasterDictionary(_NativeRecordProjection projection, int position, Map<int, AiNativeContainer> dictionaries, bool private) {
+AiNativeContainer? _attachedArtDictionary(_NativeRecordProjection projection, int position, Map<int, AiNativeContainer> dictionaries, bool private) {
   bool consumed = false;
   for (int index = position; index < projection.tokens.length; index++) {
     final AiToken token = projection.tokens[index];

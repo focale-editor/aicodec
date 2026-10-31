@@ -170,6 +170,15 @@ bool _illustratorPdf(PdfDocument pdf, AiPdfDocument document) {
       throw const FormatException('AI comment exceeds the byte limit.');
     }
     final String line = latin1.decode(Uint8List.sublistView(bytes, start, end));
+    if (const {'%AI26_BeginPlacedObjectPreview', '%_%AI26_BeginPlacedObjectPreview'}.contains(line)) {
+      try {
+        position = readAiPlacedPreview(bytes: bytes, start: position, privateData: line.startsWith('%_')).end;
+      } on FormatException catch (error) {
+        return (comments: result, issue: AiDscIssue(offset: start, message: error.message));
+      }
+      lastKey = null;
+      continue;
+    }
     if (const {'%AI5_BeginRaster', '%_%AI5_BeginRaster'}.contains(line)) {
       if (rasterStart != null) {
         return (comments: result, issue: AiDscIssue(offset: start, message: 'Nested native raster section.'));

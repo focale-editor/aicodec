@@ -457,6 +457,53 @@ bounds and inconsistent `Xh` metadata reject export. The qualified image bounds
 are `[0, 0, width, height]`. Older comment-encoded/ASCII image layouts, linked `XF`
 images and arbitrary image effects remain outside this rendering contract.
 
+## Native linked placements
+
+`AiNativePlacements.decode(records:, bodyOnly:)` reads `%AI5_BeginPlace` sections
+with a backtick placement command and matching `~` terminator. Immutable objects
+retain their affine matrix, local rectangle, file type, producer extensions,
+path bytes, optional relative directory, saved preview and attached object
+dictionary. Paths are decoded from PostScript escaping without guessing their
+encoding. Public and private `%_` sections must be internally consistent.
+
+The shared tokenizer and DSC reader bound `%AI26_BeginPlacedObjectPreview` from
+its five integer fields: width, height, row bytes, bit depth and format. Exactly
+one space separates the last field from the binary samples. The computed row
+length must meet the closing marker exactly; neither reader searches pixel bytes
+for a delimiter. Numeric header prefixes, row padding and fake native/DSC syntax
+inside samples stay opaque. Unknown color layouts remain inspectable when their
+byte boundaries are valid. `preview.toSamples()` explicitly converts the observed
+32-bit, format-17 straight ARGB layout into RGB and separate alpha planes; it
+does not premultiply colors or treat the preview as the full-resolution link.
+
+`placements.translate(objects:, deltaX:, deltaY:)` moves qualified CC raster
+placements and expands DSC bounds while retaining paths, preview rows and object
+metadata. Editing requires file type 1, extensions `4 4 0`, matching `IncludeFile`
+and path references, a nonsingular matrix and the observed versioned relative-path
+and preview sections. Unknown flags, comment semantics or version branches reject
+editing; their source remains available for preservation. Enclosing groups,
+clipping paths and artboards remain separate objects.
+
+`placements.embed(object:, samples:)` accepts `AiNativeRasterSamples` explicitly
+resolved and decoded by the host. The kit does not access the filesystem, resolve
+URLs, guess file formats or convert profiles. It replaces the link and preview
+with a binary native `XI` raster, retaining the placed extent through a resolution
+change, reflection or shear. The qualified placement's local y axis points down.
+The newly composed raster origin snaps within one nanopoint of whole-point
+coordinates to avoid extra pixel rows from ruler-origin cancellation. Scale,
+rotation, shear and existing embedded-raster transforms remain unchanged.
+Object names, identities, rotation and original-scale fields stay attached;
+unqualified dictionary fields reject conversion. A `DocumentFiles` dependency is
+removed only when no other native string or `IncludeFile` reference uses the path.
+Shared references retain it. Native output and sample sizes remain bounded.
+
+The host can deliberately pass `object.preview!.toSamples()` as a reduced-resolution
+fallback. That choice is never implicit. After embedding, `AiNativePdf.render`
+or `AiNativePdf.save` produces the corresponding image appearance using the
+embedded-raster contract. Unresolved links still reject native PDF rendering.
+Relinking, external PDF/EPS placed artwork, older `XF` links, opaque effect-cache
+regeneration and Adobe reopening remain unqualified.
+
 ## Source-backed editing
 
 `AiProgram.decode` reads body instructions outside the prolog, setup, procedures,
@@ -613,7 +660,10 @@ change document metadata or establish Illustrator provenance. The preceding
 raster header is bounded by `maxCommentBytes`, the PDF object limit for tokens
 and the PDF depth limit before the sample boundary is inspected.
 
-For a damaged or unsupported native raster boundary, `AiPostScriptDocument.dscIssue`
+Placed previews likewise use checked header-derived byte boundaries and keep
+their ARGB rows opaque during DSC inspection.
+
+For a damaged or unsupported native raster or preview boundary, `AiPostScriptDocument.dscIssue`
 records the declaration's byte offset relative to `postScriptBytes` and a reason.
 Only earlier comments are returned; the decoder does not search subsequent image
 bytes for a plausible delimiter or claim to have read trailer metadata. Source
@@ -804,6 +854,19 @@ metadata. Six zero-difference Poppler comparisons use independently replaced ima
 the original Adobe PDF or the prior Ghostscript reference, retaining their page
 operators and placement. Three saved native programs are recovered independently.
 
+`check_native_placements.dart` and `verify_native_placements.py` use the intact
+CC linked-image fixture pinned separately in `placement_manifest.json`. Its
+277,504 preview bytes agree exactly with the independent reader, while all five
+setup images remain unchanged after embedding. Three variants incorporate the
+explicit preview or host-supplied full-resolution CMYK samples, with and without
+translation. Ghostscript evaluates the original literal placement operands using
+standard image operators; all three Poppler comparisons have zero differences.
+The original file's high-resolution bounds independently confirm the downward
+local y axis. A synthetic PDF carrier adds a fourth zero-difference comparison
+and exact native-program recovery. The fixture has no original PDF appearance,
+and the host sample source is another corpus image, not the missing external JPEG.
+These checks qualify geometry, samples and synchronization, not Adobe reopening.
+
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
@@ -813,10 +876,11 @@ operators and placement. Three saved native programs are recovered independently
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
-| Raster images | Decode process samples and separate alpha; translate placement; replace pixels, depth, channels and resolution with sample UUID renewal; render and save synchronized native images | Placed-size editing, linked images, older ASCII layouts, broader color models, dependent effect caches and Adobe identity qualification |
+| Raster images | Decode process samples and separate alpha; translate placement; replace pixels, depth, channels and resolution with sample UUID renewal; render and save synchronized native images | Placed-size editing, older ASCII layouts, broader color models, dependent effect caches and Adobe identity qualification |
+| Linked placements | Read CC paths and counted previews, translate qualified raster links and embed host-resolved samples with synchronized PDF output | Relinking, external vector pages, older `XF` links, broader producer semantics and Adobe reopening |
 | Meshes, effects, plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
-| PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, linked/unsupported images, unresolved effects and host scene integration |
+| PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, unresolved links/unsupported images, unresolved effects and host scene integration |
 
 ## References
 
@@ -828,6 +892,7 @@ operators and placement. Three saved native programs are recovered independently
 - [Native hierarchy observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/hierarchy.md)
 - [Native text structure observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/text_documents.md)
 - [PROOF point-text writing and recomposition experiments](https://github.com/vurglepuddle/PROOF/blob/d822dc5dea265675a0fd5dec550e3e0dcd5988f0/doc/PROOF-ai-native-records.md#point-type-written-2026-10-23)
+- [PROOF placed-file and preview observations](https://github.com/vurglepuddle/PROOF/blob/d822dc5dea265675a0fd5dec550e3e0dcd5988f0/doc/PROOF-ai-native-records.md)
 - [Document/artboard observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/document_data.md)
 - [Live-shape structure observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/live_shapes.md)
 - [CC gradient observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/gradients.md)

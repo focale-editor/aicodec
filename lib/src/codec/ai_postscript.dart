@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 part 'ai_raster_data.dart';
+part 'ai_placed_preview_data.dart';
 
 /// Syntactic categories in an Illustrator PostScript program.
 enum AiTokenKind {
@@ -119,6 +120,14 @@ abstract final class AiPostScript {
         }
         add(AiTokenKind.comment, start, position);
         final String line = tokens.last.lexeme;
+        if (procedureDepth == 0 && const {'%AI26_BeginPlacedObjectPreview', '%_%AI26_BeginPlacedObjectPreview'}.contains(line)) {
+          newline();
+          final int previewStart = position;
+          final AiPlacedPreviewData preview = readAiPlacedPreview(bytes: bytes, start: previewStart, privateData: line.startsWith('%_'));
+          add(AiTokenKind.data, previewStart, preview.end);
+          position = preview.end;
+          continue;
+        }
         if (procedureDepth == 0 && const {'%AI5_BeginRaster', '%_%AI5_BeginRaster'}.contains(line)) {
           raster = true;
         } else if (const {'%AI5_EndRaster', '%_%AI5_EndRaster'}.contains(line)) {

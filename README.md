@@ -35,6 +35,8 @@ as self-contained AI7 PostScript.
 - Binary native raster samples, separate alpha planes and synchronized image
   translation/PDF saving. Replace embedded pixels, alpha, depth and resolution
   while retaining placed extents and renewing changed sample identities.
+- CC linked-file paths, placement and bounded ARGB previews. Translate links or
+  incorporate host-decoded image samples into editable native raster artwork.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -156,7 +158,8 @@ rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
 PDF bridge covers supported printable paths, classic gradient fills/strokes and
-binary embedded images. Text, linked images, unsupported raster layouts,
+binary embedded images, including qualified CC links after explicit incorporation.
+Text, unresolved linked images, unsupported raster layouts,
 gradients along/across strokes and unresolved effects still need host regeneration
 before saving visual edits.
 No Adobe Illustrator reopening validation has been performed.

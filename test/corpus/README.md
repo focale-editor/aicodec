@@ -226,6 +226,30 @@ dart run tool/check_native_raster_edits.dart
 python3 tool/verify_native_raster_edits.py --inkai-source /tmp/extension-ai
 ```
 
+Linked placements use `placement_manifest.json`, pinning the intact
+`image_linked.ai` from revision `41bac2967b0f2bd80bc14fce9c8c0dea01283536` as
+`image_linked_original_cc.ai`. The later core-source revision damaged its binary
+bytes by text transcoding; that damaged copy remains a separate rejection case.
+The independent reader checks all 277,504 ARGB preview bytes, and Pillow confirms
+their row order and channel conversion. Five setup images remain byte-identical.
+
+Three incorporation variants use either the explicit preview or CMYK pixels
+supplied from `raster_v2020.ai`, with and without placement translation. The latter
+is host-supplied replacement content, not a recovered external JPEG. Ghostscript
+evaluates the original placement operands with standard `colorimage`; three
+complete-page Poppler comparisons have zero differences. A synthetic PDF carrier
+tests synchronized native data and adds a fourth zero-difference comparison.
+The source has no PDF compatibility page, and the independent parser does not
+fully model its placement metadata; original header operands and DSC bounds
+separately verify geometry. Adobe reopening remains unqualified. Outputs stay
+in ignored `output/native-placements`.
+
+```sh
+python3 tool/fetch_corpus.py --manifest placement_manifest.json
+dart run tool/check_native_placements.dart
+python3 tool/verify_native_placements.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

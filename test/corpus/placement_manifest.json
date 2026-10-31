@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "scope": "Native CC linked placements and counted ARGB previews; the original byte-preserving revision precedes the damaged UTF-8-transcoded copy in raster_manifest.json.",
+  "files": [
+    {
+      "file": "image_linked_original_cc.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/41bac2967b0f2bd80bc14fce9c8c0dea01283536/tests/data/ai/image_linked.ai",
+      "size": 2623096,
+      "sha256": "a67054a916e7791641826237b55ab04919443bdb282126dbc2a27e07dd768d02",
+      "revision": "41bac2967b0f2bd80bc14fce9c8c0dea01283536",
+      "license": "SPDX-FileCopyrightText: 2014 Aron Ambrosiani\nSPDX-FileCopyrightText: 2025 Anunay Jain <me@anu.ninja>\n\nSPDX-License-Identifier: CC-BY-SA-4.0\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    }
+  ]
+}

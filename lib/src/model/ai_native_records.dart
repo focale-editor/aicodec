@@ -12,16 +12,19 @@ part '../codec/ai_native_drawing_parser.dart';
 part '../codec/ai_native_gradient_parser.dart';
 part '../codec/ai_native_gradient_resource_parser.dart';
 part '../codec/ai_native_raster_parser.dart';
+part '../codec/ai_native_placement_parser.dart';
 part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_gradient_editor.dart';
 part '../editing/ai_native_raster_editor.dart';
 part '../editing/ai_native_raster_samples_editor.dart';
+part '../editing/ai_native_placement_editor.dart';
 part '../editing/ai_native_gradient_geometry_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_gradient.dart';
 part 'ai_native_gradient_resources.dart';
 part 'ai_native_rasters.dart';
 part 'ai_native_raster_samples.dart';
+part 'ai_native_placements.dart';
 part 'ai_native_art.dart';
 
 /// One source-backed component of Illustrator's native hierarchical records.
