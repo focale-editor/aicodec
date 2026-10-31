@@ -117,6 +117,28 @@ python3 tool/verify_native_gradients.py --inkai-source /tmp/extension-ai
 Generated programs, samples, SVG/PNG comparisons and `oracle-report.json` remain
 under the ignored `output/gradients` directory.
 
+The native PDF bridge has a separate required six-file check. Four PDF-backed
+fixtures rebuild their compatibility pages, translate their shapes, and save
+matching native data. Two native-only fixtures generate standalone PDFs. The
+independent checker compares original/shifted PDFs through Poppler and recovers
+every saved native owner with pypdf and Python zlib/Zstandard. For native-only
+fixtures, the pinned reader independently parses the printable stream and
+converts it through SVG/Inkscape to PDF; private authoring geometry and its
+known-style markers are excluded to retain the actual expanded printing paths.
+All twelve comparisons require unchanged flat pixels and bounded differences
+around edges. Nine synthetic pixel probes also cover fill/stroke object opacity,
+a Multiply group, clip restoration, hidden and nonprinting layers.
+
+```sh
+dart run tool/check_native_pdf.dart
+python3 tool/verify_native_pdf.py --inkai-source /tmp/extension-ai
+```
+
+These commands need Poppler (`pdftoppm`) and the oracle dependencies above.
+The PDFs, native programs, images and `independent-report.json` remain under
+the ignored `output/native-pdf` directory. This is printing-path validation;
+text, gradients, raster/effect rendering and Adobe reopening remain outside it.
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

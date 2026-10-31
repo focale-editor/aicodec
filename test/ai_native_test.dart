@@ -87,6 +87,26 @@ void main() {
     });
   }
 
+  test('reserves dangling references when allocating rewritten native blocks', () {
+    final AiPdfDocument original = nativePdf(compression: .plain);
+    final int maximum = original.pdf.objects.keys.map((reference) => reference.objectNumber).reduce((first, second) => first > second ? first : second);
+    final PdfReference dangling = PdfReference(objectNumber: maximum + 1);
+    final PdfPage page = original.pdf.pages.single;
+    final AiPdfDocument document = AiPdfDocument(
+      pdf: original.pdf.copyWith(
+        objects: {
+          ...original.pdf.objects,
+          page.reference!: page.dictionary.copyWith(values: {'Sentinel': dangling}),
+        },
+      ),
+    );
+    final AiNativeSource source = AiNativeData.extract(document).single;
+    final AiPdfDocument saved = AiNativeData.replace(source: source, program: source.bytes, synchronizedPdf: document.pdf, blockBytes: 41);
+    check(saved.pdf.objects.containsKey(dangling)).isFalse();
+    check(saved.pdf.pages.single.dictionary['Sentinel']).equals(dangling);
+    check(AiNativeData.extract(saved).single.bytes).deepEquals(source.bytes);
+  });
+
   test('detects AIPDF private streams without Creator metadata', () {
     final AiPdfDocument original = nativePdf(compression: .zstandard, prefix: 'AIPDFPrivateData');
     final AiPdfDocument decoded = const AiCodec().decode(const AiCodec().encode(original)) as AiPdfDocument;

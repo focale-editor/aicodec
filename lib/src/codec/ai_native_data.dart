@@ -231,18 +231,16 @@ abstract final class AiNativeData {
       throw const FormatException('Cannot synchronize mixed Illustrator private-data families on one owner.');
     }
     final List<PdfPage> pages = synchronizedPdf.pages;
-    final Map<PdfReference, PdfValue> objects = {...synchronizedPdf.objects};
-    int next = objects.keys.fold(0, (maximum, reference) => reference.objectNumber > maximum ? reference.objectNumber : maximum) + 1;
+    final PdfEditor editor = PdfEditor(document: synchronizedPdf);
     final Map<String, PdfValue> blocks = {};
     for (int offset = 0; offset < envelope.length; offset += blockBytes) {
       final int end = offset + blockBytes < envelope.length ? offset + blockBytes : envelope.length;
-      if (objects.length >= synchronizedPdf.limits.maxObjects) {
-        throw const FormatException('Native replacement exceeds the PDF object limit.');
-      }
-      final PdfReference reference = PdfReference(objectNumber: next++);
-      objects[reference] = PdfStream(dictionary: PdfDictionary(), data: Uint8List.sublistView(envelope, offset, end));
+      final PdfReference reference = editor.addObject(
+        value: PdfStream(dictionary: PdfDictionary(), data: Uint8List.sublistView(envelope, offset, end)),
+      );
       blocks['${source._prefix}${blocks.length + 1}'] = reference;
     }
+    final Map<PdfReference, PdfValue> objects = {...editor.document.objects};
     for (final int? index in source.owners) {
       if (index != null && index >= pages.length) {
         throw ArgumentError('The synchronized PDF is missing a native-data owner page.');

@@ -28,6 +28,8 @@ as self-contained AI7 PostScript.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.
+- Native process-color path rendering into PDF and synchronized saving, with
+  layers, compound paths, clipping, object opacity and group blend modes.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -122,12 +124,20 @@ updates every same-name definition and its compatibility records atomically,
 using explicit host-composed ramp intervals. Instance geometry stays intact;
 color management, flattened effects and PDF synchronization remain host work.
 
+`AiNativePdf.render(program:, bounds:)` builds a PDF page from supported native
+printable paths, using an explicit drawing-coordinate page rectangle.
+`AiNativePdf.save(source:, program:, pageBounds:)` regenerates existing PDF pages
+and rewrites their shared native program in one immutable snapshot. Metadata and
+annotations are retained; stale thumbnails are removed. This currently supports
+process-color paths and resolved live-shape expansions, including groups,
+clipping and opacity. Unsupported drawing commands reject the complete save.
+
 ## Scope
 
 AI is not one uniform format. A PDF page can be a compatibility warning rather
 than the artwork; `AiNativeData.extract` accesses the native program separately.
 `AiProgram` interprets a structural subset and reports unhandled operators and
-private extensions. It does not execute arbitrary PostScript or provide a renderer.
+private extensions. It does not execute arbitrary PostScript.
 
 ATE text resources, stories and runs are modeled, while glyph shaping, layout
 regeneration and synchronized text-content editing remain unfinished. Plug-ins,
@@ -137,8 +147,9 @@ polygons, stars and lines support translation with solid and linear/radial
 gradient appearances; resizing,
 rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
-explicit legacy target, not a reconstruction of CC editing records. Native and
-PDF appearances must be synchronized by the caller when saving visual edits.
+explicit legacy target, not a reconstruction of CC editing records. The native
+PDF bridge covers supported printable paths; text, gradients, rasters and
+unresolved effects still need host regeneration before saving visual edits.
 No Adobe Illustrator reopening validation has been performed.
 
 See [docs/AI.md](docs/AI.md) for editing policies and
@@ -166,7 +177,9 @@ dart test --platform node
 The optional corpus checks extraction, layer renaming and native recompression
 on 37 pinned files. Independent zlib/Zstandard decoding checks the resulting
 bytes. Eight fixtures also check live-shape translations against a pinned
-independent reader and renderer. These checks do not establish complete native
+independent reader and renderer. Six fixtures check regenerated and translated
+PDFs, with independent decoding of the four PDF-backed native saves. These
+checks do not establish complete native
 Illustrator compatibility.
 
 ---

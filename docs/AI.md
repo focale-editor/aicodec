@@ -383,9 +383,49 @@ original compression family. It replaces numbered blocks, removes stale native
 thumbnail blocks and retains other producers and private metadata. Its required
 `synchronizedPdf` argument must derive from the original PDF graph, retain
 metadata references and contain the matching appearance after a visual edit.
-The kit cannot establish native/PDF equivalence. Renaming a native layer does
+This low-level method cannot establish native/PDF equivalence. Renaming a native layer does
 not change painted geometry, so the existing appearance can be reused for that
 operation. Mixed native block families on one owner are rejected for rewriting.
+New blocks use PdfCore allocation, reserving existing dangling references.
+
+### Native printable paths to PDF
+
+`AiNativePdf.render(program:, bounds:)` creates a one-page PDF from the native
+printable instruction stream. `bounds` is an explicit positive-size rectangle in
+native y-up coordinates. It does not guess an artboard from artwork bounds or
+paint private authoring outlines a second time. The supported subset includes
+gray/RGB/CMYK paths, curve shorthands, fill/stroke attributes, dashes, winding
+rules, ordinary/compound groups, clipping groups and layer visibility/printing.
+Native drawing state persists across group boundaries until changed.
+
+The five-value `Xy` form supports opacity, the sixteen standard blend modes,
+group isolation and knockout, with its shape flag zero. A `6 () XW` modifier
+applies the current blend state to the preceding group. Fill and stroke are
+painted inside one transparency form before applying object opacity, avoiding
+double compositing where they overlap. Compound paths use their final paint
+state once. A clip persists only inside its enclosing mask group; translucent
+paint on the clipping path itself is rejected. Nonprinting and hidden layers
+are validated even though they do not paint.
+
+`AiNativePdf.save(source:, program:, pageBounds:)` rebuilds compatibility pages
+and replaces their native data together. It requires a PDF-backed source with
+one extracted native program, including programs aliased by multiple owners.
+Provide one native drawing rectangle for every existing PDF page; dimensions
+must match each MediaBox, with ordinary page units. Existing page origins,
+page trees, metadata, annotation references, original resource bindings and
+other producers' private data remain intact. Native blocks retain their original
+compression family and all owners receive the same program. Stale PDF page
+thumbnails and native thumbnail blocks are removed. The source remains unchanged
+if compilation, page mapping or allocation fails. Unreferenced old objects remain
+in the graph; this is not data redaction.
+
+The edited program must already contain synchronized printable expansions, as
+produced by supported live-shape translations. `XW` known-style markers require
+a bound live shape with an existing printable appearance. This method does not
+regenerate those expansions from opaque authoring records. Text, gradients,
+rasters, patterns, spot colors, overprint, embedded drawing data, nested compound
+groups and unknown drawing commands currently reject the entire export. This
+includes unsupported commands inside hidden layers. No Adobe prolog executes.
 
 When replacing page artwork, use
 `AiPdfDocument.forPdfInterchange(pdf: changedDocument)` to remove Illustrator
@@ -408,7 +448,8 @@ This is an explicit legacy target. It does not manufacture Illustrator CC
 plug-in dictionaries, live effects, ATE text, meshes or proprietary editable
 gradient/raster records. `AiProgram` can inspect and edit supported portions of
 existing modern programs without converting them to AI7. There is no generic
-PostScript interpreter or built-in native-to-PDF renderer.
+PostScript interpreter; `AiNativePdf` separately renders its supported declarative
+printable subset.
 
 ## Legacy PostScript
 
@@ -525,6 +566,20 @@ and checks visible, hidden and nonprinting layer behavior. That test explicitly
 skips if Ghostscript is unavailable. No Adobe Illustrator installation was used;
 native reopening and complete editing compatibility remain unverified.
 
+`check_native_pdf.dart` regenerates and translates six process-color fixtures.
+Four have original PDFs: Poppler compares their original and explicitly shifted
+artwork with the rebuilt pages, while pypdf and Python zlib/Zstandard independently
+recover the saved native bytes. Two native-only live-shape fixtures use the
+pinned AI reader's printable stream converted through SVG and Inkscape to PDF;
+private shape reconstruction is excluded because it changes expanded contours.
+All twelve render comparisons pass at 1,200 pixels wide. Mean channel differences
+are below 0.02/255 and confined to reference-edge neighborhoods; unchanged flat
+colors are required. The moved opacity fixture has a small boundary difference
+from native `756.999999999999` versus original PDF `757` coordinates. Nine further
+pixel probes check whole-object fill/stroke opacity, a Multiply group, clip scope,
+hidden layers and nonprinting layers. Other blend modes and Adobe reopening are
+not independently qualified by these probes.
+
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
@@ -533,10 +588,10 @@ native reopening and complete editing compatibility remain unverified.
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect instances; translate vectors/printing matrices; isolate positional styles; atomically replace global stops, fallback records and host-composed ramps | Color-managed ramp composition, isolated object colors, full appearance semantics and meshes |
-| Groups and paint | Create AI7 groups, solid process fills and strokes | Complete import into typed scene nodes |
+| Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Meshes, effects, plug-ins, raster | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
-| PDF compatibility appearance | Preserve, replace with caller-synchronized graph, or explicit interchange | Native scene rendering belongs to host integration |
+| PDF compatibility appearance | Regenerate supported printable process-color paths and save them with native data; preserve or replace other graphs explicitly | Text, gradients, rasters, unresolved effects and host scene integration |
 
 ## References
 

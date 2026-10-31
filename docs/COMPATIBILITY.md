@@ -56,6 +56,13 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   1,103 stops and 725 intervals are compared independently; 23 resource rewrites,
   seven color layouts and 24 rendered CC instances are checked. Color-managed
   ramp composition and flattened/PDF appearances remain host responsibilities.
+- Native printable process-color paths rendered through PdfCore and saved with
+  their native program in one snapshot. Compound paths, clipping, hidden and
+  nonprinting layers, object opacity and group blend state are supported.
+  Twelve independent render comparisons cover six original/translated fixtures;
+  four PDF-backed saves also have independently decoded native bytes. Nine pixel
+  probes check opacity, Multiply, clipping and layer flags. Text, gradients,
+  rasters and unrepresented drawing operations reject this renderer.
 
 ## Next native editing work
 
@@ -72,8 +79,8 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
    typography fixtures beyond Latin text and cover undo-free references.
 4. Model linked/embedded raster data, meshes, brushes, patterns, symbols, effects
    and plug-in records with explicit editing contracts.
-5. Synchronize native artwork and PDF compatibility output through the host scene
-   integration, then validate reopening in Illustrator on representative files.
+5. Extend synchronized native/PDF saves beyond process-color printable paths,
+   integrate the host scene, and validate reopening in Illustrator on representative files.
 6. Extend legacy operator execution and native writing with bounded execution,
    resource handling and independent rendering checks.
 
