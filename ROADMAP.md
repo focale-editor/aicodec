@@ -679,6 +679,23 @@ groups and compound topology. There is no general modern object lifecycle API.
   format, fix and analysis. The 19 state/rectangle/refusal transactions and 20
   print-selection transactions were also regenerated and independently rechecked.
   No host integration or native renderer was added.
+  End-to-end mapped-save verification now includes eight chained transactions
+  in the pinned RGB/CMYK rectangle PDFs: creation, resize, reverse ordering and
+  removal of the original active board/page with an explicit active replacement.
+  Each step reopens the previous serialized file and reacquires native handles;
+  the independent reader verifies that provenance chain, complete Document
+  values, exact retained dictionaries/trivia, native bytes outside the edit,
+  supplied PDF data and current-page metadata templates. All 17 mapped-save
+  transactions pass. Two additional regressions exercise the same save/reopen
+  lifecycle with nested compound clips, hidden artwork, complete CC pairs and
+  shared resources. Full validation: 760 VM/759 Node tests and clean format,
+  fix and analysis. This closes the real edited-native/mapped-PDF validation gap;
+  it does not qualify populated text or complex retained resources. Inspection
+  of `simple_cc_legacy.ai`, `simple_v2020.ai`, `text_transforms.ai` and
+  `flowtext.ai` confirms that their resolved story/frame models still reject
+  at retained `AI11Text` ownership, before later setup dependencies are checked.
+  Those owners, linked frame/confining-path relationships and independent text
+  snapshots remain part of this open artboard dependency task.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

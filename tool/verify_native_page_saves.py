@@ -14,8 +14,7 @@ import sys
 from pypdf import PdfReader
 
 from corpus_support import REVISION, native_programs
-from verify_native_artboards import inventory
-from verify_native_artboard_lifecycle import new_board
+from verify_native_artboard_lifecycle import checked_inventory, new_board
 from verify_native_capabilities import owners
 from verify_native_metadata_headers import header, without_fonts
 from verify_native_path_lifecycle import patch
@@ -28,6 +27,8 @@ SYNTHETIC = {
     'programs': '73ea1b539112eb9ddab409288d2bc60a8f51e5e27e23ae3cfd6037f55d4128c7',
 }
 REAL = ['simple_cc_legacy.ai', 'simple_v2020_no_pdf_data.ai', 'reuters-preview-dev.ai']
+CHAINED = ['rgb_rectangle.ai', 'cmyk_rectangle.ai']
+STEPS = ('create-front', 'resize', 'reverse', 'remove-original')
 
 
 def native_document(data, reported):
@@ -38,8 +39,22 @@ def native_document(data, reported):
     decoded = parsed(data[slice(*reported['document'])])
     assert len(decoded) == 1
     result = values(decoded[0])
-    inventory(data, result, reported)
+    checked_inventory(data, result, reported)
     return result
+
+
+def retained_boards(before, after, row):
+    """Preserve original dictionary bytes and their attached separator trivia."""
+    chunks = []
+    for data, model in ((before, row['before']), (after, row['after'])):
+        boards = model['boards']
+        chunks.append({
+            board['identifier']: data[board['record'][0]:boards[index + 1]['record'][0] if index + 1 < len(boards) else model['array'][1] - 1]
+            for index, board in enumerate(boards)
+        })
+    for identifier in chunks[0].keys() & chunks[1].keys():
+        assert chunks[0][identifier] == chunks[1][identifier]
+    assert before[row['before']['array'][0]:row['before']['boards'][0]['record'][0]] == after[row['after']['array'][0]:row['after']['boards'][0]['record'][0]]
 
 
 def native_edit(before, after, row):
@@ -55,7 +70,19 @@ def native_edit(before, after, row):
     if action == 'none':
         assert before == after and row['before'] == row['after']
         return
-    if action == 'create':
+    if action == 'create-front':
+        assert len(boards) == 1 and expected['Recorded']['CropAreaActive'] == 0
+        boards.insert(0, new_board(True))
+        expected['Recorded']['CropAreaActive'] = 1
+        expected['NotRecorded']['LastArtboardID'] += 7
+    elif action == 'reverse':
+        assert len(boards) == 2 and expected['Recorded']['CropAreaActive'] == 1
+        boards.reverse()
+        expected['Recorded']['CropAreaActive'] = 0
+    elif action == 'remove-original':
+        assert len(boards) == 2 and expected['Recorded']['CropAreaActive'] == 0
+        boards.pop(0)
+    elif action == 'create':
         boards.insert(1, new_board(False))
         expected['Recorded']['CropAreaActive'] = 3
         expected['NotRecorded']['LastArtboardID'] = 68
@@ -66,8 +93,8 @@ def native_edit(before, after, row):
         expected['Recorded']['ArtboardArray'] = [boards[2], boards[0], boards[1]]
         expected['Recorded']['CropAreaActive'] = 0
     elif action == 'resize':
-        boards[0]['PositionPoint1'] = [-10, 800]
-        boards[0]['PositionPoint2'] = [500, -20]
+        boards[0]['PositionPoint1'] = [-25, 40] if row['fixture'] in CHAINED else [-10, 800]
+        boards[0]['PositionPoint2'] = [2000, -950] if row['fixture'] in CHAINED else [500, -20]
     else:
         raise AssertionError(action)
     assert changed == expected
@@ -77,6 +104,7 @@ def native_edit(before, after, row):
             for old, new in zip(row['before']['boards'][0]['coordinates'][field], row['after']['boards'][0]['coordinates'][field]):
                 edits.append((*old, after[slice(*new)]))
     else:
+        retained_boards(before, after, row)
         edits.append((*row['before']['array'], after[slice(*row['after']['array'])]))
         for field in ('active', 'lastId'):
             if row['before'][field] != row['after'][field]:
@@ -155,10 +183,11 @@ def verify(original, target, host_path, row, output):
             if row['operation'] != 'resize' or index != 0:
                 assert list(page.mediabox) == list(source.mediabox)
         else:
-            wanted = b'0.5 g 0 0 30 40 re f' if row['operation'] == 'create' else b'q Q'
+            created = row['operation'] in ('create', 'create-front')
+            wanted = b'0.5 g 0 0 30 40 re f' if created else b'q Q'
             assert page.get_contents().get_data() == wanted
-            assert list(page.mediabox) == ([0, 0, 504, 804] if row['operation'] == 'create' else [0, 0, 220, 140])
-        if row['fixture'] and index == 0 or source_index is None:
+            assert list(page.mediabox) == ([0, 0, 504, 804] if created else [0, 0, 220, 140])
+        if row['fixture'] in REAL and index == 0 or source_index is None:
             assert page.indirect_reference.idnum not in old_indices
         else:
             assert old_indices[page.indirect_reference.idnum] == source_index
@@ -168,7 +197,7 @@ def verify(original, target, host_path, row, output):
 
 
 def main():
-    """Require three pinned real graphs and every declared native lifecycle save."""
+    """Require pinned real graphs, chained native lifecycle and synthetic saves."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -184,28 +213,50 @@ def main():
     expected = {name: ('none', list(range(5 if name.startswith('reuters-') else 1))) for name in REAL}
     expected.update({f'synthetic-{action}': (action, appearances) for action, appearances in [('create', [0, None, 1, 2]), ('remove', [0, 1]), ('reorder', [2, 0, 1]), ('resize', [0, 1, 2])]})
     expected.update({f'synthetic-{mode}': ('none', [0, 1, None]) for mode in ('selected', 'batch')})
+    for fixture in CHAINED:
+        for action, appearances in zip(STEPS, ([None, 0], [0, 1], [1, 0], [1])):
+            expected[f'{fixture}.{action}'] = action, appearances
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(rows) == len(expected) == 9 and {row['name'] for row in rows} == expected.keys()
+    assert len(rows) == len(expected) == 17 and {row['name'] for row in rows} == expected.keys()
+    completed = set()
     for row in rows:
         name = row['name']
         assert (row['operation'], row['appearances']) == expected[name]
-        assert row['fixture'] == (name if name in REAL else None)
+        chained = next((fixture for fixture in CHAINED if name.startswith(f'{fixture}.')), None)
+        assert row['fixture'] == (chained or (name if name in REAL else None))
+        previous = None
+        if chained:
+            step = STEPS.index(row['operation'])
+            if step:
+                previous = f'{chained}.{STEPS[step - 1]}'
+                assert previous in completed
+        assert row['previous'] == previous
         multiple = name in ('synthetic-selected', 'synthetic-batch')
         assert [program['selected'] for program in row['programs']] == ([True, name.endswith('batch')] if multiple else [True])
         if multiple:
             assert row['programs'][0]['pages'] == [{'index': 0, 'metadataOwner': 0}, {'index': 2, 'metadataOwner': None}]
             assert row['programs'][1]['pages'] == ([{'index': 1, 'metadataOwner': 1}] if name.endswith('batch') else [])
         else:
-            assert row['programs'][0]['pages'] == [{'index': index, 'metadataOwner': owner} for index, owner in enumerate(row['appearances'])]
-        original = Path('test/corpus/files', name) if name in REAL else args.output / f'{name}.original.ai'
-        data = original.read_bytes()
-        if name in REAL:
-            assert len(data) == manifest[name]['size'] and hashlib.sha256(data).hexdigest() == manifest[name]['sha256']
+            templates = [0, 0] if row['operation'] == 'create-front' else row['appearances']
+            assert row['programs'][0]['pages'] == [{'index': index, 'metadataOwner': owner} for index, owner in enumerate(templates)]
+        if previous:
+            original = args.output / f'{previous}.saved.ai'
+        elif row['fixture']:
+            original = Path('test/corpus/files', row['fixture'])
         else:
+            original = args.output / f'{name}.original.ai'
+        data = original.read_bytes()
+        if row['fixture'] and not previous:
+            entry = manifest[row['fixture']]
+            if chained:
+                assert entry['revision'] == REVISION
+            assert len(data) == entry['size'] and hashlib.sha256(data).hexdigest() == entry['sha256']
+        elif not previous:
             assert hashlib.sha256(data).hexdigest() == SYNTHETIC['programs' if multiple else 'boards']
         verify(original, args.output / f'{name}.saved.ai', args.output / f'{name}.host.pdf', row, args.output)
+        completed.add(name)
         print(name, 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, realPageReplacements=3, nativeLifecycleSaves=4, multipleProgramSaves=2), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, realPageReplacements=3, realChainedLifecycleSaves=8, nativeLifecycleSaves=4, multipleProgramSaves=2), indent=2) + '\n')
 
 
 if __name__ == '__main__':

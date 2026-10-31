@@ -769,16 +769,25 @@ The mapped-save suite reuses three pinned PDFs: `simple_cc_legacy.ai`,
 `simple_v2020_no_pdf_data.ai` and the five-page `reuters-preview-dev.ai`. It replaces
 the first page identity using explicitly supplied original artwork and metadata
 templates, retaining exact native programs. It does not semantically edit the
-Reuters artwork. Four checksum-pinned synthetic cases save native artboard
+Reuters artwork. The pinned `rgb_rectangle.ai` and `cmyk_rectangle.ai` each add
+four consecutive saves: create a board/page before the original, resize it,
+reverse both orders, then remove the original active board/page with an explicit
+active replacement. Every step decodes the previous serialized result before
+reacquiring native handles. The independent verifier requires that exact
+predecessor chain, beginning with each checksum-verified original PDF. New pages
+explicitly copy the original page's native metadata; their host-supplied PDF
+content and boxes are serialization inputs, not an inferred native rendering.
+Four checksum-pinned synthetic cases save native artboard
 creation, removal, reordering and resizing with explicit PDF pages. Two further
 synthetic cases cover multiple programs with selected-only and batch saving.
 
 The unmodified pinned inkai reader decodes the uniquely bound Document fragment
 without interpreting opaque drawing operators. Independent checks compare all
-native Document values, complete native bytes outside prescribed edits, owner
+native Document values, retained board dictionaries and separator trivia,
+complete native bytes outside prescribed edits, owner
 aliases, metadata templates, updated cached headers, other producer metadata,
 host-supplied page identities/boxes/content/resources and retained catalog data.
-All nine cases must pass. These checks establish serialization and graph
+All seventeen cases must pass. These checks establish serialization and graph
 preservation, not native rendering, appearance generation or Adobe reopening.
 
 ```sh

@@ -5,14 +5,15 @@ import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 
 import 'ai_native_artboard_lifecycle_test.dart' show newArtboard;
-import 'ai_native_artboards_test.dart' show artboardSource;
+import 'ai_native_artboard_topology_test.dart' show artboardTopologySource;
+import 'ai_native_artboards_test.dart' show artboardSource, mixedArtboardSource;
 import 'ai_native_metadata_header_test.dart' show metadataBytes, metadataPrivate, withMetadataHeaders;
 import 'ai_native_save_test.dart' show multipleNativePrograms;
 import 'ai_native_test.dart' show nativePdf;
 
 /// Builds three native boards, three PDF owners and an independent catalog alias.
-AiPdfDocument mappedArtboardSource({bool opaqueDrawing = false}) {
-  final String program = artboardSource(body: opaqueDrawing ? '17 FuturePaint' : '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f');
+AiPdfDocument mappedArtboardSource({bool opaqueDrawing = false, String? nativeProgram}) {
+  final String program = nativeProgram ?? artboardSource(body: opaqueDrawing ? '17 FuturePaint' : '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f');
   final AiPdfDocument base = nativePdf(compression: .zstandard, alias: true, nativeProgram: program);
   final PdfEditor editor = PdfEditor(document: base.pdf)..insertPage(page: PdfPageSource(width: 120, height: 140, content: latin1.encode('q Q')));
   final PdfValue pieces = base.pdf.pages.first.dictionary['PieceInfo']!;
@@ -180,6 +181,72 @@ void main() {
       ),
     ).throws<ArgumentError>();
   });
+
+  for (final MapEntry<String, String> fixture in {'compound clips': artboardTopologySource(), 'shared live shapes': mixedArtboardSource()}.entries) {
+    test('reopens every chained artboard save with retained ${fixture.key}', () {
+      final AiPdfDocument original = mappedArtboardSource(nativeProgram: fixture.value);
+      final AiNativeArtboards initial = nativeBoards(AiNativeData.extract(original).single);
+      AiPdfDocument current = original;
+      List<int> sentinels = [0, 1, 2];
+      for (final String operation in ['create', 'resize', 'reverse', 'remove']) {
+        final AiNativeSource source = AiNativeData.extract(current).single;
+        final AiNativeArtboards before = nativeBoards(source);
+        final PdfEditor host = PdfEditor(document: current.pdf);
+        final AiNativeArtboards changed;
+        final List<int?> owners;
+        switch (operation) {
+          case 'create':
+            changed = before.create(definition: newArtboard(selected: true), index: 0, lastArtboardId: 68, cropBounds: null);
+            host.insertPage(page: PdfPageSource(width: 240, height: 320, content: latin1.encode('0.5 g 2 3 20 30 re f')), index: 0);
+            owners = [null, 0, 1, 2];
+          case 'resize':
+            changed = before.resize(artboard: before.artboards.first, bounds: AiBoundingBox(left: -25, bottom: -950, right: 2000, top: 40), cropBounds: null);
+            host.setPageAttributes(
+              pageIndex: 0,
+              values: {
+                'MediaBox': PdfArray(values: [0, 0, 540, 840].map((value) => PdfNumber(value: value))),
+              },
+            );
+            owners = [0, 1, 2, 3];
+          case 'reverse':
+            changed = before.reorder(artboards: before.artboards.reversed.toList(), cropBounds: null);
+            for (int index = 1; index < 4; index++) {
+              host.movePage(from: index, to: 0);
+            }
+            owners = [3, 2, 1, 0];
+          case 'remove':
+            check(before.activeArtboard).identicalTo(before.artboards.first);
+            changed = before.remove(artboards: [before.artboards.first], activeArtboard: before.artboards.last, cropBounds: null);
+            host.removePage(pageIndex: 0);
+            owners = [1, 2, 3];
+          default:
+            throw StateError('Unknown artboard operation.');
+        }
+        final AiPdfDocument saved = saveMapped(mappedArtboards(source, changed, host.document, owners), host.document);
+        final AiNativeSource recovered = AiNativeData.extract(saved).single;
+        final AiNativeArtboards after = nativeBoards(recovered);
+        sentinels = [
+          for (final int? owner in owners)
+            if (owner == null) -1 else sentinels[owner],
+        ];
+        check([for (final int index in Iterable.generate(sentinels.length)) metadataPrivate(saved.pdf, index).integer('OwnerSentinel')]).deepEquals(sentinels);
+        check(metadataPrivate(saved.pdf, null).integer('OwnerSentinel')).equals(-1);
+        check(recovered.owners).deepEquals([null, ...Iterable.generate(sentinels.length)]);
+        check(recovered.bytes).deepEquals(changed.records.program.bytes);
+        check(after.records.program.bytes.take(after.document.start)).deepEquals(initial.records.program.bytes.take(initial.document.start));
+        check(after.records.program.bytes.skip(after.document.end)).deepEquals(initial.records.program.bytes.skip(initial.document.end));
+        check(AiNativeData.extract(current).single.bytes).deepEquals(before.records.program.bytes);
+        check(saved.pdf.pages.map((page) => page.reference)).deepEquals(host.document.pages.map((page) => page.reference));
+        current = saved;
+      }
+      final AiNativeArtboards finalBoards = nativeBoards(AiNativeData.extract(current).single);
+      check(finalBoards.activeArtboard!.identifier).equals('b9ef2db5-64d8-49a5-b02e-b455c61a1f27');
+      check(finalBoards.activeArtboard!.bounds.left).equals(-25);
+      check(finalBoards.lastArtboardId).equals(68);
+      check(sentinels).deepEquals([1, 0, -1]);
+      check(AiNativeData.extract(original).single.bytes).deepEquals(latin1.encode(fixture.value));
+    });
+  }
 
   test('preserves unselected programs and supports independent mapped batches', () {
     final AiPdfDocument original = multipleNativePrograms();

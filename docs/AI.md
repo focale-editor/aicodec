@@ -244,14 +244,26 @@ starts beginning at zero within current pages, consistent limits and valid label
 styles, prefixes and positive counters. The kit does not infer labels from native
 board names. Native saved print ranges have their separate edit restrictions.
 
-Thirteen regressions cover complete mappings, stale/foreign handles, immutable
+After encoding and reopening a mapped save, extract its native sources again and
+decode new artboard handles before the next edit. Metadata-owner indices refer
+to that reopened snapshot's page order. Reusing pre-reorder indices would select
+the wrong template for a new page; retaining old source handles rejects.
+
+Fifteen regressions cover complete mappings, stale/foreign handles, immutable
 inputs, metadata templates, catalog aliases, partial batches, opaque artwork,
 removed-page destinations, dangling identities, label policies and budgets.
-Independent checks verify nine serialized transactions: fresh page identities in
+Chained saves additionally retain compound clips, hidden artwork, complete CC
+pairs and shared resources across all four artboard operations and reopenings.
+Independent checks verify seventeen serialized transactions: fresh page identities in
 three pinned real files (including all five pages of the Illustrator 30.6 file),
-four synthetic native lifecycle edits and two multi-program partial/batch saves.
-The real programs remain byte-identical; synthetic edits are independently
-decoded and compared, along with supplied PDF content/resources and owner data.
+eight consecutive native lifecycle saves in the pinned RGB/CMYK rectangle files,
+four synthetic lifecycle edits and two multi-program partial/batch saves.
+The three page-identity-only programs remain byte-identical. Each RGB/CMYK chain
+creates a board/page, resizes it, reverses the order, then removes the original
+active board/page with an explicit active replacement. Each step reads the
+previous serialized result. All native edits are independently decoded; retained
+board dictionaries/trivia, bytes outside prescribed edits, supplied PDF
+content/resources and metadata templates are compared exactly.
 These are serialization checks, not native rendering or Adobe reopening.
 
 ### Cached native headers

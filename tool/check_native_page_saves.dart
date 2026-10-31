@@ -32,13 +32,14 @@ Future<void> main() async {
   final List<Map<String, Object?>> rows = [];
 
   /// Retains source programs, explicit metadata templates and host appearances.
-  Future<void> record(
+  Future<AiPdfDocument> record(
     String name,
     AiPdfDocument original,
     PdfDocument host,
     List<AiNativePageReplacement> replacements,
     List<int?> appearances, {
     String? fixture,
+    String? previous,
     AiNativeArtboards? before,
     AiNativeArtboards? after,
     String operation = 'none',
@@ -69,6 +70,7 @@ Future<void> main() async {
     rows.add({
       'name': name,
       'fixture': fixture,
+      'previous': previous,
       'operation': operation,
       'appearances': appearances,
       'programs': programs,
@@ -76,6 +78,7 @@ Future<void> main() async {
       if (after != null) 'after': artboardInventory(after),
     });
     stdout.writeln('$name passed');
+    return const AiCodec().decode(await File('${output.path}/$name.saved.ai').readAsBytes()) as AiPdfDocument;
   }
 
   for (final String name in ['simple_cc_legacy.ai', 'simple_v2020_no_pdf_data.ai', 'reuters-preview-dev.ai']) {
@@ -93,6 +96,61 @@ Future<void> main() async {
       before: boards,
       after: boards,
     );
+  }
+  for (final String name in ['rgb_rectangle.ai', 'cmyk_rectangle.ai']) {
+    AiPdfDocument original = const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes()) as AiPdfDocument;
+    String? previous;
+    for (final String operation in ['create-front', 'resize', 'reverse', 'remove-original']) {
+      final AiNativeSource source = AiNativeData.extract(original).single;
+      final AiNativeArtboards boards = nativeBoards(source);
+      final PdfEditor host = PdfEditor(document: original.pdf);
+      final AiNativeArtboards changed;
+      final List<int?> owners;
+      final List<int?> appearances;
+      switch (operation) {
+        case 'create-front':
+          changed = boards.create(definition: newArtboard(selected: true), index: 0, lastArtboardId: boards.lastArtboardId! + 7, cropBounds: null);
+          host.insertPage(page: PdfPageSource(width: 504, height: 804, content: latin1.encode('0.5 g 0 0 30 40 re f')), index: 0);
+          owners = [0, 0];
+          appearances = [null, 0];
+        case 'resize':
+          changed = boards.resize(artboard: boards.artboards.first, bounds: AiBoundingBox(left: -25, bottom: -950, right: 2000, top: 40), cropBounds: null);
+          host.setPageAttributes(
+            pageIndex: 0,
+            values: {
+              'MediaBox': PdfArray(values: [0, 0, 540, 840].map((value) => PdfNumber(value: value))),
+            },
+          );
+          owners = [0, 1];
+          appearances = [0, 1];
+        case 'reverse':
+          changed = boards.reorder(artboards: boards.artboards.reversed.toList(), cropBounds: null);
+          host.movePage(from: 1, to: 0);
+          owners = [1, 0];
+          appearances = [1, 0];
+        case 'remove-original':
+          changed = boards.remove(artboards: [boards.artboards.first], activeArtboard: boards.artboards.last, cropBounds: null);
+          host.removePage(pageIndex: 0);
+          owners = [1];
+          appearances = [1];
+        default:
+          throw StateError('Unknown chained artboard transaction.');
+      }
+      final String transaction = '$name.$operation';
+      original = await record(
+        transaction,
+        original,
+        host.document,
+        [mappedArtboards(source, changed, host.document, owners)],
+        appearances,
+        fixture: name,
+        previous: previous,
+        before: boards,
+        after: changed,
+        operation: operation,
+      );
+      previous = transaction;
+    }
   }
   for (final String operation in ['create', 'remove', 'reorder', 'resize']) {
     final AiPdfDocument original = mappedArtboardSource();
