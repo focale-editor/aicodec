@@ -24,13 +24,18 @@ It has no identified redistribution license; artwork and generated outputs stay
 ignored and unpublished. The required mesh check compares all 180 patches,
 720 colored corners, eight additional anchors and eleven subdivision points
 with an independent restricted-format Python reader. It checks complete field
-tokens/spans, mixed gray/CMYK/NChannel declarations and exact native extraction.
-This is structural inspection, not mesh rendering or editing qualification.
+tokens/spans, mixed gray/CMYK/NChannel declarations, typed ink alternatives,
+208 logical vertices and exact native extraction. The paint check changes five
+vertices (14 corner occurrences), then separately changes all 720 opacities.
+Every other color, geometry token and surrounding byte must remain intact.
+Edited native files are not packaged with the original PDF. Mesh rendering and
+Adobe reopening remain separate acceptance checks.
 
 ```sh
 python3 tool/fetch_corpus.py --manifest mesh_manifest.json
 dart run tool/check_native_meshes.dart
 python3 tool/verify_native_meshes.py
+python3 tool/verify_native_mesh_paint.py
 ```
 
 The independent check uses pypdf 3.x and Python zlib. Its detailed projections

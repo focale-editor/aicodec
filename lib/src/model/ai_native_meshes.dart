@@ -18,6 +18,23 @@ final class AiNativeMeshField extends AiNativeItem {
       super(start: instruction.start, end: instruction.end);
 }
 
+/// One named mesh ink and its explicit device-color alternative.
+final class AiNativeMeshInk {
+  /// Exact name bytes without an assumed character encoding.
+  final Uint8List nameBytes;
+
+  /// DeviceGray, DeviceRGB or DeviceCMYK alternative space.
+  final String deviceName;
+
+  /// Source alternative components, without tinting or color conversion.
+  final List<double> components;
+
+  /// Retains one checked ink declaration.
+  AiNativeMeshInk._({required List<int> nameBytes, required this.deviceName, required List<double> components})
+    : nameBytes = Uint8List.fromList(nameBytes).asUnmodifiableView(),
+      components = List.unmodifiable(components);
+}
+
 /// Original mesh color-space operands without implicit conversion of inks.
 final class AiNativeMeshColorSpace {
   /// Explicit source declaration; null denotes the initial DeviceGray space.
@@ -29,8 +46,11 @@ final class AiNativeMeshColorSpace {
   /// Known component count; null when the declaration needs further semantics.
   final int? componentCount;
 
+  /// Separation or NChannel inks in source order; empty for other spaces.
+  final List<AiNativeMeshInk> inks;
+
   /// Retains named ink alternatives and order in [field], without flattening.
-  const AiNativeMeshColorSpace._({required this.field, required this.deviceName, required this.componentCount});
+  const AiNativeMeshColorSpace._({required this.field, required this.deviceName, required this.componentCount, this.inks = const []});
 }
 
 /// The three node records retained in a native mesh's cyclic boundary order.
@@ -131,6 +151,12 @@ final class AiNativeMesh extends AiNativeItem {
   /// Whether the opening `/Mesh X!` belongs to private authoring data.
   final bool isPrivate;
 
+  /// Checked logical vertices, retaining every neighboring cell's corner copy.
+  ///
+  /// Adjacent corner coordinates must agree exactly; inconsistent grids throw
+  /// [FormatException] instead of welding distinct positions by proximity.
+  late final List<AiNativeMeshVertex> vertices = _meshVertices(this);
+
   /// Creates a complete source-backed mesh without rebuilding its appearance.
   AiNativeMesh._({
     required super.start,
@@ -144,11 +170,90 @@ final class AiNativeMesh extends AiNativeItem {
        patches = List.unmodifiable(patches);
 }
 
+/// One logical Cartesian grid vertex and all its source corner occurrences.
+final class AiNativeMeshVertex {
+  /// First grid coordinate, from zero through the mesh's first patch extent.
+  final int firstIndex;
+
+  /// Second grid coordinate, from zero through the second patch extent.
+  final int secondIndex;
+
+  /// Source corner copies, including their distinct incoming/outgoing handles.
+  final List<AiNativeMeshNode> corners;
+
+  /// Creates a vertex after checking agreement of duplicate positions.
+  AiNativeMeshVertex._({required this.firstIndex, required this.secondIndex, required List<AiNativeMeshNode> corners}) : corners = List.unmodifiable(corners);
+
+  /// Shared native position, without merging control points or source colors.
+  ({double x, double y}) get position => corners.first.position;
+}
+
+/// Device color model for an explicitly supplied mesh vertex color.
+enum AiNativeMeshProcessSpace {
+  /// One gray component, with zero black and one white.
+  gray,
+
+  /// Red, green and blue components.
+  rgb,
+
+  /// Cyan, magenta, yellow and black ink components.
+  cmyk;
+
+  /// Native color-space name used by mesh declarations.
+  String get nativeName => switch (this) {
+    .gray => 'DeviceGray',
+    .rgb => 'DeviceRGB',
+    .cmyk => 'DeviceCMYK',
+  };
+
+  /// Number of normalized color components.
+  int get componentCount => switch (this) {
+    .gray => 1,
+    .rgb => 3,
+    .cmyk => 4,
+  };
+}
+
+/// Explicit process color for a mesh corner, independent of its opacity.
+final class AiNativeMeshProcessColor {
+  /// Selected device model; no automatic source-to-target conversion occurs.
+  final AiNativeMeshProcessSpace space;
+
+  /// Finite normalized components in the device model's native order.
+  final List<double> components;
+
+  /// Creates a checked immutable replacement color.
+  AiNativeMeshProcessColor({required this.space, required List<double> components}) : components = List.unmodifiable(components) {
+    if (components.length != space.componentCount || components.any((value) => !_gradientUnit(value))) {
+      throw ArgumentError('Invalid native mesh process color.');
+    }
+  }
+}
+
+/// A selected logical vertex's new color, opacity, or both.
+final class AiNativeMeshVertexPaint {
+  /// Vertex owned by the mesh being edited, from its current snapshot.
+  final AiNativeMeshVertex vertex;
+
+  /// Explicit new device color; null retains every source color declaration.
+  final AiNativeMeshProcessColor? color;
+
+  /// New normalized opacity; null retains each occurrence's source opacity.
+  final double? opacity;
+
+  /// Requires at least one finite paint change.
+  AiNativeMeshVertexPaint({required this.vertex, this.color, this.opacity}) {
+    if (color == null && opacity == null || opacity != null && !_gradientUnit(opacity!)) {
+      throw ArgumentError('A mesh vertex paint edit needs a color or normalized opacity.');
+    }
+  }
+}
+
 /// Bounded native mesh inventory independent of the PDF compatibility view.
 ///
 /// Version-two Cartesian geometry is inspected, including additional anchors,
 /// changing color spaces, opacity and opaque extensions. Named inks retain
-/// their full declarations and source tints. Reading does not render, edit,
+/// their full declarations and source tints. Reading does not render,
 /// weld neighboring nodes or reconstruct mesh-dependent appearance caches.
 final class AiNativeMeshes {
   /// Source snapshot owning every mesh and field span.
@@ -169,4 +274,17 @@ final class AiNativeMeshes {
 
   /// Retains an immutable inventory and its original resource policy.
   AiNativeMeshes._({required this.records, required this.bodyOnly, required List<AiNativeMesh> meshes}) : meshes = List.unmodifiable(meshes);
+
+  /// Changes selected logical vertices, updating every neighboring corner copy.
+  ///
+  /// Color-space switches are local to each changed corner: subsequent source
+  /// colors keep their declarations, including Separation and NChannel inks.
+  /// Geometry, weights, intermediate nodes and unrelated source bytes survive.
+  /// Only direct printable body meshes without dependent appearance metadata
+  /// are qualified. Unknown fields and unresolved parent appearances reject
+  /// the transaction. Exact no-ops return this snapshot.
+  ///
+  /// This updates native authoring data. The host must regenerate PDF artwork
+  /// and other previews before saving; [AiNativeMeshes] does not render meshes.
+  AiNativeMeshes paintVertices({required AiNativeMesh mesh, required List<AiNativeMeshVertexPaint> changes}) => _paintMeshVertices(this, mesh, changes);
 }

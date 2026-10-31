@@ -30,6 +30,7 @@ part '../editing/ai_native_placement_links_editor.dart';
 part '../editing/ai_native_gradient_geometry_editor.dart';
 part '../editing/ai_native_gradient_placement_geometry.dart';
 part '../editing/ai_native_gradient_focus_editor.dart';
+part '../editing/ai_native_mesh_paint_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_gradient.dart';
 part 'ai_native_gradient_resources.dart';

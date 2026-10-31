@@ -39,7 +39,7 @@ def native_program(path):
 
 def tokens(value):
     """Tokenize the fixture's restricted mesh values, including ink names."""
-    expression = re.compile(r'\s*(\[[ ]*|\]|\([^()\\]*\)|/[^\s\[\]()]+|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)')
+    expression = re.compile(r'\s*(\[[ ]*|\]|\((?:\\[0-7]{1,3}|\\.|[^()\\])*\)|/[^\s\[\]()]+|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)')
     output = []
     position = 0
     while value[position:].strip():
@@ -48,6 +48,23 @@ def tokens(value):
         output.append(match[1].strip())
         position = match.end()
     return output
+
+
+def inks(space):
+    """Decode the fixture's device alternatives and byte-exact ink names."""
+    if space is None or space[0] != '[':
+        return []
+    result = []
+    starts = [index for index, value in enumerate(space) if value == '[' and index > 0]
+    if space[-2] == '/Separation':
+        starts = [0]
+    for start in starts:
+        end = space.index(']', start)
+        values = space[start + 1:end]
+        assert values[-1] == '/Separation'
+        name = re.sub(r'\\([0-7]{1,3})', lambda match: chr(int(match[1], 8)), values[-2][1:-1])
+        result.append({'name': list(name.encode('latin1')), 'deviceName': values[-3][1:], 'components': list(map(float, values[:-3]))})
+    return result
 
 
 def main():
@@ -107,6 +124,7 @@ def main():
                         'opacity': numbers[-9] if corner else None,
                         'space': space if corner else None,
                         'deviceName': device if corner else None,
+                        'inks': inks(space) if corner else [],
                     }
                     if corner:
                         if device:
@@ -126,6 +144,17 @@ def main():
             assert patch is None and native_patches == mesh['patches']
             assert len(native_patches) == 180
             assert {tuple(patch['position']) for patch in native_patches} == {(first, second) for first in range(15) for second in range(12)}
+            assert len(mesh['vertices']) == 208
+            grouped = {}
+            node_fields = iter(field for field in mesh['fields'] if field['key'] == 'N')
+            for patch in native_patches:
+                first, second = patch['position']
+                corners = [node for node in patch['nodes'] if node['kind'] == 'corner']
+                for indices, node in zip([(first, second), (first + 1, second), (first + 1, second + 1), (first, second + 1)], corners):
+                    vertex = grouped.setdefault(indices, {'indices': list(indices), 'position': node['position'], 'corners': []})
+                    assert vertex['position'] == node['position']
+                    vertex['corners'].append(next(node_fields)['start'])
+            assert mesh['vertices'] == [grouped[key] for key in sorted(grouped)]
         assert counts == {'N': 720, 'A': 8, 'S': 11}
         report.append({'file': row['file'], 'patches': 180, 'nodes': dict(counts), 'spaces': dict(spaces), 'sourceBytes': len(program), 'status': 'passed'})
     (OUTPUT / 'oracle-report.json').write_text(json.dumps(report, indent=2) + '\n')

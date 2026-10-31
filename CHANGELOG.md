@@ -6,3 +6,4 @@
 - Selected live-shape gradient isolation with copied styles and counted resources.
 - Relative CC gradient placement editing with synchronized native and printing geometry.
 - Source-backed CC mesh inspection with mixed color spaces and intermediate boundary nodes.
+- Shared mesh vertex color/opacity editing, typed ink alternatives and global resource scanning fixes.

@@ -14,6 +14,32 @@ List<AiNativeMesh> _readNativeMeshes(AiNativeRecords records, bool bodyOnly) {
       continue;
     }
     if (token.kind == .comment) {
+      if (literals == 0 && embedded == 0 && token.lexeme.startsWith('%AI5_BeginGradient:')) {
+        // Gradient ramps use `[` as an executable mark, consumed by BD/Bs.
+        // Skip their explicit resource envelope rather than counting arrays.
+        int procedures = 0;
+        bool ended = false;
+        for (index++; index < tokens.length; index++) {
+          final AiToken next = tokens[index];
+          if (next.kind == .procedureStart) {
+            procedures++;
+          } else if (next.kind == .procedureEnd) {
+            procedures--;
+          }
+          if (procedures == 0 && next.kind == .comment && next.lexeme == '%AI5_EndGradient') {
+            ended = true;
+            break;
+          }
+          if (next.start >= records.program.bodyStart || next.kind == .comment && next.lexeme.startsWith('%AI5_BeginGradient:')) {
+            throw const FormatException('Unterminated gradient resource before native mesh inspection.');
+          }
+        }
+        if (!ended) {
+          throw const FormatException('Unterminated gradient resource before native mesh inspection.');
+        }
+        pendingOperand = false;
+        continue;
+      }
       if (literals == 0 && token.lexeme.startsWith('%%BeginDocument')) {
         embedded++;
       } else if (literals == 0 && token.lexeme == '%%EndDocument') {
@@ -98,7 +124,37 @@ int _meshInteger(double value, {bool positive = false}) {
   return value.toInt();
 }
 
-/// Recognizes device arities while retaining arbitrary named-space declarations.
+/// Decodes a checked named ink with an explicit device-color alternative.
+AiNativeMeshInk? _meshInk(List<AiToken> values) {
+  if (values.length < 6 || values.first.kind != .arrayStart || values.last.kind != .arrayEnd || values[values.length - 2].lexeme != '/Separation') {
+    return null;
+  }
+  final String name = values[values.length - 4].lexeme;
+  final int? count = switch (name) {
+    '/DeviceGray' => 1,
+    '/DeviceRGB' => 3,
+    '/DeviceCMYK' => 4,
+    _ => null,
+  };
+  if (count == null) {
+    return null;
+  }
+  final AiToken inkName = values[values.length - 3];
+  if (values.length != count + 5 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(inkName.kind)) {
+    throw const FormatException('Invalid native mesh ink declaration.');
+  }
+  final List<double> components = [];
+  for (final AiToken value in values.skip(1).take(count)) {
+    final double? component = value.number?.toDouble();
+    if (component == null || !_gradientUnit(component)) {
+      throw const FormatException('Invalid native mesh ink alternative.');
+    }
+    components.add(component);
+  }
+  return AiNativeMeshInk._(nameBytes: aiStringBytes(inkName), deviceName: name.substring(1), components: components);
+}
+
+/// Recognizes device and named-ink arities without converting source tints.
 AiNativeMeshColorSpace _meshColorSpace(AiNativeMeshField field) {
   if (field.values.isEmpty) {
     throw const FormatException('Empty native mesh color space.');
@@ -110,7 +166,49 @@ AiNativeMeshColorSpace _meshColorSpace(AiNativeMeshField field) {
     'DeviceCMYK' => 4,
     _ => null,
   };
-  return AiNativeMeshColorSpace._(field: field, deviceName: count == null ? null : name, componentCount: count);
+  if (count != null) {
+    return AiNativeMeshColorSpace._(field: field, deviceName: name, componentCount: count);
+  }
+  final List<AiToken> values = field.values;
+  if (_meshInk(values) case final AiNativeMeshInk ink) {
+    return AiNativeMeshColorSpace._(field: field, deviceName: null, componentCount: 1, inks: List.unmodifiable([ink]));
+  }
+  if (values.length >= 4 && values.first.kind == .arrayStart && values.last.kind == .arrayEnd && values[values.length - 2].lexeme == '/NChannel') {
+    final num? declared = values[values.length - 3].number;
+    if (declared == null || declared <= 0 || declared % 1 != 0 || declared > values.length) {
+      throw const FormatException('Invalid native mesh ink count.');
+    }
+    final List<AiNativeMeshInk> inks = [];
+    int position = 1;
+    while (position < values.length - 3) {
+      final int start = position;
+      if (values[position].kind != .arrayStart) {
+        throw const FormatException('Invalid native mesh ink list.');
+      }
+      int depth = 0;
+      do {
+        if (values[position].kind == .arrayStart) {
+          depth++;
+        } else if (values[position].kind == .arrayEnd) {
+          depth--;
+        }
+        position++;
+      } while (depth != 0 && position < values.length - 3);
+      if (depth != 0) {
+        throw const FormatException('Unterminated native mesh ink.');
+      }
+      final AiNativeMeshInk? ink = _meshInk(values.sublist(start, position));
+      if (ink == null) {
+        return AiNativeMeshColorSpace._(field: field, deviceName: null, componentCount: null);
+      }
+      inks.add(ink);
+    }
+    if (inks.length != declared) {
+      throw const FormatException('Native mesh ink count disagrees with its declarations.');
+    }
+    return AiNativeMeshColorSpace._(field: field, deviceName: null, componentCount: inks.length, inks: List.unmodifiable(inks));
+  }
+  return AiNativeMeshColorSpace._(field: field, deviceName: null, componentCount: null);
 }
 
 /// Decodes version-two node tails without guessing named-ink color semantics.
@@ -225,4 +323,27 @@ AiNativeMesh _meshFromFields({required int start, required int end, required boo
     throw const FormatException('Incomplete native mesh patch grid.');
   }
   return AiNativeMesh._(start: start, end: end, version: 2, size: size, isPrivate: private, fields: fields, patches: patches);
+}
+
+/// Indexes shared corners by Cartesian topology, never by coordinate proximity.
+List<AiNativeMeshVertex> _meshVertices(AiNativeMesh mesh) {
+  final Map<(int, int), List<AiNativeMeshNode>> corners = {};
+  for (final AiNativeMeshPatch patch in mesh.patches) {
+    final int first = patch.firstIndex;
+    final int second = patch.secondIndex;
+    final List<(int, int)> positions = [(first, second), (first + 1, second), (first + 1, second + 1), (first, second + 1)];
+    for (final (int, AiNativeMeshNode) item in patch.nodes.where((node) => node.kind == .corner).indexed) {
+      final (int, int) position = positions[item.$1];
+      corners.putIfAbsent(position, () => []).add(item.$2);
+    }
+  }
+  final List<AiNativeMeshVertex> vertices = [];
+  for (final MapEntry<(int, int), List<AiNativeMeshNode>> entry in corners.entries) {
+    if (entry.value.any((node) => node.position != entry.value.first.position)) {
+      throw const FormatException('Adjacent native mesh corners disagree on their position.');
+    }
+    vertices.add(AiNativeMeshVertex._(firstIndex: entry.key.$1, secondIndex: entry.key.$2, corners: entry.value));
+  }
+  vertices.sort((first, second) => first.firstIndex != second.firstIndex ? first.firstIndex.compareTo(second.firstIndex) : first.secondIndex.compareTo(second.secondIndex));
+  return List.unmodifiable(vertices);
 }
