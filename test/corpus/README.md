@@ -75,7 +75,9 @@ Printing-contour attachment checks five pinned CC fixtures with ten first/all
 selections, covering 40 supplied shape expansions and 84 printing paths. The host
 tool subdivides existing curves without changing their appearance. Independent
 parsing evaluates the curves, preserves all paint commands and compares every
-byte outside selected groups except declared DSC bounds. External SVG comparisons
+byte outside selected groups except declared DSC bounds. It explicitly validates
+68 updated CC point counts, which the external SVG converter otherwise ignores.
+Private and unselected point-count headers remain unchanged. External SVG comparisons
 require nonempty output and unchanged appearance, within the reader's coordinate
 rounding. These cases qualify geometry attachment with retained paints/resources;
 they do not qualify arbitrary replacement styles or Adobe reopening.

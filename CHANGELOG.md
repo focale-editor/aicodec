@@ -14,3 +14,4 @@
 - Added atomic multi-program saving and rejected stale native metadata, foreign graphs and implicit PDF page remapping.
 - Added explicit text-layout invalidation for changed host dependencies without rewriting text or resources.
 - Added bounded host-supplied CC printing contours while preserving native authoring records, paints, compound groups and shared resources.
+- Synchronized CC point-count headers during plain-path and printing-contour replacement, with atomic rejection of ambiguous or stale counts.

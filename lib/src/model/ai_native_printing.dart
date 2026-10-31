@@ -6,6 +6,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Each contour inherits the source path's paint and closure operation. Existing
 /// compound groups, paints, gradient references and authoring records stay intact.
 /// Wrapped gradient/paint paths currently require one supplied contour.
+/// Counted CC paths receive updated `As` headers and explicit closing endpoints.
 final class AiNativePrintingContours {
   /// Printing path from the same snapshot as the selected live shape.
   final AiNativePath path;

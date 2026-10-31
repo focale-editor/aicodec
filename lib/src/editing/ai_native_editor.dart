@@ -233,6 +233,7 @@ abstract final class AiNativeEditor {
   ///
   /// Appearance-owned paths are rejected: changing only a rendered outline would
   /// leave live-shape, text or plug-in authoring geometry inconsistent.
+  /// Qualified CC point counts are updated with explicit closed-path endpoints.
   static AiProgram replacePath({required AiProgram program, required AiPath path, required List<AiPathSegment> segments}) {
     if (!program.paths.contains(path)) {
       throw ArgumentError('The path belongs to another Illustrator snapshot.');
@@ -243,11 +244,58 @@ abstract final class AiNativeEditor {
     if (segments.isEmpty || segments.first.operator != 'm') {
       throw ArgumentError('An Illustrator path must begin with moveto.');
     }
-    final String replacement = segments.map((segment) => '${segment.coordinates.map((value) => value.toString()).join(' ')} ${segment.operator}\n').join();
+    final AiInstruction? count = _pathPointCount(program, path);
+    final List<AiPathSegment> normalized = [...segments];
+    if (count != null) {
+      if (segments.skip(1).any((segment) => segment.operator == 'm')) {
+        throw ArgumentError('A counted native path requires exactly one initial moveto.');
+      }
+      final List<double> first = segments.first.coordinates;
+      final List<double> last = segments.last.coordinates;
+      if (path.closed && (segments.length == 1 || last[last.length - 2] != first[0] || last.last != first[1])) {
+        normalized.add(AiPathSegment(operator: 'L', coordinates: first));
+      }
+    }
+    final String replacement = normalized.map((segment) => '${segment.coordinates.map((value) => value.toString()).join(' ')} ${segment.operator}\n').join();
     final List<AiSourceEdit> edits = [
+      if (count != null) AiSourceEdit(start: count.operands.single.start, end: count.operands.single.end, bytes: latin1.encode('${normalized.length - (path.closed ? 1 : 0)}')),
       AiSourceEdit(start: path.geometry.first.start, end: path.geometry.first.end, bytes: latin1.encode(replacement)),
       for (final AiInstruction instruction in path.geometry.skip(1)) AiSourceEdit(start: instruction.start, end: instruction.end, bytes: []),
     ];
     return apply(program: program, edits: edits);
+  }
+
+  /// Locates an optional source count without crossing another path or object.
+  static AiInstruction? _pathPointCount(AiProgram program, AiPath path) {
+    int previous = program.bodyStart;
+    for (final AiPath candidate in program.paths) {
+      if (candidate.paint.end < path.geometry.first.start && candidate.paint.end > previous) {
+        previous = candidate.paint.end;
+      }
+    }
+    AiInstruction? count;
+    for (final AiInstruction item in program.instructions.where((item) => item.start >= previous && item.end <= path.paint.end)) {
+      if (item.operator == 'As') {
+        if (count != null || item.start >= path.geometry.first.start) {
+          throw UnsupportedError('A native point count must precede exactly one path.');
+        }
+        count = item;
+      } else if (count != null && const {'u', 'U', '*u', '*U', 'q', 'Q', 'Lb', 'LB'}.contains(item.operator)) {
+        throw UnsupportedError('A native point count crosses an object boundary.');
+      }
+    }
+    if (count != null) {
+      final List<double>? numbers = count.numbers;
+      final List<double> first = path.geometry.first.numbers!;
+      final List<double> last = path.geometry.last.numbers!;
+      if (numbers == null ||
+          numbers.length != 1 ||
+          numbers.single != path.geometry.length - (path.closed ? 1 : 0) ||
+          path.geometry.skip(1).any((item) => item.operator == 'm') ||
+          path.closed && (path.geometry.length == 1 || last[last.length - 2] != first[0] || last.last != first[1])) {
+        throw UnsupportedError('The native point count or closed-path layout is inconsistent.');
+      }
+    }
+    return count;
   }
 }

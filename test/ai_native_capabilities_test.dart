@@ -62,6 +62,15 @@ void main() {
     check(latin1.decode(source.bytes.sublist(record.start, record.end))).contains('FutureObject');
   });
 
+  test('qualifies point-count ownership separately from plain path geometry', () {
+    final AiNativeCapabilityReport report = AiNativeCapabilityReport.inspect(source: _source('9 As\n0 0 m 1 1 L S'));
+    final AiNativeCapability path = report.findings.singleWhere((finding) => finding.feature == .path);
+    check(path.support).equals(AiNativeDataSupport.typed);
+    check(path.editable).isFalse();
+    check(path.edits.single.support).equals(AiNativeEditSupport.requiresValidation);
+    check(path.edits.single.reason).contains('point-count');
+  });
+
   test('reports malformed structures separately from bounded inspection', () {
     final AiNativeCapabilityReport malformed = AiNativeCapabilityReport.inspect(source: _source('0 m 1 1 L S'));
     check(malformed.complete).isFalse();

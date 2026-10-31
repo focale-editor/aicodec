@@ -108,6 +108,7 @@ final class _NativeCapabilityReader {
           ],
         );
       }
+      final bool counted = program.instructions.any((instruction) => instruction.operator == 'As');
       for (final AiPath path in program.paths) {
         final bool qualified = !path.hasDependentAppearance && !program.hasPrivateExtensions && !program.hasUnhandledBodyOperators;
         add(
@@ -119,10 +120,10 @@ final class _NativeCapabilityReader {
           edits: [
             AiNativeEditCapability._(
               operation: .pathGeometry,
-              support: qualified ? .available : .unsupported,
-              reason: qualified
-                  ? 'Plain source geometry is isolated under the current editor contract.'
-                  : 'Dependent appearance, private extensions or unhandled body operators prevent plain-path editing.',
+              support: !qualified ? .unsupported : (counted ? .requiresValidation : .available),
+              reason: !qualified
+                  ? 'Dependent appearance, private extensions or unhandled body operators prevent plain-path editing.'
+                  : (counted ? 'Native point-count ownership and closed endpoints require validation.' : 'Plain source geometry is isolated under the current editor contract.'),
             ),
           ],
         );

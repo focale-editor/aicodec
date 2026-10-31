@@ -37,6 +37,7 @@ AiNativeDrawing _replaceNativePrintingContours(AiNativeDrawing drawing, List<AiN
         throw UnsupportedError('Printing replacement requires resolved local commands and no nested authoring metadata.');
       }
     }
+    final Map<AiNativePath, AiNativeInstruction> pointCounts = _printingPointCounts(drawing, group);
     final List<AiNativePath> paths = replacement.paths.map((path) => path.path).toList();
     if (paths.length != shape.appearancePaths.length || paths.toSet().length != paths.length || paths.any((path) => !shape.appearancePaths.contains(path) || !selected.add(path))) {
       throw ArgumentError('Printing replacement must cover every owned path exactly once.');
@@ -66,14 +67,28 @@ AiNativeDrawing _replaceNativePrintingContours(AiNativeDrawing drawing, List<AiN
       }
 
       for (final (int, List<AiPathSegment>) contour in supplied.contours.indexed) {
+        final bool counted = pointCounts.containsKey(path);
+        final List<double> first = contour.$2.first.coordinates;
+        final List<double> last = contour.$2.last.coordinates;
+        final bool close = counted && path.closed && (contour.$2.length == 1 || last[last.length - 2] != first[0] || last.last != first[1]);
+        final int points = contour.$2.length + (close ? 1 : 0) - (path.closed ? 1 : 0);
         if (contour.$1 > 0) {
           append('${path.paint.operator}\n', 1);
+          if (counted) {
+            append('$points As\n', 2);
+          }
+        } else if (counted) {
+          final AiToken count = pointCounts[path]!.operands.single;
+          edits.add(AiSourceEdit(start: count.start, end: count.end, bytes: latin1.encode('$points')));
         }
         for (final AiPathSegment segment in contour.$2) {
           if (segment.coordinates.any((coordinate) => coordinate.abs() > 9007199254740991)) {
             throw ArgumentError('Printing contours exceed portable native coordinates.');
           }
           append('${segment.coordinates.map((coordinate) => coordinate.toString()).join(' ')} ${segment.operator}\n', segment.coordinates.length + 1);
+        }
+        if (close) {
+          append('${first[0]} ${first[1]} L\n', 3);
         }
       }
       edits.add(AiSourceEdit(start: path.geometry.first.start, end: path.geometry.first.end, bytes: latin1.encode(geometry.toString())));
@@ -99,6 +114,48 @@ AiNativeDrawing _replaceNativePrintingContours(AiNativeDrawing drawing, List<AiN
     throw const FormatException('Supplied printing contours changed native shape ownership.');
   }
   return result;
+}
+
+/// Associates observed CC point counts without carrying them across boundaries.
+Map<AiNativePath, AiNativeInstruction> _printingPointCounts(AiNativeDrawing drawing, AiNativeGroup group) {
+  final Map<int, AiNativePath> starts = {for (final AiNativePath path in group.paths) path.start: path};
+  final Map<AiNativePath, AiNativeInstruction> counts = {};
+  final int previous = drawing.paths.where((path) => path.end < group.start).fold(drawing.records.program.bodyStart, (end, path) => max(end, path.end));
+  AiNativeInstruction? pending;
+  AiNativePath? current;
+  for (final AiNativeInstruction item in drawing.items.whereType<AiNativeInstruction>().where((item) => item.start >= previous && item.end <= group.end)) {
+    if (item.operator == 'As') {
+      if (pending != null || current != null) {
+        throw UnsupportedError('Printing point counts must precede exactly one path.');
+      }
+      pending = item;
+    } else if (starts[item.start] case final AiNativePath path) {
+      current = path;
+      if (pending case final AiNativeInstruction count) {
+        final List<double>? numbers = count.numbers;
+        final List<AiPathSegment> segments = path.segments;
+        final List<double> first = segments.first.coordinates;
+        final List<double> last = segments.last.coordinates;
+        if (numbers == null ||
+            numbers.length != 1 ||
+            numbers.single != segments.length - (path.closed ? 1 : 0) ||
+            segments.skip(1).any((segment) => segment.operator == 'm') ||
+            path.closed && (segments.length == 1 || last[last.length - 2] != first[0] || last.last != first[1])) {
+          throw UnsupportedError('The native printing point count or closed-path layout is inconsistent.');
+        }
+        counts[path] = count;
+        pending = null;
+      }
+    } else if (identical(item, current?.paint)) {
+      current = null;
+    } else if (pending != null && const {'u', 'U', '*u', '*U', 'q', 'Q'}.contains(item.operator)) {
+      throw UnsupportedError('A printing point count crosses an object boundary.');
+    }
+  }
+  if (pending != null) {
+    throw UnsupportedError('A native printing point count has no owned path.');
+  }
+  return counts;
 }
 
 /// Structural and paint commands retained byte-for-byte around supplied curves.

@@ -69,7 +69,8 @@ shape parameters nor checks that the supplied curves match them. Keep authoring
 records, supplied contours and the compatibility PDF on the same document revision.
 Existing compound groups and paint commands remain intact. Additional contours
 may repeat a self-contained paint operation; wrapped gradient/paint paths require
-one contour. Unknown local state, nested authoring metadata, incomplete ownership
+one contour. CC point counts are updated for every supplied contour, with explicit
+closed endpoints. Unknown local state, nested authoring metadata, incomplete ownership
 and stale handles reject atomically. Unknown neighboring objects stay unchanged.
 The host computes ink bounds including strokes, effects and inherited transforms;
 the kit conservatively expands DSC bounds without changing artboards or rendering.

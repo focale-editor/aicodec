@@ -249,6 +249,36 @@ void main() {
     check(() => AiNativeEditor.replacePath(program: liveShape, path: liveShape.paths.single, segments: original.paths.single.segments)).throws<UnsupportedError>();
   });
 
+  test('synchronizes plain CC point counts and preserves unselected source', () {
+    final String counted = programText.replaceFirst('0 0 m', '3 As\n0 0 m').replaceFirst('20 0 C\nf', '20 0 C\n0 0 L\nf');
+    final AiProgram source = AiProgram.decode(bytes: latin1.encode(counted));
+    final List<AiPathSegment> geometry = [
+      AiPathSegment(operator: 'm', coordinates: [1, 1]),
+      AiPathSegment(operator: 'L', coordinates: [2, 3]),
+    ];
+    final AiProgram changed = AiNativeEditor.replacePath(program: source, path: source.paths.single, segments: geometry);
+    check(changed.instructions.singleWhere((item) => item.operator == 'As').numbers).isNotNull().deepEquals([2]);
+    check(changed.paths.single.segments.last.coordinates).deepEquals([1, 1]);
+    check(changed.bytes.sublist(changed.paths.single.paint.start)).deepEquals(source.bytes.sublist(source.paths.single.paint.start));
+    check(source.bytes).deepEquals(latin1.encode(counted));
+    final AiProgram open = AiProgram.decode(bytes: latin1.encode(counted.replaceFirst('0 0 L\nf', 'F')));
+    final AiProgram openChanged = AiNativeEditor.replacePath(program: open, path: open.paths.single, segments: geometry);
+    check(openChanged.paths.single.segments).length.equals(2);
+    check(openChanged.instructions.singleWhere((item) => item.operator == 'As').numbers).isNotNull().deepEquals([2]);
+    final AiProgram point = AiNativeEditor.replacePath(program: source, path: source.paths.single, segments: [geometry.first]);
+    check(point.instructions.singleWhere((item) => item.operator == 'As').numbers).isNotNull().deepEquals([1]);
+    check(point.paths.single.segments).length.equals(2);
+    for (final String body in [
+      counted.replaceFirst('3 As', '4 As'),
+      counted.replaceFirst('3 As', '3 As\n3 As'),
+      counted.replaceFirst('3 As', '3 As\nu').replaceFirst('f\nLB', 'f\nU\nLB'),
+      counted.replaceFirst('3 As\n', '').replaceFirst('0 0 L\nf', '0 0 L\n3 As\nf'),
+    ]) {
+      final AiProgram invalid = AiProgram.decode(bytes: latin1.encode(body));
+      check(() => AiNativeEditor.replacePath(program: invalid, path: invalid.paths.single, segments: geometry)).throws<UnsupportedError>();
+    }
+  });
+
   test('rejects malformed structures and nested allocation attacks', () {
     check(() => AiProgram.decode(bytes: latin1.encode(programText.replaceFirst('LB\n', '')))).throws<FormatException>();
     check(() => AiProgram.decode(bytes: latin1.encode(programText.replaceFirst('0 0 m', 'q q q\n0 0 m')), limits: const AiNativeLimits(maxDepth: 2))).throws<FormatException>();

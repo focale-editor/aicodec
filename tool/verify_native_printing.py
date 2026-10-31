@@ -34,6 +34,28 @@ def paths(body):
     return result
 
 
+def point_counts(body):
+    """Bind optional CC point counts to paths and reject ambiguous ownership."""
+    result, pending, active, index = {}, None, False, 0
+    for item in body:
+        command = getattr(item, 'command', None)
+        if command == 'As':
+            assert pending is None and not active
+            assert len(item.tokens) == 1
+            pending = item
+        elif command in GEOMETRY:
+            active = True
+        elif command in ('n', 'N', 'f', 'F', 's', 'S', 'b', 'B') and active:
+            if pending is not None:
+                result[index] = (pending, command.islower())
+            index += 1
+            pending, active = None, False
+        elif command in ('u', 'U', '*u', '*U', 'q', 'Q'):
+            assert pending is None and not active
+    assert pending is None and not active
+    return result
+
+
 def curve(current, item):
     """Expand shorthand control points without subdividing the curve."""
     coordinates = list(map(float, item.tokens))
@@ -74,8 +96,8 @@ def native(inkai, original, changed, row):
     """Verify curves and preserve every private record, paint and resource binding."""
     before = list(walk_body(inkai.parse(str(original)).trailer))
     after = list(walk_body(inkai.parse(str(changed)).trailer))
-    controls_before = [item for item in before if getattr(item, 'command', None) not in GEOMETRY]
-    controls_after = [item for item in after if getattr(item, 'command', None) not in GEOMETRY]
+    controls_before = [item for item in before if getattr(item, 'command', None) not in (*GEOMETRY, 'As')]
+    controls_after = [item for item in after if getattr(item, 'command', None) not in (*GEOMETRY, 'As')]
     assert len(controls_before) == len(controls_after)
     for first, second in zip(controls_before, controls_after):
         if hasattr(first, 'command'):
@@ -84,6 +106,15 @@ def native(inkai, original, changed, row):
             assert first == second
     old_paths, new_paths = paths(before), paths(after)
     assert len(old_paths) == len(new_paths) == row['paths']
+    old_counts, new_counts = point_counts(before), point_counts(after)
+    assert old_counts.keys() == new_counts.keys()
+    for index, (first, closed) in old_counts.items():
+        second, new_closed = new_counts[index]
+        assert closed == new_closed and first.is_pseudo_comment == second.is_pseudo_comment
+        assert int(first.tokens[0]) == len(old_paths[index]) - int(closed)
+        assert int(second.tokens[0]) == len(new_paths[index]) - int(closed)
+        if index not in row['selectedPaths']:
+            assert first.tokens == second.tokens
     for index, (first, second) in enumerate(zip(old_paths, new_paths)):
         if index not in row['selectedPaths']:
             assert [(item.command, item.tokens) for item in first] == [(item.command, item.tokens) for item in second]
@@ -101,6 +132,7 @@ def native(inkai, original, changed, row):
                 close(evaluate(expected, t), evaluate(left, t * 2) if t <= 0.5 else evaluate(right, t * 2 - 1))
             current = expected[-1]
     assert outside(original.read_bytes(), [group['before'] for group in row['groups']]) == outside(changed.read_bytes(), [group['after'] for group in row['groups']])
+    return sum(index in row['selectedPaths'] for index in new_counts)
 
 
 def render(inkai, path, output):
@@ -141,7 +173,7 @@ def main():
         changed = args.output / f'{name}.{row["variant"]}.ps'
         extracted = native_programs(input_path) if input_bytes.startswith(b'%PDF-') else [input_bytes]
         assert original.read_bytes() in extracted
-        native(inkai, original, changed, row)
+        updated_counts = native(inkai, original, changed, row)
         if name not in references:
             references[name] = render(inkai, original, args.output)
         first, second = references[name], render(inkai, changed, args.output)
@@ -150,7 +182,7 @@ def main():
         mean = max(ImageStat.Stat(difference).mean)
         assert mean < 0.05, f'Independent printing differs by {mean}: {changed.name}'
         difference.save(args.output / f'{changed.name}.difference.png')
-        results.append({'file': name, 'variant': row['variant'], 'shapes': row['shapes'], 'paths': len(row['selectedPaths']), 'meanChannelDifference': mean})
+        results.append({'file': name, 'variant': row['variant'], 'shapes': row['shapes'], 'paths': len(row['selectedPaths']), 'updatedPointCounts': updated_counts, 'meanChannelDifference': mean})
         print(name, row['variant'], 'passed', flush=True)
     (args.output / 'independent-report.json').write_text(json.dumps({'oracleRevision': REVISION, 'variants': results}, indent=2) + '\n')
 

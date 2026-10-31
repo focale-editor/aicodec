@@ -111,6 +111,7 @@ void main() {
     check(changed.appearancePaths.map((path) => path.paint.operator)).deepEquals(List.filled(6, 'f'));
     check(changed.appearancePaths.first.segments.map((segment) => segment.operator)).deepEquals(['m', 'C', 'L']);
     check(changed.appearancePaths[1].segments.map((segment) => segment.operator)).deepEquals(['m', 'v', 'Y']);
+    check(saved.items.whereType<AiNativeInstruction>().where((item) => item.operator == 'As')).isEmpty();
     check(_bytes(saved, changed.path!.start, changed.end)).deepEquals(_bytes(source, shape.path!.start, shape.end));
     check(_bytes(saved, changed.style!.start, changed.style!.end)).deepEquals(_bytes(source, shape.style!.start, shape.style!.end));
     check(_bytes(saved, changed.appearanceGroup!.end, changed.path!.start)).deepEquals(_bytes(source, shape.appearanceGroup!.end, shape.path!.start));
@@ -181,6 +182,62 @@ void main() {
     check(latin1.decode(changed.records.program.bytes)).contains('0 1 0 0 k f');
     check(changed.liveShapes.first.appearancePaths).length.equals(3);
     check(() => source.withPrintingContours(replacements: [_replacement(source.liveShapes.first, multiple: true)])).throws<UnsupportedError>();
+  });
+
+  test('updates counted CC paths and gives additional contours their own counts', () {
+    for (final bool closed in [true, false]) {
+      final String body = _shape().replaceFirst('10 20 m', '4 As\n10 20 m').replaceFirst('30 40 L 10 40 L f', closed ? '30 40 L 10 40 L 10 20 L f' : '30 40 L 10 40 L F');
+      final AiNativeDrawing source = _drawing(first: body);
+      final AiNativeDrawing saved = source.withPrintingContours(replacements: [_replacement(source.liveShapes.first, multiple: true)]);
+      final AiLiveShape shape = saved.liveShapes.first;
+      final List<AiNativeInstruction> counts = saved.items.whereType<AiNativeInstruction>().where((item) => item.operator == 'As' && item.end <= shape.appearanceGroup!.end).toList();
+      check(counts.map((count) => count.numbers!.single)).deepEquals([3, 3]);
+      for (final AiNativePath path in shape.appearancePaths.take(2)) {
+        check(path.segments).length.equals(closed ? 4 : 3);
+        if (closed) {
+          check(path.segments.last.operator).equals('L');
+          check(path.segments.last.coordinates).deepEquals(path.segments.first.coordinates);
+        }
+      }
+      check(_bytes(saved, shape.appearanceGroup!.end, saved.records.program.bytes.length)).deepEquals(
+        _bytes(source, source.liveShapes.first.appearanceGroup!.end, source.records.program.bytes.length),
+      );
+      final AiNativePrintingReplacement original = _replacement(source.liveShapes.first);
+      final AiNativeDrawing point = source.withPrintingContours(
+        replacements: [
+          AiNativePrintingReplacement(
+            shape: original.shape,
+            bounds: original.bounds,
+            paths: [
+              for (final AiNativePrintingContours path in original.paths)
+                AiNativePrintingContours(
+                  path: path.path,
+                  contours: [
+                    [path.contours.first.first],
+                  ],
+                ),
+            ],
+          ),
+        ],
+      );
+      check(point.items.whereType<AiNativeInstruction>().singleWhere((item) => item.operator == 'As').numbers).isNotNull().deepEquals([1]);
+    }
+  });
+
+  test('rejects ambiguous, stale or unsupported native point-count ownership', () {
+    final String counted = _shape().replaceFirst('10 20 m', '4 As\n10 20 m').replaceFirst('30 40 L 10 40 L f', '30 40 L 10 40 L 10 20 L f');
+    for (final String body in [
+      for (final String count in ['5 As', '1.5 As', '(4) As', '4 4 As', '4 As\n4 As']) counted.replaceFirst('4 As', count),
+      _shape().replaceFirst('10 20 m', '3 As\n10 20 m'),
+      counted.replaceFirst('4 As\n', '').replaceFirst('10 20 L f', '10 20 L 4 As f'),
+      _shape().replaceFirst('*u', '4 As\n*u'),
+      '4 As\n${_shape()}',
+    ]) {
+      final AiNativeDrawing source = _drawing(first: body);
+      final List<int> before = source.records.program.bytes.toList();
+      check(() => source.withPrintingContours(replacements: [_replacement(source.liveShapes.first)])).throws<UnsupportedError>();
+      check(source.records.program.bytes).deepEquals(before);
+    }
   });
 
   test('freezes supplied contours and bounds expansion before allocating full output', () {

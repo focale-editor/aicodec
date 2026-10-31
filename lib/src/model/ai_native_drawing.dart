@@ -202,6 +202,8 @@ final class AiNativeDrawing {
   /// Gradient and post-geometry paint wrappers retain one contour per source
   /// path; splitting those wrappers requires a separate paint-topology edit.
   /// This does not change paint/resource topology or create missing expansions.
+  /// Existing CC point counts follow each supplied contour; counted closed paths
+  /// receive an explicit closing line when their last endpoint is not the first.
   AiNativeDrawing withPrintingContours({required List<AiNativePrintingReplacement> replacements}) => _replaceNativePrintingContours(this, replacements);
 
   /// Moves native shapes and their supported painted expansions atomically.
