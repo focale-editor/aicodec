@@ -9,9 +9,7 @@ void _nativeArtboardCoordinates(Iterable<double> values) {
 
 /// Replaces native geometry without deriving ink, crop, ruler or PDF coordinates.
 AiNativeArtboards _resizeNativeArtboard(AiNativeArtboards model, AiNativeArtboard artboard, AiBoundingBox bounds, AiBoundingBox? cropBounds, List<double>? rulerOrigin) {
-  if (!identical(artboard.document, model.document) || !model.artboards.any((board) => identical(board.record, artboard.record))) {
-    throw ArgumentError('Artboard resizing requires an owned current source record.');
-  }
+  _requireNativeArtboard(model, artboard);
   _nativeArtboardCoordinates([
     bounds.left,
     bounds.bottom,
@@ -45,10 +43,27 @@ AiNativeArtboards _resizeNativeArtboard(AiNativeArtboards model, AiNativeArtboar
   if (rulerOrigin != null) {
     coordinates(artboard.record['RulerOrigin'], rulerOrigin);
   }
+  edits.addAll(_nativeArtboardCropEdits(model, cropBounds));
+  return _applyNativeArtboardEdits(model, edits);
+}
+
+/// Resolves current ownership by record identity, never by a reused saved UUID.
+int _requireNativeArtboard(AiNativeArtboards model, AiNativeArtboard artboard) {
+  final int index = model.artboards.indexWhere((board) => identical(board.record, artboard.record));
+  if (!identical(artboard.document, model.document) || index < 0) {
+    throw ArgumentError('Artboard edits require an owned current source record.');
+  }
+  return index;
+}
+
+/// Changes a crop declaration only when the host explicitly supplies its bounds.
+List<AiSourceEdit> _nativeArtboardCropEdits(AiNativeArtboards model, AiBoundingBox? cropBounds) {
+  final List<AiSourceEdit> edits = [];
   if (cropBounds != null) {
+    _nativeArtboardCoordinates([cropBounds.left, cropBounds.bottom, cropBounds.right, cropBounds.top]);
     final AiNativeHeaderField? crop = model.cropHeader;
     if (crop == null) {
-      throw UnsupportedError('Artboard resizing cannot invent a missing native crop declaration.');
+      throw UnsupportedError('Artboard edits cannot invent a missing native crop declaration.');
     }
     final List<double> values = [cropBounds.left, cropBounds.bottom, cropBounds.right, cropBounds.top];
     if (values.indexed.any((value) => value.$2 != crop.values[value.$1])) {
@@ -56,6 +71,11 @@ AiNativeArtboards _resizeNativeArtboard(AiNativeArtboards model, AiNativeArtboar
       edits.add(AiSourceEdit(start: crop.token.start, end: crop.token.end, bytes: latin1.encode('$prefix ${values.join(' ')}')));
     }
   }
+  return edits;
+}
+
+/// Reparses under original limits and retains the selected root Document owner.
+AiNativeArtboards _applyNativeArtboardEdits(AiNativeArtboards model, List<AiSourceEdit> edits) {
   if (edits.isEmpty) {
     return model;
   }

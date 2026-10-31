@@ -1274,7 +1274,7 @@ it is not silently merged with another origin or inferred from a page. Artboards
 canvas extent, drawing/ink bounds and compatibility PDF pages remain distinct.
 This is an inspection contract, not an artboard lifecycle or origin-edit API.
 
-### Artboard state and native rectangle edits
+### Artboard state and native lifecycle
 
 `AiNativeArtboards.decode(records:, document:)` retains one explicit Document
 owner and its ordered artboards. Omitting `document` requires exactly one owner.
@@ -1301,12 +1301,43 @@ names, identities, ordering and drawing/ink bounds remain unchanged. A no-op
 returns the current immutable model; changed data reparses under its original
 limits. Foreign and stale handles reject.
 
-Resizing currently uses the conservative whole-source native reference scope.
+`AiNativeArtboardDefinition` freezes a new board's native name bytes, fresh
+canonical UUID bytes, drawing rectangle and explicit canvas ruler origin.
+Selection and default-name flags are independent; pixel aspect ratio defaults to
+one and the ordinary writer emits zero display marks. Name encoding is supplied
+by the caller, as with other native UnicodeString writers.
+
+`create(definition:, index:, lastArtboardId:, cropBounds:, activate:)` inserts at
+an explicit position. An existing `LastArtboardID` requires an explicitly supplied
+larger portable integer; an absent field requires null and remains absent. The
+counter is not derived from the board count, UUID, name or position. Existing
+active ownership follows its shifted index; `activate: true` instead designates
+the new board and requires an existing active-index field. An empty native array
+can receive its first board without inventing omitted state fields.
+
+`reorder(artboards:, cropBounds:)` requires every current source board exactly
+once. `remove(artboards:, activeArtboard:, cropBounds:)` removes whole entries,
+retains at least one board, and requires a retained replacement only when the
+active board is removed. Removal and reordering retain creation history. Selection
+flags, UUIDs, names, ruler origins and exact dictionaries follow retained boards;
+array separator trivia moves with its preceding record. These operations do not
+move or delete artwork. Crop policy remains explicit and independent throughout.
+
+Structural operations currently require private native array entries and unique
+portable ASCII saved identities. Unqualified identity encodings reject rather
+than bypassing collision checks. Operations preserve LF, CRLF and CR line endings
+and support an omitted final comma. Nonempty saved print artboard/page ranges reject rather than
+silently changing their meaning after an ordinal edit. Fresh UUIDs cannot reuse
+existing declarations, including case variants. Foreign/stale handles, duplicate
+selections, missing replacement-active policies and output/parser limits reject
+atomically.
+
+Artboard edits currently use the conservative whole-source native reference scope.
 Qualified ordinary artwork, complete CC pairs and shared literal resources remain
 exact. Unsupported setup owners or dependent/unknown records reject atomically.
-The operation edits native data only: host-supplied compatibility pages and
+The operations edit native data only: host-supplied compatibility pages and
 cached headers such as PDF `AIMetaData` must also be synchronized before a complete
-save. Creation/removal/reordering, narrower artboard-specific dependencies and
+save. Narrower artboard-specific dependencies, print-range remapping and
 explicit PDF page remapping remain in the open roadmap task.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
@@ -1317,6 +1348,14 @@ moved origins), four synthetic resizes and three unchanged refusals. The large
 five-page fixture is inspection-only: the independent reader also reports
 unsupported body operators, so only its separately bound Document metadata is
 qualified. No PDF rendering, Adobe reopening or complete artboard save is claimed.
+Thirteen further lifecycle regressions cover creation, active replacement,
+permutations, absent fields, exact source retention, line endings, immutable
+definitions, identity collisions, unknown dependencies and aggregate limits.
+Twenty-five independent transactions additionally qualify fifteen chained edits
+in three pinned CC sources and ten synthetic edits, including complete CC pairs
+and shared gradients. The independent reader compares complete Document values,
+exact retained dictionaries/separator trivia and every byte outside the declared
+array/scalar/crop edits.
 
 ### Structure, identities and saved alternatives
 
@@ -1816,7 +1855,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Existing record edits; qualified native rectangle resizing with explicit crop/origin choices | General artboard lifecycle, cached-header synchronization and PDF page remapping remain incomplete. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Qualified native creation, removal, resizing and complete reordering; explicit active/history/crop choices | Private arrays and qualified whole-source dependencies only; print-range remapping, cached-header synchronization and PDF page remapping remain incomplete. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

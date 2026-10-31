@@ -114,7 +114,7 @@ void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers
     } else if (record.type == 'Document') {
       _referenceDocument(model, record);
     } else {
-      throw UnsupportedError('Deleting identified artwork requires qualification of native document, resource and opaque reference owners.');
+      throw UnsupportedError('Native structural edits require qualification of document, resource and opaque reference owners.');
     }
     independent.add((start: record.start, end: record.end));
   }

@@ -597,9 +597,20 @@ groups and compound topology. There is no general modern object lifecycle API.
   complete CC pairs/resources, and three unchanged dependency refusals. Latest
   validation: 691 VM/690 Node tests and clean format/fix/analysis. The multi-page
   source is qualified for Document inspection only; its body is not fully decoded
-  by the independent reader. The task remains open: creation, deletion, ordering,
-  artboard-specific dependency isolation, explicit host PDF-page mapping and
-  synchronized cached `AIMetaData` headers still require implementation and checks.
+  by the independent reader. Native `create`, `remove` and `reorder` now retain
+  complete private board dictionaries and their separator trivia. Creation takes
+  an explicit fresh UUID, name, rectangle, ruler origin and saved history value;
+  active ownership follows index changes, while active removal requires a retained
+  replacement. Selection and crop policy remain independent. Thirteen additional
+  regressions cover immutable definitions, absent fields, CR/LF syntax, stale
+  handles, identity collisions, print-range refusals and original parser budgets.
+  Twenty-five independent transactions qualify fifteen chained edits in three
+  pinned CC files and ten synthetic edits, including complete CC pairs/resources.
+  Full validation: 704 VM/703 Node tests, clean format/fix/analysis; focused cases
+  also cover rejection of ambiguous saved UUID encodings. The task remains open:
+  artboard-specific dependency isolation, print-range remapping, explicit host
+  PDF-page mapping and synchronized cached `AIMetaData` headers still require
+  implementation and checks. No host integration or native renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

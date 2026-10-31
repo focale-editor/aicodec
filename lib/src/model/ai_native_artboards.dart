@@ -89,4 +89,31 @@ final class AiNativeArtboards {
   /// host PDF pages and any cached header representation; this edits native data.
   AiNativeArtboards resize({required AiNativeArtboard artboard, required AiBoundingBox bounds, required AiBoundingBox? cropBounds, List<double>? rulerOrigin}) =>
       _resizeNativeArtboard(this, artboard, bounds, cropBounds, rulerOrigin);
+
+  /// Inserts a new board at [index], retaining every existing board's source.
+  ///
+  /// Supply the next saved [lastArtboardId] explicitly when the source has that
+  /// field; it must increase, and is never inferred from board count. Pass null
+  /// only when the source omits the field. [activate] requires an existing active
+  /// index field; otherwise the previously active board follows its new index.
+  /// Null [cropBounds] retains the crop declaration. Unknown dependencies and
+  /// nonempty saved print ranges reject; PDF pages must be supplied separately.
+  AiNativeArtboards create({required AiNativeArtboardDefinition definition, required int index, required int? lastArtboardId, required AiBoundingBox? cropBounds, bool activate = false}) =>
+      _createNativeArtboard(this, definition, index, lastArtboardId, cropBounds, activate);
+
+  /// Removes selected boards without removing their artwork or changing history.
+  ///
+  /// When removing the active board, supply a retained [activeArtboard]. Pass
+  /// null otherwise to retain the current active owner, including an absent one.
+  /// At least one board must remain. Selection flags and ruler origins follow
+  /// retained boards; null [cropBounds] retains the separate crop declaration.
+  AiNativeArtboards remove({required Iterable<AiNativeArtboard> artboards, required AiNativeArtboard? activeArtboard, required AiBoundingBox? cropBounds}) =>
+      _removeNativeArtboards(this, artboards, activeArtboard, cropBounds);
+
+  /// Applies a complete owned permutation while retaining the active identity.
+  ///
+  /// Every current board must appear exactly once. Retained dictionaries and
+  /// their selection flags remain exact. Null [cropBounds] preserves the crop
+  /// declaration rather than deriving it from the new order.
+  AiNativeArtboards reorder({required List<AiNativeArtboard> artboards, required AiBoundingBox? cropBounds}) => _reorderNativeArtboards(this, artboards, cropBounds);
 }

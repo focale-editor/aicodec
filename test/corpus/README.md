@@ -696,6 +696,20 @@ dart run tool/check_native_artboards.dart
 python3 tool/verify_native_artboards.py --inkai-source /tmp/extension-ai
 ```
 
+The lifecycle suite adds twenty-five transactions: fifteen chained creations,
+reorderings and removals across the three pinned CC unit/origin examples, and ten
+checksum-pinned synthetic transactions with independent active/selection/crop
+state and mixed CC/resource owners. The unmodified reader checks complete
+Document values, exact retained board records and separator trivia, and all bytes
+outside the selected array/scalar/crop changes. Creation counters and replacement
+active boards are explicit inputs; these native checks do not establish PDF-page
+mapping, cached-header synchronization or Adobe reopening.
+
+```sh
+dart run tool/check_native_artboard_lifecycle.dart
+python3 tool/verify_native_artboard_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.

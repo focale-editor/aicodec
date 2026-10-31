@@ -6,15 +6,19 @@ import 'package:aikit/aikit.dart';
 import '../test/ai_native_artboards_test.dart' show artboardModel, artboardSource, mixedArtboardSource;
 
 /// Retains independently checkable owners and scalar values without PDF inference.
-Map<String, Object?> _inventory(AiNativeArtboards model) => {
+Map<String, Object?> artboardInventory(AiNativeArtboards model) => {
   'document': [model.document.start, model.document.end],
+  'array': [model.document['Recorded']!.container!['ArtboardArray']!.container!.start, model.document['Recorded']!.container!['ArtboardArray']!.container!.end],
   'active': model.activeIndex,
+  'activeSpan': model.activeEntry == null ? null : [model.activeEntry!.items.single.start, model.activeEntry!.items.single.end],
   'lastId': model.lastArtboardId,
+  'lastIdSpan': model.lastIdEntry == null ? null : [model.lastIdEntry!.items.single.start, model.lastIdEntry!.items.single.end],
   'crop': model.cropHeader?.values,
   'cropSpan': model.cropHeader == null ? null : [model.cropHeader!.token.start, model.cropHeader!.token.end],
   'boards': [
     for (final AiNativeArtboard board in model.artboards)
       {
+        'record': [board.record.start, board.record.end],
         'name': latin1.decode(board.nameBytes),
         'identifier': board.identifier,
         'selected': board.selected,
@@ -69,8 +73,8 @@ Future<void> main() async {
       'origin': origin,
       'rejected': reject,
       'issue': issue,
-      'before': _inventory(model),
-      'after': _inventory(result),
+      'before': artboardInventory(model),
+      'after': artboardInventory(result),
     });
     stdout.writeln('$name/$variant passed');
   }
