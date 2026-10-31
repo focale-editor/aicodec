@@ -20,7 +20,7 @@ AiXmpMetadata _relinkXmp(AiXmpMetadata metadata, Iterable<AiXmpResource> resourc
     final XmlElement fields = _xmpStructure(resource._element);
     const Set<String> allowed = {'filePath', 'documentID', 'instanceID', 'alternatePaths'};
     for (final XmlAttribute attribute in fields.attributes) {
-      if (!attribute.isNamespaceDeclaration &&
+      if (!_xmpNamespaceDeclaration(attribute) &&
           !(attribute.namespaceUri == _rdfNamespace && attribute.name.local == 'parseType') &&
           !(attribute.namespaceUri == _referenceNamespace && allowed.contains(attribute.name.local) && attribute.name.local != 'alternatePaths')) {
         throw UnsupportedError('Relinking managed, qualified or extended XMP references requires an explicit policy.');
@@ -38,20 +38,20 @@ AiXmpMetadata _relinkXmp(AiXmpMetadata metadata, Iterable<AiXmpResource> resourc
     if (alternate.isNotEmpty) {
       final XmlElement property = alternate.single;
       _xmpWhitespace(property);
-      if (property.attributes.any((attribute) => !attribute.isNamespaceDeclaration) || property.childElements.length != 1 || !_xmpName(property.childElements.single, _rdfNamespace, 'Seq')) {
+      if (property.attributes.any((attribute) => !_xmpNamespaceDeclaration(attribute)) || property.childElements.length != 1 || !_xmpName(property.childElements.single, _rdfNamespace, 'Seq')) {
         throw UnsupportedError('Only an ordered list of plain XMP fallback paths can be cleared.');
       }
       final XmlElement paths = property.childElements.single;
       _xmpWhitespace(paths);
-      if (paths.attributes.any((attribute) => !attribute.isNamespaceDeclaration) ||
-          paths.childElements.any((item) => !_xmpName(item, _rdfNamespace, 'li') || item.childElements.isNotEmpty || item.attributes.any((attribute) => !attribute.isNamespaceDeclaration))) {
+      if (paths.attributes.any((attribute) => !_xmpNamespaceDeclaration(attribute)) ||
+          paths.childElements.any((item) => !_xmpName(item, _rdfNamespace, 'li') || item.childElements.isNotEmpty || item.attributes.any((attribute) => !_xmpNamespaceDeclaration(attribute)))) {
         throw UnsupportedError('Qualified XMP fallback paths require an explicit policy.');
       }
     }
     if (alternate.isEmpty && resource.filePath == path && resource.documentId == documentId && resource.instanceId == instanceId) {
       continue;
     }
-    final XmlElement replacement = XmlElement(resource._element.name, resource._element.attributes.where((attribute) => attribute.isNamespaceDeclaration).map((attribute) => attribute.copy()), [
+    final XmlElement replacement = XmlElement(resource._element.name, resource._element.attributes.where(_xmpNamespaceDeclaration).map((attribute) => attribute.copy()), [
       XmlElement(
         const XmlName.parts('Description', prefix: 'rdf'),
         [

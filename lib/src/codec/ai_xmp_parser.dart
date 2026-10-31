@@ -15,6 +15,9 @@ const String _manifestNamespace = 'http://ns.adobe.com/xap/1.0/sType/ManifestIte
 /// Recognizes elements by expanded name, independent of producer prefixes.
 bool _xmpName(XmlElement element, String namespace, String name) => element.namespaceUri == namespace && element.name.local == name;
 
+/// Distinguishes namespace declarations from ordinary namespaced attributes.
+bool _xmpNamespaceDeclaration(XmlAttribute attribute) => attribute.name.prefix == 'xmlns' || attribute.name.qualified == 'xmlns';
+
 /// Checks XML scalar validity before UTF-8 encoding can replace bad surrogates.
 void _validateXmpText(String value) {
   for (final int rune in value.runes) {
@@ -137,11 +140,11 @@ AiXmpMetadata _parseXmp(String source, AiXmpLimits limits) {
       }
       final AiXmpResourceKind kind = property.name.local == 'Manifest' ? .manifest : .ingredient;
       _xmpWhitespace(property);
-      if (property.attributes.any((attribute) => !attribute.isNamespaceDeclaration) || property.childElements.length != 1) {
+      if (property.attributes.any((attribute) => !_xmpNamespaceDeclaration(attribute)) || property.childElements.length != 1) {
         throw const FormatException('Ambiguous XMP dependency array.');
       }
       final XmlElement array = property.childElements.single;
-      if (!(_xmpName(array, _rdfNamespace, 'Bag') || (kind == .manifest && _xmpName(array, _rdfNamespace, 'Seq'))) || array.attributes.any((attribute) => !attribute.isNamespaceDeclaration)) {
+      if (!(_xmpName(array, _rdfNamespace, 'Bag') || (kind == .manifest && _xmpName(array, _rdfNamespace, 'Seq'))) || array.attributes.any((attribute) => !_xmpNamespaceDeclaration(attribute))) {
         throw const FormatException('Unsupported XMP dependency array type.');
       }
       _xmpWhitespace(array);
@@ -257,7 +260,7 @@ XmlElement _xmpStructure(XmlElement element) {
     }
     return element;
   }
-  if (parseType != null || element.childElements.length != 1 || element.attributes.any((attribute) => !attribute.isNamespaceDeclaration)) {
+  if (parseType != null || element.childElements.length != 1 || element.attributes.any((attribute) => !_xmpNamespaceDeclaration(attribute))) {
     throw const FormatException('Ambiguous XMP resource structure.');
   }
   final XmlElement description = descriptions.single;
@@ -318,7 +321,7 @@ String? _xmpScalar(XmlElement element, String namespace, String name) {
     return null;
   }
   final XmlElement child = children.single;
-  final List<XmlAttribute> qualifiers = child.attributes.where((attribute) => !attribute.isNamespaceDeclaration).toList();
+  final List<XmlAttribute> qualifiers = child.attributes.where((attribute) => !_xmpNamespaceDeclaration(attribute)).toList();
   if (child.childElements.isNotEmpty || qualifiers.any((attribute) => attribute.namespaceUri != _rdfNamespace || attribute.name.local != 'resource')) {
     throw const FormatException('Qualified XMP dependency scalar is unsupported.');
   }

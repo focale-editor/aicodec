@@ -168,6 +168,18 @@ void main() {
     }
   });
 
+  test('retains default namespaces and rejects xmlns-named extension attributes', () {
+    final AiXmpMetadata metadata = AiXmpMetadata.parse(source: _packet(_manifest('<f:reference xmlns="urn:retained" a:filePath="old.png"/>')));
+    final AiXmpMetadata changed = _relink(metadata);
+    check(changed.resources.single.filePath).equals('new.png');
+    check(changed.source).contains('xmlns="urn:retained"');
+
+    final String source = _packet(_manifest('<f:reference custom:xmlns="retained" a:filePath="old.png"/>'));
+    final AiXmpMetadata extended = AiXmpMetadata.parse(source: source);
+    check(() => _relink(extended)).throws<UnsupportedError>();
+    check(extended.source).equals(source);
+  });
+
   test('normalizes XML line endings and literal attribute whitespace without changing source', () {
     final String textSource = _packet(_manifest(_reference(path: 'a\r\nb\rc&#xD;d')));
     check(AiXmpMetadata.parse(source: textSource).resources.single.filePath).equals('a\nb\nc\rd');
