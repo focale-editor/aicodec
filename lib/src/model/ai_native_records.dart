@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:aikit/src/codec/ai_postscript.dart';
@@ -14,11 +15,13 @@ part '../codec/ai_native_raster_parser.dart';
 part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_gradient_editor.dart';
 part '../editing/ai_native_raster_editor.dart';
+part '../editing/ai_native_raster_samples_editor.dart';
 part '../editing/ai_native_gradient_geometry_editor.dart';
 part 'ai_native_drawing.dart';
 part 'ai_native_gradient.dart';
 part 'ai_native_gradient_resources.dart';
 part 'ai_native_rasters.dart';
+part 'ai_native_raster_samples.dart';
 part 'ai_native_art.dart';
 
 /// One source-backed component of Illustrator's native hierarchical records.

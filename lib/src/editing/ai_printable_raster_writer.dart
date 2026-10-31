@@ -75,72 +75,15 @@ extension on _PrintablePdfWriter {
       ..operations.addAll([
         ...node.operations,
         _pdfNumbers('cm', transform),
+        // Match the image-edge clip emitted by Illustrator's PDF exporter.
+        // Image painting alone does not antialias rotated/sheared boundaries.
+        _pdfNumbers('re', [0, 0, 1, 1]),
+        PdfOperation(operator: 'W'),
+        PdfOperation(operator: 'n'),
         PdfOperation(
           operator: 'Do',
           operands: [PdfName(value: name)],
         ),
       ]);
-  }
-}
-
-/// Rejects positional or color metadata that cannot be reproduced faithfully.
-void _validatePrintableRaster(AiNativeRaster image) {
-  final List<double> matrix = image.matrix;
-  final double determinant = matrix[0] * matrix[3] - matrix[1] * matrix[2];
-  if (!determinant.isFinite || determinant == 0 || image.bounds[2] <= image.bounds[0] || image.bounds[3] <= image.bounds[1]) {
-    throw const FormatException('Degenerate native raster placement.');
-  }
-  if (image.bounds[0] != 0 || image.bounds[1] != 0 || image.bounds[2] != image.width || image.bounds[3] != image.height) {
-    throw UnsupportedError('Native raster cropping requires qualified image-bound semantics.');
-  }
-  final int colorFlag = switch (image.components) {
-    1 => 0,
-    3 => 1,
-    _ => 2,
-  };
-  if (image.flags != 0 && image.flags != colorFlag + (image.hasAlpha ? 16 : 0) ||
-      image.extensions.isNotEmpty && (image.extensions.length < 3 || image.extensions[0] != 4 || image.extensions[1] != 4 || image.extensions.skip(2).any((flag) => flag != 0))) {
-    throw UnsupportedError('Unsupported native raster producer flags.');
-  }
-  final Set<String> seen = {};
-  for (final AiNativeInstruction command in image.commands) {
-    if (!seen.add(command.operator)) {
-      throw const FormatException('Repeated native raster metadata.');
-    }
-    final List<AiToken> operands = command.operands;
-    switch (command.operator) {
-      case 'XG':
-        if (operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(operands.first.kind) || !const {0, 1}.contains(operands.last.number)) {
-          throw const FormatException('Invalid native raster source metadata.');
-        }
-      case 'XN':
-        if (operands.length != 1 ||
-            operands.single.lexeme !=
-                switch (image.components) {
-                  1 => '/DeviceGray',
-                  3 => '/DeviceRGB',
-                  _ => '/DeviceCMYK',
-                }) {
-          throw UnsupportedError('Native raster color spaces require an explicit color policy.');
-        }
-      case 'Xh':
-        if (operands.length != 11 ||
-            operands.first.kind != .arrayStart ||
-            operands[7].kind != .arrayEnd ||
-            operands.skip(1).take(6).indexed.any((item) => item.$2.number != matrix[item.$1]) ||
-            operands[8].number != image.width ||
-            operands[9].number != image.height ||
-            operands[10].number != 0) {
-          throw UnsupportedError('Native raster placement metadata disagrees with its samples.');
-        }
-      case 'XI':
-        continue;
-      case 'XH':
-        if (operands.isNotEmpty || command != image.commands.last) {
-          throw const FormatException('Invalid native raster termination.');
-        }
-      default:
-        throw UnsupportedError('Native raster export cannot render ${command.operator}.');
-    }
   }
 }

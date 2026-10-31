@@ -209,6 +209,20 @@ dart run tool/check_native_rasters.dart
 python3 tool/verify_native_rasters.py --inkai-source /tmp/extension-ai
 ```
 
+Pixel replacement uses the same 24 images, replacing colors, alpha and resolution
+in three separate variants. The pinned reader checks 72 edited plane sets,
+geometry and UUID policies. Six zero-difference PDF comparisons replace only image streams in
+the independently generated references above, retaining their page operators;
+three native programs are recovered from the saved PDF envelopes. Run the raster
+checks above first to generate these references. Outputs stay in ignored
+`output/native-raster-edits`. This does not qualify Adobe reopening or arbitrary
+image effects.
+
+```sh
+dart run tool/check_native_raster_edits.dart
+python3 tool/verify_native_raster_edits.py --inkai-source /tmp/extension-ai
+```
+
 To check the existing downloads without network access or rewriting files:
 
 ```sh

@@ -12,7 +12,9 @@ List<_PrintableNode> _readPrintable(AiProgram program) {
     for (final AiNativeRaster image in rasters.where((image) => image.isPrintable(program: program)))
       for (final AiNativeInstruction command in image.commands) command.end: image,
   };
-  rasters.forEach(_validatePrintableRaster);
+  for (final AiNativeRaster image in rasters) {
+    image.validateProcessLayout();
+  }
   int colorModel = 1;
   for (final AiToken token in AiPostScript.tokenize(program.bytes, maxBytes: program.limits.maxDecodedBytes, maxTokens: program.limits.maxTokens, maxDepth: program.limits.maxDepth)) {
     if (token.start < program.bodyStart && token.kind == .comment && token.lexeme.startsWith('%AI9_ColorModel:')) {

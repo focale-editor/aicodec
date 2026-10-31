@@ -33,7 +33,8 @@ as self-contained AI7 PostScript.
 - Classic linear/radial gradient fills and strokes in PDF, including focal
   ellipses, midpoint interpolation, stop opacity and synchronized color edits.
 - Binary native raster samples, separate alpha planes and synchronized image
-  translation/PDF saving, retaining process colors and affine placement.
+  translation/PDF saving. Replace embedded pixels, alpha, depth and resolution
+  while retaining placed extents and renewing changed sample identities.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -154,9 +155,10 @@ gradient appearances; resizing,
 rotation and parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
-PDF bridge covers supported printable paths and classic gradient fills/strokes;
-text, linked images, unsupported raster layouts, gradients along/across strokes and unresolved effects still need
-host regeneration before saving visual edits.
+PDF bridge covers supported printable paths, classic gradient fills/strokes and
+binary embedded images. Text, linked images, unsupported raster layouts,
+gradients along/across strokes and unresolved effects still need host regeneration
+before saving visual edits.
 No Adobe Illustrator reopening validation has been performed.
 
 See [docs/AI.md](docs/AI.md) for editing policies and

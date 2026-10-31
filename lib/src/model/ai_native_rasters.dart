@@ -11,6 +11,12 @@ final class AiNativeRaster extends AiNativeItem {
   /// Exact opaque sample span, excluding XI and the DSC delimiters.
   final AiToken data;
 
+  /// Source-backed DSC declaration whose count includes the binary invocation.
+  final AiToken declaration;
+
+  /// Immediately attached native object metadata, when present in the source.
+  final AiNativeContainer? dictionary;
+
   /// Pixel-to-native-coordinate affine transform in Illustrator operand order.
   final List<double> matrix;
 
@@ -48,21 +54,29 @@ final class AiNativeRaster extends AiNativeItem {
   final Uint8List _samples;
 
   /// Creates a source-backed image after validating its byte layout.
-  AiNativeRaster._({required super.start, required super.end, required this.instruction, required List<AiNativeInstruction> commands, required this.data, required Uint8List samples})
-    : commands = List.unmodifiable(commands),
-      matrix = List.unmodifiable(instruction.operands.skip(1).take(6).map((token) => token.number!.toDouble())),
-      bounds = List.unmodifiable(instruction.operands.skip(8).take(4).map((token) => token.number!.toDouble())),
-      width = instruction.operands[12].number!.toInt(),
-      height = instruction.operands[13].number!.toInt(),
-      bitsPerComponent = instruction.operands[14].number!.toInt(),
-      components = instruction.operands[15].number!.toInt(),
-      hasAlpha = instruction.operands[16].number == 1,
-      flags = instruction.operands[17].number!.toInt(),
-      imageMask = instruction.operands[19].number == 1,
-      extensions = List.unmodifiable(instruction.operands.skip(20).map((token) => token.number!.toInt())),
-      colorByteLength =
-          ((instruction.operands[12].number!.toInt() * instruction.operands[14].number!.toInt() * instruction.operands[15].number!.toInt() + 7) ~/ 8) * instruction.operands[13].number!.toInt(),
-      _samples = samples.asUnmodifiableView() {
+  AiNativeRaster._({
+    required super.start,
+    required super.end,
+    required this.instruction,
+    required List<AiNativeInstruction> commands,
+    required this.data,
+    required this.declaration,
+    required this.dictionary,
+    required Uint8List samples,
+  }) : commands = List.unmodifiable(commands),
+       matrix = List.unmodifiable(instruction.operands.skip(1).take(6).map((token) => token.number!.toDouble())),
+       bounds = List.unmodifiable(instruction.operands.skip(8).take(4).map((token) => token.number!.toDouble())),
+       width = instruction.operands[12].number!.toInt(),
+       height = instruction.operands[13].number!.toInt(),
+       bitsPerComponent = instruction.operands[14].number!.toInt(),
+       components = instruction.operands[15].number!.toInt(),
+       hasAlpha = instruction.operands[16].number == 1,
+       flags = instruction.operands[17].number!.toInt(),
+       imageMask = instruction.operands[19].number == 1,
+       extensions = List.unmodifiable(instruction.operands.skip(20).map((token) => token.number!.toInt())),
+       colorByteLength =
+           ((instruction.operands[12].number!.toInt() * instruction.operands[14].number!.toInt() * instruction.operands[15].number!.toInt() + 7) ~/ 8) * instruction.operands[13].number!.toInt(),
+       _samples = samples.asUnmodifiableView() {
     if (!const {0, 1}.contains(instruction.operands[19].number) || imageMask && (components != 1 || bitsPerComponent != 1 || hasAlpha)) {
       throw const FormatException('Invalid native raster stencil layout.');
     }
@@ -73,6 +87,70 @@ final class AiNativeRaster extends AiNativeItem {
 
   /// Separate alpha samples, or null when the image is opaque.
   Uint8List? get alphaSamples => hasAlpha ? Uint8List.sublistView(_samples, colorByteLength).asUnmodifiableView() : null;
+
+  /// Checks process-color placement and metadata before editing or rendering.
+  ///
+  /// Decoding preserves unknown fields; operations requiring known semantics
+  /// call this method and reject unsupported flags, color spaces or cropping.
+  void validateProcessLayout() {
+    final double determinant = matrix[0] * matrix[3] - matrix[1] * matrix[2];
+    if (!determinant.isFinite || determinant == 0 || bounds[2] <= bounds[0] || bounds[3] <= bounds[1]) {
+      throw const FormatException('Degenerate native raster placement.');
+    }
+    if (bounds[0] != 0 || bounds[1] != 0 || bounds[2] != width || bounds[3] != height) {
+      throw UnsupportedError('Native raster cropping requires qualified image-bound semantics.');
+    }
+    final int colorFlag = switch (components) {
+      1 => 0,
+      3 => 1,
+      _ => 2,
+    };
+    if (flags != 0 && flags != colorFlag + (hasAlpha ? 16 : 0) ||
+        extensions.isNotEmpty && (extensions.length < 3 || extensions[0] != 4 || extensions[1] != 4 || extensions.skip(2).any((flag) => flag != 0))) {
+      throw UnsupportedError('Unsupported native raster producer flags.');
+    }
+    final Set<String> seen = {};
+    for (final AiNativeInstruction command in commands) {
+      if (!seen.add(command.operator)) {
+        throw const FormatException('Repeated native raster metadata.');
+      }
+      final List<AiToken> operands = command.operands;
+      switch (command.operator) {
+        case 'XG':
+          if (operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(operands.first.kind) || !const {0, 1}.contains(operands.last.number)) {
+            throw const FormatException('Invalid native raster source metadata.');
+          }
+        case 'XN':
+          if (operands.length != 1 ||
+              operands.single.lexeme !=
+                  switch (components) {
+                    1 => '/DeviceGray',
+                    3 => '/DeviceRGB',
+                    _ => '/DeviceCMYK',
+                  }) {
+            throw UnsupportedError('Native raster color spaces require an explicit color policy.');
+          }
+        case 'Xh':
+          if (operands.length != 11 ||
+              operands.first.kind != .arrayStart ||
+              operands[7].kind != .arrayEnd ||
+              operands.skip(1).take(6).indexed.any((item) => item.$2.number != matrix[item.$1]) ||
+              operands[8].number != width ||
+              operands[9].number != height ||
+              operands[10].number != 0) {
+            throw UnsupportedError('Native raster placement metadata disagrees with its samples.');
+          }
+        case 'XI':
+          continue;
+        case 'XH':
+          if (operands.isNotEmpty || command != commands.last) {
+            throw const FormatException('Invalid native raster termination.');
+          }
+        default:
+          throw UnsupportedError('Unsupported native raster command: ${command.operator}.');
+      }
+    }
+  }
 
   /// Whether this image belongs to the program's printable drawing body.
   bool isPrintable({required AiProgram program}) => start >= program.bodyStart && end <= program.bodyEnd && !instruction.isPrivate;
@@ -105,4 +183,13 @@ final class AiNativeRasters {
   /// unchanged. Enclosing clips, groups and artboards are independent objects.
   /// DSC drawing bounds expand conservatively to include the translated artwork.
   AiNativeRasters translate({required List<AiNativeRaster> images, required double deltaX, required double deltaY}) => _translateNativeRasters(this, images, deltaX, deltaY);
+
+  /// Replaces embedded pixels while retaining their placed extent and object identity.
+  ///
+  /// Dimensions, process channels, depth and alpha may change. Both placement
+  /// matrices compensate for a resolution change; no resampling or color
+  /// conversion is performed. Existing color/alpha UUIDs change only for changed
+  /// planes, and XG marks the embedded copy as modified. Unknown raster layouts
+  /// reject editing. Use AiNativePdf.save to also regenerate PDF artwork.
+  AiNativeRasters replacePixels({required AiNativeRaster image, required AiNativeRasterSamples samples}) => _replaceNativeRasterSamples(this, image, samples);
 }

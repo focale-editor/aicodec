@@ -413,10 +413,42 @@ placement commands. Enclosing clipping paths, groups and artboards are separate
 objects. This operation does not replace pixels, resize images, fetch linked
 `XF` data or regenerate image caches.
 
+`rasters.replacePixels(image:, samples:)` accepts owned `AiNativeRasterSamples`
+with explicit dimensions, component depth, process channels, color bytes and
+optional alpha bytes. It replaces one image atomically; byte-identical planes
+and layouts return the original snapshot. Sample buffers must contain complete
+rows and valid byte values, including padding. No resampling or color conversion
+is implicit: callers supply the final pixels. Sixteen-bit samples are big-endian.
+
+A resolution change compensates both `XI` and `Xh` matrices so the placed image
+extent, reflection and shear remain unchanged. Image bounds and dimensions,
+depth, process flags, `XN` and the exact binary DSC count update together. `XG`
+retains the source path and records the embedded copy as modified. An attached
+`ArtDictionary` is recognized only immediately after the raster, optionally
+following bare `N`; unrelated later object records are not borrowed.
+
+Existing `AI24 ImageRawDataUUID` and `AI24 ImageAlphaRawDataUUID` entries receive
+fresh UUIDs when their respective planes or sample layouts change. Other images
+sharing the old UUID remain unchanged. Absent identity entries stay absent;
+malformed existing identities reject the edit. Stable object metadata, including
+names, rotation and original-scale records, is preserved. These identity policies
+are based on observed CC/CS records; they have not been qualified by reopening in
+Adobe Illustrator. They do not regenerate opaque effect or plug-in caches.
+
+Editing requires the same qualified process layout as PDF rendering. Alpha
+authoring is limited to the observed extended CS/CC headers; legacy 20-operand
+headers can retain or replace opaque/stencil pixels but do not gain invented
+alpha semantics. Use `AiNativePdf.save` with the resulting program to synchronize
+PDF artwork and discard stale document thumbnails. Editing setup resources or
+private originals does not regenerate dependent opaque appearances.
+
 `AiNativePdf` writes these samples through PdfCore as process-color image
 XObjects with separate same-depth soft masks. The native matrix maps a top-left
 pixel origin with image y increasing downwards; the PDF image rectangle keeps
-that origin through reflection, shear and page placement. One-bit gray stencils
+that origin through reflection, shear and page placement. An explicit image-edge
+clip reproduces Illustrator's antialiased rotated/sheared boundaries; painting
+the image without that clip can differ when edited pixels reach its edges.
+One-bit gray stencils
 use the current nonstroking paint. Object/group opacity applies independently.
 Unknown color spaces, producer flags, positional commands, noncanonical image
 bounds and inconsistent `Xh` metadata reject export. The qualified image bounds
@@ -744,6 +776,15 @@ background. Stencil polarity is checked against Adobe's retained `XIImageMask`
 prolog. Two pinned fixtures
 with UTF-8-transcoded binary samples must reject at their computed boundaries.
 
+`check_native_raster_edits.dart` and `verify_native_raster_edits.py` exercise three
+independent replacements on each of the 24 images: inverted process samples,
+separate alpha changes and host-resampled half-resolution planes. The pinned
+reader verifies all 72 resulting layouts, planes and placement matrices.
+Checks also cover changed/retained UUIDs, collision isolation and retained object
+metadata. Six zero-difference Poppler comparisons use independently replaced image streams in
+the original Adobe PDF or the prior Ghostscript reference, retaining their page
+operators and placement. Three saved native programs are recovered independently.
+
 | Area | Current contract | Remaining work |
 | --- | --- | --- |
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
@@ -753,7 +794,7 @@ with UTF-8-transcoded binary samples must reject at their computed boundaries.
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect/translate instances; isolate positional styles; replace global stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | Color-managed ramp composition, isolated object colors, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
-| Raster images | Decode binary process samples and separate alpha; translate native placement; render and save embedded images with synchronized native data | Pixel replacement/cache identities, resizing, linked images, older ASCII layouts and broader color models |
+| Raster images | Decode process samples and separate alpha; translate placement; replace pixels, depth, channels and resolution with sample UUID renewal; render and save synchronized native images | Placed-size editing, linked images, older ASCII layouts, broader color models, dependent effect caches and Adobe identity qualification |
 | Meshes, effects, plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
 | PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, linked/unsupported images, unresolved effects and host scene integration |

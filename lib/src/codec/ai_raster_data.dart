@@ -39,7 +39,7 @@ part of 'ai_postscript.dart';
     throw const FormatException('Invalid binary Illustrator raster header.');
   }
   final List<double> values = operands.skip(8).map((token) => token.number!.toDouble()).toList();
-  if (values.skip(4).any((value) => value != value.truncateToDouble()) || values[4] <= 0 || values[5] <= 0 || values[4] > bytes.length || values[5] > bytes.length) {
+  if (values.skip(4).any((value) => value != value.truncateToDouble()) || values[4] <= 0 || values[5] <= 0 || values[4] > bytes.length * 8 || values[5] > bytes.length) {
     throw const FormatException('Invalid Illustrator raster dimensions.');
   }
   final int width = values[4].toInt();
