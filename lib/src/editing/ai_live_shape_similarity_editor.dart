@@ -1,12 +1,15 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Plans rigid drawing rotations with the corresponding native canvas edits.
-final class _LiveShapeRotation {
+/// Plans rotations and uniform scaling in drawing and native canvas coordinates.
+final class _LiveShapeSimilarity {
   /// Source snapshot supplying the unique canvas origin and shape ownership.
   final AiNativeDrawing drawing;
 
   /// Counterclockwise angle in drawing coordinates.
   final double radians;
+
+  /// Positive uniform scale, including corners and strokes.
+  final double factor;
 
   /// Horizontal drawing-space pivot.
   final double pivotX;
@@ -24,12 +27,24 @@ final class _LiveShapeRotation {
   late final double sine;
 
   /// Creates a plan whose validation precedes every source edit.
-  _LiveShapeRotation({required this.drawing, required this.radians, required this.pivotX, required this.pivotY});
+  _LiveShapeSimilarity({
+    required this.drawing,
+    this.radians = 0,
+    this.factor = 1,
+    required this.pivotX,
+    required this.pivotY,
+  });
 
-  /// Requires a bounded angle and an authoritative, unambiguous canvas origin.
+  /// Requires bounded transform inputs and an authoritative canvas origin.
   void validate() {
-    if (!radians.isFinite || radians.abs() > 2 * pi || [pivotX, pivotY].any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
-      throw ArgumentError('Rotation requires an angle in -2π..2π and finite, bounded pivot coordinates.');
+    if (!factor.isFinite ||
+        factor <= 0 ||
+        factor * factor == 0 ||
+        factor > 9007199254740991 ||
+        !radians.isFinite ||
+        radians.abs() > 2 * pi ||
+        [pivotX, pivotY].any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
+      throw ArgumentError('A similarity requires a positive bounded scale, an angle in -2π..2π and finite, bounded pivot coordinates.');
     }
     final double quarterTurns = radians / (pi / 2);
     final int? cardinal = quarterTurns == quarterTurns.roundToDouble() ? quarterTurns.toInt() % 4 : null;
@@ -37,22 +52,28 @@ final class _LiveShapeRotation {
     sine = cardinal == null ? sin(radians) : const [0.0, 1.0, 0.0, -1.0][cardinal];
     final List<AiNativeContainer> documents = drawing.records.roots.where((record) => record.type == 'AI11TextDocument' && record.end <= drawing.records.program.bodyStart).toList();
     if (documents.length != 1 || documents.single['RulerOrigin']?.numbers?.length != 2) {
-      throw UnsupportedError('Native rotation requires one setup text-document canvas ruler origin.');
+      throw UnsupportedError('Native transformation requires one setup text-document canvas ruler origin.');
     }
     origin = documents.single['RulerOrigin']!.numbers!;
     _bounded(origin);
   }
 
   /// Whether the operation leaves every point and native parameter unchanged.
-  bool get isIdentity => cosine == 1 && sine == 0;
+  bool get isIdentity => factor == 1 && cosine == 1 && sine == 0;
 
-  /// Rotates a drawing-space position without introducing a canvas offset.
-  List<double> point(double x, double y) => _bounded([
-    pivotX + cosine * (x - pivotX) - sine * (y - pivotY),
-    pivotY + sine * (x - pivotX) + cosine * (y - pivotY),
-  ]);
+  /// Transforms a drawing-space position without introducing a canvas offset.
+  List<double> point(double x, double y) {
+    final List<double> changed = _bounded([
+      pivotX + factor * (cosine * (x - pivotX) - sine * (y - pivotY)),
+      pivotY + factor * (sine * (x - pivotX) + cosine * (y - pivotY)),
+    ]);
+    if ((x != pivotX || y != pivotY) && changed[0] == pivotX && changed[1] == pivotY) {
+      throw ArgumentError('Native transformation collapses a nonzero offset at numeric precision.');
+    }
+    return changed;
+  }
 
-  /// Rotates a canvas position using its stable drawing-to-canvas origin.
+  /// Transforms a canvas position using its stable drawing-to-canvas origin.
   List<double> _canvasPoint(double x, double y) {
     final List<double> moved = point(x - origin[0], origin[1] - y);
     return _bounded([origin[0] + moved[0], origin[1] - moved[1]]);
@@ -67,12 +88,19 @@ final class _LiveShapeRotation {
       final AiNativeEntry y = _parameter(parameters, '${shape.handler}::CenterY');
       final List<double> center = _canvasPoint(x.number!, y.number!);
       edits.addAll([_numberEdit(x.items.single, center[0]), _numberEdit(y.items.single, center[1])]);
+      if (factor != 1) {
+        edits.addAll(_scaleShapeParameters(shape, parameters, factor));
+      }
       final AiNativeEntry angle = _parameter(parameters, '${shape.handler}::${shape.handler == 'ai::Rectangle' ? 'Angle' : 'RotationAngle'}');
-      edits.add(_numberEdit(angle.items.single, (angle.number! + radians) % (2 * pi)));
+      if (radians != 0) {
+        edits.add(_numberEdit(angle.items.single, (angle.number! + radians) % (2 * pi)));
+      }
     }
     final double previous = _nativeFrameRotation(dictionary) ?? 0;
-    final double frame = _signedAngle(previous + radians);
-    edits.addAll(_nativeFrameRotationEdits(drawing.records, dictionary, dictionary.end, frame));
+    if (radians != 0) {
+      final double frame = _signedAngle(previous + radians);
+      edits.addAll(_nativeFrameRotationEdits(drawing.records, dictionary, dictionary.end, frame));
+    }
     edits.addAll(_gradientDictionaryEdits(shape, dictionary));
     return edits;
   }
@@ -81,7 +109,7 @@ final class _LiveShapeRotation {
   AiNativeEntry _parameter(AiNativeContainer parameters, String name) {
     final AiNativeEntry? entry = parameters[name];
     if (entry?.type != 'Real' || entry?.number == null) {
-      throw FormatException('Native rotation requires a real $name parameter.');
+      throw FormatException('Native transformation requires a real $name parameter.');
     }
     return entry!;
   }
@@ -90,7 +118,7 @@ final class _LiveShapeRotation {
   List<AiSourceEdit> gradientEdits(AiNativeGradient gradient, {required bool style}) {
     final AiNativeGradientGeometry geometry = gradient.geometry;
     if (!geometry.relativeToArtwork) {
-      throw UnsupportedError('Native rotation requires the qualified CC relative gradient layout.');
+      throw UnsupportedError('Native transformation requires the qualified CC relative gradient layout.');
     }
     if (style || geometry.flag == 2 && gradient.imagingMatrices.isEmpty) {
       final List<double>? highlight = gradient.highlight?.numbers;
@@ -98,7 +126,7 @@ final class _LiveShapeRotation {
           gradient.imagingMatrices.isNotEmpty ||
           !_sameNativeMatrix(geometry.matrix, [1, 0, 0, 1, 0, 0]) ||
           highlight != null && (!_gradientUnit(highlight[3]) || !_sameNativeMatrix(highlight.take(2).toList(), [0, 0]))) {
-        throw UnsupportedError('Native rotation requires a relative identity-matrix style note.');
+        throw UnsupportedError('Native transformation requires a relative identity-matrix style note.');
       }
       return [];
     }
@@ -111,9 +139,9 @@ final class _LiveShapeRotation {
       final List<double> values = highlight.numbers!;
       final List<double> expected = _radialFocusOffset(matrix, values[2], values[3]);
       if (!_gradientUnit(values[3]) || !_sameNativeMatrix(values.take(2).toList(), expected)) {
-        throw UnsupportedError('Native rotation requires a coherent radial highlight.');
+        throw UnsupportedError('Native transformation requires a coherent radial highlight.');
       }
-      final List<double> offset = _bounded([cosine * values[0] - sine * values[1], sine * values[0] + cosine * values[1]]);
+      final List<double> offset = _bounded([factor * (cosine * values[0] - sine * values[1]), factor * (sine * values[0] + cosine * values[1])]);
       for (int axis = 0; axis < 2; axis++) {
         edits.add(_numberEdit(AiNativeToken._(token: highlight.operands[axis]), offset[axis]));
       }
@@ -121,7 +149,7 @@ final class _LiveShapeRotation {
     return edits;
   }
 
-  /// Composes a rotation onto source-backed matrix operands in the chosen frame.
+  /// Composes a similarity onto source-backed matrix operands in the chosen frame.
   List<AiSourceEdit> _matrixEdits(List<AiToken> tokens, {required bool canvas}) {
     final List<double> matrix = _matrix(tokens.map((token) => token.number!.toDouble()).toList(), canvas: canvas);
     return [for (int index = 0; index < 6; index++) _numberEdit(AiNativeToken._(token: tokens[index]), matrix[index])];
@@ -131,17 +159,22 @@ final class _LiveShapeRotation {
   List<double> _matrix(List<double> previous, {required bool canvas}) {
     final double determinant = previous[0] * previous[3] - previous[1] * previous[2];
     if (!determinant.isFinite || determinant == 0) {
-      throw const FormatException('Native rotation requires nonsingular gradient matrices.');
+      throw const FormatException('Native transformation requires nonsingular gradient matrices.');
     }
     final double rotationSine = canvas ? -sine : sine;
     final List<double> translation = canvas ? _canvasPoint(previous[4], previous[5]) : point(previous[4], previous[5]);
-    return _bounded([
-      cosine * previous[0] - rotationSine * previous[1],
-      rotationSine * previous[0] + cosine * previous[1],
-      cosine * previous[2] - rotationSine * previous[3],
-      rotationSine * previous[2] + cosine * previous[3],
+    final List<double> changed = _bounded([
+      _scaleNativeLength(cosine * previous[0] - rotationSine * previous[1], factor),
+      _scaleNativeLength(rotationSine * previous[0] + cosine * previous[1], factor),
+      _scaleNativeLength(cosine * previous[2] - rotationSine * previous[3], factor),
+      _scaleNativeLength(rotationSine * previous[2] + cosine * previous[3], factor),
       ...translation,
     ]);
+    final double changedDeterminant = changed[0] * changed[3] - changed[1] * changed[2];
+    if (!changedDeterminant.isFinite || changedDeterminant == 0) {
+      throw ArgumentError('Native transformation produces a numerically singular gradient matrix.');
+    }
+    return changed;
   }
 
   /// Updates the observed per-object style transform without editing shared styles.
@@ -181,13 +214,13 @@ final class _LiveShapeRotation {
   /// Expands existing drawing extents conservatively, retaining stroke margins.
   List<AiSourceEdit> boundsEdits() {
     final List<double> translation = point(0, 0);
-    return AiNativeEditor.affineBoundsEdits(program: drawing.records.program, matrix: [cosine, sine, -sine, cosine, ...translation]);
+    return AiNativeEditor.affineBoundsEdits(program: drawing.records.program, matrix: [factor * cosine, factor * sine, -factor * sine, factor * cosine, ...translation]);
   }
 
   /// Rejects overflow before numeric tokens or source bounds are serialized.
   List<double> _bounded(List<double> values) {
     if (values.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
-      throw ArgumentError('Native rotation exceeds finite source-coordinate limits.');
+      throw ArgumentError('Native transformation exceeds finite source-coordinate limits.');
     }
     return values;
   }

@@ -175,9 +175,9 @@ ATE text resources, stories and runs are modeled, while glyph shaping, layout
 regeneration and synchronized text-content editing remain unfinished. Plug-ins,
 effects, meshes, gradient and raster authoring semantics are preserved but not
 fully modeled. Live rectangles, ellipses,
-polygons, stars and lines support translation and rotation with solid and CC
-linear/radial gradient appearances; resizing, shearing and parameter-driven
-regeneration remain unfinished. Geometry edits
+polygons, stars and lines support translation, rotation and uniform scaling with
+solid and CC linear/radial gradient appearances; nonuniform resizing, shearing and
+parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
 explicit legacy target, not a reconstruction of CC editing records. The native
 PDF bridge covers supported printable paths, classic gradient fills/strokes and

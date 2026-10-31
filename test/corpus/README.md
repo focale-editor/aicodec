@@ -332,6 +332,25 @@ dart run tool/check_live_shape_rotation.dart
 python3 tool/verify_live_shape_rotation.py --inkai-source /tmp/extension-ai
 ```
 
+Uniform live-shape scaling reuses those eleven pinned files and 42 shapes at
+factors 0.5 and 1.5. The independent parser checks dimensions, angles, irregular
+polygon radius sentinels, both inherited stroke states, isolated style copies,
+gradient matrices and focus. SVG references bake path effects before applying
+the scale so Inkscape does not keep their offset widths fixed. Twenty native
+authoring and two printable-curve comparisons have a maximum mean channel
+difference below 0.00625/255. Empty images fail; flat pixels match and smooth
+gradient fields differ by at most one channel level. Eighteen saved native
+programs are recovered exactly. Thirty-six PDF comparisons use the same
+Adobe/Ghostscript reference split as rotation, with a maximum mean channel
+difference below 0.000066/255, identical flat pixels and gradient fields within
+one level. Adobe reopening, nonuniform scaling and fixed-stroke/corner resizing
+remain separate work.
+
+```sh
+dart run tool/check_live_shape_scale.dart
+python3 tool/verify_live_shape_scale.py --inkai-source /tmp/extension-ai
+```
+
 Radial focus editing reuses the 37 pinned native fixtures. The dedicated checker
 changes every radial resource to an interior focus, then saves three variants of
 the CC radial drawing: interior, centered and boundary. The independent reader

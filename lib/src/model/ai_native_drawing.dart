@@ -220,6 +220,24 @@ final class AiNativeDrawing {
   AiNativeDrawing rotateLiveShapes({required List<AiLiveShape> shapes, required double radians, required double pivotX, required double pivotY}) => _LiveShapeTransform(
     drawing: this,
     shapes: shapes,
-    rotation: _LiveShapeRotation(drawing: this, radians: radians, pivotX: pivotX, pivotY: pivotY),
+    similarity: _LiveShapeSimilarity(drawing: this, radians: radians, pivotX: pivotX, pivotY: pivotY),
+  ).apply();
+
+  /// Uniformly scales native shapes, corners and strokes around a drawing pivot.
+  ///
+  /// [factor] must be finite and positive. All shape dimensions, corner radii,
+  /// private/printable curves, stroke widths and dash distances scale together.
+  /// CC gradients follow the shape in their respective coordinate systems.
+  /// Shared appearance styles are copied for the selection; other artwork and
+  /// its inherited paint state remain unchanged. Angles and artboards stay fixed.
+  ///
+  /// The canvas-origin and dependency restrictions of [rotateLiveShapes] apply.
+  /// Nonuniform scaling, reflections and fixed-width/corner resizing require
+  /// separate shape or appearance regeneration. The host must regenerate PDF
+  /// appearances and other previews before packaging a visual edit.
+  AiNativeDrawing scaleLiveShapes({required List<AiLiveShape> shapes, required double factor, required double pivotX, required double pivotY}) => _LiveShapeTransform(
+    drawing: this,
+    shapes: shapes,
+    similarity: _LiveShapeSimilarity(drawing: this, factor: factor, pivotX: pivotX, pivotY: pivotY),
   ).apply();
 }

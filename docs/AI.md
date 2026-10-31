@@ -282,7 +282,7 @@ Reading and exact source preservation remain available for these documents.
 DSC bounds conservatively include the original extent and its translated copy;
 they may grow more than the exact new artwork bounds. Artboards remain fixed.
 The result is an authoring snapshot: the host must regenerate the PDF appearance
-and cached previews before packaging a visual edit. Resizing,
+and cached previews before packaging a visual edit. Nonuniform resizing,
 parameter-driven shape regeneration and complete CC style editing remain open.
 
 `rotateLiveShapes(shapes:, radians:, pivotX:, pivotY:)` rotates the same five
@@ -335,6 +335,47 @@ missing-PDF-content notice. The maximum PDF mean channel difference is below
 one channel level. Edge coverage differs between transformed PDF rectangle
 operators and equivalent explicit paths. Adobe reopening and frame-tool behavior
 remain unqualified.
+
+`scaleLiveShapes(shapes:, factor:, pivotX:, pivotY:)` uniformly scales the same
+five families about an explicit drawing-space pivot. The finite positive factor
+scales dimensions, corner radii, authoring/printable control points, stroke widths,
+dash lengths and dash phase together. Angles, winding, corner modes, side/point
+counts and fixed artboards remain unchanged. The observed `Radius = -11` marker
+on irregular polygons (`IsRegular = false`) remains unavailable; their paths carry
+the geometry. Other negative dimensional values reject the operation. A factor of
+one returns the original snapshot after common source/origin validation.
+
+Printable and private stroke distances are tracked separately. The selection
+receives explicit scaled inherited values, its internal distance commands scale,
+and both original states are restored after each complete object. Known styles
+are copied once per selected shared resource; fill/stroke/blend distance commands,
+including inside/outside stroke definitions, change only in the copies. Original
+resources and unselected appearances remain intact. Gradient matrices and cached
+object transforms scale in their respective drawing/canvas frames. Radial
+Cartesian highlights scale while polar focus parameters remain fixed.
+
+This operation includes corner and stroke scaling. Fixed-width strokes, fixed
+corner radii, nonuniform resizing, reflections and shearing require separate
+shape/appearance regeneration. The rotation origin and dependency restrictions
+also apply, including rejection of unknown effects and legacy gradient layouts.
+DSC bounds conservatively include the original and transformed extent. As with
+rotation, the host must synchronize PDF appearances and other previews; Adobe
+reopening and editing-tool behavior remain unqualified. Illustrator exposes
+separate corner and stroke/effect scaling controls in its
+[Transform panel](https://helpx.adobe.com/illustrator/desktop/manage-objects/reshape-transform-objects/transform-panel-overview.html).
+
+Uniform-scale qualification uses the same eleven pinned files and 42 live shapes
+at factors 0.5 and 1.5. The independent parser checks dimensional parameters,
+unchanged angles and sentinel values, both inherited stroke states, copied styles,
+gradient matrices and focus. Twenty native-authoring SVG comparisons and two
+printable-curve comparisons have a maximum mean channel difference below
+0.00625/255. Reference SVG path effects are baked before scaling: otherwise
+Inkscape evaluates offset distances after the transform, producing a fixed-width
+reference. Empty renders fail; flat pixels match exactly and smooth gradient
+fields differ by at most one channel level. Eighteen saved native programs are
+recovered exactly. The 36 PDF comparisons (32 Adobe appearances and four known
+Ghostscript rectangles) have a maximum mean channel difference below
+0.000066/255, with equal flat pixels and gradient fields within one channel level.
 
 ### Gradient instances and native paint styles
 
@@ -1160,8 +1201,8 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
 | Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
-| Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate/rotate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/shear/regenerate live shapes and synchronize remaining positional paints/effects |
-| Gradients | Inspect/translate instances; rotate CC live-shape appearances and accumulated transforms; isolate positional styles; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, isolated object focus/colors, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
+| Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate/rotate/uniformly scale five CC shape families with solid/gradient appearances; create AI7 paths | Nonuniform or fixed-stroke/corner resizing, shear/regeneration and remaining positional paints/effects |
+| Gradients | Inspect/translate instances; rotate/uniformly scale CC live-shape appearances and accumulated transforms; isolate positional styles; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General geometry transforms, isolated object focus/colors, color-managed ramp composition, hard stops, gradients along/across strokes, newer methods and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from lxml import etree
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageFilter, ImageStat
 from pypdf import PdfReader, PdfWriter, Transformation
 
 from verify_live_shapes import FIXTURES, GEOMETRY, walk_body
@@ -32,12 +32,14 @@ def close(actual, expected, tolerance=1e-8):
     assert all(math.isclose(float(a), float(b), abs_tol=tolerance, rel_tol=1e-11) for a, b in zip(actual, expected)), (actual, expected)
 
 
-def matrix(values, pivot, angle):
-    """Rotate both column vectors and the affine origin."""
+def matrix(values, pivot, angle, factor=1):
+    """Transform both column vectors and the affine origin independently."""
     a, b, c, d, x, y = map(float, values)
     first = rotate((a, b), (0, 0), angle)
     second = rotate((c, d), (0, 0), angle)
-    return (*first, *second, *rotate((x, y), pivot, angle))
+    origin = rotate((x, y), pivot, angle)
+    return (*(value * factor for value in (*first, *second)),
+            *(p + factor * (value - p) for p, value in zip(pivot, origin)))
 
 
 def verify_records(before, after, pivot, angle):
@@ -120,7 +122,7 @@ def verify_native(inkai, original, changed, row):
 
 
 def verify_svg(inkai, original, changed, row, output):
-    """Compare native-authoring rendering with explicitly rotated original SVG."""
+    """Compare native-authoring rendering with an explicitly transformed SVG."""
     from inkex import Transform
     from inkai.svg.coordinates import SVGTransform
 
@@ -133,8 +135,18 @@ def verify_svg(inkai, original, changed, row, output):
     else:
         before = etree.fromstring(inkai.to_svg(str(original)))
         after = etree.fromstring(inkai.to_svg(str(changed)))
+    if 'factor' in row and any(etree.QName(node).localname == 'path-effect' for node in before.iter()):
+        # Bake the reference effects before applying a geometric scale. Inkscape
+        # otherwise evaluates offset distances after the object's transform,
+        # which would compare a fixed-width effect with a scaled native stroke.
+        source_svg = output / f'{changed.stem}.original-authoring.svg'
+        baked_svg = output / f'{changed.stem}.original-baked.svg'
+        source_svg.write_bytes(etree.tostring(before))
+        actions = f'select-all:all;object-to-path;export-type:svg;export-plain-svg;export-filename:{baked_svg};export-do'
+        subprocess.run(['inkscape', str(source_svg), f'--actions={actions}'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        before = etree.parse(str(baked_svg)).getroot()
     pivot = SVGTransform(inkai.parse(str(original))).from_drawing(*row['pivot'])
-    transform = Transform(f'rotate({-math.degrees(row["radians"])} {pivot[0]} {pivot[1]})')
+    transform = Transform(matrix((1, 0, 0, 1, 0, 0), pivot, -row.get('radians', 0), row.get('factor', 1)))
     tags = {'path', 'rect', 'ellipse', 'circle', 'line', 'polygon'}
     shapes = [node for node in before.iter() if etree.QName(node).localname in tags]
     assert len(shapes) == row['shapes'] + (1 if row['paths'] == 19 else 0)
@@ -155,12 +167,26 @@ def verify_svg(inkai, original, changed, row, output):
     difference = ImageChops.difference(*images)
     mean = max(ImageStat.Stat(difference).mean)
     difference.save(output / f'{changed.stem}.svg-difference.png')
+    if 'factor' in row:
+        # Require exact flat pixels in all channels; independent native
+        # width/dash checks also constrain thin strokes.
+        edges = Image.new('L', images[0].size)
+        for offset in [(1, 0), (0, 1)]:
+            for channel in ImageChops.difference(images[0], ImageChops.offset(images[0], *offset)).split():
+                edges = ImageChops.lighter(edges, channel)
+        mask = edges.point(lambda value: 255 if value else 0).filter(ImageFilter.MaxFilter(3))
+        for channel in difference.split():
+            assert ImageChops.multiply(channel, ImageChops.invert(mask)).getbbox() is None, f'{changed.name}: changed flat SVG pixels'
+        if row['file'].startswith('gradient_'):
+            sharp = edges.point(lambda value: 255 if value > 8 else 0).filter(ImageFilter.MaxFilter(3))
+            for channel in difference.split():
+                assert ImageChops.multiply(channel, ImageChops.invert(sharp)).getextrema()[1] <= 1, f'{changed.name}: changed SVG gradient field'
     assert mean < 0.05, (changed.name, mean)
     return mean
 
 
 def reference_pdf(original, target, row):
-    """Rotate Adobe's existing PDF around the same pivot in PDF page coordinates."""
+    """Transform Adobe's PDF around the same pivot in PDF page coordinates."""
     if row['file'] == 'page_moved_to_1000_2000_rect200_300.ai':
         # This pinned native fixture has Adobe's missing-PDF-content notice.
         # Its actual artwork is one black 200x300 rectangle at (1000,-2300).
@@ -174,7 +200,7 @@ def reference_pdf(original, target, row):
     writer.clone_document_from_reader(PdfReader(original))
     left, bottom, _, _ = row['bounds']
     pivot = (row['pivot'][0] - left, row['pivot'][1] - bottom)
-    values = matrix((1, 0, 0, 1, 0, 0), pivot, row['radians'])
+    values = matrix((1, 0, 0, 1, 0, 0), pivot, row.get('radians', 0), row.get('factor', 1))
     writer.pages[0].add_transformation(Transformation(values))
     writer.write(target)
 

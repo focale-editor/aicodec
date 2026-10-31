@@ -142,11 +142,19 @@ abstract final class AiNativeEditor {
   /// Edit offsets refer to the original program. This byte-level operation does
   /// not parse the copied fragment or resolve its references; [apply] reparses
   /// complete programs. The owning program's byte limit bounds the result.
+  /// Insertions precede replacements at the same offset; equal-position
+  /// insertions retain their input order.
   static Uint8List copyRange({required AiProgram program, required int start, required int end, List<AiSourceEdit> edits = const []}) {
     if (start < 0 || end < start || end > program.bytes.length) {
       throw ArgumentError('Invalid Illustrator source range.');
     }
-    final List<AiSourceEdit> ordered = [...edits]..sort((first, second) => first.start.compareTo(second.start));
+    final List<(int, AiSourceEdit)> indexed = edits.indexed.toList()
+      ..sort((first, second) {
+        final int start = first.$2.start.compareTo(second.$2.start);
+        final int end = first.$2.end.compareTo(second.$2.end);
+        return start != 0 ? start : (end != 0 ? end : first.$1.compareTo(second.$1));
+      });
+    final List<AiSourceEdit> ordered = indexed.map((entry) => entry.$2).toList();
     int position = start;
     int resultLength = end - start;
     for (final AiSourceEdit edit in ordered) {

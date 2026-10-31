@@ -15,10 +15,10 @@ final class _LiveShapeTransform {
   final double deltaY;
 
   /// Creates an operation without mutating or partially updating the source.
-  _LiveShapeTransform({required this.drawing, required List<AiLiveShape> shapes, this.deltaX = 0, this.deltaY = 0, this.rotation}) : shapes = List.unmodifiable(shapes);
+  _LiveShapeTransform({required this.drawing, required List<AiLiveShape> shapes, this.deltaX = 0, this.deltaY = 0, this.similarity}) : shapes = List.unmodifiable(shapes);
 
-  /// Optional rigid rotation; absent for the existing translation operation.
-  final _LiveShapeRotation? rotation;
+  /// Optional rotation or uniform scaling; absent for translation.
+  final _LiveShapeSimilarity? similarity;
 
   /// Validates all dependencies before applying one source-edit transaction.
   AiNativeDrawing apply() {
@@ -26,11 +26,14 @@ final class _LiveShapeTransform {
       throw ArgumentError('Native transformation requires finite offsets and distinct shapes from this snapshot.');
     }
     _checkDrawing();
-    rotation?.validate();
-    if (rotation?.isIdentity ?? false) {
+    similarity?.validate();
+    if (similarity?.isIdentity ?? false) {
       return drawing;
     }
-    final List<AiSourceEdit> edits = [];
+    final double scale = similarity?.factor ?? 1;
+    final List<AiSourceEdit> edits = [
+      if (scale != 1) ..._scaleLiveShapeStrokes(drawing, shapes, scale),
+    ];
     final Set<AiNativePath> moved = {};
     final Map<AiNativeContainer, String> copiedStyles = {};
     final Set<String> styleNames = drawing.records.roots.where((record) => record.type == 'KnownStyle').map((record) => record['Name']?.text()).whereType<String>().toSet();
@@ -58,7 +61,7 @@ final class _LiveShapeTransform {
             throw UnsupportedError('Native shape metadata disagrees with its accumulated gradient transform.');
           }
         }
-        if (rotation case final _LiveShapeRotation operation) {
+        if (similarity case final _LiveShapeSimilarity operation) {
           edits.addAll(operation.dictionaryEdits(shape, dictionary));
           continue;
         }
@@ -82,7 +85,7 @@ final class _LiveShapeTransform {
           for (int index = 0; index < command.operands.length; index += 2) {
             final AiToken x = command.operands[index];
             final AiToken y = command.operands[index + 1];
-            final List<double> point = rotation?.point(x.number!.toDouble(), y.number!.toDouble()) ?? [x.number!.toDouble() + deltaX, y.number!.toDouble() + deltaY];
+            final List<double> point = similarity?.point(x.number!.toDouble(), y.number!.toDouble()) ?? [x.number!.toDouble() + deltaX, y.number!.toDouble() + deltaY];
             edits.add(_numberEdit(AiNativeToken._(token: x), point[0]));
             edits.add(_numberEdit(AiNativeToken._(token: y), point[1]));
           }
@@ -101,6 +104,7 @@ final class _LiveShapeTransform {
       final AiNativeContainer? style = shape.style;
       if (style != null) {
         final List<AiSourceEdit> styleEdits = [
+          if (scale != 1) ..._scaleKnownStyleStrokes(drawing.records, style, scale),
           for (final AiNativeContainer record in drawing.records.containers.where(
             (record) => record.start > style.start && record.end < style.end && const {'FillStyle', 'StrokeStyle'}.contains(record.type),
           ))
@@ -110,10 +114,11 @@ final class _LiveShapeTransform {
           String? name = copiedStyles[style];
           if (name == null) {
             int suffix = 1;
-            while (styleNames.contains('AiKit translated $suffix')) {
+            final String operation = scale != 1 ? 'scaled' : 'translated';
+            while (styleNames.contains('AiKit $operation $suffix')) {
               suffix++;
             }
-            name = 'AiKit translated $suffix';
+            name = 'AiKit $operation $suffix';
             styleNames.add(name);
             copiedStyles[style] = name;
             final AiNativeEntry naming = style['Name']!;
@@ -166,7 +171,7 @@ final class _LiveShapeTransform {
       if (item is! AiNativeInstruction) {
         continue;
       }
-      if (!_rigidTransformCommands.contains(item.operator)) {
+      if (!_shapeTransformCommands.contains(item.operator)) {
         throw UnsupportedError('Native transformation cannot synchronize the native ${item.operator} operator.');
       }
       if (item.operator == 'XW') {
@@ -262,7 +267,7 @@ final class _LiveShapeTransform {
 
   /// Plans gradient edits while retaining relative authoring parameters.
   List<AiSourceEdit> _gradientEdits(AiNativeGradient gradient, {bool style = false}) {
-    if (rotation case final _LiveShapeRotation operation) {
+    if (similarity case final _LiveShapeSimilarity operation) {
       return operation.gradientEdits(gradient, style: style);
     }
     final AiNativeGradientGeometry geometry = gradient.geometry;
@@ -276,19 +281,19 @@ final class _LiveShapeTransform {
   }
 
   /// Expands top-level DSC extents without altering fixed artboard coordinates.
-  List<AiSourceEdit> _boundsEdits() => rotation?.boundsEdits() ?? AiNativeEditor.translationBoundsEdits(program: drawing.records.program, deltaX: deltaX, deltaY: deltaY);
+  List<AiSourceEdit> _boundsEdits() => similarity?.boundsEdits() ?? AiNativeEditor.translationBoundsEdits(program: drawing.records.program, deltaX: deltaX, deltaY: deltaY);
 }
 
 /// Creates one finite numeric-token edit without changing native comment syntax.
 AiSourceEdit _numberEdit(AiNativeItem item, double value) {
   if (!value.isFinite) {
-    throw ArgumentError('Translation exceeds finite native coordinate values.');
+    throw ArgumentError('Transformation exceeds finite native coordinate values.');
   }
   return AiSourceEdit(start: item.start, end: item.end, bytes: latin1.encode(value.toString()));
 }
 
 /// Drawing operations whose state has no independent spatial reference.
-const Set<String> _rigidTransformCommands = {
+const Set<String> _shapeTransformCommands = {
   ..._nativeGeometry,
   ..._nativePaint,
   ..._solidStyleCommands,
@@ -333,7 +338,7 @@ const Map<String, Set<String>> _solidStyleKeys = {
   'BlendStyle': {'Def'},
 };
 
-/// Native shape fields supported by rigid transforms.
+/// Native shape fields supported by synchronized geometry edits.
 const Map<String, Set<String>> _shapeParameters = {
   'ai::Rectangle': {
     'Width',
