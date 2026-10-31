@@ -19,8 +19,8 @@ void _ordinaryObjectFollowing(AiNativeDrawing drawing, AiNativeItem source) => _
 bool _ordinaryObjectAttachment(AiNativeDrawing drawing, AiNativeItem item) => drawing._objects._attachments[item.start]?.bindingIssue == null && drawing._objects._attachments.containsKey(item.start);
 
 /// Resolves attached dictionaries/styles that the plain PostScript view cannot own.
-bool _ordinaryMetadataPrefix(AiNativeDrawing drawing, int start, int end) {
-  bool metadata = false;
+bool _ordinaryMetadataPrefix(AiNativeDrawing drawing, int start, int end, {bool allowStateOnly = false}) {
+  bool metadata = allowStateOnly;
   Map<int, AiNativeLayer>? headers;
   for (final AiNativeItem item in _pathInterval(drawing.items, start, end, (item) => item.start)) {
     if (_ordinaryObjectAttachment(drawing, item)) {

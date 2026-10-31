@@ -11,6 +11,7 @@ List<Map<String, Object?>> nativeObjectInventory(AiNativeDrawing drawing) => [
       'kind': object.node.kind.name,
       'private': object.source is AiNativePath ? (object.source as AiNativePath).isPrivate : (object.source as AiNativeGroup).opening.isPrivate,
       'dictionary': object.dictionary == null ? null : [object.dictionary!.start, object.dictionary!.end],
+      'liveShape': object.liveShape?.handler,
       'expansion': object.expansion == null ? null : [object.expansion!.start, object.expansion!.end],
       'expanded': object.expanded,
       'styleApplication': object.styleApplication == null ? null : [object.styleApplication!.start, object.styleApplication!.end],

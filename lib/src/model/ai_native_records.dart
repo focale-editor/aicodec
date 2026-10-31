@@ -13,6 +13,7 @@ part '../codec/ai_native_record_parser.dart';
 part '../codec/ai_native_document_settings_parser.dart';
 part '../codec/ai_native_layer_parser.dart';
 part '../codec/ai_native_object_parser.dart';
+part '../codec/ai_native_direct_shape.dart';
 part '../codec/ai_native_version_parser.dart';
 part '../codec/ai_native_structure_parser.dart';
 part '../codec/ai_native_drawing_parser.dart';

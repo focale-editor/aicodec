@@ -219,6 +219,7 @@ final class AiNativeDrawing {
   /// Duplicates ordinary paths immediately after their original source objects.
   ///
   /// Geometry, paint, qualified object metadata and CC point counts are copied.
+  /// Direct live shapes retain their native parameters with their single path.
   /// [identifiers] supplies a fresh XML name for every identified selected path.
   /// Names must differ from all saved XMLUID wrappers, including opaque owners.
   /// Anonymous copies stay anonymous; existing references retain their targets.
@@ -233,6 +234,7 @@ final class AiNativeDrawing {
   /// Existing drawing bounds remain conservative. Paths with unresolved native
   /// owners or references reject. Identified paths require a fully qualified
   /// declarative reference scope, including all unselected native owners.
+  /// Qualified direct live-shape parameters are removed with their path.
   AiNativeDrawing removePaths({required List<AiNativePath> paths}) => _removeNativePaths(this, paths);
 
   /// Inserts geometry using each anchor's existing paint, flags and count layout.
@@ -241,6 +243,7 @@ final class AiNativeDrawing {
   /// closed paths receive an explicit closing line when necessary. The same
   /// ownership restrictions as [duplicatePaths] apply; this does not create a
   /// missing modern document, layer, resource or private live-shape definition.
+  /// Inserting after a live shape creates plain geometry without its parameters.
   /// Saving requires matching host-supplied PDF artwork through the save API.
   AiNativeDrawing insertPaths({required List<AiNativePathInsertion> insertions}) => _insertNativePaths(this, insertions);
 
@@ -289,6 +292,7 @@ final class AiNativeDrawing {
   /// and the following object's state; unknown required values reject the batch.
   /// [identifiers] supplies fresh XML names for every identified copied group
   /// and path, including descendants, using their original source handles.
+  /// Qualified direct live-shape children retain their native parameters.
   AiNativeDrawing duplicateGroups({required List<AiNativeGroup> groups, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativeGroups(this, groups, identifiers);
 
   /// Deletes ordinary groups and children while retaining outgoing state writes.

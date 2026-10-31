@@ -10,6 +10,7 @@ bool _sameNativeObjectOwner(AiNativeStructureNode first, AiNativeStructureNode s
 AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
   final AiNativeStructure structure = AiNativeStructure.decode(drawing: drawing);
   final Map<AiNativeContainer, List<AiNativeObjectIdentifier>> identifiers = {};
+  final Map<AiNativeContainer, AiLiveShape> shapes = {for (final AiLiveShape shape in drawing.liveShapes) shape.dictionary: shape};
   for (final AiNativeObjectIdentifier identifier in structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
     (identifiers[identifier.field.owner.source as AiNativeContainer] ??= []).add(identifier);
   }
@@ -20,6 +21,7 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
     final int following = _pathOffset(drawing.items, source.end, (item) => item.start);
     final AiNativeItem? next = following < drawing.items.length ? drawing.items[following] : null;
     final AiNativeContainer? dictionary = next is AiNativeContainer && next.type == 'ArtDictionary' ? next : null;
+    final AiLiveShape? shape = shapes[dictionary];
     final int preceding = _pathOffset(drawing.items, source.start, (item) => item.start) - 1;
     final AiNativeItem? previous = preceding >= 0 ? drawing.items[preceding] : null;
     final AiNativeInstruction? expansion = source is AiNativeGroup && previous is AiNativeInstruction && previous.operator == 'Ae' ? previous : null;
@@ -27,6 +29,9 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
     final AiNativeItem? postfix = after < drawing.items.length ? drawing.items[after] : null;
     final AiNativeInstruction? style = source is AiNativeGroup && postfix is AiNativeInstruction && postfix.operator == 'XW' ? postfix : null;
     String? issue;
+    if (shape != null) {
+      issue = identical(shape.path, source) ? _directNativeShapeIssue(shape) : 'The live-shape dictionary belongs to a different path.';
+    }
     if (expansion != null &&
         (expansion.isPrivate || expansion.numbers?.length != 1 || !const [0, 1].contains(expansion.numbers!.single) || !_sameNativeObjectOwner(node, structure.nodeFor(expansion)))) {
       issue = 'The group panel expansion has unqualified syntax or ownership.';
@@ -48,12 +53,24 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
       final AiNativeStructureNode owner = structure.nodeFor(dictionary);
       if (!_sameNativeObjectOwner(node, owner)) {
         issue ??= 'The object dictionary crosses a lexical owner or version boundary.';
-      } else if (dictionary.notRecorded || dictionary.entries.any((field) => !const {'AI10_ArtUID', 'AIArtName', 'Object name', 'BBAccumRotation'}.contains(field.key))) {
+      } else if (dictionary.notRecorded ||
+          dictionary.entries.any(
+            (field) => !{
+              'AI10_ArtUID',
+              'AIArtName',
+              'Object name',
+              'BBAccumRotation',
+              if (shape != null) ...['ai::LiveShape', 'PATH_IS_KAPPA_CURVE'],
+            }.contains(field.key),
+          )) {
         issue ??= 'The object dictionary contains unqualified appearance or reference fields.';
       } else if (dictionary.entries.map((field) => field.key).toSet().length != dictionary.entries.length) {
         issue ??= 'The object dictionary repeats a metadata field.';
       }
       for (final AiNativeEntry field in dictionary.entries) {
+        if (field.key == 'PATH_IS_KAPPA_CURVE' && (field.type != 'Bool' || field.boolean == null)) {
+          issue ??= 'The object dictionary has an invalid cubic-curve metadata flag.';
+        }
         if (const {'AIArtName', 'Object name', 'BBAccumRotation'}.contains(field.key) &&
             (!const {'String', 'UnicodeString'}.contains(field.type) || field.items.isNotEmpty && field.stringBytes == null)) {
           issue ??= 'The object dictionary has an unqualified metadata value.';
@@ -77,6 +94,7 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
         source: source,
         node: node,
         dictionary: dictionary,
+        liveShape: shape,
         expansion: expansion,
         styleApplication: style,
         identifier: saved.length == 1 ? saved.single : null,

@@ -287,6 +287,23 @@ groups and compound topology. There is no general modern object lifecycle API.
   identity transactions checked independently and all 22 layer/16 object-metadata
   transactions regenerated and independently rechecked. No host integration or
   broader reference qualification was introduced.
+  Direct live shapes now retain their native parameters through whole-path,
+  group and layer lifecycle operations. Qualification requires one non-private
+  authoritative/printable path, known scalar parameters and no separate printing
+  group, style or version alternative. Fresh copied IDs, retained source state,
+  native shape counts and exact unbound-neighbor bytes are checked atomically.
+  Thirteen regressions cover editable copies, identified deletion, reordering,
+  grouping, cross-layer movement, subtree operations, malformed metadata and
+  bounds. Independent decoding verifies 14 copy/removal transactions on seven
+  pinned CC rectangle/ellipse files and seven identified synthetic transactions,
+  including exact preservation of unselected private/printing/style records.
+  Separate authoring/printing bundles and broader resource-reference lifecycle
+  remain outstanding; this task stays open. Latest full validation: 494 VM/493
+  Node tests and clean format/fix/analysis, using xml 7.0.1. All 105 existing
+  path/group/layer/movement/metadata/identity/reference-scope transactions were
+  regenerated and independently checked. Capability checks still recover all
+  37 exact sources, 41 layer headers and 181 ordinary paths. No host rendering
+  or Adobe reopening is inferred from this structural qualification.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

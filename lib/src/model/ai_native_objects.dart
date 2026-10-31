@@ -14,6 +14,12 @@ final class AiNativeObject extends AiNativeItem {
   /// Direct postfix dictionary, including preserved unknown fields.
   final AiNativeContainer? dictionary;
 
+  /// Native shape authored by this path's directly attached dictionary, if any.
+  ///
+  /// Binding still requires the lifecycle checks reported by [bindingIssue].
+  /// Its parameters travel with the path during qualified structural edits.
+  final AiLiveShape? liveShape;
+
   /// Direct group panel-expansion flag, before its opening instruction.
   final AiNativeInstruction? expansion;
 
@@ -41,6 +47,7 @@ final class AiNativeObject extends AiNativeItem {
     required this.source,
     required this.node,
     required this.dictionary,
+    required this.liveShape,
     required this.expansion,
     required this.styleApplication,
     required this.identifier,

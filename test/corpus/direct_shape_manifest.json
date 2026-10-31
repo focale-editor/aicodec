@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "styles.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/styles.ai",
+      "size": 220262,
+      "sha256": "ed6299f1ac0970ac05f8979be4b7156e85bbd363267776252e8de92da4cc584c",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2023 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>\n\nSPDX-License-Identifier: GPL-2.0-or-later\n",
+      "expected": "accept"
+    }
+  ]
+}

@@ -32,6 +32,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
 - Source-preserving layer edits and plain-path geometry replacement.
 - Qualified path/group lifecycle with attached names, identities and group panel/default-style
   metadata, fresh copied IDs and preserved source opacity; unresolved references reject.
+- Whole-object lifecycle for qualified direct live shapes, retaining their native
+  parameters through copies, deletion, movement and group/layer subtree edits.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

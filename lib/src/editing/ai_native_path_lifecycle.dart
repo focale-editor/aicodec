@@ -12,7 +12,7 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing draw
   final List<AiToken> tokens = drawing.records._projection.tokens;
   final Map<int, AiPath> plainPaths = {for (final AiPath path in drawing.records.program.paths) path.geometry.first.start: path};
   final Set<AiNativePath> dependent = {for (final AiNativeGradient gradient in drawing.gradients) ...gradient.paths};
-  final List<AiLiveShape> shapes = [...drawing.liveShapes]..sort((a, b) => a.start.compareTo(b.start));
+  final List<AiLiveShape> shapes = drawing.liveShapes.where((shape) => _directNativeShapeIssue(shape) != null).toList()..sort((a, b) => a.start.compareTo(b.start));
   final List<AiLiveShape> bound = drawing.liveShapes.where((shape) => shape.isBound).toList()..sort((a, b) => a.end.compareTo(b.end));
   final Map<AiNativePath, int> previousEnds = {};
   final Set<AiNativeStructureNode> checkedParents = {};
@@ -73,13 +73,15 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing draw
     if (plain.hasDependentAppearance) {
       final int index = _pathOffset(bound, path.start + 1, (shape) => shape.end);
       final AiLiveShape? preceding = index == 0 ? null : bound[index - 1];
-      if (!_ordinaryMetadataPrefix(drawing, previousEnds[path]!, path.start) &&
+      if (!_ordinaryMetadataPrefix(drawing, previousEnds[path]!, path.start, allowStateOnly: drawing._objects.forSource(path).liveShape != null) &&
           (preceding == null ||
               _pathInterval(items, preceding.end, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)))) {
         throw UnsupportedError('The selected path has unresolved appearance dependencies.');
       }
       // Mode-one XW ends the preceding bound shape. Its resolved postfix style
       // does not turn a later ordinary path into a private printing expansion.
+      // A direct shape's own qualified dictionary also sets the plain flag;
+      // its prefix must still contain only resolved metadata and ordinary state.
     }
     final int boundary = previousEnds[path]!;
     if (_pathInterval(tokens, boundary, path.start, (token) => token.start).any((token) => token.kind == .comment && token.lexeme.startsWith('%AI3_Note:'))) {
@@ -190,13 +192,23 @@ const Set<String> _ordinaryPathSuccessors = {
 };
 
 /// Reopens a complete atomic edit and checks the expected body-path count.
-AiNativeDrawing _pathLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, int count) {
+AiNativeDrawing _pathLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, int count, {int? liveShapes}) {
   final AiNativeDrawing result = AiNativeDrawing.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: drawing.records.program, edits: edits),
     ),
   );
-  if (result.paths.length != count || result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => entry.$2.isBound != drawing.liveShapes[entry.$1].isBound)) {
+  final List<AiLiveShape> unresolved = drawing.liveShapes.where((shape) => !shape.isBound).toList();
+  final List<AiLiveShape> retained = result.liveShapes.where((shape) => !shape.isBound).toList();
+  if (result.paths.length != count ||
+      result.liveShapes.length != (liveShapes ?? drawing.liveShapes.length) ||
+      unresolved.length != retained.length ||
+      unresolved.indexed.any(
+        (entry) => !_sameNativeBytes(
+          Uint8List.sublistView(drawing.records.program.bytes, entry.$2.start, entry.$2.end),
+          Uint8List.sublistView(result.records.program.bytes, retained[entry.$1].start, retained[entry.$1].end),
+        ),
+      )) {
     throw const FormatException('Path lifecycle edits changed unrelated native ownership.');
   }
   return result;
@@ -221,19 +233,24 @@ AiNativeDrawing _duplicateNativePaths(AiNativeDrawing drawing, List<AiNativePath
     edits.add(AiSourceEdit(start: object.end, end: object.end, bytes: [10, ...bytes]));
     remaining -= bytes.length + 1;
   }
-  return _pathLifecycleResult(drawing, edits, drawing.paths.length + paths.length);
+  return _pathLifecycleResult(drawing, edits, drawing.paths.length + paths.length, liveShapes: drawing.liveShapes.length + _selectedLiveShapeCount(drawing, paths));
 }
 
 /// Deletes complete anonymous objects and their consumed point-count declarations.
 AiNativeDrawing _removeNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths) {
   final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, paths);
   _ordinaryObjectRemoval(drawing, paths);
-  return _pathLifecycleResult(drawing, [
-    for (final AiNativePath path in paths) ...[
-      AiSourceEdit(start: path.start, end: _ordinaryObject(drawing, path).end, bytes: [32]),
-      if (counts[path] case final AiNativeInstruction count) AiSourceEdit(start: count.start, end: count.end, bytes: [32]),
+  return _pathLifecycleResult(
+    drawing,
+    [
+      for (final AiNativePath path in paths) ...[
+        AiSourceEdit(start: path.start, end: _ordinaryObject(drawing, path).end, bytes: [32]),
+        if (counts[path] case final AiNativeInstruction count) AiSourceEdit(start: count.start, end: count.end, bytes: [32]),
+      ],
     ],
-  ], drawing.paths.length - paths.length);
+    drawing.paths.length - paths.length,
+    liveShapes: drawing.liveShapes.length - _selectedLiveShapeCount(drawing, paths),
+  );
 }
 
 /// Authors geometry in the anchor's unchanged inherited state and count layout.

@@ -21,7 +21,7 @@ from verify_native_structure import parsed
 
 SYNTHETIC_SHA256 = '15ff3519fdb14215fe3365d31143aa83708312929b6e5c54deddd0c4cbd48be6'
 GROUP_SHA256 = '6554ad6cbda1eb224d598b120ef050339f723ee2040aef2c800f17666169b51c'
-METADATA = {'_type', 'AI10_ArtUID', 'AIArtName', 'Object name', 'BBAccumRotation'}
+METADATA = {'_type', 'AI10_ArtUID', 'AIArtName', 'Object name', 'BBAccumRotation', 'ai::LiveShape', 'PATH_IS_KAPPA_CURVE'}
 
 
 def inventory(document):
@@ -119,6 +119,7 @@ def checked_inventory(inkai, path, report):
     assert len(nodes) == len(report), (path, len(nodes), len(report))
     for node, span in zip(nodes, report):
         assert node['kind'] == span['kind'] and node['private'] == span['private']
+        assert span.get('liveShape') == (node.get('metadata') or {}).get('ai::LiveShape', {}).get('ai::LiveShape::HandlerName')
         assert source_commands(data, dict(start=span['artworkStart'], end=span['artworkEnd']), span['private']) == node['commands']
         assert span['expanded'] == node.get('expanded')
         if span['expansion'] is None:

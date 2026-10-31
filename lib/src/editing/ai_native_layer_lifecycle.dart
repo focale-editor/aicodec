@@ -116,8 +116,8 @@ List<AiNativeLayer> _selectedLayers(AiNativeLayers model, List<AiNativeLayer> la
 }
 
 /// Checks expected artwork counts and root declarations after atomic edits.
-AiNativeLayers _layerLifecycleResult(AiNativeLayers model, List<AiSourceEdit> edits, {required int roots, int? layers, int? paths, int? groups}) {
-  final AiNativeDrawing drawing = _pathLifecycleResult(model.drawing, edits, paths ?? model.drawing.paths.length);
+AiNativeLayers _layerLifecycleResult(AiNativeLayers model, List<AiSourceEdit> edits, {required int roots, int? layers, int? paths, int? groups, int? liveShapes}) {
+  final AiNativeDrawing drawing = _pathLifecycleResult(model.drawing, edits, paths ?? model.drawing.paths.length, liveShapes: liveShapes);
   final AiNativeLayers result = AiNativeLayers.decode(drawing: drawing);
   if (result.layers.length != (layers ?? model.layers.length) || drawing.groups.length != (groups ?? model.drawing.groups.length) || result.rootCount != roots || !result.rootCountMatches) {
     throw const FormatException('Layer lifecycle edits changed unrelated artwork or root counts.');
@@ -281,6 +281,7 @@ AiNativeLayers _duplicateNativeLayers(
     layers: model.layers.length + descendants.length,
     paths: model.drawing.paths.length + count.paths,
     groups: model.drawing.groups.length + count.groups,
+    liveShapes: model.drawing.liveShapes.length + _selectedLiveShapeCount(model.drawing, selected),
   );
 }
 
@@ -314,5 +315,6 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
     layers: model.layers.length - descendants.length,
     paths: model.drawing.paths.length - count.paths,
     groups: model.drawing.groups.length - count.groups,
+    liveShapes: model.drawing.liveShapes.length - _selectedLiveShapeCount(model.drawing, selected),
   );
 }

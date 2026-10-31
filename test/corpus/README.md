@@ -229,6 +229,24 @@ dart run tool/check_native_reference_scope.dart
 python3 tool/verify_native_reference_scope.py --inkai-source /tmp/extension-ai
 ```
 
+Direct live-shape lifecycle reuses six files in `manifest.json` and
+`rotation_manifest.json`; `direct_shape_manifest.json` adds the pinned `styles.ai`
+fixture with its source attribution. Fourteen real-file copies/removals retain
+direct rectangle/ellipse parameters, rounded corners, opacity and unrelated
+private/printing/style records. Seven checksum-pinned synthetic transactions
+cover identified path/group copies and removals, cross-layer movement and layer
+subtree copy/removal. The unchanged native reader compares complete parsed
+programs, parameter dictionaries, point counts, exact byte edits and layer
+inventories; synthetic checks also verify full object trees, identity maps and
+effective paint. These 21 transactions qualify existing direct shapes, not new
+shape creation, separate authoring/printing bundles or Adobe reopening.
+
+```sh
+python3 tool/fetch_corpus.py --manifest direct_shape_manifest.json
+dart run tool/check_native_direct_shapes.dart
+python3 tool/verify_native_direct_shapes.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

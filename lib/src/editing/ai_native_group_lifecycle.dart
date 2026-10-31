@@ -96,7 +96,7 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final AiNativeStructure ownership = layers.structure;
-  final List<AiLiveShape> shapes = [...drawing.liveShapes]..sort((a, b) => a.start.compareTo(b.start));
+  final List<AiLiveShape> shapes = drawing.liveShapes.where((shape) => _directNativeShapeIssue(shape) != null).toList()..sort((a, b) => a.start.compareTo(b.start));
   final List<AiLiveShape> bound = drawing.liveShapes.where((shape) => shape.isBound).toList()..sort((a, b) => a.end.compareTo(b.end));
   final Map<int, AiNativeLayer> layerHeaders = _layerHeaderItems(layers);
   int shapeIndex = 0;
@@ -178,8 +178,8 @@ List<int> _removedGroupState(AiNativeDrawing drawing, AiNativeGroup group) => [
 ];
 
 /// Checks topology after the source editor enforces the original byte/token limits.
-AiNativeDrawing _groupLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, {required int paths, required int groups}) {
-  final AiNativeDrawing result = _pathLifecycleResult(drawing, edits, paths);
+AiNativeDrawing _groupLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, {required int paths, required int groups, int? liveShapes}) {
+  final AiNativeDrawing result = _pathLifecycleResult(drawing, edits, paths, liveShapes: liveShapes);
   if (result.groups.length != groups || result.records.program.layers.length != drawing.records.program.layers.length) {
     throw const FormatException('Group lifecycle edits changed unrelated native topology.');
   }
@@ -271,6 +271,7 @@ AiNativeDrawing _duplicateNativeGroups(AiNativeDrawing drawing, List<AiNativeGro
     edits,
     paths: drawing.paths.length + groups.fold(0, (count, group) => count + group.paths.length),
     groups: drawing.groups.length + _selectedGroupCount(groups),
+    liveShapes: drawing.liveShapes.length + _selectedLiveShapeCount(drawing, groups),
   );
 }
 
@@ -283,6 +284,7 @@ AiNativeDrawing _removeNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup>
     [for (final AiNativeGroup group in groups) AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end, bytes: _removedGroupState(drawing, group))],
     paths: drawing.paths.length - groups.fold(0, (count, group) => count + group.paths.length),
     groups: drawing.groups.length - _selectedGroupCount(groups),
+    liveShapes: drawing.liveShapes.length - _selectedLiveShapeCount(drawing, groups),
   );
 }
 

@@ -417,7 +417,9 @@ panel `expansion` instruction, decoded `expanded` flag and postfix
 `styleApplication`. `forSource` requires an exact
 handle from that drawing. Each object retains its lexical `node`, original
 `source`, complete `start`/`end`, dictionary, saved XML `identifier`, and source
-name fields. Layer-header dictionaries keep their separate `AiNativeLayers`
+name fields. `liveShape` retains any native shape associated with that path's
+direct dictionary; a non-null association alone does not grant lifecycle edits.
+Layer-header dictionaries keep their separate `AiNativeLayers`
 ownership. Inspection includes private/compound/derived objects without granting
 ordinary lifecycle permission. `bindingIssue` reports unqualified metadata;
 malformed identity syntax still fails structural validation.
@@ -428,6 +430,22 @@ Names preserve their string type and original bytes. These records do not change
 persistent paint state. Bare and `%_` syntax are retained; interleaved operators,
 version boundaries, repeated dictionaries, private appearance fields, SVG import
 records and unknown reference fields remain separate dependencies.
+
+Direct live shapes can participate when their single non-private path is also
+their complete appearance, without a separate printing group, appearance
+dictionary, style or version alternative. The attached `ai::LiveShape` definition
+must contain exactly a known handler and its parameter dictionary. Only the
+handler's known scalar parameter keys/types and optional boolean
+`PATH_IS_KAPPA_CURVE` metadata qualify; unknown, nested or reference-bearing
+extensions reject. Structural edits carry the entire path and dictionary without
+rebuilding geometry or interpreting a rendering result. Copies retain editable
+parameters and use fresh IDs under the same identity contract. Group and layer
+subtree operations count and preserve all qualified direct shape children.
+Removal deletes their native parameters with their geometry. Insertion after a
+shape creates a plain path, without copying its native definition. Separate
+private/printing pairs, gradients and conditional alternatives still require
+their own lifecycle contracts. Unbound neighboring shapes retain exact source
+bytes and binding status after every structural edit.
 
 Group lifecycle also qualifies an immediately preceding `0 Ae`/`1 Ae` and an
 immediately following `9 () XW`, optionally after the group's dictionary. The
@@ -479,6 +497,16 @@ metadata, effective paint, point counts and exact unselected bytes. No new IDs o
 references are inferred for an unsupported resource owner.
 This is not evidence of successful identified-object editing in resource-bearing
 real CC files or Adobe reopening. Wider dependencies remain in the roadmap.
+
+Thirteen direct-shape regressions cover parameter ownership, editable copies,
+identified deletion, ordering, cross-layer/group movement, subtree copies and
+removal, grouping/ungrouping, insertion, stale handles and limits. Unknown
+parameters, private/derived pairs and unresolved prefixes reject atomically.
+Independent checks qualify 14 copy/removal transactions on seven pinned CC files
+with direct rectangles or ellipses, including rounded corners and opacity, plus
+seven identified synthetic path/group/layer transactions. Complete native
+parameters, hierarchy, source counts and unselected private/style records remain
+exact. This does not qualify new shape creation or every known shape handler.
 
 ### Ordinary path lifecycle
 
