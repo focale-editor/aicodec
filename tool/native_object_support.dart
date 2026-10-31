@@ -1,15 +1,19 @@
 import 'package:aikit/aikit.dart';
 
-/// Retains complete source and dictionary spans for independent reader checks.
+/// Retains complete artwork, panel, dictionary and style spans for reader checks.
 List<Map<String, Object?>> nativeObjectInventory(AiNativeDrawing drawing) => [
   for (final AiNativeObject object in AiNativeObjects.decode(drawing: drawing).objects)
     {
       'start': object.start,
+      'artworkStart': object.source.start,
       'artworkEnd': object.source.end,
       'end': object.end,
       'kind': object.node.kind.name,
       'private': object.source is AiNativePath ? (object.source as AiNativePath).isPrivate : (object.source as AiNativeGroup).opening.isPrivate,
       'dictionary': object.dictionary == null ? null : [object.dictionary!.start, object.dictionary!.end],
+      'expansion': object.expansion == null ? null : [object.expansion!.start, object.expansion!.end],
+      'expanded': object.expanded,
+      'styleApplication': object.styleApplication == null ? null : [object.styleApplication!.start, object.styleApplication!.end],
       'identifier': object.identifier?.bytes,
       'identifierSpan': object.identifier == null
           ? null

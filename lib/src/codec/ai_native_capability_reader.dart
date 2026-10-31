@@ -226,13 +226,13 @@ final class _NativeCapabilityReader {
   void drawing(AiNativeDrawing drawing) {
     inspect(.record, drawing.records.program.bodyStart, drawing.records.program.bodyEnd, () {
       for (final AiNativeObject object in AiNativeObjects.decode(drawing: drawing).objects) {
-        if (object.dictionary != null) {
+        if (object.dictionary != null || object.expansion != null || object.styleApplication != null) {
           add(
             .record,
             object.start,
             object.end,
             object.bindingIssue == null ? .typed : .preserved,
-            object.bindingIssue ?? 'Direct object identity/name metadata; geometry, appearance and lifecycle require independent validation.',
+            object.bindingIssue ?? 'Direct object metadata, panel flags and group-style association; geometry, appearance and lifecycle require independent validation.',
             selector: 'object-metadata:${object.start}',
           );
         }

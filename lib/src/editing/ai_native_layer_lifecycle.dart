@@ -44,7 +44,7 @@ List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int en
       }
       continue;
     }
-    if (_ordinaryObjectMetadata(drawing, item)) {
+    if (_ordinaryObjectAttachment(drawing, item)) {
       continue;
     }
     if (item is! AiNativeInstruction || item.isPrivate) {

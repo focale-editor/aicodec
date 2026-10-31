@@ -372,7 +372,9 @@ deletion, opaque/derived lifecycle and Adobe reopening remain unqualified.
 ### Attached object metadata
 
 `AiNativeObjects.decode(drawing:)` exposes immutable path/group associations with
-an optional directly attached `ArtDictionary`. `forSource` requires an exact
+an optional directly attached `ArtDictionary`. Groups also retain their preceding
+panel `expansion` instruction, decoded `expanded` flag and postfix
+`styleApplication`. `forSource` requires an exact
 handle from that drawing. Each object retains its lexical `node`, original
 `source`, complete `start`/`end`, dictionary, saved XML `identifier`, and source
 name fields. Layer-header dictionaries keep their separate `AiNativeLayers`
@@ -387,8 +389,17 @@ persistent paint state. Bare and `%_` syntax are retained; interleaved operators
 version boundaries, repeated dictionaries, private appearance fields, SVG import
 records and unknown reference fields remain separate dependencies.
 
-Path/group movement and reordering carry the complete dictionary with the object.
-Insertion occurs after the anchor's dictionary, leaving the new path anonymous.
+Group lifecycle also qualifies an immediately preceding `0 Ae`/`1 Ae` and an
+immediately following `9 () XW`, optionally after the group's dictionary. The
+first retains the Layers-panel expansion; the second applies default style to
+that group without changing the persistent path-opacity assignment. Complete
+object boundaries include both attachments. Named styles, other `XW` modes,
+private/conditional syntax, repeated attachments and intervening native metadata
+remain unqualified. These associations follow the pinned independent reader's
+[operator descriptions](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/commands.md).
+
+Path/group movement and reordering carry all qualified attachments with the object.
+Insertion occurs after the anchor's complete metadata, leaving the new path anonymous.
 `duplicatePaths` and `duplicateGroups` take an `identifiers` map keyed by original
 path/group handles. Supply exactly one fresh portable XML name for every copied
 identified object, including group descendants. Source-wide collisions, extra or
@@ -401,7 +412,8 @@ deletion uses the whole-source reference qualification described above; an
 unknown neighboring owner prevents it even outside the selected subtree. Ungrouping
 removes an empty group dictionary and preserves child metadata; it rejects a
 nonempty dictionary because there is no automatic destination for group-owned
-names, identities or rotation. Layer movement retains child object identities.
+names, identities or rotation. It removes an owned panel flag but rejects an
+applied group style, which requires a separate dissolution policy. Layer movement retains child object identities.
 Layer duplication requires fresh child IDs through `artworkIdentifiers`; layer
 removal checks all child identities against the same qualified reference scope.
 
@@ -409,9 +421,15 @@ Sixteen regressions cover whole-object edits, nested copies, repeated operations
 immutable identity maps, stale handles, unknown dictionaries, counts, byte/token
 limits, layer transfer and capability findings. Independent pinned-inkai checks
 verify five synthetic identity transactions, including complete topology, decoded
-metadata, effective paint and exact unselected bytes. Six real-file rejections
-preserve `layers_and_sublayers.ai`: its three empty object dictionaries are valid,
-but the enclosing `XW` style remains outside the ordinary lifecycle contract.
+metadata, effective paint and exact unselected bytes. Twelve additional regressions
+qualify panel/style ownership and persistent path opacity through nested copies,
+reordering, removal, child edits and cross-layer moves, with malformed/private
+attachments, identity maps, unknown required state and parser limits.
+Five independently checked edits of `layers_and_sublayers.ai` now qualify path
+copy/removal/reordering and group copy/removal, preserving its panel flag, three
+empty dictionaries and default group style. Dissolving that styled group still
+rejects without changing the source. Five more synthetic transactions compare
+nested panel/style ownership, effective opacity and exact unselected bytes.
 Eleven further regressions cover combined layer/artwork identity allocation,
 copy-map ownership and cross-map collisions, identified deletion, anonymous owners
 with identified descendants, immutable inputs and aggregate byte/token ceilings.
@@ -456,7 +474,9 @@ Persistent paint, lock and visibility assignments stay at their source positions
 Reordering and movement can replay known source assignments around the copied
 geometry to retain its own attributes and restore the destination's outgoing
 state. The qualified components are gray/RGB/CMYK fill and stroke, overprint,
-line width/dashes/caps/joins/miter, path/fill flags, locking and visibility.
+line width/dashes/caps/joins/miter, path/fill flags, locking, visibility and the
+observed `0 opacity 0 0 0 Xy` layout with finite opacity in `[0, 1]`.
+Other `Xy` layouts, including the `-1 --` sentinel, remain unqualified.
 Color alternatives retain their exact syntax without conversion. Missing values
 stay unknown; moving a known value to a position where the original value cannot
 be restored rejects. Opaque intervals, interleaved metadata, malformed state and
@@ -502,7 +522,7 @@ rejects before editing.
 
 Ordinary groups do not save and restore paint. The editor tracks explicit source
 assignments for gray/RGB/CMYK fill and stroke, overprint, width, dashes, caps,
-joins, miter limit, fill/path flags, locking and visibility. Color representations
+joins, miter limit, fill/path flags, locking, visibility and qualified `Xy` opacity. Color representations
 are copied without conversion. Missing values stay unknown; no renderer or
 default graphics state is invented. An operation that needs to restore an unknown
 value rejects. Source values can become known again after an opaque boundary
@@ -522,8 +542,9 @@ group's outgoing assignments even when its objects disappear. Drawing bounds
 remain conservative because these operations retain or remove existing geometry.
 
 Private/derived owners, compound/clip children, version alternatives, opaque
-metadata, tags, expansion flags, notes and unknown state reject. Known identities
-and names stay with their objects; nonempty group metadata prevents dissolution. Moving cannot cross opaque/private intervals; source and anchor
+metadata, tags, unbound expansion flags, notes and unknown state reject. Known identities,
+names, panel flags and default-style attachments stay with their objects; nonempty
+group dictionaries or applied styles prevent dissolution. Moving cannot cross opaque/private intervals; source and anchor
 groups cannot contain one another. Shared styles, effects and references in
 resource-bearing documents need separate lifecycle contracts. Group capabilities therefore remain
 selection-dependent, with compound/private/clip topology explicitly unsupported.
@@ -1116,7 +1137,7 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Object metadata | Direct path/group dictionaries, names and saved XML IDs | Whole-object movement/copy; qualified identity removal; empty-dictionary dissolution | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
+| Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; empty-dictionary dissolution without applied styles | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion and qualified ordinary-subtree copy/remove/reorder/moves | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; different layers or ancestor flags require explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves, including empty destination layers | Anonymous owners only; unknown state, references and private/derived objects reject; different layers or ancestor flags require explicit inheritance. |

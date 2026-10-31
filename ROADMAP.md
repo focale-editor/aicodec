@@ -215,9 +215,9 @@ groups and compound topology. There is no general modern object lifecycle API.
   and dissolution accepts only empty group dictionaries. Sixteen regressions
   cover repeated edits, identity collisions, immutable inputs, limits, layer
   transfers and unsupported/private records. Independent pinned-inkai checks
-  verify five synthetic transactions and six exact real-file refusals: the
-  three empty dictionaries in `layers_and_sublayers.ai` do not qualify its
-  enclosing `XW` style. Real CC identified-object editing, identified deletion
+  initially verified five synthetic transactions and six exact real-file refusals;
+  the later group-metadata qualification below supersedes five of those refusals.
+  Real CC identified-object editing, identified deletion
   and derived/reference lifecycle remain outstanding; this task stays open.
   Latest validation: 440 VM/439 Node tests, clean format/fix/analysis, all
   65 prior layer/path/group/cross-layer transactions rechecked independently,
@@ -235,6 +235,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   private/derived lifecycle remain outstanding; this task stays open.
   Latest validation: 451 VM/450 Node tests, clean format/fix/analysis and all
   76 previous lifecycle/metadata cases regenerated and independently rechecked.
+  Group objects now own direct panel flags (`Ae`) and mode-nine default-style
+  applications (`9 () XW`) as well as their dictionaries. Copies, deletion,
+  reordering and relocation carry the complete attachment spans; identity
+  allocation includes prefixed groups and every identified descendant. Qualified
+  `0 opacity 0 0 0 Xy` assignments retain inherited/outgoing opacity across groups
+  and layers. Twelve regressions cover nested metadata, repeated child edits,
+  layer movement, malformed/private/versioned attachments, identities and limits.
+  Independent decoding now verifies five actual edits of `layers_and_sublayers.ai`
+  (path copy/removal/reorder and group copy/removal), five nested synthetic
+  metadata transactions, the five previous identity transactions and exact styled
+  ungrouping refusal. Complete topology, panel/style ownership, opacity, counts
+  and unselected bytes are checked. Named/other style applications, styled-group
+  dissolution, resource-bearing identified deletion and derived/reference
+  lifecycle still require their own contracts; this task remains in progress.
+  Latest validation: 463 VM/462 Node tests, clean format/fix/analysis, all 71
+  previous path/group/layer/movement/combined-identity cases regenerated and
+  independently rechecked, plus the 16 object-metadata transactions above.
+  Capability checks still recover 37 exact sources, 41 layer headers and 181
+  ordinary paths. Adobe reopening and host integration remain unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

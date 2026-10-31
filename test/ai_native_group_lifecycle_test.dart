@@ -204,7 +204,7 @@ void main() {
       '%AI3_Note: native note\nu U',
       '%AI8_FutureOwner: 1\nu U',
       'u U\n%AI8_FutureOwner: 1\n0 A\n0 0 m 1 1 L N',
-      '1 Ae u 0 0 m 1 1 L N U',
+      '2 Ae u 0 0 m 1 1 L N U',
       '17 FuturePaint u U',
       'u 2 As U',
     ]) {

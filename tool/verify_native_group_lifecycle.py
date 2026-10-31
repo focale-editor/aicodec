@@ -16,7 +16,7 @@ from verify_live_shapes import GEOMETRY, walk_body
 from verify_native_structure import parsed
 
 PAINT = {'n', 'N', 'f', 'F', 's', 'S', 'b', 'B'}
-ATTRIBUTES = {'g', 'G', 'k', 'K', 'Xa', 'XA', 'A', 'Xw', 'O', 'R', 'XR', 'D', 'Ap', 'J', 'j', 'w', 'M', 'd'}
+ATTRIBUTES = {'g', 'G', 'k', 'K', 'Xa', 'XA', 'A', 'Xw', 'O', 'R', 'XR', 'D', 'Ap', 'J', 'j', 'w', 'M', 'd', 'Xy'}
 SYNTHETIC_SHA256 = 'ef60c43a97cddd691af2ae3473084b293303cb59ffdcc9e00f719976dba751d4'
 
 

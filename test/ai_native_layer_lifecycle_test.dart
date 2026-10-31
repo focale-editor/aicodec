@@ -209,7 +209,7 @@ void main() {
   });
 
   test('rejects dependent metadata, malformed assignments and orphan point counts', () {
-    for (final String body in ['17 FuturePaint', '1 Ae u U', '3 As', '%AI3_Note: (note)\nu U', '%_0 0 m\n%_1 1 L\n%_S']) {
+    for (final String body in ['17 FuturePaint', '2 Ae u U', '3 As', '%AI3_Note: (note)\nu U', '%_0 0 m\n%_1 1 L\n%_S']) {
       final AiNativeLayers model = _model(
         body: '${_layer('A', body: body)}\n${_layer('B')}',
         roots: 2,

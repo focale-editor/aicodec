@@ -4,7 +4,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int end, {bool nested = true}) {
   final List<AiNativeInstruction> commands = [];
   for (final AiNativeItem item in _pathInterval(drawing.items, start, end, (item) => item.start)) {
-    if (_ordinaryObjectMetadata(drawing, item) && item.end <= end) {
+    if (_ordinaryObjectAttachment(drawing, item) && item.end <= end) {
       continue;
     }
     if (item is! AiNativeInstruction || item.isPrivate || item.end > end) {
@@ -30,13 +30,18 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
 /// Refuses consumed expansion flags and unresolved prefixes before a group.
 void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders) {
   final List<AiNativeItem> items = drawing.items;
+  final int start = _ordinaryObject(drawing, group).start;
   final int preceding = _pathOffset(bound, group.start + 1, (shape) => shape.end);
   final int resolved = preceding == 0 ? drawing.records.program.bodyStart : bound[preceding - 1].end;
   int boundary = resolved;
-  for (int index = _pathOffset(items, group.start, (item) => item.start) - 1; index >= 0 && items[index].end > resolved; index--) {
+  for (int index = _pathOffset(items, start, (item) => item.start) - 1; index >= 0 && items[index].end > resolved; index--) {
     final AiNativeItem item = items[index];
-    if (_ordinaryObjectMetadata(drawing, item)) {
+    if (_ordinaryObjectAttachment(drawing, item)) {
       boundary = item.end;
+      break;
+    }
+    if (layerHeaders[item.start] case final AiNativeLayer owner when owner.bindingIssue == null && item.start == owner.source.end.start) {
+      boundary = owner.end;
       break;
     }
     if (layerHeaders[item.start] case final AiNativeLayer owner when owner.bindingIssue == null && item.start != owner.source.begin.start && item.start != owner.source.end.start) {
@@ -53,7 +58,7 @@ void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiL
       throw UnsupportedError('The selected group has an unqualified prefix ${item.operator}.');
     }
   }
-  _ordinaryGroupMetadata(drawing, boundary, group.start);
+  _ordinaryGroupMetadata(drawing, boundary, start);
 }
 
 /// Rejects metadata comments that can attach an identity or property to an owner.
@@ -156,7 +161,7 @@ List<int> _placedGroup(
   List<AiSourceEdit> sourceEdits = const [],
 }) => _placedNativeArtwork(
   drawing.records.program,
-  [(start: group.start, end: _ordinaryObject(drawing, group).end)],
+  [(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)],
   _groupInterval(drawing, group.start, group.end),
   source,
   incoming,
@@ -210,14 +215,14 @@ AiNativeDrawing _groupNativePaths(AiNativeDrawing drawing, List<AiNativePath> pa
 /// Dissolves disjoint ordinary boundaries without removing their artwork.
 AiNativeDrawing _ungroupNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups) {
   _ordinaryGroups(drawing, groups);
-  if (groups.any((group) => _ordinaryObject(drawing, group).dictionary?.entries.isNotEmpty ?? false)) {
-    throw UnsupportedError('Dissolving a group cannot discard its native object metadata.');
+  if (groups.any((group) => _ordinaryObject(drawing, group).styleApplication != null || (_ordinaryObject(drawing, group).dictionary?.entries.isNotEmpty ?? false))) {
+    throw UnsupportedError('Dissolving a group cannot discard its object metadata or applied style.');
   }
   return _groupLifecycleResult(
     drawing,
     [
       for (final AiNativeGroup group in groups) ...[
-        AiSourceEdit(start: group.opening.start, end: group.opening.end, bytes: [32]),
+        AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: group.opening.end, bytes: [32]),
         AiSourceEdit(start: group.closing.start, end: _ordinaryObject(drawing, group).end, bytes: [32]),
       ],
     ],
@@ -275,7 +280,7 @@ AiNativeDrawing _removeNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup>
   _ordinaryObjectRemoval(drawing, groups);
   return _groupLifecycleResult(
     drawing,
-    [for (final AiNativeGroup group in groups) AiSourceEdit(start: group.start, end: _ordinaryObject(drawing, group).end, bytes: _removedGroupState(drawing, group))],
+    [for (final AiNativeGroup group in groups) AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end, bytes: _removedGroupState(drawing, group))],
     paths: drawing.paths.length - groups.fold(0, (count, group) => count + group.paths.length),
     groups: drawing.groups.length - _selectedGroupCount(groups),
   );
@@ -292,7 +297,7 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
   if (slots.indexed.every((entry) => identical(entry.$2, groups[entry.$1]))) {
     return drawing;
   }
-  _groupInterval(drawing, slots.first.start, _ordinaryObject(drawing, slots.last).end);
+  _groupInterval(drawing, _ordinaryObject(drawing, slots.first).start, _ordinaryObject(drawing, slots.last).end);
   final Map<int, _NativeArtworkState> states = _groupStates(drawing, groups.expand((group) => [group.start, _ordinaryObject(drawing, group).end]));
   final List<AiSourceEdit> edits = [];
   int remaining = drawing.records.program.limits.maxDecodedBytes;
@@ -301,7 +306,7 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
     final AiNativeGroup slot = entry.$2;
     if (!identical(slot, source)) {
       final List<int> bytes = _placedGroup(drawing, source, states[source.start]!, states[slot.start]!, states[_ordinaryObject(drawing, slot).end]!, maxBytes: remaining);
-      edits.add(AiSourceEdit(start: slot.start, end: _ordinaryObject(drawing, slot).end, bytes: bytes));
+      edits.add(AiSourceEdit(start: _ordinaryObject(drawing, slot).start, end: _ordinaryObject(drawing, slot).end, bytes: bytes));
       remaining -= bytes.length;
     }
   }
@@ -350,7 +355,7 @@ AiNativeDrawing _relocateNativeGroup(AiNativeDrawing drawing, AiNativeGroup grou
   return _groupLifecycleResult(
     drawing,
     [
-      AiSourceEdit(start: group.start, end: _ordinaryObject(drawing, group).end, bytes: retained),
+      AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end, bytes: retained),
       AiSourceEdit(start: position, end: position, bytes: [10, ...moved]),
     ],
     paths: drawing.paths.length,

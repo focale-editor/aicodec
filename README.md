@@ -30,8 +30,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
 - Named CS and compact CC text dictionaries, inherited character/paragraph
   styles, OpenType switches and retained glyph-layout trees.
 - Source-preserving layer edits and plain-path geometry replacement.
-- Qualified path/group lifecycle with attached names and identities, fresh copied
-  IDs and explicit rejection of unresolved metadata or references.
+- Qualified path/group lifecycle with attached names, identities and group panel/default-style
+  metadata, fresh copied IDs and preserved source opacity; unresolved references reject.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

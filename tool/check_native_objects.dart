@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
+import '../test/ai_native_group_metadata_test.dart' show groupMetadataSource;
 import '../test/ai_native_objects_test.dart' show objectMetadataSource;
 import 'native_object_support.dart';
 
@@ -54,21 +55,16 @@ Future<void> main() async {
   if (paths.length != 2) {
     throw StateError('The pinned source no longer has its expected ordinary metadata.');
   }
-  final Map<String, AiNativeDrawing Function()> rejected = {
-    'duplicate-path': () => real.duplicatePaths(paths: [paths.first]),
-    'remove-path': () => real.removePaths(paths: [paths.first]),
-    'reorder-paths': () => real.reorderPaths(paths: paths.reversed.toList()),
-    'duplicate-group': () => real.duplicateGroups(groups: [group]),
-    'remove-group': () => real.removeGroups(groups: [group]),
-    'ungroup': () => real.ungroup(groups: [group]),
-  };
-  for (final MapEntry<String, AiNativeDrawing Function()> entry in rejected.entries) {
-    try {
-      entry.value();
-      throw StateError('The pinned XW group unexpectedly became editable.');
-    } on UnsupportedError {
-      await record('layers_and_sublayers.ai', 'reject-${entry.key}', real, real, [group, ...paths]);
-    }
+  await record('layers_and_sublayers.ai', 'duplicate-path', real, real.duplicatePaths(paths: [paths.first]), [paths.first]);
+  await record('layers_and_sublayers.ai', 'remove-path', real, real.removePaths(paths: [paths.first]), [paths.first]);
+  await record('layers_and_sublayers.ai', 'reorder-paths', real, real.reorderPaths(paths: paths.reversed.toList()), paths.reversed.toList());
+  await record('layers_and_sublayers.ai', 'duplicate-group', real, real.duplicateGroups(groups: [group]), [group]);
+  await record('layers_and_sublayers.ai', 'remove-group', real, real.removeGroups(groups: [group]), [group]);
+  try {
+    real.ungroup(groups: [group]);
+    throw StateError('The pinned group unexpectedly discarded its applied style.');
+  } on UnsupportedError {
+    await record('layers_and_sublayers.ai', 'reject-ungroup', real, real, [group, ...paths]);
   }
 
   final AiNativeDrawing synthetic = _drawing(latin1.encode(objectMetadataSource));
@@ -92,5 +88,15 @@ Future<void> main() async {
   await record('synthetic-identity', 'move-path', synthetic, synthetic.movePathAfter(path: synthetic.paths.first, after: synthetic.paths.last, inheritParentFlags: true), [
     synthetic.paths.first,
   ], anchor: synthetic.paths.last);
+
+  final AiNativeDrawing nested = _drawing(latin1.encode(groupMetadataSource));
+  final List<AiNativeGroup> groups = [...nested.groups]..sort((first, second) => first.start.compareTo(second.start));
+  await record('synthetic-group-metadata', 'duplicate-group', nested, nested.duplicateGroups(groups: [groups.first]), [groups.first]);
+  await record('synthetic-group-metadata', 'remove-group', nested, nested.removeGroups(groups: [groups.first]), [groups.first]);
+  await record('synthetic-group-metadata', 'reorder-groups', nested, nested.reorderGroups(groups: [groups.last, groups.first]), [groups.last, groups.first]);
+  await record('synthetic-group-metadata', 'move-group', nested, nested.moveGroupAfter(group: groups.first, after: groups.last), [groups.first], anchor: groups.last);
+  await record('synthetic-group-metadata', 'move-path', nested, nested.movePathAfter(path: nested.paths.first, after: nested.paths[2], inheritParentFlags: true), [
+    nested.paths.first,
+  ], anchor: nested.paths[2]);
   await File('${output.path}/report.json').writeAsString('${const JsonEncoder.withIndent('  ').convert(rows)}\n');
 }

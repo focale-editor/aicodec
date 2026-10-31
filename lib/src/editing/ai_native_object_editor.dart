@@ -32,7 +32,7 @@ AiSourceEdit _nativeIdentityEdit(AiNativeObjectIdentifier identifier, List<int> 
 
 /// Enumerates the complete selected object trees without merging equal identities.
 List<AiNativeObject> _selectedNativeObjects(AiNativeDrawing drawing, List<AiNativeItem> sources) => [
-  for (final AiNativeItem source in sources) ..._pathInterval(drawing._objects.objects, source.start, source.end, (object) => object.start),
+  for (final AiNativeItem source in sources) ..._pathInterval(drawing._objects.objects, source.start, source.end, (object) => object.source.start),
 ];
 
 /// Requires fresh identities for every identified object in copied subtrees.
