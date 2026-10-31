@@ -62,6 +62,16 @@ streams while unselected references retain their original data. See the
 [cached-header contract](AI.md#cached-native-headers) for limits and font-profile
 ambiguities. This synchronization does not establish a PDF-page mapping.
 
+Native saved print choices are separate from compatibility PDF mappings. Artboard
+edits remap qualified stored artboard ranges by identity. If removing every printed
+board, provide an explicit replacement selection instead of silently switching to
+all. Physical print pages may be tiled; the host supplies their resulting count
+and selected indices through `pagePrinting: AiNativePrintSelection(...)` whenever
+an edit leaves a nonempty saved physical range. Null selection indices explicitly
+mean all and clear that range. This updates existing native settings without
+generating print pages or changing unrelated printer choices. See the
+[native print contract](AI.md#native-print-selections-during-artboard-edits).
+
 ## Derived representations
 
 Keep the native edit and every derived representation tied to the same immutable

@@ -95,6 +95,9 @@ final class AiNativeArtboards {
   /// Explicit program crop bounds, without deriving them from another rectangle.
   AiBoundingBox? get cropBounds => cropHeader == null ? null : AiBoundingBox(left: cropHeader!.values[0], bottom: cropHeader!.values[1], right: cropHeader!.values[2], top: cropHeader!.values[3]);
 
+  /// Existing print choices owned by this Document, or null when absent.
+  AiNativePrintJob? get printJob => _nativeArtboardPrintJob(this);
+
   /// Replaces one board's bounds and explicitly retains or replaces crop bounds.
   ///
   /// Pass null for [cropBounds] to retain the existing crop declaration. An
@@ -102,8 +105,16 @@ final class AiNativeArtboards {
   /// omitted origins remain exact. Artwork and drawing bounds do not move.
   /// Unknown native dependency owners reject. Saving also requires synchronized
   /// host PDF pages and any cached header representation; this edits native data.
-  AiNativeArtboards resize({required AiNativeArtboard artboard, required AiBoundingBox bounds, required AiBoundingBox? cropBounds, List<double>? rulerOrigin}) =>
-      _resizeNativeArtboard(this, artboard, bounds, cropBounds, rulerOrigin);
+  /// Supply [pagePrinting] when changing bounds with a saved physical page range.
+  /// [artboardPrinting] optionally replaces the existing native print selection.
+  AiNativeArtboards resize({
+    required AiNativeArtboard artboard,
+    required AiBoundingBox bounds,
+    required AiBoundingBox? cropBounds,
+    List<double>? rulerOrigin,
+    AiNativePrintSelection? artboardPrinting,
+    AiNativePrintSelection? pagePrinting,
+  }) => _resizeNativeArtboard(this, artboard, bounds, cropBounds, rulerOrigin, artboardPrinting, pagePrinting);
 
   /// Inserts a new board at [index], retaining every existing board's source.
   ///
@@ -111,10 +122,19 @@ final class AiNativeArtboards {
   /// field; it must increase, and is never inferred from board count. Pass null
   /// only when the source omits the field. [activate] requires an existing active
   /// index field; otherwise the previously active board follows its new index.
-  /// Null [cropBounds] retains the crop declaration. Unknown dependencies and
-  /// nonempty saved print ranges reject; PDF pages must be supplied separately.
-  AiNativeArtboards create({required AiNativeArtboardDefinition definition, required int index, required int? lastArtboardId, required AiBoundingBox? cropBounds, bool activate = false}) =>
-      _createNativeArtboard(this, definition, index, lastArtboardId, cropBounds, activate);
+  /// Null [cropBounds] retains the crop declaration. Stored artboard print ranges
+  /// follow retained board identities; [artboardPrinting] explicitly replaces
+  /// that choice. Saved physical page ranges require [pagePrinting] from the host.
+  /// Unknown dependencies reject; compatibility PDF pages are supplied separately.
+  AiNativeArtboards create({
+    required AiNativeArtboardDefinition definition,
+    required int index,
+    required int? lastArtboardId,
+    required AiBoundingBox? cropBounds,
+    bool activate = false,
+    AiNativePrintSelection? artboardPrinting,
+    AiNativePrintSelection? pagePrinting,
+  }) => _createNativeArtboard(this, definition, index, lastArtboardId, cropBounds, activate, artboardPrinting, pagePrinting);
 
   /// Removes selected boards without removing their artwork or changing history.
   ///
@@ -122,15 +142,26 @@ final class AiNativeArtboards {
   /// null otherwise to retain the current active owner, including an absent one.
   /// At least one board must remain. Selection flags and ruler origins follow
   /// retained boards; null [cropBounds] retains the separate crop declaration.
-  AiNativeArtboards remove({required Iterable<AiNativeArtboard> artboards, required AiNativeArtboard? activeArtboard, required AiBoundingBox? cropBounds}) =>
-      _removeNativeArtboards(this, artboards, activeArtboard, cropBounds);
+  /// Artboard print ranges follow retained identities. Removing every printed
+  /// board requires [artboardPrinting] unless the saved all flag is true.
+  /// Nonempty physical page ranges require an explicit [pagePrinting] update.
+  AiNativeArtboards remove({
+    required Iterable<AiNativeArtboard> artboards,
+    required AiNativeArtboard? activeArtboard,
+    required AiBoundingBox? cropBounds,
+    AiNativePrintSelection? artboardPrinting,
+    AiNativePrintSelection? pagePrinting,
+  }) => _removeNativeArtboards(this, artboards, activeArtboard, cropBounds, artboardPrinting, pagePrinting);
 
   /// Applies a complete owned permutation while retaining the active identity.
   ///
   /// Every current board must appear exactly once. Retained dictionaries and
   /// their selection flags remain exact. Null [cropBounds] preserves the crop
   /// declaration rather than deriving it from the new order.
-  AiNativeArtboards reorder({required List<AiNativeArtboard> artboards, required AiBoundingBox? cropBounds}) => _reorderNativeArtboards(this, artboards, cropBounds);
+  /// Artboard print ranges follow identities unless [artboardPrinting] replaces
+  /// them; saved physical page ranges require [pagePrinting] when order changes.
+  AiNativeArtboards reorder({required List<AiNativeArtboard> artboards, required AiBoundingBox? cropBounds, AiNativePrintSelection? artboardPrinting, AiNativePrintSelection? pagePrinting}) =>
+      _reorderNativeArtboards(this, artboards, cropBounds, artboardPrinting, pagePrinting);
 
   /// Binds every current artboard to one explicit host page for mapped saving.
   ///

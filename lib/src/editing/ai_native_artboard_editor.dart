@@ -8,7 +8,15 @@ void _nativeArtboardCoordinates(Iterable<double> values) {
 }
 
 /// Replaces native geometry without deriving ink, crop, ruler or PDF coordinates.
-AiNativeArtboards _resizeNativeArtboard(AiNativeArtboards model, AiNativeArtboard artboard, AiBoundingBox bounds, AiBoundingBox? cropBounds, List<double>? rulerOrigin) {
+AiNativeArtboards _resizeNativeArtboard(
+  AiNativeArtboards model,
+  AiNativeArtboard artboard,
+  AiBoundingBox bounds,
+  AiBoundingBox? cropBounds,
+  List<double>? rulerOrigin,
+  AiNativePrintSelection? artboardPrinting,
+  AiNativePrintSelection? pagePrinting,
+) {
   _requireNativeArtboard(model, artboard);
   _nativeArtboardCoordinates([
     bounds.left,
@@ -44,6 +52,15 @@ AiNativeArtboards _resizeNativeArtboard(AiNativeArtboards model, AiNativeArtboar
     coordinates(artboard.record['RulerOrigin'], rulerOrigin);
   }
   edits.addAll(_nativeArtboardCropEdits(model, cropBounds));
+  edits.addAll(
+    _nativeArtboardPrintEdits(
+      model,
+      order: [for (int index = 0; index < model.artboards.length; index++) index],
+      changed: edits.isNotEmpty,
+      artboardPrinting: artboardPrinting,
+      pagePrinting: pagePrinting,
+    ),
+  );
   return _applyNativeArtboardEdits(model, edits);
 }
 

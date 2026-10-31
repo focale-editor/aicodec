@@ -634,8 +634,24 @@ groups and compound topology. There is no general modern object lifecycle API.
   format/fix/analysis. Existing strict saves (31 pinned PDFs, two synthetic saves,
   35 programs) and header-cache checks (32 pinned PDFs, two synthetic saves,
   31 updated owner caches) were regenerated and independently rechecked.
-  Artboard-specific dependency isolation and saved
-  print-range remapping remain outstanding, so this task stays open.
+  Artboard-specific dependency isolation remained outstanding alongside saved
+  print-range remapping. `AiNativePrintJob` now exposes separate all flags and
+  stored artboard/physical-page selections. Native lifecycle edits remap artboard
+  ranges by retained identity, preserve dormant selections and require an explicit
+  replacement when deletion exhausts the active print selection. Physical page
+  choices use host-supplied `AiNativePrintSelection` counts/indices rather than
+  inferred PDF/artboard ordinals. ASCII, BOM-marked UTF-16, fragmented strings and
+  existing empty operands retain types/trivia; unknown grammar/encoding, missing
+  supplied fields and inspection/output excesses reject atomically.
+  Eleven regressions and twenty independent native transactions pass: fifteen
+  chained edits in three pinned CC files and five synthetic edits with complete
+  CC pairs/resources. Original real ranges are empty; the suite writes explicit
+  choices before remapping, and checks complete Document values plus exact
+  unselected bytes. Full validation: 737 VM/736 Node tests and clean format,
+  fix and analysis. The 19 existing artboard inspections/resizes/refusals and
+  25 lifecycle transactions were regenerated and independently rechecked.
+  Actual Adobe printing remains unqualified. Artboard-specific
+  dependency isolation still remains, so this task stays open.
   No host integration or native renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.

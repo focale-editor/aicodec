@@ -203,13 +203,13 @@ void main() {
     check(() => AiNativeArtboardDefinition(nameBytes: name, identifierBytes: definition.identifierBytes, bounds: definition.bounds, rulerOrigin: [1])).throws<ArgumentError>();
   });
 
-  test('refuses nonempty print ranges unknown dependencies and conditional owners', () {
+  test('refuses unqualified print ranges unknown dependencies and conditional owners', () {
     final String source = artboardSource();
     for (final String text in [
       artboardSource(extra: '%_/FutureReference : (board-0) /Ref , ;'),
       source.replaceFirst(
         '%_/Dictionary : /NotRecorded ,',
-        '%_/Dictionary : /NotRecorded ,\n%_/Dictionary : /NotRecorded ,\n%_(1-3) /String (/attributes/job.artboardrange) ,\n%_; (AI11 Print JobInfo Dict) ,',
+        '%_/Dictionary : /NotRecorded ,\n%_/Dictionary : /NotRecorded ,\n%_(odd) /String (/attributes/job.artboardrange) ,\n%_; (AI11 Print JobInfo Dict) ,',
       ),
       source.replaceFirst(
         '%_/Dictionary : /NotRecorded ,',

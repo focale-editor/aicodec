@@ -1427,8 +1427,9 @@ move or delete artwork. Crop policy remains explicit and independent throughout.
 Structural operations currently require private native array entries and unique
 portable ASCII saved identities. Unqualified identity encodings reject rather
 than bypassing collision checks. Operations preserve LF, CRLF and CR line endings
-and support an omitted final comma. Nonempty saved print artboard/page ranges reject rather than
-silently changing their meaning after an ordinal edit. Fresh UUIDs cannot reuse
+and support an omitted final comma. Saved artboard print ranges follow retained
+identities; physical printed-page ranges require a supplied update as described
+below. Fresh UUIDs cannot reuse
 existing declarations, including case variants. Foreign/stale handles, duplicate
 selections, missing replacement-active policies and output/parser limits reject
 atomically.
@@ -1439,8 +1440,8 @@ exact. Unsupported setup owners or dependent/unknown records reject atomically.
 The operations edit native data only: host-supplied compatibility pages and
 cached headers must also be synchronized before a complete save. The save APIs now
 update qualified PDF `AIMetaData` header copies and accept explicit PDF page
-mappings as described above. Narrower artboard-specific dependencies and
-print-range remapping remain in the open roadmap task.
+mappings as described above. Narrower artboard-specific dependencies remain in
+the open roadmap task.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
 explicit crop/origin choices, CC pairs/resources, malformed input, conditional
@@ -1460,6 +1461,67 @@ in three pinned CC sources and ten synthetic edits, including complete CC pairs
 and shared gradients. The independent reader compares complete Document values,
 exact retained dictionaries/separator trivia and every byte outside the declared
 array/scalar/crop edits.
+
+### Native print selections during artboard edits
+
+`AiNativeArtboards.printJob` exposes the selected Document's existing
+`NotRecorded/AI11 Print JobInfo Dict` as `AiNativePrintJob`, or null when absent.
+`allArtboards` and `allPages` retain separate optional zero/one integer flags.
+`artboardRangeBytes` and `pageRangeBytes` preserve exact decoded strings, including
+encoding markers. Empty ranges, missing fields and dormant selections under an
+all flag stay distinct. `artboardIndices` returns the stored zero-based selection;
+`pageIndices(pageCount:)` requires the host's physical output count. Neither
+getter equates printed pages with artboards or compatibility PDF pages.
+
+The qualified range grammar is a comma-separated list of positive one-based
+numbers and inclusive ascending ranges, including an open upper endpoint (`2-`).
+Whitespace and repeated/overlapping selections are accepted; inspection returns
+sorted distinct indices. Endpoints must fit the declared count, and expansion
+has a `maxTokens` budget that also counts repeated selections. ASCII and explicit
+UTF-16 BOM encodings are supported. Unmarked multibyte encodings and other range
+grammars reject; malformed flags and out-of-range endpoints raise format errors.
+
+Creation, reordering and removal remap stored artboard selections by retained
+board identity. New boards are not added to an explicit saved selection. All flags
+retain their meaning independently; dormant nonempty ranges are remapped too.
+An unchanged numerical selection keeps its exact source spelling. Changed ranges
+use compact one-based intervals while retaining encoding, field type and unrelated
+trivia. If removal exhausts an active or unspecified selection, the edit requires
+an explicit replacement; a dormant range under `allArtboards: true` may become
+empty without changing that flag.
+
+All four lifecycle methods accept optional `artboardPrinting` and `pagePrinting`
+values of `AiNativePrintSelection(count:, indices:)`. Null `indices` explicitly
+selects all and clears the corresponding stored range; otherwise supply a nonempty
+list of distinct zero-based indices. Inputs are validated and frozen. The artboard
+count must equal the resulting native count. Both the all flag and range field
+must already exist when supplying a choice; this API does not invent absent
+print dictionaries or fields. A supplied choice may replace an unqualified range
+grammar when its string encoding and field ownership are known.
+
+Physical printed-page ranges cannot be remapped from board ordinals: Illustrator
+can tile an artboard across several sheets or ignore artboard boundaries. When a
+geometry, ordinal or stored artboard-selection edit leaves a nonempty physical
+page range, supply `pagePrinting` from the host's print layout. This also applies
+to dormant physical ranges; the kit never guesses a new page count. For example,
+`AiNativePrintSelection(count: 12, indices: [0, 5, 11])` writes `1,6,12` and selects
+range mode, while `AiNativePrintSelection(count: 12, indices: null)` writes the
+all-pages flag and an empty range. This is serialization of a supplied selection,
+not printing, tiling or page composition. See Adobe's
+[printing guide](https://helpx.adobe.com/illustrator/using/setting-documents-printing.html)
+for the distinction between artboard and physical-page output.
+
+Print updates share the artboard edit's atomic byte transaction and original
+parser/output limits. No-op edits retain existing physical ranges. Eleven
+regressions cover identity remapping, exhausted selections, explicit flags,
+physical counts, UTF-16, fragmented strings, empty operands, malformed input,
+limits and saving through explicit PDF mappings. Twenty independently decoded
+transactions cover five chained edits in three pinned CC sources and a synthetic
+source with complete CC pairs/resources. The real fixtures initially contain
+empty ranges; the suite writes explicit selections, then remaps them through
+creation, reordering, removal and resizing. Complete Document values and every
+byte outside the declared edits are checked. Native Adobe print-dialog reopening
+and actual printed output remain unqualified.
 
 ### Structure, identities and saved alternatives
 
@@ -1959,7 +2021,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state and origins | Qualified native creation, removal, resizing and complete reordering; explicit active/history/crop choices; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only; artboard-specific isolation, print-range remapping and divergent cached-header profiles remain incomplete. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only; artboard-specific isolation and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

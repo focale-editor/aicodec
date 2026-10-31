@@ -1,18 +1,9 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Qualifies complete source dependencies and rejects stale ordinal print ranges.
+/// Qualifies complete source dependencies and unambiguous artboard identities.
 void _nativeArtboardStructureScope(AiNativeArtboards model) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: model.records));
   _nativeReferenceScope(layers, _layerHeaderItems(layers));
-  for (final AiNativeContainer document in model.records.roots.where((record) => record.type == 'Document')) {
-    final AiNativeContainer? job = document['NotRecorded']?.container?['AI11 Print JobInfo Dict']?.container;
-    for (final String key in ['/attributes/job.artboardrange', '/attributes/job.pagerange']) {
-      final AiNativeEntry? range = job?[key];
-      if (range != null && (range.stringBytes == null || range.stringBytes!.isNotEmpty)) {
-        throw UnsupportedError('Artboard structure changes require empty saved print ranges.');
-      }
-    }
-  }
   final Set<String> identities = {};
   for (final AiNativeContainer record in model.records.containers) {
     final AiNativeEntry? entry = record['ArtboardUUID'];
@@ -110,6 +101,8 @@ AiNativeArtboards _writeNativeArtboards(
   required int? lastArtboardId,
   required AiBoundingBox? cropBounds,
   AiNativeArtboardDefinition? definition,
+  AiNativePrintSelection? artboardPrinting,
+  AiNativePrintSelection? pagePrinting,
 }) {
   _nativeArtboardStructureScope(model);
   final List<AiSourceEdit> edits = _nativeArtboardCropEdits(model, cropBounds);
@@ -137,11 +130,21 @@ AiNativeArtboards _writeNativeArtboards(
 
   scalar(model.activeEntry, activeIndex);
   scalar(model.lastIdEntry, lastArtboardId);
+  edits.addAll(_nativeArtboardPrintEdits(model, order: order, changed: edits.isNotEmpty, artboardPrinting: artboardPrinting, pagePrinting: pagePrinting));
   return _applyNativeArtboardEdits(model, edits);
 }
 
 /// Inserts explicit metadata without deriving a creation counter from array size.
-AiNativeArtboards _createNativeArtboard(AiNativeArtboards model, AiNativeArtboardDefinition definition, int index, int? lastArtboardId, AiBoundingBox? cropBounds, bool activate) {
+AiNativeArtboards _createNativeArtboard(
+  AiNativeArtboards model,
+  AiNativeArtboardDefinition definition,
+  int index,
+  int? lastArtboardId,
+  AiBoundingBox? cropBounds,
+  bool activate,
+  AiNativePrintSelection? artboardPrinting,
+  AiNativePrintSelection? pagePrinting,
+) {
   if (index < 0 || index > model.artboards.length) {
     throw RangeError.range(index, 0, model.artboards.length, 'index');
   }
@@ -163,11 +166,20 @@ AiNativeArtboards _createNativeArtboard(AiNativeArtboards model, AiNativeArtboar
     lastArtboardId: lastArtboardId,
     cropBounds: cropBounds,
     definition: definition,
+    artboardPrinting: artboardPrinting,
+    pagePrinting: pagePrinting,
   );
 }
 
 /// Removes complete source entries and explicitly resolves a removed active owner.
-AiNativeArtboards _removeNativeArtboards(AiNativeArtboards model, Iterable<AiNativeArtboard> artboards, AiNativeArtboard? activeArtboard, AiBoundingBox? cropBounds) {
+AiNativeArtboards _removeNativeArtboards(
+  AiNativeArtboards model,
+  Iterable<AiNativeArtboard> artboards,
+  AiNativeArtboard? activeArtboard,
+  AiBoundingBox? cropBounds,
+  AiNativePrintSelection? artboardPrinting,
+  AiNativePrintSelection? pagePrinting,
+) {
   final Set<int> removed = {};
   for (final AiNativeArtboard artboard in artboards) {
     if (!removed.add(_requireNativeArtboard(model, artboard))) {
@@ -186,11 +198,25 @@ AiNativeArtboards _removeNativeArtboards(AiNativeArtboards model, Iterable<AiNat
   if (replacement != null && (current == null || !removed.contains(current) || removed.contains(replacement)) || current != null && removed.contains(current) && replacement == null) {
     throw ArgumentError('Removing the active board requires exactly one explicitly retained replacement.');
   }
-  return _writeNativeArtboards(model, order: order, activeIndex: current == null ? null : order.indexOf(replacement ?? current), lastArtboardId: model.lastArtboardId, cropBounds: cropBounds);
+  return _writeNativeArtboards(
+    model,
+    order: order,
+    activeIndex: current == null ? null : order.indexOf(replacement ?? current),
+    lastArtboardId: model.lastArtboardId,
+    cropBounds: cropBounds,
+    artboardPrinting: artboardPrinting,
+    pagePrinting: pagePrinting,
+  );
 }
 
 /// Validates a full source-owned permutation before changing any native bytes.
-AiNativeArtboards _reorderNativeArtboards(AiNativeArtboards model, List<AiNativeArtboard> artboards, AiBoundingBox? cropBounds) {
+AiNativeArtboards _reorderNativeArtboards(
+  AiNativeArtboards model,
+  List<AiNativeArtboard> artboards,
+  AiBoundingBox? cropBounds,
+  AiNativePrintSelection? artboardPrinting,
+  AiNativePrintSelection? pagePrinting,
+) {
   if (artboards.length != model.artboards.length) {
     throw ArgumentError('Artboard reordering requires every current board exactly once.');
   }
@@ -198,5 +224,13 @@ AiNativeArtboards _reorderNativeArtboards(AiNativeArtboards model, List<AiNative
   if (order.toSet().length != order.length) {
     throw ArgumentError('Artboard reordering cannot repeat a source record.');
   }
-  return _writeNativeArtboards(model, order: order, activeIndex: model.activeIndex == null ? null : order.indexOf(model.activeIndex!), lastArtboardId: model.lastArtboardId, cropBounds: cropBounds);
+  return _writeNativeArtboards(
+    model,
+    order: order,
+    activeIndex: model.activeIndex == null ? null : order.indexOf(model.activeIndex!),
+    lastArtboardId: model.lastArtboardId,
+    cropBounds: cropBounds,
+    artboardPrinting: artboardPrinting,
+    pagePrinting: pagePrinting,
+  );
 }

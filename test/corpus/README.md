@@ -710,6 +710,28 @@ dart run tool/check_native_artboard_lifecycle.dart
 python3 tool/verify_native_artboard_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+## Native print selections
+
+The print-job suite reuses the three CC unit/origin fixtures pinned in
+`artboard_manifest.json` and a checksum-pinned synthetic source containing complete
+CC pairs and shared resources. Each source undergoes five chained transactions:
+explicit print selection, artboard creation, reordering, removal and resizing.
+Physical printed-page counts and selections are supplied independently of native
+artboard counts. The three real sources originally have empty saved ranges;
+these cases validate editing those existing producer fields, not real-file
+examples of nonempty saved selections or Adobe print-dialog interoperability.
+
+The unmodified pinned inkai reader compares complete Document values, native
+artboard identities, active/history state, all flags and independently expected
+ranges. Byte comparisons limit changes to the intended board/coordinate/scalar
+and print operands, retaining field types, unrelated printer settings, artwork,
+resources and all other source data. All twenty transactions must pass.
+
+```sh
+dart run tool/check_native_print_jobs.dart
+python3 tool/verify_native_print_jobs.py --inkai-source /tmp/extension-ai
+```
+
 ## Cached native headers
 
 The header-cache suite reuses the 31 PDFs in `manifest.json` and the five-page
