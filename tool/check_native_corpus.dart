@@ -47,8 +47,20 @@ Future<void> main() async {
         await File('${output.path}/$name.text-renamed.ps').writeAsBytes(renamed.records.program.bytes);
         await File('${output.path}/$name.ate').writeAsBytes(text.engine.bytes);
         await File('${output.path}/$name.renamed.ate').writeAsBytes(renamed.engine.bytes);
+        final AiNativeTextDocument fonts = text
+            .addFont(
+              font: AiNativeFontDefinition(postScriptName: 'FocaleCorpus-Regular', technology: .postScript, version: 'Version 1.000'),
+            )
+            .addFont(
+              font: AiNativeFontDefinition(postScriptName: 'FocaleCorpusVariable_500wght', technology: .trueType, axisCoordinates: [500 * 65536, -10 * 65536]),
+            );
+        if (fonts.referenceIssues.isNotEmpty || fonts.fonts.length != text.fonts.length + 2) {
+          throw StateError('Native font registration changed existing references.');
+        }
+        await File('${output.path}/$name.fonts.ate').writeAsBytes(fonts.engine.bytes);
+        await File('${output.path}/$name.fonts.ps').writeAsBytes(fonts.records.program.bytes);
         for (final AiNativeTextStory story in text.stories) {
-          final AiNativeTextDocument edited = text.replaceText(story: story, start: 0, end: story.text.length < 5 ? story.text.length : 5, text: 'Édité 🖋\r');
+          final AiNativeTextDocument edited = text.replaceText(story: story, start: 0, end: story.text.length < 5 ? story.text.length : 5, text: 'Édité 🖋\u0003suite\r');
           if (edited.referenceIssues.isNotEmpty || edited.stories[story.index].strikes.isNotEmpty) {
             throw StateError('Native content edit retained stale layout or invalid references.');
           }
@@ -66,7 +78,13 @@ Future<void> main() async {
             end: 3,
             changes: AiNativeParagraphChanges(justification: 2, firstLineIndent: -4, spaceAfter: 6, direction: 0, composer: 1, hyphenate: false),
           );
-          for (final (String suffix, AiNativeTextDocument formatted) in [('characters', characters), ('paragraphs', paragraphs)]) {
+          final AiNativeTextDocument forcedBreaks = edited.setParagraphFeatures(
+            story: edited.stories[story.index],
+            start: 10,
+            end: 11,
+            changes: AiNativeParagraphChanges(justification: 2, firstLineIndent: -4, spaceAfter: 6, direction: 0, composer: 1, hyphenate: false),
+          );
+          for (final (String suffix, AiNativeTextDocument formatted) in [('characters', characters), ('paragraphs', paragraphs), ('forced-breaks', forcedBreaks)]) {
             if (formatted.referenceIssues.isNotEmpty || formatted.stories[story.index].strikes.isNotEmpty) {
               throw StateError('Native feature edit retained stale layout or invalid references.');
             }

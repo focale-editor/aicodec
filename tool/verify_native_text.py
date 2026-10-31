@@ -161,10 +161,10 @@ def verify_content_edits(before, name, output, text_parser, stream, inkai, binar
         model = field(story, "0", "Model")
         old_text = field(model, "0", "Text")
         # The pinned source stories are BMP Latin; the replacement exercises
-        # non-BMP UTF-16 lengths and introduces a new paragraph in every story.
+        # non-BMP UTF-16 lengths, a forced break and a paragraph in every story.
         assert all(ord(character) <= 0xFFFF for character in old_text)
         end = min(5, len(old_text) - 1)
-        replacement = "Édité 🖋\r"
+        replacement = "Édité 🖋\x03suite\r"
         inserted = len(replacement.encode("utf-16-le")) // 2
         new_text = replacement + old_text[end:]
         model[key(model, "0", "Text")] = new_text
@@ -178,7 +178,7 @@ def verify_content_edits(before, name, output, text_parser, stream, inkai, binar
             assert len(owners) == len(old_text)
             owners = [owners[0]] * inserted + owners[end:]
             if named == "ParagraphRun":
-                lengths = [len(paragraph.encode("utf-16-le")) // 2 + 1 for paragraph in new_text[:-1].split("\r")]
+                lengths = [len(span.encode("utf-16-le")) // 2 + 1 for span in new_text[:-1].replace("\x03", "\r").split("\r")]
                 offsets = [0] + list(itertools.accumulate(lengths))[:-1]
                 groups = [(owners[offset], count) for offset, count in zip(offsets, lengths)]
             else:
@@ -206,6 +206,8 @@ def identifiers(value):
     """Collect source identities without interpreting unrelated native fields."""
     if isinstance(value, dict):
         identifier = value.get('/97', value.get('/UUID'))
+        if isinstance(identifier, bytes):
+            identifier = identifier.decode('ascii', errors='replace')
         if isinstance(identifier, str):
             yield identifier
         for child in value.values():
@@ -218,16 +220,18 @@ def identifiers(value):
 def verify_feature_edits(before, name, output, text_parser, stream, inkai, binary_type):
     """Compare changed properties and per-character ownership against source data."""
     stories = field(field(before, "1", "DocumentObjects"), "1", "TextObjects") or []
-    reserved = set(identifiers(before))
     for index, source in enumerate(stories):
-        for character, suffix in [(True, "characters"), (False, "paragraphs")]:
+        for character, suffix in [(True, "characters"), (False, "paragraphs"), (False, "forced-breaks")]:
             payload = (output / f"{name}.story-{index}.{suffix}.ate").read_bytes()
             actual = text_parser.read_object(stream(io.BytesIO(payload)))
-            expected = copy.deepcopy(before)
+            base = before if suffix != "forced-breaks" else text_parser.read_object(stream(io.BytesIO((output / f"{name}.story-{index}.edited.ate").read_bytes())))
+            reserved = set(identifiers(base))
+            expected = copy.deepcopy(base)
             story = field(field(expected, "1", "DocumentObjects"), "1", "TextObjects")[index]
             model = field(story, "0", "Model")
             text = field(model, "0", "Text")
-            assert all(ord(letter) <= 0xFFFF for letter in text)
+            encoded = text.encode('utf-16-le')
+            units = [int.from_bytes(encoded[position:position + 2], 'little') for position in range(0, len(encoded), 2)]
             named = '/Text' in model
             def spelling(compact, name):
                 return f"/{name if named else compact}"
@@ -237,13 +241,14 @@ def verify_feature_edits(before, name, output, text_parser, stream, inkai, binar
             if table is None:
                 table = {spelling("0", "RunArray"): [{
                     spelling("0", "RunData"): {spelling("0", selection_name): {}},
-                    spelling("1", "Length"): len(text),
+                    spelling("1", "Length"): len(units),
                 }]}
                 model[spelling(compact, table_name)] = table
             runs = field(table, "0", "RunArray")
             owners = [owner for owner, run in enumerate(runs) for _ in range(field(run, "1", "Length"))]
-            assert len(owners) == len(text)
-            start, end = (1, min(4, len(text))) if character else (text.rfind('\r', 0, 2) + 1, text.index('\r', 2) + 1)
+            assert len(owners) == len(units)
+            caret = 10 if suffix == "forced-breaks" else 2
+            start, end = (1, min(4, len(units))) if character else (max([0] + [position + 1 for position in range(caret) if units[position] == 13]), units.index(13, caret) + 1)
             attributes = [("1", "FontSize", 24), ("89", "RefFontSize", 24), ("8", "Tracking", 35),
                           ("4", "AutoLeading", False), ("5", "Leading", 29), ("18", "Ligatures", False)] if character else [
                 ("0", "Justification", 2), ("1", "FirstLineIndent", -4), ("5", "SpaceAfter", 6),
@@ -254,8 +259,9 @@ def verify_feature_edits(before, name, output, text_parser, stream, inkai, binar
             actual_runs = field(actual_table, "0", "RunArray")
             rewritten = []
             assigned = {}
-            labels = [(owner, start <= position < end) for position, owner in enumerate(owners)]
-            for output_index, ((owner, selected), positions) in enumerate(itertools.groupby(labels)):
+            spans = list(itertools.accumulate([0] + [unit in (3, 13) for unit in units[:-1]]))
+            labels = [(owner, start <= position < end, spans[position] if not character and start <= position < end else None) for position, owner in enumerate(owners)]
+            for output_index, ((owner, selected, _), positions) in enumerate(itertools.groupby(labels)):
                 run = copy.deepcopy(runs[owner])
                 run[key(run, "1", "Length")] = len(list(positions))
                 if selected:
@@ -290,7 +296,7 @@ def verify_feature_edits(before, name, output, text_parser, stream, inkai, binar
             section = parsed.setup.first_subsection_of_type(b"%AI11_BeginTextDocument")
             decoded = next(child.Data for child in section.children if isinstance(child, binary_type))
             assert decoded == payload, f"Formatted story ASCII85 mismatch: {name} / {index}"
-    return len(stories) * 2
+    return len(stories) * 3
 
 
 def composition_events(story, authored=False):
@@ -336,6 +342,52 @@ def composition_events(story, authored=False):
     for root in field(view, '2', 'Strikes') or []:
         walk(root, 0, 0)
     return events
+
+
+def verify_fonts(before, name, output, text_parser, stream, inkai, binary_type):
+    """Check appended identities and references without using AiKit projections."""
+    payload = (output / f'{name}.fonts.ate').read_bytes()
+    actual = text_parser.read_object(stream(io.BytesIO(payload)))
+    expected = copy.deepcopy(before)
+    named = '/DocumentResources' in before
+    def spelling(compact, name):
+        return f'/{name if named else compact}'
+    document_resources = field(expected, '0', 'DocumentResources')
+    table = field(document_resources, '1', 'FontSet')
+    if table is None:
+        table = {}
+        document_resources[spelling('1', 'FontSet')] = table
+    entries = field(table, '0', 'Resources')
+    if entries is None:
+        entries = []
+        table[spelling('0', 'Resources')] = entries
+    actual_fonts = resources(actual, '1', 'FontSet')
+    assert len(actual_fonts) == len(entries) + 2
+    reserved = set(identifiers(before))
+    for technology, font_name, version, axes in [(0, 'FocaleCorpus-Regular', 'Version 1.000', []), (1, 'FocaleCorpusVariable_500wght', None, [500 * 65536, -10 * 65536])]:
+        index = len(entries)
+        identity = field(actual_fonts[index], '97', 'UUID')
+        assert isinstance(identity, bytes), 'New font UUIDs must use the observed ASCII spelling'
+        identity_text = identity.decode('ascii')
+        assert uuid.UUID(identity_text).version == 4 and identity_text not in reserved
+        reserved.add(identity_text)
+        identifier = {spelling('0', 'Name'): font_name, spelling('2', 'Type'): technology}
+        if version is not None:
+            identifier[spelling('5', 'VersionString')] = version
+        if axes:
+            identifier[spelling('4', 'MMAxis')] = axes
+        entries.append({spelling('0', 'Resource'): {
+            spelling('99', 'StreamTag'): '/CoolTypeFont', spelling('97', 'UUID'): identity,
+            spelling('0', 'Identifier'): identifier,
+        }})
+        display = field(table, '1', 'DisplayList')
+        if display is not None:
+            display.append({spelling('0', 'Resource'): index})
+    assert actual == expected, f'Font registration modified other data: {name}'
+    parsed = inkai.parse(str(output / f'{name}.fonts.ps'))
+    section = parsed.setup.first_subsection_of_type(b'%AI11_BeginTextDocument')
+    assert next(child.Data for child in section.children if isinstance(child, binary_type)) == payload
+    return 2
 
 
 def close_positions(first, second):
@@ -425,22 +477,25 @@ def main():
                 assert sum(run["/1"] for run in model[key]["/0"]) == 76
         edits = verify_content_edits(before, name, args.output, text_parser, stream, inkai, binary_type)
         feature_edits = verify_feature_edits(before, name, args.output, text_parser, stream, inkai, binary_type)
+        font_additions = verify_fonts(before, name, args.output, text_parser, stream, inkai, binary_type)
         compositions, hyphens = verify_compositions(before, name, args.output, text_parser, stream, inkai, binary_type)
         assert compositions == entry['composedStories']
         assert entry['rejectedPathLayouts'] == len(stories) - compositions
-        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "compositions": compositions, "automaticHyphens": hyphens, "status": "passed"})
+        results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "fontAdditions": font_additions, "compositions": compositions, "automaticHyphens": hyphens, "status": "passed"})
     assert len(results) == 32, "The required text-document corpus was not fully exercised"
     content_edits = sum(result["contentEdits"] for result in results)
     assert content_edits == 20, "The required native stories were not all edited"
     feature_edits = sum(result["featureEdits"] for result in results)
-    assert feature_edits == 40, "The required native stories were not all formatted"
+    assert feature_edits == 60, "The required native stories and forced-break spans were not all formatted"
+    font_additions = sum(result['fontAdditions'] for result in results)
+    assert font_additions == 64, 'The required native font registrations were not all exercised'
     compositions = sum(result['compositions'] for result in results)
     assert compositions == 17, "The required point/area stories were not all composed"
     hyphens_by_fixture = {result['file']: result['automaticHyphens'] for result in results if result['automaticHyphens']}
     assert hyphens_by_fixture == {'flowtext.ai': 1, 'text_transforms.ai': 13}, f"Unexpected automatic hyphen mappings: {hyphens_by_fixture}"
     report = {"referenceRevision": revision, "python": sys.version.split()[0], "fixtures": results}
     (args.output / "native-text-report.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(f"Native text: {len(results)} style rewrites, {content_edits} content edits, {feature_edits} feature edits and {compositions} compositions independently passed")
+    print(f"Native text: {len(results)} style rewrites, {content_edits} content edits, {feature_edits} feature edits, {font_additions} font additions and {compositions} compositions independently passed")
 
 
 if __name__ == "__main__":

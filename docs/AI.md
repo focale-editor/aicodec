@@ -119,11 +119,12 @@ Style naming does not change artwork.
 `replaceText(story:, start:, end:, text:)` edits the native model for subsequent
 recomposition. Offsets address UTF-16 code units in `story.text`, excluding its
 mandatory terminal CR. New characters inherit the character style at the start
-offset, including its inline overrides. Each resulting paragraph has its own
-run and inherits the style at its first character; inserted CRs split paragraphs,
-while deleting a CR joins them. Missing character tables remain inherited. An
+offset, including its inline overrides. Native paragraph runs end at both CR
+and U+0003 forced breaks, and inherit the style at their first character. A forced
+break stays inside the logical paragraph; deleting either break joins its native
+spans. Missing character tables remain inherited. An
 omitted paragraph table is materialized from the normal paragraph resource when
-multiple paragraphs require separate runs. Source run metadata and unknown style
+multiple native spans require separate runs. Source run metadata and unknown style
 features survive. Empty CS auxiliary tables are resized; active auxiliary features
 and unknown model/view keys reject the edit. LF input, malformed UTF-16, split
 surrogate pairs and removal of the terminal CR are rejected. String and run
@@ -140,6 +141,18 @@ External PROOF experiments report model-driven recomposition in Illustrator
 29.2.1, including with absent/incorrect caches; that is a format observation,
 not an Adobe reopening qualification of AiKit's own output.
 
+`addFont(font: AiNativeFontDefinition(...))` appends a CoolType resource and returns
+an immutable snapshot whose `fonts.last` is the newly registered face. The host
+supplies its actual PostScript name, PostScript/CFF or TrueType technology,
+optional version string and signed 16.16 variation coordinates in the font's axis
+order. No font program is loaded, installed or embedded by this operation.
+Existing indices, styles, stories and caches remain unchanged. An existing font
+display list receives the new index; an absent list stays absent. Font-set
+metadata is retained, malformed display references reject the write, and engine
+string/node limits still apply. Every addition receives a fresh ASCII UUID;
+identical names are not merged because font versions and variable instances can
+differ. Use the returned font and story with `setCharacterFeatures` to select it.
+
 `setCharacterFeatures` applies `AiNativeCharacterChanges` to a UTF-16 selection,
 including its paragraph marks if selected. It supports a source-owned font,
 point size, leading, horizontal/vertical scale, tracking, baseline displacement,
@@ -154,7 +167,9 @@ Active alternate-glyph overrides reject a font change.
 
 `setParagraphFeatures` applies `AiNativeParagraphChanges` to complete paragraphs
 touched by the selection. Its end is exclusive; an empty selection selects the
-caret paragraph. Each affected paragraph gets its own run. Alignment, indents,
+caret paragraph. Selection expands to CR boundaries and therefore includes all
+forced-break spans in the same logical paragraph. Authored native runs remain
+split at each CR or U+0003. Alignment, indents,
 paragraph spacing, automatic-leading factor, hyphenation, every-line composition,
 direction and composer can be changed independently. `inherit` in either change
 model removes local overrides and exposes the existing parent/default values;
@@ -167,7 +182,7 @@ UUIDs receive fresh version-four identities; unchanged fragments retain theirs,
 and collisions against the source engine are checked. Applying already-present
 local values preserves the original snapshot, layout bytes and UUIDs. Invalid
 values, foreign/stale fonts/stories, surrogate boundaries, unknown model/view
-fields and paragraph-style boundaries inside a paragraph reject the operation.
+fields and paragraph-style boundaries inside a native span reject the operation.
 Host recomposition and PDF synchronization are still mandatory for visual saves.
 
 `withTextLayout` accepts immutable `AiNativeTextFrameLayout`,
@@ -392,14 +407,29 @@ transformed-text fixture contains ten stories, sixteen frames, twenty-four
 effective style ranges, 387 layout nodes and 4,003 cached glyph IDs. Four stories
 omit explicit character runs and inherit their style. Named CS point text and
 its compact successors resolve the same font and point size. Twenty separate
-content edits insert non-BMP characters and a paragraph across all native stories;
-the independent checker reconstructs run ownership per UTF-16 unit and compares
+content edits insert non-BMP characters, a forced break and a paragraph across
+all native stories; the independent checker reconstructs run ownership per UTF-16 unit and compares
 the entire engine tree, including untouched stories and removed caches. These
 edited native programs are not combined with their original PDF previews.
-Forty additional native edits change character and paragraph features separately;
+Sixty additional native edits change character and paragraph features separately,
+including twenty paragraph edits across newly inserted forced-break spans;
 the independent checker verifies complete trees, UTF-16 selection coverage,
 inherited run ownership, both size fields and fresh inline UUIDs. Neither the
 original resources nor unselected feature values may change.
+Sixty-four synthetic font registrations across the 32 engine documents check
+PostScript/TrueType identifiers, version and signed variation fields, fresh UUIDs
+and display-list updates. The independent decoder requires exact semantic
+preservation outside the appended entries. These identities do not claim the
+existence of installed font programs or newly rendered glyphs.
+A separate Linux integration probe used TextShaperLib revision
+`b8918526633258a626dec08e6fc591712509fc04` and its original `curves.otf` fixture.
+It registered `FocaleOutlineFixture`, assigned it at 32 points, replaced the
+story with `fi O`, and shaped three glyphs at UTF-16 clusters 0, 2 and 3.
+AiKit retained the resulting source-segment positions 0, 9.6 and 32 points,
+plus the final CR at 54.4 points. The independent ATE reader verified the
+registered font, selected style, source ranges and positions. This exercised
+host composition without adding a native engine dependency to AiKit; it did not
+write GlyphStrike caches or a PDF appearance.
 Seventeen point/area stories also have their frame/line/segment positions
 reauthored through the composition API. The independent reader compares absolute
 origins (allowing only 1e-8 point floating-point regrouping), source ranges, bounds,
@@ -422,7 +452,7 @@ native reopening and complete editing compatibility remain unverified.
 | CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
 | Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
 | Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
-| Native ATE text | Stories, UTF-16 runs, resources, style/content/feature edits and host-composed point/area source-position records | Shaping, glyph-cache generation, path composition, advanced typography and synchronized text-content saves |
+| Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans and host-composed point/area source-position records | Shaping, glyph-cache generation, path composition, advanced typography and synchronized text-content saves |
 | Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate five CC shape families with solid/gradient appearances; create AI7 paths | Resize/rotate/regenerate live shapes and synchronize remaining positional paints/effects |
 | Gradients | Inspect native paint commands and instances; translate vectors/printing matrices; isolate shared positional styles | Edit stops/ramps, full appearance semantics and meshes |
 | Groups and paint | Create AI7 groups, solid process fills and strokes | Complete import into typed scene nodes |

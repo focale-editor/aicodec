@@ -101,6 +101,12 @@ saving a synchronized document. This API does not provide a shaping engine.
 `setCharacterFeatures` and `setParagraphFeatures` update local typography with
 typed change objects, preserve inherited styles and support returning individual
 features to inheritance. Their changed stories also require recomposition.
+Native paragraph spans retain both CR and U+0003 boundaries; paragraph feature
+selections still cover the whole logical paragraph across forced line breaks.
+`addFont` registers a host-supplied PostScript identity, technology, version and
+optional variation coordinates without changing existing font indices. Assign
+the returned snapshot's `fonts.last` with `setCharacterFeatures`; matching font
+programs and their embedding remain host responsibilities.
 `withTextLayout` writes point/area frame, line and segment positions supplied by
 the host, including explicit overflow and compact automatic-hyphen maps. It
 validates UTF-16 coverage and resource ownership; it does not generate glyph

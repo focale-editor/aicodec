@@ -9,6 +9,7 @@ part 'ai_native_text_edit.dart';
 part 'ai_native_text_feature_edit.dart';
 part 'ai_native_text_changes.dart';
 part 'ai_native_text_composition.dart';
+part 'ai_native_text_fonts.dart';
 
 /// The resource table supplying an Illustrator text style.
 enum AiNativeTextStyleKind {
@@ -35,6 +36,20 @@ final class AiNativeTextFont {
 
   /// Embedded version string, without implying that the font is installed.
   String? get version => _text(_at(record, [('0', 'Identifier'), ('5', 'VersionString')]));
+
+  /// Recognized native font technology, or null when omitted or unknown.
+  AiNativeFontTechnology? get technology => switch (_optionalIndex(_at(record, [('0', 'Identifier'), ('2', 'Type')]))) {
+    0 => .postScript,
+    1 => .trueType,
+    _ => null,
+  };
+
+  /// Signed 16.16 variation coordinates in the font's own axis order.
+  ///
+  /// An empty list means no coordinates were stored; it does not infer defaults.
+  List<int> get axisCoordinates => List.unmodifiable([
+    for (final PsEngineValue value in _array(_at(record, [('0', 'Identifier'), ('4', 'MMAxis')]))) _fontAxisCoordinate(value),
+  ]);
 }
 
 /// A named native character or paragraph style, preserving unknown features.

@@ -29,14 +29,19 @@ editable. Adobe Illustrator reopening remains a separate acceptance check.
   bounded parent-style resolution and paragraph character defaults. Typed cached
   layout nodes and glyph IDs, frame matrices and paths. The expanded corpus has
   37 files, including transformed, linked-area, path and point text.
-- Native UTF-16 content replacement with style inheritance, paragraph splitting,
+- Native UTF-16 content replacement with style inheritance, CR/forced-break span splitting,
   explicit cache invalidation, bounded expansion and rejection of unresolved
   auxiliary features. Twenty story edits checked by an independent decoder;
   composing the new display and PDF remains host work.
 - Native character/paragraph overrides, selected-run splitting, inherited-feature
   restoration, paired point-size fields and separate inline style identities.
-  Forty formatting edits compared independently across the twenty stories;
+  Sixty formatting edits compared independently across the twenty stories,
+  including whole-paragraph selections spanning forced line breaks;
   typography settings are authored, not implemented as a new compositor.
+- Native font registration with stable existing indices, fresh identities,
+  PostScript/TrueType metadata, signed variation coordinates and display lists.
+  Sixty-four additions checked independently; font loading and embedding remain
+  host responsibilities.
 - Host-composed point/area frame, line and segment position writing, with source
   coverage, linked-frame ownership, explicit overflow, compact reordered ranges
   and automatic-hyphen maps. Seventeen layouts and fourteen hyphens checked

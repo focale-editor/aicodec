@@ -54,7 +54,9 @@ extension AiNativeTextFeatureEditing on AiNativeTextDocument {
   /// The end is exclusive; a selection ending at a paragraph's first character
   /// does not include that paragraph. An empty selection edits the paragraph at
   /// the caret, including an empty paragraph. Each touched paragraph receives its
-  /// own native run. Direction and composer remain independent. Other stories,
+  /// own native runs, split at CR and U+0003 as Illustrator stores them. Forced
+  /// breaks remain inside the same logical paragraph for selection purposes.
+  /// Direction and composer remain independent. Other stories,
   /// unknown style features and character runs are retained; this story's caches
   /// are invalidated for host recomposition and printable/PDF synchronization.
   AiNativeTextDocument setParagraphFeatures({required AiNativeTextStory story, required int start, required int end, required AiNativeParagraphChanges changes}) {
@@ -107,13 +109,13 @@ extension AiNativeTextFeatureEditing on AiNativeTextDocument {
         ? [_TextEditRun(record: _inheritedTextRun(kind, named, story.modelText.length), length: story.modelText.length)]
         : [for (final AiNativeTextRun run in source) _TextEditRun(record: run.record, length: run.length)];
     final _TextEditBudget budget = _TextEditBudget(remaining: engine.limits.maxNodes);
-    final _TextStyleIdentifiers identifiers = _TextStyleIdentifiers(engine: engine);
+    final _TextIdentifiers identifiers = _TextIdentifiers(engine: engine);
     final List<_TextEditRun> output = [];
     int offset = 0;
     bool changed = false;
     for (final _TextEditRun run in runs) {
       final int limit = offset + run.length;
-      if (kind == .paragraph && limit < story.modelText.length && story.modelText.codeUnitAt(limit - 1) != 13) {
+      if (kind == .paragraph && limit < story.modelText.length && !_paragraphRunBreak(story.modelText.codeUnitAt(limit - 1))) {
         throw const FormatException('Illustrator paragraph style boundary lies inside a paragraph.');
       }
       if (limit <= start || offset >= end) {
@@ -127,7 +129,7 @@ extension AiNativeTextFeatureEditing on AiNativeTextDocument {
         if (kind == .paragraph) {
           int paragraph = first;
           while (paragraph < last) {
-            final int paragraphEnd = story.modelText.indexOf('\r', paragraph) + 1;
+            final int paragraphEnd = _paragraphRunEnd(story.modelText, paragraph);
             budget.take();
             output.add(_TextEditRun(record: edited, length: paragraphEnd - paragraph));
             paragraph = paragraphEnd;
@@ -172,7 +174,7 @@ String _featureKey(PsEngineDictionary record, String compact, String name, bool 
 }
 
 /// Patches only local features, wrapping resource selections in a parent link.
-PsEngineDictionary _patchTextRun(PsEngineDictionary record, AiNativeTextStyleKind kind, bool named, Map<(String, String), PsEngineValue?> patch, _TextStyleIdentifiers identifiers) {
+PsEngineDictionary _patchTextRun(PsEngineDictionary record, AiNativeTextStyleKind kind, bool named, Map<(String, String), PsEngineValue?> patch, _TextIdentifiers identifiers) {
   final PsEngineDictionary data = _dictionary(_field(record, '0', 'RunData'));
   final String selectionName = kind == .character ? 'StyleSheet' : 'ParagraphSheet';
   final PsEngineValue selection = _field(data, '0', selectionName)!;
@@ -216,9 +218,9 @@ PsEngineDictionary _patchTextRun(PsEngineDictionary record, AiNativeTextStyleKin
   );
 }
 
-/// Allocates fresh inline-style identities without colliding with source UUIDs.
-final class _TextStyleIdentifiers {
-  /// Source inspected only if a changed style actually needs a new identifier.
+/// Allocates fresh native text identities without colliding with source UUIDs.
+final class _TextIdentifiers {
+  /// Source inspected only if an edit actually needs a new identifier.
   final PsEngineDocument _engine;
 
   /// Identifiers already present in the source or allocated during this edit.
@@ -232,9 +234,9 @@ final class _TextStyleIdentifiers {
   late final Random _random = Random();
 
   /// Reserves known identifiers throughout the bounded engine snapshot.
-  _TextStyleIdentifiers({required this._engine});
+  _TextIdentifiers({required this._engine});
 
-  /// Authors a UUID without reusing a source style's identity for new features.
+  /// Authors a UUID without reusing an existing native resource's identity.
   String next() {
     for (int attempt = 0; attempt < 16; attempt++) {
       final List<int> bytes = List.generate(16, (_) => _random.nextInt(256));
@@ -246,7 +248,7 @@ final class _TextStyleIdentifiers {
         return identifier;
       }
     }
-    throw StateError('Could not allocate a distinct Illustrator style identifier.');
+    throw StateError('Could not allocate a distinct Illustrator text identifier.');
   }
 }
 

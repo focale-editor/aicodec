@@ -6,9 +6,11 @@ extension AiNativeTextEditing on AiNativeTextDocument {
   ///
   /// Offsets address [AiNativeTextStory.text], excluding its mandatory final
   /// paragraph mark. Inserted characters inherit the character style at [start].
-  /// Each resulting paragraph inherits the style of its first character. Use
+  /// Each native paragraph span inherits the style of its first character. Use
   /// carriage returns for paragraphs and U+0003 for forced line breaks; line
   /// feeds and malformed UTF-16 are rejected rather than normalized silently.
+  /// Native paragraph spans end at either kind of break, even though a forced
+  /// break does not start a new logical paragraph for feature selections.
   ///
   /// Frames, resources, unknown style features and other stories are retained.
   /// Glyph strikes and rendered-data caches are removed, so the host must
@@ -39,7 +41,7 @@ extension AiNativeTextEditing on AiNativeTextDocument {
     final String content = story.modelText.replaceRange(start, end, text);
     final _TextEditBudget budget = _TextEditBudget(remaining: engine.limits.maxNodes);
     final Map<String, PsEngineValue> changed = {...model.values, _textKey(model, '0', 'Text'): PsEngineString.fromText(text: content)};
-    if (story.paragraphRuns.isEmpty && content.indexOf('\r') != content.length - 1) {
+    if (story.paragraphRuns.isEmpty && _paragraphRunEnd(content, 0) != content.length) {
       final int? normal = normalParagraphStyleIndex;
       if (normal == null || normal >= paragraphStyles.length) {
         throw UnsupportedError('Multiline Illustrator text requires a resolvable normal paragraph style.');
@@ -190,7 +192,20 @@ void _appendTextRun(List<_TextEditRun> output, PsEngineDictionary record, int le
   output.add(_TextEditRun(record: record, length: previous + length));
 }
 
-/// Produces one run per paragraph using the style at its first code unit.
+/// Finds the end of a native span, including its CR or forced line break.
+int _paragraphRunEnd(String text, int start) {
+  for (int index = start; index < text.length; index++) {
+    if (_paragraphRunBreak(text.codeUnitAt(index))) {
+      return index + 1;
+    }
+  }
+  throw const FormatException('Missing Illustrator paragraph span terminator.');
+}
+
+/// Recognizes native paragraph-run boundaries without conflating both breaks.
+bool _paragraphRunBreak(int unit) => unit == 13 || unit == 3;
+
+/// Produces one native run per CR/forced break using its first code unit's style.
 List<_TextEditRun> _paragraphTextRuns(List<_TextEditRun> runs, String text, _TextEditBudget budget) {
   final List<_TextEditRun> output = [];
   int runIndex = 0;
@@ -200,7 +215,7 @@ List<_TextEditRun> _paragraphTextRuns(List<_TextEditRun> runs, String text, _Tex
     while (runEnd <= start) {
       runEnd += runs[++runIndex].length;
     }
-    final int end = text.indexOf('\r', start) + 1;
+    final int end = _paragraphRunEnd(text, start);
     budget.take();
     output.add(_TextEditRun(record: runs[runIndex].record, length: end - start));
     start = end;

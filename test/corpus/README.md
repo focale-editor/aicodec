@@ -58,13 +58,19 @@ The native checker also decodes 32 ATE payloads and renames their first characte
 style when present. The expanded fixtures include point text across CS–CC and
 ten stories of transformed, linked-area and path text in `text_transforms.ai`.
 Each of the twenty stories also receives a separate content edit, introducing
-non-BMP text and a paragraph. The oracle checks every run's UTF-16 ownership,
-cache removal and complete preservation outside the edited model/view. Edited
+non-BMP text, a forced break and a paragraph. The oracle checks every run's UTF-16
+ownership, cache removal and complete preservation outside the edited model/view. Edited
 programs are deliberately not paired with the original PDF appearance.
-Forty additional outputs change character and paragraph features separately.
+Sixty additional outputs change character and paragraph features separately,
+including twenty paragraph edits spanning the inserted forced breaks.
 Their complete native trees, UTF-16 coverage, size/reference fields and fresh
 inline style identifiers are checked independently; source resources and
 unselected features must remain intact. These checks do not render new text.
+Each of the 32 engine documents also receives two synthetic font identities:
+PostScript and variable TrueType. The oracle checks all 64 resource additions,
+their fresh ASCII UUIDs, versions, signed axis coordinates and display-list
+updates, while requiring existing resources and stories to remain unchanged.
+These metadata fixtures do not install fonts or claim glyph-rendering acceptance.
 Seventeen point/area stories also receive reauthored source-position layouts.
 The oracle compares frame/line/segment origins, character coverage, bounds,
 selection metrics and fourteen automatic hyphens, while requiring other model

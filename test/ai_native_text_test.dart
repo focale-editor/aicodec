@@ -216,6 +216,94 @@ void main() {
   });
 
   for (final bool named in [false, true]) {
+    test('appends and assigns a ${named ? 'named' : 'compact'} font without changing existing resources', () {
+      final AiNativeTextDocument source = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
+      final List<int> axes = [400 * 65536, -12 * 65536];
+      final AiNativeFontDefinition definition = AiNativeFontDefinition(postScriptName: 'ExampleVariable_400wght', technology: .trueType, version: 'Version 2.000', axisCoordinates: axes);
+      axes[0] = 0;
+      final AiNativeTextDocument added = source.addFont(font: definition);
+      check(added.fonts.length).equals(source.fonts.length + 1);
+      final AiNativeTextFont font = added.fonts.last;
+      check(font.postScriptName).equals('ExampleVariable_400wght');
+      check(font.technology).equals(AiNativeFontTechnology.trueType);
+      check(font.version).equals('Version 2.000');
+      check(font.axisCoordinates).deepEquals([400 * 65536, -12 * 65536]);
+      check(font.axisCoordinates.clear).throws<UnsupportedError>();
+      check(definition.axisCoordinates.clear).throws<UnsupportedError>();
+      check(PsEngineCodec.encode(value: added.fonts.first.record)).deepEquals(PsEngineCodec.encode(value: source.fonts.first.record));
+      final PsEngineValue oldObjects = (source.engine.root as PsEngineDictionary)[named ? 'DocumentObjects' : '1']!;
+      final PsEngineValue newObjects = (added.engine.root as PsEngineDictionary)[named ? 'DocumentObjects' : '1']!;
+      check(source.engine.bytes.sublist(oldObjects.start!, oldObjects.end)).deepEquals(added.engine.bytes.sublist(newObjects.start!, newObjects.end));
+      final AiNativeTextDocument assigned = added.setCharacterFeatures(
+        story: added.stories.single,
+        start: 0,
+        end: 1,
+        changes: AiNativeCharacterChanges(font: font),
+      );
+      check(assigned.characterStyleAt(story: assigned.stories.single, offset: 0).font!.postScriptName).equals(font.postScriptName);
+      check(assigned.characterStyleAt(story: assigned.stories.single, offset: 1).font!.index).equals(0);
+      check(assigned.stories.single.strikes).isEmpty();
+      check(assigned.referenceIssues).isEmpty();
+      check(
+        () => source.setCharacterFeatures(
+          story: source.stories.single,
+          start: 0,
+          end: 1,
+          changes: AiNativeCharacterChanges(font: font),
+        ),
+      ).throws<ArgumentError>();
+      final AiNativeTextDocument duplicate = added.addFont(font: definition);
+      check(duplicate.fonts.length).equals(3);
+      check((duplicate.fonts.last.record[named ? 'UUID' : '97']! as PsEngineString).text()).not((it) => it.equals((font.record[named ? 'UUID' : '97']! as PsEngineString).text()));
+    });
+
+    test('retains ${named ? 'named' : 'compact'} forced-break spans during paragraph edits', () {
+      final AiNativeTextDocument source = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
+      final AiNativeTextDocument edited = source.replaceText(story: source.stories.single, start: 0, end: 2, text: 'A\u0003B\rC\u0003D');
+      check(edited.stories.single.modelText).equals('A\u0003B\rC\u0003D\r');
+      check(edited.stories.single.paragraphRuns.map((run) => run.length)).deepEquals([2, 2, 2, 2]);
+      final AiNativeTextDocument formatted = edited.setParagraphFeatures(
+        story: edited.stories.single,
+        start: 2,
+        end: 4,
+        changes: AiNativeParagraphChanges(justification: 1),
+      );
+      check(formatted.stories.single.paragraphRuns.map((run) => run.length)).deepEquals([2, 2, 2, 2]);
+      check([
+        for (final int offset in [0, 2, 4, 6]) formatted.paragraphStyleAt(story: formatted.stories.single, offset: offset).justification,
+      ]).deepEquals([1, 1, 2, 2]);
+      final AiNativeTextDocument caret = formatted.setParagraphFeatures(
+        story: formatted.stories.single,
+        start: 4,
+        end: 4,
+        changes: AiNativeParagraphChanges(justification: 0),
+      );
+      check([
+        for (final int offset in [0, 2, 4, 6]) caret.paragraphStyleAt(story: caret.stories.single, offset: offset).justification,
+      ]).deepEquals([1, 1, 0, 0]);
+      check(caret.referenceIssues).isEmpty();
+      check(caret.stories.single.strikes).isEmpty();
+      check(
+        identical(caret, caret.setParagraphFeatures(story: caret.stories.single, start: 2, end: 3, changes: AiNativeParagraphChanges(justification: 1))),
+      ).isTrue();
+    });
+
+    test('materializes ${named ? 'named' : 'compact'} inherited spans for consecutive forced breaks', () {
+      final AiNativeTextDocument original = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
+      final PsEngineDictionary model = original.stories.single.record[named ? 'Model' : '0']! as PsEngineDictionary;
+      final PsEngineDocument inherited = original.engine.replaceValues(
+        replacements: {
+          model: PsEngineDictionary(values: {...model.values}..remove(named ? 'ParagraphRun' : '5')),
+        },
+      );
+      final AiNativeTextDocument source = AiNativeTextDocument.decode(records: _records(inherited.bytes));
+      final AiNativeTextDocument edited = source.replaceText(story: source.stories.single, start: 0, end: 2, text: 'A\u0003\u0003B');
+      check(edited.stories.single.modelText).equals('A\u0003\u0003B\r');
+      check(edited.stories.single.paragraphRuns.map((run) => run.length)).deepEquals([2, 1, 2]);
+      check(edited.stories.single.paragraphRuns.map((run) => run.styleIndex)).deepEquals([0, 0, 0]);
+      check(edited.referenceIssues).isEmpty();
+    });
+
     test('writes ${named ? 'named CS' : 'compact CC'} composed lines without altering the source model', () {
       final AiNativeTextDocument initial = AiNativeTextDocument.decode(records: _records(_styleEngine(named: named)));
       final AiNativeTextDocument document = initial.replaceText(story: initial.stories.single, start: 0, end: 2, text: 'A🖋\rB\u0003C');
@@ -424,6 +512,109 @@ void main() {
       overflowStart: 0,
     );
     check(hidden.stories.single.strikes.single.descendants.where((node) => node.kind == .segment)).isEmpty();
+  });
+
+  test('inherits forced-break span styles through insertion and deletion', () {
+    final AiNativeTextDocument source = _editDocument(text: 'A\u0003B\rC\r', lengths: [2, 2, 2]);
+    final AiNativeTextDocument joined = source.replaceText(story: source.stories.single, start: 1, end: 2, text: '');
+    check(joined.stories.single.modelText).equals('AB\rC\r');
+    check(joined.stories.single.paragraphRuns.map((run) => run.length)).deepEquals([3, 2]);
+    check(joined.stories.single.paragraphRuns.map((run) => (run.record['Marker']! as PsEngineNumber).value)).deepEquals([0, 2]);
+    final AiNativeTextDocument inserted = source.replaceText(story: source.stories.single, start: 2, end: 2, text: 'X\u0003');
+    check(inserted.stories.single.modelText).equals('A\u0003X\u0003B\rC\r');
+    check(inserted.stories.single.paragraphRuns.map((run) => run.length)).deepEquals([2, 2, 2, 2]);
+    check(inserted.stories.single.paragraphRuns.map((run) => (run.record['Marker']! as PsEngineNumber).value)).deepEquals([0, 1, 1, 2]);
+  });
+
+  test('appends font display references and preserves unknown font-set metadata', () {
+    final AiNativeTextDocument original = AiNativeTextDocument.decode(records: _records(_styleEngine(named: false)));
+    final PsEngineDictionary resources = (original.engine.root as PsEngineDictionary)['0']! as PsEngineDictionary;
+    final PsEngineDictionary fonts = resources['1']! as PsEngineDictionary;
+    final PsEngineDocument engine = original.engine.replaceValues(
+      replacements: {
+        fonts: PsEngineDictionary(
+          values: {
+            ...fonts.values,
+            'Future': const PsEngineBoolean(value: true),
+            '1': PsEngineArray(
+              values: [
+                PsEngineDictionary(
+                  values: {
+                    '0': PsEngineNumber(value: 0),
+                    'Label': PsEngineString.fromText(text: 'Original'),
+                  },
+                ),
+              ],
+            ),
+          },
+        ),
+      },
+    );
+    final AiNativeTextDocument source = AiNativeTextDocument.decode(records: _records(engine.bytes));
+    final AiNativeTextDocument added = source.addFont(
+      font: AiNativeFontDefinition(postScriptName: 'Other-Regular', technology: .postScript),
+    );
+    final PsEngineDictionary table = ((added.engine.root as PsEngineDictionary)['0']! as PsEngineDictionary)['1']! as PsEngineDictionary;
+    final List<PsEngineValue> display = (table['1']! as PsEngineArray).values;
+    check(display.map((value) => ((value as PsEngineDictionary)['0']! as PsEngineNumber).value)).deepEquals([0, 1]);
+    check(((display.first as PsEngineDictionary)['Label']! as PsEngineString).text()).equals('Original');
+    check((table['Future']! as PsEngineBoolean).value).isTrue();
+    check(added.fonts.last.technology).equals(AiNativeFontTechnology.postScript);
+    check(added.fonts.last.axisCoordinates).isEmpty();
+    check(added.fonts.last.version).isNull();
+    final PsEngineDocument missing = original.engine.replaceValues(
+      replacements: {
+        resources: PsEngineDictionary(values: {...resources.values}..remove('1')),
+      },
+    );
+    final AiNativeTextDocument noFonts = AiNativeTextDocument.decode(records: _records(missing.bytes));
+    final AiNativeTextDocument created = noFonts.addFont(
+      font: AiNativeFontDefinition(postScriptName: 'Example-Regular', technology: .postScript),
+    );
+    check(created.fonts.single.index).equals(0);
+    check(created.referenceIssues).isEmpty();
+  });
+
+  test('rejects malformed or oversized font definitions and bad display references', () {
+    for (final String name in ['', 'Two Words', '/Name', 'Name\u0000', 'Name🖋', 'Name[Axis]']) {
+      check(() => AiNativeFontDefinition(postScriptName: name, technology: .postScript)).throws<ArgumentError>();
+    }
+    for (final int coordinate in [-0x80000001, 0x80000000]) {
+      check(() => AiNativeFontDefinition(postScriptName: 'Example', technology: .trueType, axisCoordinates: [coordinate])).throws<ArgumentError>();
+    }
+    check(() => AiNativeFontDefinition(postScriptName: 'Example', technology: .postScript, version: 'bad\rversion')).throws<ArgumentError>();
+    final AiNativeTextDocument source = AiNativeTextDocument.decode(records: _records(_styleEngine(named: false)), limits: const PsEngineLimits(maxStringBytes: 64, maxNodes: 1000));
+    check(
+      () => source.addFont(
+        font: AiNativeFontDefinition(postScriptName: 'X' * 40, technology: .trueType),
+      ),
+    ).throws<FormatException>();
+    check(
+      () => source.addFont(
+        font: AiNativeFontDefinition(postScriptName: 'Example', technology: .trueType, axisCoordinates: List.filled(1000, 0)),
+      ),
+    ).throws<FormatException>();
+    final PsEngineDictionary fonts = ((source.engine.root as PsEngineDictionary)['0']! as PsEngineDictionary)['1']! as PsEngineDictionary;
+    final PsEngineDocument invalid = source.engine.replaceValues(
+      replacements: {
+        fonts: PsEngineDictionary(
+          values: {
+            ...fonts.values,
+            '1': PsEngineArray(
+              values: [
+                PsEngineDictionary(values: {'0': PsEngineNumber(value: 1)}),
+              ],
+            ),
+          },
+        ),
+      },
+    );
+    final AiNativeTextDocument malformed = AiNativeTextDocument.decode(records: _records(invalid.bytes));
+    check(
+      () => malformed.addFont(
+        font: AiNativeFontDefinition(postScriptName: 'Example', technology: .postScript),
+      ),
+    ).throws<FormatException>();
   });
 
   test('retains generated hyphens without inserting them in editable text', () {
