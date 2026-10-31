@@ -279,21 +279,6 @@ AiNativeDrawing _insertNativePaths(AiNativeDrawing drawing, List<AiNativePathIns
   return _pathLifecycleResult(drawing, edits, drawing.paths.length + insertions.length);
 }
 
-/// Qualifies intervening ordinary artwork and declarative state assignments.
-void _pathMovementInterval(AiNativeDrawing drawing, int start, int end, {required bool groups}) {
-  final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).toList();
-  final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, paths);
-  final Set<AiNativeInstruction> geometry = {
-    for (final AiNativePath path in paths) ...[...path.geometry, path.paint],
-    ...counts.values.whereType<AiNativeInstruction>(),
-  };
-  for (final AiNativeInstruction item in _groupInterval(drawing, start, end, nested: groups)) {
-    if ((_nativeGeometry.contains(item.operator) || _nativePaint.contains(item.operator) || item.operator == 'As') && !geometry.contains(item)) {
-      throw UnsupportedError('Moving paths requires owned geometry and point counts throughout the interval.');
-    }
-  }
-}
-
 /// Applies a permutation to source slots while carrying optional count syntax.
 AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths) {
   final AiNativeStructure ownership = AiNativeStructure.decode(drawing: drawing);
@@ -306,7 +291,7 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
   if (slots.indexed.every((entry) => identical(entry.$2, paths[entry.$1]))) {
     return drawing;
   }
-  _pathMovementInterval(drawing, slots.first.start, slots.last.end, groups: false);
+  _ordinaryArtworkInterval(drawing, slots.first.start, slots.last.end, groups: false);
   final AiProgram program = drawing.records.program;
   final Map<int, _NativeArtworkState> states = _nativeArtworkStates(drawing, slots.map((path) => path.start));
   final List<AiSourceEdit> edits = [];
@@ -342,44 +327,40 @@ AiNativeDrawing _reorderNativePaths(AiNativeDrawing drawing, List<AiNativePath> 
   return _pathLifecycleResult(drawing, edits, drawing.paths.length);
 }
 
-/// Finds the containing layer by immutable source identity, allowing root art.
-AiNativeStructureNode? _pathLayer(AiNativeStructure ownership, AiNativePath path) {
-  AiNativeStructureNode? parent = ownership.parentOf(ownership.nodeFor(path));
-  while (parent != null && parent.kind != .layer) {
-    parent = ownership.parentOf(parent);
-  }
-  return parent;
-}
-
-/// Lists group ancestors while keeping shared layer inheritance separate.
-List<AiNativeGroup> _pathParentGroups(AiNativeStructure ownership, AiNativePath path) {
-  final List<AiNativeGroup> result = [];
-  AiNativeStructureNode? parent = ownership.parentOf(ownership.nodeFor(path));
-  while (parent != null && parent.kind != .layer) {
-    result.add(parent.source as AiNativeGroup);
-    parent = ownership.parentOf(parent);
-  }
-  return result;
-}
-
 /// Moves geometry across ordinary groups while preserving paint and object state.
 AiNativeDrawing _moveNativePath(AiNativeDrawing drawing, AiNativePath path, AiNativePath after, bool inheritParentFlags) {
   final AiNativeStructure ownership = AiNativeStructure.decode(drawing: drawing);
   final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, [path, after], ownership: ownership);
-  if (!identical(_pathLayer(ownership, path), _pathLayer(ownership, after))) {
-    throw UnsupportedError('Moving paths across native layers requires an explicit state contract.');
-  }
-  _pathMovementInterval(drawing, min(path.start, after.start), max(path.end, after.end), groups: true);
+  final Map<int, _NativeArtworkState> states = _artworkMovementStates(
+    drawing,
+    ownership,
+    path,
+    position: after.end,
+    parent: ownership.parentOf(ownership.nodeFor(after)),
+    inheritParentFlags: inheritParentFlags,
+  );
+  return _relocateNativePath(drawing, path, counts[path], states, after.end);
+}
+
+/// Appends an ordinary path as the last direct artwork of an owned layer.
+AiNativeDrawing _moveNativePathToLayer(AiNativeDrawing drawing, AiNativePath path, AiLayer layer, bool inheritParentFlags) {
+  final AiNativeLayers model = _artworkLayerDestination(drawing, layer);
+  final Map<AiNativePath, AiNativeInstruction?> counts = _ordinaryPathCounts(drawing, [path], ownership: model.structure);
+  final int position = layer.end.start;
+  final Map<int, _NativeArtworkState> states = _artworkMovementStates(
+    drawing,
+    model.structure,
+    path,
+    position: position,
+    parent: model.structure.nodeFor(layer),
+    inheritParentFlags: inheritParentFlags,
+  );
+  return _relocateNativePath(drawing, path, counts[path], states, position);
+}
+
+/// Commits a qualified path relocation with copied counts and boundary state.
+AiNativeDrawing _relocateNativePath(AiNativeDrawing drawing, AiNativePath path, AiNativeInstruction? count, Map<int, _NativeArtworkState> states, int position) {
   final AiProgram program = drawing.records.program;
-  final AiNativeInstruction? count = counts[path];
-  final List<AiNativeGroup> sourceParents = _pathParentGroups(ownership, path);
-  final List<AiNativeGroup> targetParents = _pathParentGroups(ownership, after);
-  final Map<int, _NativeArtworkState> states = _nativeArtworkStates(drawing, [path.start, after.end, ...sourceParents.map((group) => group.start), ...targetParents.map((group) => group.start)]);
-  if (!inheritParentFlags &&
-      (sourceParents.length != targetParents.length ||
-          sourceParents.indexed.any((entry) => const {'A', 'Xw'}.any((key) => !states[entry.$2.start]!.matches(states[targetParents[entry.$1].start]!, key))))) {
-    throw UnsupportedError('Changing ancestor-group flags or depth requires explicit inheritParentFlags.');
-  }
   final List<int> placed = _placedNativeArtwork(
     program,
     [
@@ -388,16 +369,16 @@ AiNativeDrawing _moveNativePath(AiNativeDrawing drawing, AiNativePath path, AiNa
     ],
     [...path.geometry, path.paint],
     states[path.start]!,
-    states[after.end]!,
-    states[after.end]!,
+    states[position]!,
+    states[position]!,
     maxBytes: program.limits.maxDecodedBytes - 1,
   );
   return _pathLifecycleResult(drawing, [
     AiSourceEdit(start: path.start, end: path.end, bytes: [32]),
     if (count != null) AiSourceEdit(start: count.start, end: count.end, bytes: [32]),
     AiSourceEdit(
-      start: after.end,
-      end: after.end,
+      start: position,
+      end: position,
       bytes: [10, ...placed],
     ),
   ], drawing.paths.length);

@@ -1,51 +1,5 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Declarative attributes whose values can be replayed without rendering.
-const Set<String> _groupStateKeys = {'fill', 'stroke', 'A', 'Xw', 'O', 'R', 'XR', 'D', 'Ap', 'J', 'j', 'w', 'M', 'd'};
-
-/// Validates a source assignment and identifies its overwritten state component.
-String? _groupStateKey(AiNativeInstruction item) {
-  final String operator = item.operator;
-  final List<double>? numbers = item.numbers;
-
-  /// Checks exact numeric arity, retaining no assumed default state.
-  bool arity(int length) => numbers != null && numbers.length == length;
-
-  /// Distinguishes malformed known operands from unqualified state operators.
-  void require(bool valid) {
-    if (!valid || item.operands.any((operand) => operand.number != null && operand.number!.abs() > 9007199254740991)) {
-      throw FormatException('Invalid ordinary-group state operands for $operator.');
-    }
-  }
-
-  switch (operator) {
-    case 'g' || 'G' || 'k' || 'K' || 'Xa' || 'XA':
-      require(
-        (operator == 'g' || operator == 'G'
-                ? arity(1)
-                : operator == 'k' || operator == 'K'
-                ? arity(4)
-                : arity(3) || arity(7)) &&
-            numbers!.every(_gradientUnit),
-      );
-      return const {'g', 'k', 'Xa'}.contains(operator) ? 'fill' : 'stroke';
-    case 'A' || 'Xw' || 'O' || 'R' || 'XR' || 'D' || 'Ap':
-      require(arity(1) && const {0, 1}.contains(numbers!.single));
-    case 'J' || 'j':
-      require(arity(1) && const {0, 1, 2}.contains(numbers!.single));
-    case 'w' || 'M':
-      require(arity(1) && numbers!.single >= (operator == 'w' ? 0 : 1));
-    case 'd':
-      final List<AiToken> operands = item.operands;
-      require(operands.length >= 3 && operands.first.kind == .arrayStart && operands[operands.length - 2].kind == .arrayEnd && operands.last.number != null);
-      final List<AiToken> dashes = operands.sublist(1, operands.length - 2);
-      require(dashes.every((dash) => dash.number != null && dash.number! >= 0) && (dashes.isEmpty || dashes.any((dash) => dash.number! > 0)));
-    default:
-      return null;
-  }
-  return operator;
-}
-
 /// Qualifies complete state/geometry intervals without evaluating opaque records.
 List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int end, {bool nested = true}) {
   final List<AiNativeInstruction> commands = [];
@@ -57,7 +11,7 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
       if (!nested || item.operands.isNotEmpty) {
         throw UnsupportedError('The selected interval has an unqualified group boundary.');
       }
-    } else if (!_nativeGeometry.contains(item.operator) && !_nativePaint.contains(item.operator) && item.operator != 'As' && _groupStateKey(item) == null) {
+    } else if (!_nativeGeometry.contains(item.operator) && !_nativePaint.contains(item.operator) && item.operator != 'As' && _nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Ordinary group edits have no state contract for ${item.operator}.');
     }
     commands.add(item);
@@ -71,13 +25,16 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
 }
 
 /// Refuses consumed expansion flags and unresolved prefixes before a group.
-void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Set<int> layerHeaders) {
+void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders) {
   final List<AiNativeItem> items = drawing.items;
   final int preceding = _pathOffset(bound, group.start + 1, (shape) => shape.end);
   final int resolved = preceding == 0 ? drawing.records.program.bodyStart : bound[preceding - 1].end;
   int boundary = resolved;
   for (int index = _pathOffset(items, group.start, (item) => item.start) - 1; index >= 0 && items[index].end > resolved; index--) {
     final AiNativeItem item = items[index];
+    if (layerHeaders[item.start] case final AiNativeLayer owner when owner.bindingIssue == null && item.start != owner.source.begin.start && item.start != owner.source.end.start) {
+      continue;
+    }
     if (item is! AiNativeInstruction || item.isPrivate) {
       throw UnsupportedError('The selected group has an unresolved native prefix.');
     }
@@ -85,7 +42,7 @@ void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiL
       boundary = item.end;
       break;
     }
-    if (_groupStateKey(item) == null && !(const {'Ln', 'AE'}.contains(item.operator) && layerHeaders.contains(item.token.start))) {
+    if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('The selected group has an unqualified prefix ${item.operator}.');
     }
   }
@@ -124,14 +81,11 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
   if (ordered.indexed.any((entry) => entry.$1 > 0 && ordered[entry.$1 - 1].end > entry.$2.start)) {
     throw ArgumentError('Selected groups cannot contain each other.');
   }
-  final AiNativeStructure ownership = AiNativeStructure.decode(drawing: drawing);
+  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  final AiNativeStructure ownership = layers.structure;
   final List<AiLiveShape> shapes = [...drawing.liveShapes]..sort((a, b) => a.start.compareTo(b.start));
   final List<AiLiveShape> bound = drawing.liveShapes.where((shape) => shape.isBound).toList()..sort((a, b) => a.end.compareTo(b.end));
-  final Set<int> layerHeaders = {
-    for (final AiLayer layer in drawing.records.program.layers) ...layer.header.map((item) => item.token.start),
-    for (final AiLayer layer in drawing.records.program.layers)
-      if (layer.naming != null) layer.naming!.token.start,
-  };
+  final Map<int, AiNativeLayer> layerHeaders = _layerHeaderItems(layers);
   int shapeIndex = 0;
   int shapeEnd = 0;
   for (final AiNativeGroup group in ordered) {
@@ -178,118 +132,32 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
   return ownership;
 }
 
-/// Captures known source assignments at requested boundaries in one ordered pass.
-Map<int, Map<String, AiNativeInstruction>> _groupStates(AiNativeDrawing drawing, Iterable<int> boundaries) {
-  final List<int> positions = boundaries.toSet().toList()..sort();
-  final Map<int, Map<String, AiNativeInstruction>> result = {};
-  final Map<String, AiNativeInstruction> state = {};
-  int index = 0;
-  for (final int position in positions) {
-    while (index < drawing.items.length && drawing.items[index].end <= position) {
-      final AiNativeItem item = drawing.items[index++];
-      if (item is! AiNativeInstruction || item.isPrivate) {
-        state.clear();
-        continue;
-      }
-      final String? key;
-      try {
-        key = _groupStateKey(item);
-      } on FormatException {
-        state.clear();
-        continue;
-      }
-      if (key != null) {
-        state[key] = item;
-      } else if (!_nativeGeometry.contains(item.operator) && !_nativePaint.contains(item.operator) && !const {'u', 'U', 'As'}.contains(item.operator)) {
-        // A layer, clip, private appearance or unknown operator invalidates our
-        // knowledge; later explicit assignments can reestablish individual keys.
-        state.clear();
-      }
-    }
-    result[position] = Map.of(state);
-  }
-  return result;
-}
+/// Captures known assignments without merging unknown values across opaque owners.
+Map<int, _NativeArtworkState> _groupStates(AiNativeDrawing drawing, Iterable<int> boundaries) => _nativeArtworkStates(drawing, boundaries);
 
-/// Compares declarative values without equating unrelated color representations.
-bool _sameGroupState(AiNativeInstruction? first, AiNativeInstruction? second) =>
-    identical(first, second) ||
-    first != null &&
-        second != null &&
-        first.operator == second.operator &&
-        first.operands.length == second.operands.length &&
-        first.operands.indexed.every((entry) => entry.$2.number != null ? entry.$2.number == second.operands[entry.$1].number : entry.$2.lexeme == second.operands[entry.$1].lexeme);
-
-/// Replays owned assignments around a group, preserving both boundary states.
+/// Replays source values around a group while retaining both boundary states.
 List<int> _placedGroup(
   AiNativeDrawing drawing,
   AiNativeGroup group,
-  Map<String, AiNativeInstruction> source,
-  Map<String, AiNativeInstruction> incoming,
-  Map<String, AiNativeInstruction> outgoing, {
+  _NativeArtworkState source,
+  _NativeArtworkState incoming,
+  _NativeArtworkState outgoing, {
   required int maxBytes,
-}) {
-  final List<AiNativeInstruction> commands = _groupInterval(drawing, group.start, group.end);
-  final Map<String, AiNativeInstruction> writes = {};
-  final Set<String> required = {};
-  for (final AiNativeInstruction command in commands) {
-    final String? key = _groupStateKey(command);
-    if (key != null) {
-      writes[key] = command;
-    } else if (command.operator == 'u' || command.operator == 'm') {
-      required.addAll((command.operator == 'u' ? const {'A', 'Xw'} : _groupStateKeys).where((key) => !writes.containsKey(key)));
-    }
-  }
-  final Map<String, AiNativeInstruction> actual = Map.of(incoming);
-  final List<AiNativeInstruction> prefix = [];
-  for (final String key in required) {
-    if (!_sameGroupState(source[key], incoming[key])) {
-      final AiNativeInstruction? value = source[key];
-      if (value == null) {
-        throw UnsupportedError('The moved group requires an unknown inherited $key value.');
-      }
-      prefix.add(value);
-      actual[key] = value;
-    }
-  }
-  actual.addAll(writes);
-  final List<AiNativeInstruction> suffix = [];
-  for (final String key in {...actual.keys, ...outgoing.keys}) {
-    if (!_sameGroupState(actual[key], outgoing[key])) {
-      final AiNativeInstruction? value = outgoing[key];
-      if (value == null) {
-        throw UnsupportedError('The moved group cannot restore an unknown outgoing $key value.');
-      }
-      suffix.add(value);
-    }
-  }
-  final Uint8List bytes = drawing.records.program.bytes;
-  final BytesBuilder result = BytesBuilder(copy: false);
-
-  /// Bounds replayed source spans before allocating repeated paint operands.
-  void append(int start, int end) {
-    if (result.length + end - start + 1 > maxBytes) {
-      throw const AiLimitException(message: 'Group lifecycle output exceeds the native byte limit.');
-    }
-    result.add(Uint8List.sublistView(bytes, start, end));
-    result.addByte(10);
-  }
-
-  for (final AiNativeInstruction value in prefix) {
-    append(value.start, value.end);
-  }
-  append(group.start, group.end);
-  for (final AiNativeInstruction value in suffix) {
-    append(value.start, value.end);
-  }
-  return result.takeBytes();
-}
+}) => _placedNativeArtwork(
+  drawing.records.program,
+  [(start: group.start, end: group.end)],
+  _groupInterval(drawing, group.start, group.end),
+  source,
+  incoming,
+  outgoing,
+  maxBytes: maxBytes,
+);
 
 /// Keeps the outgoing effects of a removed group without its objects or counts.
 List<int> _removedGroupState(AiNativeDrawing drawing, AiNativeGroup group) => [
   10,
   for (final AiNativeInstruction item in _groupInterval(drawing, group.start, group.end))
-    if (_groupStateKey(item) != null) ...[...drawing.records.program.bytes.sublist(item.start, item.end), 10],
+    if (_nativeArtworkStateKey(item) != null) ...[...drawing.records.program.bytes.sublist(item.start, item.end), 10],
 ];
 
 /// Checks topology after the source editor enforces the original byte/token limits.
@@ -357,7 +225,7 @@ int _selectedGroupCount(List<AiNativeGroup> groups) {
 /// Duplicates disjoint groups with restored inputs and unchanged outgoing state.
 AiNativeDrawing _duplicateNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup> groups) {
   _ordinaryGroups(drawing, groups);
-  final Map<int, Map<String, AiNativeInstruction>> states = _groupStates(drawing, groups.expand((group) => [group.start, group.end]));
+  final Map<int, _NativeArtworkState> states = _groupStates(drawing, groups.expand((group) => [group.start, group.end]));
   final List<AiSourceEdit> edits = [];
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeGroup group in groups) {
@@ -396,7 +264,7 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
     return drawing;
   }
   _groupInterval(drawing, slots.first.start, slots.last.end);
-  final Map<int, Map<String, AiNativeInstruction>> states = _groupStates(drawing, groups.expand((group) => [group.start, group.end]));
+  final Map<int, _NativeArtworkState> states = _groupStates(drawing, groups.expand((group) => [group.start, group.end]));
   final List<AiSourceEdit> edits = [];
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final (int, AiNativeGroup) entry in slots.indexed) {
@@ -416,30 +284,45 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
   );
 }
 
-/// Resolves a group's containing layer without assigning cross-snapshot identity.
-AiNativeStructureNode? _groupLayer(AiNativeStructure ownership, AiNativeGroup group) {
-  AiNativeStructureNode? parent = ownership.parentOf(ownership.nodeFor(group));
-  while (parent != null && parent.kind != .layer) {
-    parent = ownership.parentOf(parent);
-  }
-  return parent;
+/// Relocates a group while retaining the state effects at its original position.
+AiNativeDrawing _moveNativeGroup(AiNativeDrawing drawing, AiNativeGroup group, AiNativeGroup after, bool inheritParentFlags) {
+  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group, after]);
+  final Map<int, _NativeArtworkState> states = _artworkMovementStates(
+    drawing,
+    ownership,
+    group,
+    position: after.end,
+    parent: ownership.parentOf(ownership.nodeFor(after)),
+    inheritParentFlags: inheritParentFlags,
+  );
+  return _relocateNativeGroup(drawing, group, states, after.end);
 }
 
-/// Relocates a group while retaining the state effects at its original position.
-AiNativeDrawing _moveNativeGroup(AiNativeDrawing drawing, AiNativeGroup group, AiNativeGroup after) {
-  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group, after]);
-  if (!identical(_groupLayer(ownership, group), _groupLayer(ownership, after))) {
-    throw UnsupportedError('Moving native groups across layers requires an explicit layer-state contract.');
-  }
-  _groupInterval(drawing, min(group.start, after.start), max(group.end, after.end));
-  final Map<int, Map<String, AiNativeInstruction>> states = _groupStates(drawing, [group.start, after.end]);
+/// Appends an ordinary group as the last direct artwork of an owned layer.
+AiNativeDrawing _moveNativeGroupToLayer(AiNativeDrawing drawing, AiNativeGroup group, AiLayer layer, bool inheritParentFlags) {
+  _artworkLayerDestination(drawing, layer);
+  final AiNativeStructure ownership = _ordinaryGroups(drawing, [group]);
+  final int position = layer.end.start;
+  final Map<int, _NativeArtworkState> states = _artworkMovementStates(
+    drawing,
+    ownership,
+    group,
+    position: position,
+    parent: ownership.nodeFor(layer),
+    inheritParentFlags: inheritParentFlags,
+  );
+  return _relocateNativeGroup(drawing, group, states, position);
+}
+
+/// Commits a qualified group relocation and retains old persistent assignments.
+AiNativeDrawing _relocateNativeGroup(AiNativeDrawing drawing, AiNativeGroup group, Map<int, _NativeArtworkState> states, int position) {
   final List<int> retained = _removedGroupState(drawing, group);
-  final List<int> moved = _placedGroup(drawing, group, states[group.start]!, states[after.end]!, states[after.end]!, maxBytes: drawing.records.program.limits.maxDecodedBytes - retained.length - 1);
+  final List<int> moved = _placedGroup(drawing, group, states[group.start]!, states[position]!, states[position]!, maxBytes: drawing.records.program.limits.maxDecodedBytes - retained.length - 1);
   return _groupLifecycleResult(
     drawing,
     [
       AiSourceEdit(start: group.start, end: group.end, bytes: retained),
-      AiSourceEdit(start: after.end, end: after.end, bytes: [10, ...moved]),
+      AiSourceEdit(start: position, end: position, bytes: [10, ...moved]),
     ],
     paths: drawing.paths.length,
     groups: drawing.groups.length,

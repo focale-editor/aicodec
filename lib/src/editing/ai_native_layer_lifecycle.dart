@@ -53,7 +53,7 @@ List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int en
       }
     } else if (geometry.contains(item)) {
       // Geometry and consumed counts were qualified against their native owners.
-    } else if (_groupStateKey(item) == null) {
+    } else if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Layer lifecycle edits have no state contract for ${item.operator}.');
     }
     commands.add(item);
@@ -182,7 +182,7 @@ AiNativeLayers _moveNativeLayer(AiNativeLayers model, AiNativeLayer layer, AiNat
   final int maxBytes = model.drawing.records.program.limits.maxDecodedBytes;
   final List<int> retained = _nativeSourceSpans(model.drawing.records.program, [
     for (final AiNativeInstruction item in commands)
-      if (_groupStateKey(item) != null) (start: item.start, end: item.end),
+      if (_nativeArtworkStateKey(item) != null) (start: item.start, end: item.end),
   ], maxBytes);
   final List<int> moved = _placedLayer(model, layer, commands, states[layer.start]!, states[position]!, states[position]!, maxBytes: maxBytes - retained.length - 2);
   edits.addAll([
@@ -316,7 +316,7 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
     final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
     final List<int> state = _nativeSourceSpans(model.drawing.records.program, [
       for (final AiNativeInstruction item in commands)
-        if (_groupStateKey(item) != null) (start: item.start, end: item.end),
+        if (_nativeArtworkStateKey(item) != null) (start: item.start, end: item.end),
     ], remaining - 1);
     edits.add(AiSourceEdit(start: layer.start, end: layer.end, bytes: [10, ...state]));
     remaining -= state.length + 1;

@@ -117,10 +117,10 @@ enum AiNativeEditOperation {
   /// Remove independent geometry and its consumed native point count.
   pathRemoval,
 
-  /// Reorder siblings without changing the interval's inherited paint state.
+  /// Reorder siblings while preserving their own and outgoing paint state.
   pathReordering,
 
-  /// Move into an ordinary group with the same layer and inherited state.
+  /// Move ordinary paths with retained state and explicit destination inheritance.
   pathReparenting,
 
   /// Wrap consecutive independent sibling paths in an ordinary group.
@@ -138,7 +138,7 @@ enum AiNativeEditOperation {
   /// Reorder siblings with explicit incoming and outgoing state preservation.
   groupReordering,
 
-  /// Move an ordinary group to another group parent within its layer.
+  /// Move ordinary groups with retained state and explicit destination inheritance.
   groupReparenting,
 
   /// Change live-shape translation and dependent native geometry.

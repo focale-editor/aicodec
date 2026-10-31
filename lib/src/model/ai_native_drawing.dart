@@ -247,13 +247,20 @@ final class AiNativeDrawing {
 
   /// Moves a path after an anchor, optionally into another ordinary group.
   ///
-  /// Both paths must share a layer and a qualified ordinary interval. Source
+  /// Both paths require a qualified ordinary interval. Source
   /// assignments preserve the moved path's paint/object flags and restore state
   /// at the destination. Unknown required values and opaque dependencies reject.
-  /// Ordinary group boundaries may be crossed; cross-layer movement still needs
-  /// an explicit policy for inherited layer flags. Different ancestor-group flags
-  /// or depths require [inheritParentFlags], accepting destination inheritance.
+  /// Moving across layers or different ancestor-group flags/depths requires
+  /// [inheritParentFlags], accepting destination inheritance. Layer headers,
+  /// identities and panel declarations remain unchanged.
   AiNativeDrawing movePathAfter({required AiNativePath path, required AiNativePath after, bool inheritParentFlags = false}) => _moveNativePath(this, path, after, inheritParentFlags);
+
+  /// Appends a path directly to an existing layer, including an empty layer.
+  ///
+  /// [layer] must belong to this drawing's source program. The state and explicit
+  /// destination-inheritance contract of [movePathAfter] applies. Layer identity,
+  /// order, flags and saved panel declarations remain unchanged.
+  AiNativeDrawing movePathToLayer({required AiNativePath path, required AiLayer layer, bool inheritParentFlags = false}) => _moveNativePathToLayer(this, path, layer, inheritParentFlags);
 
   /// Groups contiguous ordinary sibling paths without changing their source order.
   ///
@@ -287,10 +294,18 @@ final class AiNativeDrawing {
 
   /// Moves an ordinary group after another, optionally changing its group parent.
   ///
-  /// The groups cannot contain each other and must share a containing layer.
+  /// The groups cannot contain each other. Different layers or ancestor-group
+  /// flags/depths require [inheritParentFlags], accepting destination inheritance.
   /// Source assignments retain inherited state and restore following artwork.
   /// The interval cannot cross opaque metadata, private art or unknown state.
-  AiNativeDrawing moveGroupAfter({required AiNativeGroup group, required AiNativeGroup after}) => _moveNativeGroup(this, group, after);
+  AiNativeDrawing moveGroupAfter({required AiNativeGroup group, required AiNativeGroup after, bool inheritParentFlags = false}) => _moveNativeGroup(this, group, after, inheritParentFlags);
+
+  /// Appends an ordinary group directly to an existing, possibly empty layer.
+  ///
+  /// [layer] must belong to this drawing's source program. The state and explicit
+  /// destination-inheritance contract of [moveGroupAfter] applies. The group
+  /// retains its children and own flags; layer headers/panel data remain exact.
+  AiNativeDrawing moveGroupToLayer({required AiNativeGroup group, required AiLayer layer, bool inheritParentFlags = false}) => _moveNativeGroupToLayer(this, group, layer, inheritParentFlags);
 
   /// Attaches host-composed contours to separate native printing expansions.
   ///

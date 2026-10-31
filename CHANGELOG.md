@@ -25,3 +25,4 @@
 - Added qualified layer subtree reordering and reparenting with retained identities, source-backed paint-state preservation, synchronized root counts and explicit destination inheritance.
 - Added atomic ordinary-layer duplication with fresh descendant identities and optional copied names, plus removal with explicit native-reference qualification and retained outgoing state.
 - Extended ordinary path reordering and movement across qualified paint-state changes, preserving outgoing state and requiring explicit inheritance for different ancestor-group flags or depth.
+- Added qualified path/group movement across layers and direct insertion into existing empty layers, preserving native state and layer declarations with explicit destination inheritance.

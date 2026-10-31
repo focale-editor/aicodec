@@ -161,6 +161,23 @@ dart run tool/check_native_group_lifecycle.dart
 python3 tool/verify_native_group_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+Cross-layer artwork movement uses the same two pinned recent sources and a
+checksum-pinned synthetic program. Four independently checked prerequisites
+insert empty layers and group real ordinary paths. Ten movements then transfer
+paths/groups to those empty layers or move them forward/backward among nested
+hidden/locked synthetic owners. The unchanged external parser verifies complete
+trees, own paint/object flags, destination ownership and retained layer identities,
+headers, counts and panel declarations. Byte checks allow only the selected
+object/count spans, retained outgoing group assignments and copied source state.
+No host rendering is involved. VM/Node tests additionally cover unlayered art,
+empty groups, stale destinations, malformed metadata, unknown state and budgets.
+Referenced/derived-object lifecycle and Adobe reopening remain unqualified.
+
+```sh
+dart run tool/check_native_artwork_movement.dart
+python3 tool/verify_native_artwork_movement.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

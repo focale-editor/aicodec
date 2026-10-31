@@ -194,7 +194,20 @@ groups and compound topology. There is no general modern object lifecycle API.
   reordering and movement in both directions with exact source/count preservation.
   Latest validation: 413 VM/412 Node tests, clean format/fix/analysis and all 22
   layer transactions rechecked after sharing the bounded state serializer.
-  Cross-layer path/group movement remains outstanding. Adobe reopening is unqualified.
+  Paths and ordinary groups additionally support cross-layer movement and direct
+  appending to an existing, possibly empty layer. Explicit destination inheritance
+  is required across layers or different ancestor-group flags/depths. Paint
+  persists across qualified layer headers; layer identities, order, root counts
+  and panel state remain exact. Eleven regressions cover nested hidden owners, root
+  artwork, empty/anonymous destinations, foreign/stale handles, opaque neighbors
+  and parser budgets.
+  Independent checks qualify ten movements and four prerequisites in 14 transactions
+  from two pinned recent files and a synthetic source. All 13 group and 16 path
+  transactions were also rechecked after sharing the bounded state serializer.
+  Latest validation: 424 VM/423 Node tests and clean format/fix/analysis. Regenerated
+  cross-layer corpus outputs match the independently checked files byte-for-byte.
+  Referenced and private/derived artwork lifecycle, plus broader identified-layer
+  deletion, remain outstanding. Adobe reopening is unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships
