@@ -11,12 +11,19 @@ typedef _NativeShapeReplacement = ({
 });
 
 /// Proves that following objects never consume unresolved replacement effects.
-void _shapeFollowingDependencies(AiNativeDrawing drawing, List<_NativeShapeBundle> slots, Map<AiLiveShape, _NativeShapeReplacement> replacements) {
+void _shapeFollowingDependencies(
+  AiNativeDrawing drawing,
+  List<_NativeShapeBundle> slots,
+  Map<AiLiveShape, _NativeShapeReplacement> replacements, {
+  Map<int, _NativeShapeReplacement> insertions = const {},
+}) {
   final Set<String> unresolved = {};
   final Set<String> printingUnresolved = {};
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
+  final List<int> positions = insertions.keys.toList()..sort();
+  int inserted = 0;
 
   /// Requires identical incoming attributes wherever retained artwork reads them.
   void read(Set<String> keys, {required bool private}) {
@@ -57,7 +64,7 @@ void _shapeFollowingDependencies(AiNativeDrawing drawing, List<_NativeShapeBundl
   }
 
   /// Qualifies ordinary intervening artwork only while state may still differ.
-  void interval(int start, int end) {
+  void ordinary(int start, int end) {
     if (unresolved.isEmpty && printingUnresolved.isEmpty || start == end) {
       return;
     }
@@ -73,22 +80,42 @@ void _shapeFollowingDependencies(AiNativeDrawing drawing, List<_NativeShapeBundl
     _layerInterval(layers, position, end, headers).forEach(command);
   }
 
-  int position = slots.first.start;
+  /// Checks inserted or replacing artwork before publishing its remaining effects.
+  void apply(_NativeShapeReplacement replacement) {
+    for (final _NativeShapeReplay replay in replacement.prefix) {
+      command(replay.value, private: replay.private);
+    }
+    for (final AiNativeInstruction item in replacement.bundle.commands) {
+      command(item, discard: replacement.discard, bundle: replacement.bundle);
+    }
+    for (final _NativeShapeReplay replay in replacement.suffix) {
+      command(replay.value, private: replay.private);
+    }
+    unresolved.addAll(replacement.unresolved);
+    printingUnresolved.addAll(replacement.printingUnresolved);
+  }
+
+  /// Visits insertion boundaries even when the preceding source state is unchanged.
+  void interval(int start, int end) {
+    int position = start;
+    while (inserted < positions.length && positions[inserted] <= end) {
+      final int boundary = positions[inserted++];
+      if (boundary < position) {
+        throw const FormatException('A shape insertion crosses an unfinished native owner.');
+      }
+      ordinary(position, boundary);
+      apply(insertions[boundary]!);
+      position = boundary;
+    }
+    ordinary(position, end);
+  }
+
+  int position = positions.isEmpty ? slots.first.start : min(slots.first.start, positions.first);
   for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.appearanceGroup != null && shape.path?.isPrivate == true && shape.end > position)) {
     final int start = drawing._objects.forSource(shape.appearanceGroup!).expansion?.start ?? shape.start;
     interval(position, start);
     if (replacements[shape] case final _NativeShapeReplacement replacement) {
-      for (final _NativeShapeReplay replay in replacement.prefix) {
-        command(replay.value, private: replay.private);
-      }
-      for (final AiNativeInstruction item in replacement.bundle.commands) {
-        command(item, discard: replacement.discard, bundle: replacement.bundle);
-      }
-      for (final _NativeShapeReplay replay in replacement.suffix) {
-        command(replay.value, private: replay.private);
-      }
-      unresolved.addAll(replacement.unresolved);
-      printingUnresolved.addAll(replacement.printingUnresolved);
+      apply(replacement);
     } else if (unresolved.isNotEmpty || printingUnresolved.isNotEmpty) {
       final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, layers.structure);
       for (final AiNativeInstruction item in bundle.commands) {
@@ -98,4 +125,7 @@ void _shapeFollowingDependencies(AiNativeDrawing drawing, List<_NativeShapeBundl
     position = shape.end;
   }
   interval(position, drawing.records.program.bodyEnd);
+  if (inserted != positions.length) {
+    throw const FormatException('A shape insertion has no owned native body boundary.');
+  }
 }

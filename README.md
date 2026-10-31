@@ -40,6 +40,8 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   deletion and preservation of state used by following artwork.
 - Qualified sibling reordering of complete CC pairs, moving native identities
   and both representations together while preserving unselected dependencies.
+- Complete CC pair movement between qualified groups and layers, retaining
+  identities and both state streams with explicit destination inheritance.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.

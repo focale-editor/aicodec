@@ -34,6 +34,7 @@ part '../editing/ai_native_path_lifecycle.dart';
 part '../editing/ai_native_shape_lifecycle.dart';
 part '../editing/ai_native_shape_dependencies.dart';
 part '../editing/ai_native_shape_reordering.dart';
+part '../editing/ai_native_shape_movement.dart';
 part '../editing/ai_native_shape_removal.dart';
 part '../editing/ai_native_shape_copy_state.dart';
 part '../editing/ai_native_group_lifecycle.dart';

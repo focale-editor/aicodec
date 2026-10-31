@@ -637,6 +637,48 @@ those cases additionally require pixel-identical RGBA output from librsvg. The
 synthetic version-branch SVG limitation still applies. This does not establish
 Adobe reopening or cross-parent pair movement.
 
+### CC authoring/printing pair movement
+
+`moveLiveShapeAfter(shape:, after:)` relocates one complete pair after another.
+`moveLiveShapeToGroup(shape:, group:)` appends it before an ordinary group's
+closing boundary, and `moveLiveShapeToLayer(shape:, layer:)` appends it directly
+to a layer. Empty groups and layers are valid destinations. Handles must belong
+to the current snapshot; self anchors, printing expansions, private/compound/clip
+parents, conditional ownership and unresolved parent metadata reject.
+
+Private contours, printing groups, counts, panel flags, both saved metadata
+alternatives and identities move as an exact source block. No identity is removed
+or allocated, so external reference records remain unchanged. Layer headers,
+declarations and saved panel state remain in place. Parent changes leave geometry
+in document coordinates; no host rendering or layout generation is performed.
+
+Changing layers, ancestor-group depth or inherited group visibility/locking
+requires `inheritParentFlags: true`. Ancestor flags are compared independently
+in printing and private interpretations. The opt-in accepts the destination's
+parent flags; it does not bypass state, metadata or dependency qualification.
+
+Explicit source assignments and definite style scalars remain at the old
+location. Source-derived prefixes restore the pair's inputs at the insertion
+point, and suffixes restore known destination values. Dependencies are checked
+in final lexical order at both boundaries, including unknown native style effects
+and independent printing state. Private reassignment cannot hide a printing
+dependency. Required unknown input or unresolved subsequent reads reject
+atomically; aggregate byte/token limits also apply to replay growth.
+The `liveShapeReparenting` capability therefore requires operation-specific checks.
+
+Seventeen regressions cover forward/backward movement, empty destinations,
+cross-layer and ancestor-flag inheritance, exact pair bytes, metadata alternatives,
+external references, source/destination dependencies, malformed boundaries,
+snapshot handles and parser limits. The independent movement suite uses four
+pinned real files and nine checksum-pinned synthetic sources. Its 32 fixed
+transactions cover 12 real and 12 synthetic moves plus eight exact refusals.
+It checks complete pair bytes, both metadata branches, literal unselected gaps,
+source-backed scalar replay, both contour-state streams and independently parsed
+parent trees. Real native/printing SVG comparisons and synthetic printing SVG
+comparisons verify the requested relocation with retained enclosing appearance.
+The earlier restrictions on inactive stroke attributes and synthetic native SVG
+apply. These checks do not certify Adobe reopening or general object reparenting.
+
 ### Ordinary path lifecycle
 
 `AiNativeDrawing` supports the following operations on independent ordinary
@@ -1340,7 +1382,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves, including empty destination layers | Anonymous owners only; unknown state, references and private/derived objects reject; different layers or ancestor flags require explicit inheritance. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering; supplied printing contours and qualified groups | Parameter changes, general affine resizing, pair reparenting and unresolved printing dependencies remain incomplete. |
+| CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |
 | Cartesian mesh version 2 | Yes | Vertex color, tint and opacity | Geometry/topology edits incomplete; rendering belongs to the host. |

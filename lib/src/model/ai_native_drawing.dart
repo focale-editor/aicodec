@@ -251,6 +251,26 @@ final class AiNativeDrawing {
   /// Unknown required state or unresolved following dependencies rejects the batch.
   AiNativeDrawing reorderLiveShapes({required List<AiLiveShape> shapes}) => _reorderNativeShapes(this, shapes);
 
+  /// Moves a complete CC pair after another, preserving its saved identities.
+  ///
+  /// Source-derived state remains at the old location and restores the destination
+  /// after insertion. Different layers or ancestor-group flags/depths require
+  /// [inheritParentFlags]. Unknown required state or dependencies reject atomically.
+  AiNativeDrawing moveLiveShapeAfter({required AiLiveShape shape, required AiLiveShape after, bool inheritParentFlags = false}) => _moveNativeShapeAfter(this, shape, after, inheritParentFlags);
+
+  /// Appends a complete CC pair to an ordinary group, including an empty group.
+  ///
+  /// Printing expansions, private/compound/clip groups and unresolved owners
+  /// cannot be destinations. The inheritance contract of [moveLiveShapeAfter]
+  /// applies; destination metadata and unselected artwork remain exact.
+  AiNativeDrawing moveLiveShapeToGroup({required AiLiveShape shape, required AiNativeGroup group, bool inheritParentFlags = false}) => _moveNativeShapeToGroup(this, shape, group, inheritParentFlags);
+
+  /// Appends a complete CC pair directly to an existing, possibly empty layer.
+  ///
+  /// The inheritance contract of [moveLiveShapeAfter] applies. Layer identities,
+  /// headers, root counts and saved panel declarations remain unchanged.
+  AiNativeDrawing moveLiveShapeToLayer({required AiLiveShape shape, required AiLayer layer, bool inheritParentFlags = false}) => _moveNativeShapeToLayer(this, shape, layer, inheritParentFlags);
+
   /// Removes ordinary geometry and owned point counts, retaining surrounding state.
   ///
   /// Unselected bytes and paint/lock/visibility assignments remain unchanged.

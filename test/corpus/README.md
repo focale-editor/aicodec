@@ -302,6 +302,23 @@ dart run tool/check_native_shape_reordering.dart
 python3 tool/verify_native_shape_reordering.py --inkai-source /tmp/extension-ai
 ```
 
+Complete-pair movement checks four pinned real files and nine checksum-pinned
+synthetic sources. Its 32 fixed transactions cover 12 real and 12 synthetic moves,
+plus eight exact refusals. Both metadata branches and all pair bytes stay exact;
+only source-backed scalar replay can replace the old span or surround insertion.
+An independent group/layer tree verifies the requested order and parent, including
+empty groups/layers and explicit visibility/locking inheritance. Both contour-state
+streams remain attached to their source pairs. Real native/printing SVG and
+synthetic printing SVG compare geometry, active paint, resources and enclosing
+appearance after applying exactly the requested relocation to the original tree.
+The inactive-stroke pixel check and synthetic native SVG limitations above apply.
+No Adobe reopening or host integration is inferred.
+
+```sh
+dart run tool/check_native_shape_movement.dart
+python3 tool/verify_native_shape_movement.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

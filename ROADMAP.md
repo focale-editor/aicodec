@@ -363,6 +363,25 @@ groups and compound topology. There is no general modern object lifecycle API.
   independently rechecked. Pair reparenting and broader resource-reference
   lifecycle remain outstanding; this task stays open. No host integration or
   Adobe reopening is inferred.
+  Complete CC pairs now support `moveLiveShapeAfter`, `moveLiveShapeToGroup`
+  and `moveLiveShapeToLayer`, including empty destinations. Exact pair blocks,
+  identities, alternatives and shared resources travel together; source-derived
+  state remains at the old position and restores both interpretations around
+  insertion. Dependencies are checked in final source order at both boundaries.
+  Different layers or ancestor-group flags/depths require explicit inheritance;
+  printing expansions and unresolved/private/compound/clip parents reject.
+  Seventeen regressions cover forward/backward moves, parent inheritance in both
+  streams, metadata/identity/panel retention, old/new dependencies, malformed
+  boundaries, snapshot handles and byte/token growth. Independent checks verify
+  32 fixed transactions: 12 real and 12 synthetic moves plus eight exact refusals.
+  Native owner trees, pair bytes, alternatives, unselected gaps and scalar replay
+  are checked independently, along with real native/printing SVG and synthetic
+  printing SVG after exactly the requested parent/order change. Synthetic native
+  SVG and Adobe reopening limitations remain explicit. Latest validation:
+  556 VM/555 Node tests, clean format/fix/analysis using xml 7.0.1, and all 27
+  pair-removal and 24 pair-reordering transactions regenerated and independently
+  rechecked. Broader resource-reference lifecycle remains outstanding; this task
+  stays open. No Focale integration was introduced.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

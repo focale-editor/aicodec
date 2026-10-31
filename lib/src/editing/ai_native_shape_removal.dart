@@ -42,28 +42,32 @@ void _shapeRemovalReferences(AiNativeDrawing drawing, List<_NativeShapeBundle> s
   _nativeRemovalReferences(layers, identifiers, _layerHeaderItems(layers), shapes: bundles);
 }
 
+/// Selects definite outgoing style scalars without synthesizing unknown effects.
+Map<String, AiNativeInstruction> _restoredShapeStyle(_NativeShapeBundle bundle, _NativeShapeInputs state) => {
+  for (final String key in bundle.styleWrites)
+    if (state.native[key] case final AiNativeInstruction value) key: value,
+};
+
+/// Describes retained assignments after removing an object's complete source span.
+_NativeShapeReplacement _removedShapeReplacement(_NativeShapeBundle bundle, Map<String, AiNativeInstruction> restored) => (
+  bundle: bundle,
+  prefix: [],
+  suffix: [for (final AiNativeInstruction value in restored.values) (value: value, private: true)],
+  unresolved: bundle.styleWrites.difference(restored.keys.toSet()),
+  printingUnresolved: {},
+  discard: true,
+);
+
 /// Removes disjoint complete pairs while preserving observable native state.
 AiNativeDrawing _removeNativeShapes(AiNativeDrawing drawing, List<AiLiveShape> shapes) {
   final List<_NativeShapeBundle> selected = _selectedShapeBundles(drawing, shapes);
   _shapeRemovalReferences(drawing, selected);
   final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, selected.map((bundle) => bundle.shape.end));
   final Map<AiLiveShape, Map<String, AiNativeInstruction>> restored = {
-    for (final _NativeShapeBundle bundle in selected)
-      bundle.shape: {
-        for (final String key in bundle.styleWrites)
-          if (states[bundle.shape.end]!.native[key] case final AiNativeInstruction value) key: value,
-      },
+    for (final _NativeShapeBundle bundle in selected) bundle.shape: _restoredShapeStyle(bundle, states[bundle.shape.end]!),
   };
   _shapeFollowingDependencies(drawing, selected, {
-    for (final _NativeShapeBundle bundle in selected)
-      bundle.shape: (
-        bundle: bundle,
-        prefix: [],
-        suffix: [for (final AiNativeInstruction value in restored[bundle.shape]!.values) (value: value, private: true)],
-        unresolved: bundle.styleWrites.difference(restored[bundle.shape]!.keys.toSet()),
-        printingUnresolved: {},
-        discard: true,
-      ),
+    for (final _NativeShapeBundle bundle in selected) bundle.shape: _removedShapeReplacement(bundle, restored[bundle.shape]!),
   });
   final List<AiSourceEdit> edits = [];
   int remaining = drawing.records.program.limits.maxDecodedBytes;

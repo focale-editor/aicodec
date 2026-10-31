@@ -159,6 +159,9 @@ enum AiNativeEditOperation {
   /// Reorders complete sibling pairs with qualified input and outgoing state.
   liveShapeReordering,
 
+  /// Relocates complete pairs across qualified groups and layers.
+  liveShapeReparenting,
+
   /// Attach host-composed geometry to an existing separate printing expansion.
   printingContours,
 

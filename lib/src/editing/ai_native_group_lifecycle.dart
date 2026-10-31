@@ -28,7 +28,9 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
 }
 
 /// Refuses consumed expansion flags and unresolved prefixes before a group.
-void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders) {
+///
+/// Private scalar prefixes require a caller that validates native state separately.
+void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders, {bool privateState = false}) {
   final List<AiNativeItem> items = drawing.items;
   final int start = _ordinaryObject(drawing, group).start;
   final int preceding = _pathOffset(bound, group.start + 1, (shape) => shape.end);
@@ -47,7 +49,7 @@ void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiL
     if (layerHeaders[item.start] case final AiNativeLayer owner when owner.bindingIssue == null && item.start != owner.source.begin.start && item.start != owner.source.end.start) {
       continue;
     }
-    if (item is! AiNativeInstruction || item.isPrivate) {
+    if (item is! AiNativeInstruction || item.isPrivate && !(privateState && _nativeArtworkStateKey(item) != null)) {
       throw UnsupportedError('The selected group has an unresolved native prefix.');
     }
     if (_nativePaint.contains(item.operator) || const {'u', 'U', 'Lb', 'LB'}.contains(item.operator)) {
