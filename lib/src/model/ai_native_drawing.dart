@@ -252,6 +252,43 @@ final class AiNativeDrawing {
   /// state requires an additional explicit appearance-state contract.
   AiNativeDrawing movePathAfter({required AiNativePath path, required AiNativePath after}) => _moveNativePath(this, path, after);
 
+  /// Groups contiguous ordinary sibling paths without changing their source order.
+  ///
+  /// Optional point counts and intervening qualified state stay with the paths.
+  /// Unselected siblings, private owners and attached metadata reject atomically.
+  AiNativeDrawing groupPaths({required List<AiNativePath> paths}) => _groupNativePaths(this, paths);
+
+  /// Removes ordinary group boundaries while retaining their children and state.
+  ///
+  /// Groups must be anonymous independent owners, with no compound/clip members,
+  /// derived artwork, attached metadata or unresolved state instructions.
+  AiNativeDrawing ungroup({required List<AiNativeGroup> groups}) => _ungroupNativeGroups(this, groups);
+
+  /// Copies complete ordinary groups with their qualified inherited state.
+  ///
+  /// Each copy follows its original. Source assignments restore the copy's input
+  /// and the following object's state; unknown required values reject the batch.
+  AiNativeDrawing duplicateGroups({required List<AiNativeGroup> groups}) => _duplicateNativeGroups(this, groups);
+
+  /// Deletes ordinary groups and children while retaining outgoing state writes.
+  ///
+  /// Retained paint/lock/visibility assignments preserve following objects.
+  /// Drawing bounds stay conservative; referenced or derived groups reject.
+  AiNativeDrawing removeGroups({required List<AiNativeGroup> groups}) => _removeNativeGroups(this, groups);
+
+  /// Reorders selected ordinary sibling groups into their existing source slots.
+  ///
+  /// Known source assignments preserve incoming and outgoing state in each slot.
+  /// Unresolved inherited values or dependencies prevent the complete edit.
+  AiNativeDrawing reorderGroups({required List<AiNativeGroup> groups}) => _reorderNativeGroups(this, groups);
+
+  /// Moves an ordinary group after another, optionally changing its group parent.
+  ///
+  /// The groups cannot contain each other and must share a containing layer.
+  /// Source assignments retain inherited state and restore following artwork.
+  /// The interval cannot cross opaque metadata, private art or unknown state.
+  AiNativeDrawing moveGroupAfter({required AiNativeGroup group, required AiNativeGroup after}) => _moveNativeGroup(this, group, after);
+
   /// Attaches host-composed contours to separate native printing expansions.
   ///
   /// Every selected shape must have a bound private outline and a separate

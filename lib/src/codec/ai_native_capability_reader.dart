@@ -131,6 +131,7 @@ final class _NativeCapabilityReader {
               AiNativeEditOperation.pathRemoval,
               AiNativeEditOperation.pathReordering,
               AiNativeEditOperation.pathReparenting,
+              AiNativeEditOperation.groupCreation,
             ])
               AiNativeEditCapability._(
                 operation: operation,
@@ -223,6 +224,10 @@ final class _NativeCapabilityReader {
         group.end,
         .typed,
         group.compound ? 'Native compound topology; children retain independent ownership.' : 'Native group topology; children retain independent ownership.',
+        edits: conditional(
+          [.groupDissolution, .groupDuplication, .groupRemoval, .groupReordering, .groupReparenting],
+          issue: group.opening.operator != 'u' || group.opening.isPrivate ? 'Group lifecycle requires non-private ordinary topology.' : null,
+        ),
       );
     }
     for (final AiLiveShape shape in drawing.liveShapes) {

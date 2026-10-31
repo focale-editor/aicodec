@@ -108,6 +108,24 @@ enum AiNativeEditOperation {
   /// Move into an ordinary group with the same layer and inherited state.
   pathReparenting,
 
+  /// Wrap consecutive independent sibling paths in an ordinary group.
+  groupCreation,
+
+  /// Remove ordinary boundaries while retaining child artwork and state.
+  groupDissolution,
+
+  /// Copy an ordinary subtree with its inherited paint and object flags.
+  groupDuplication,
+
+  /// Delete a subtree while retaining state needed by following objects.
+  groupRemoval,
+
+  /// Reorder siblings with explicit incoming and outgoing state preservation.
+  groupReordering,
+
+  /// Move an ordinary group to another group parent within its layer.
+  groupReparenting,
+
   /// Change live-shape translation and dependent native geometry.
   liveShapeTranslation,
 

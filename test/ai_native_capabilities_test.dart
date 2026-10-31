@@ -75,8 +75,25 @@ void main() {
       AiNativeEditOperation.pathRemoval,
       AiNativeEditOperation.pathReordering,
       AiNativeEditOperation.pathReparenting,
+      AiNativeEditOperation.groupCreation,
     ]);
     check(path.edits.map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.requiresValidation));
+  });
+
+  test('reports group lifecycle separately from private, compound and clipped topology', () {
+    final AiNativeCapabilityReport report = AiNativeCapabilityReport.inspect(source: _source('u 0 0 m 1 1 L N U *u 2 2 m 3 3 L N *U q 4 4 m 5 5 L N Q'));
+    final List<AiNativeCapability> groups = report.findings.where((finding) => finding.feature == .group).toList();
+    check(groups).length.equals(3);
+    check(groups.first.edits.map((edit) => edit.operation)).deepEquals([
+      AiNativeEditOperation.groupDissolution,
+      AiNativeEditOperation.groupDuplication,
+      AiNativeEditOperation.groupRemoval,
+      AiNativeEditOperation.groupReordering,
+      AiNativeEditOperation.groupReparenting,
+    ]);
+    check(groups.first.edits.map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.requiresValidation));
+    check(groups.skip(1).expand((group) => group.edits).map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.unsupported));
+    check(groups.map((group) => group.editable)).every((value) => value.isFalse());
   });
 
   test('reports malformed structures separately from bounded inspection', () {

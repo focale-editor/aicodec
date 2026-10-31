@@ -93,6 +93,23 @@ dart run tool/check_native_path_lifecycle.dart
 python3 tool/verify_native_path_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+Ordinary group lifecycle uses the same two pinned recent files. Their free path
+is first grouped with its consumed point count and intervening paint assignments;
+the independently verified result then supplies duplication, removal and
+ungrouping cases. A checksum-pinned synthetic source adds nested groups, changed
+gray/line/dash/lock/visibility state, reordering and reparenting. All 13 variants
+are decoded with the unchanged independent reader. Checks compare complete object
+trees, flags, path geometry/counts, effective attributes and layer outgoing state.
+Exact byte checks constrain edits to selected boundaries/subtrees or insertion
+points; added assignments must come from the original source. VM/Node tests add
+process-color syntax, unknown-state refusal and a 200-group batch. These checks
+do not qualify Adobe reopening or referenced/derived group lifecycle.
+
+```sh
+dart run tool/check_native_group_lifecycle.dart
+python3 tool/verify_native_group_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 Capability reports check all 37 exact extracted sources and catalog/page owners
 with pypdf and independent compression decoding. The pinned native reader checks
 41 layer headers and 181 non-private paths, including text-frame confining art.

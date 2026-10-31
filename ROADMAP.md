@@ -144,8 +144,18 @@ groups and compound topology. There is no general modern object lifecycle API.
   counts, immutable input and limits. Independent decoding verifies 13 variants
   from two pinned recent files and synthetic counted/grouped sources, with exact
   unselected-byte preservation. Latest validation: 349 VM/348 Node tests and clean
-  format/fix/analysis, using xml 7.0.1. Group/layer lifecycle, referenced objects and
-  moves across different state remain outstanding. Adobe reopening is unqualified.
+  format/fix/analysis, using xml 7.0.1. Ordinary anonymous groups additionally
+  support grouping/ungrouping, duplication, removal, sibling reordering and
+  same-layer reparenting. Explicit source assignments preserve inherited and
+  outgoing paint/lock/visibility state, including changed state inside groups;
+  unknown required values reject. Sixteen focused group regressions cover nested
+  and empty owners, process colors, point counts, attached metadata, atomic
+  refusal, limits and a 200-group batch. Independent checks verify 13 group
+  variants across two pinned recent files and a synthetic source, including
+  complete topology, effective attributes and exact unselected bytes. Latest
+  validation: 366 VM/365 Node tests and clean format/fix/analysis. Layer
+  lifecycle, referenced objects and path moves across different state remain
+  outstanding. Adobe reopening is unqualified.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

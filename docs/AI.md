@@ -256,6 +256,59 @@ and synthetic counted/grouped sources, including retained ownership, inherited
 controls, exact unselected bytes and counts. Adobe reopening remains unqualified.
 Saving changed geometry requires matching PDF artwork supplied by the host.
 
+### Ordinary group lifecycle
+
+`AiNativeDrawing` also supports anonymous ordinary `u`/`U` owners. A selected
+group can contain nested ordinary groups, qualified paths and process-paint or
+object-state assignments. Empty owners are supported. Batch selections must be
+owned, distinct and disjoint; selecting an ancestor and descendant together
+rejects before editing.
+
+| Operation | Behavior |
+| --- | --- |
+| `groupPaths(paths:)` | Wraps consecutive sibling paths in one group, preserving source order, consumed point counts and intervening qualified assignments. |
+| `ungroup(groups:)` | Removes only the selected boundaries; child objects, nested groups and state remain. |
+| `duplicateGroups(groups:)` | Copies each complete subtree immediately after its original, replaying known source assignments to preserve inherited and outgoing state. |
+| `removeGroups(groups:)` | Removes the subtree's objects and counts, retaining its persistent assignments for following artwork. |
+| `reorderGroups(groups:)` | Places selected siblings into their existing slots in the requested order, restoring each slot's original outgoing state. |
+| `moveGroupAfter(group:, after:)` | Moves a subtree after an anchor, optionally into its different group parent within the same layer. |
+
+Ordinary groups do not save and restore paint. The editor tracks explicit source
+assignments for gray/RGB/CMYK fill and stroke, overprint, width, dashes, caps,
+joins, miter limit, fill/path flags, locking and visibility. Color representations
+are copied without conversion. Missing values stay unknown; no renderer or
+default graphics state is invented. An operation that needs to restore an unknown
+value rejects. Source values can become known again after an opaque boundary
+only through explicit assignments.
+
+`A` retains its native locking flag. `Xw` retains the persistent visibility flag
+(0 visible, 1 hidden), also documented in the
+[IgnoCodeLib author's writer reference](https://paulhertz.net/ignocodelib/reference/com/ignotus/aifile/AIFileWriter.html).
+The independent checks compare these stored flags; they do not certify UI behavior.
+
+Creation inserts the opening before the first selected path's consumed `As`
+header when present, including any attributes between that header and geometry.
+The new group's flags inherit that source position. Duplication/movement can add
+source-backed assignments before or after the copied group; all bytes outside
+the selected intervals and insertion points remain exact. Deletion retains the
+group's outgoing assignments even when its objects disappear. Drawing bounds
+remain conservative because these operations retain or remove existing geometry.
+
+Private/derived owners, compound/clip children, version alternatives, attached
+identities, tags, expansion flags, notes, unknown state and metadata comments
+reject. Moving cannot cross layers or opaque/private intervals; source and anchor
+groups cannot contain one another. Shared styles, effects and referenced group
+identities need separate lifecycle contracts. Group capabilities therefore remain
+selection-dependent, with compound/private/clip topology explicitly unsupported.
+
+Sixteen focused regressions include changed inherited state, nested and empty
+owners, process-color syntax, atomic refusal, parser limits and a 200-group batch.
+The independent reader verifies 13 variants across two pinned recent files and a
+synthetic source with state changes: full owner topology, object flags, paths,
+counts, effective paint, layer outgoing state and exact unselected source bytes.
+Adobe reopening remains unqualified. Save matching host-supplied PDF artwork
+whenever the edit changes visible output or ordering.
+
 ### Hierarchical records
 
 `AiNativeRecords.decode` exposes dictionaries, arrays, objects and binary
@@ -794,7 +847,8 @@ These statuses do not imply complete Illustrator compatibility.
 | --- | --- | --- | --- |
 | PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes are preserved exactly. |
 | Plain/zlib/Zstandard native envelopes | Yes | Yes | Shared owners and original compression retained on replacement. |
-| Native layers and plain paths | Yes | Layer headers, plain geometry and qualified ordinary-path lifecycle | No group/layer lifecycle or path moves across changed state; dependent or unresolved ownership rejects. |
+| Native layers and plain paths | Yes | Layer headers, plain geometry and qualified ordinary-path lifecycle | No layer lifecycle or path moves across changed state; dependent or unresolved ownership rejects. |
+| Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and same-layer moves | Anonymous owners only; unknown required state, references, private/derived objects and cross-layer moves reject. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers and origins | Existing record edits | No general document/artboard lifecycle API. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; supplied printing contours and qualified complete groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete. |
