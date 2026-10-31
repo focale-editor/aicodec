@@ -653,6 +653,55 @@ Adobe's paths because a white gradient against the white page can hide an edge
 from a contrast-only detector. These checks do not establish Adobe reopening or
 execution of the native printing ramps by Illustrator's PostScript procsets.
 
+## Native mesh inventory
+
+`AiNativeMeshes.decode(records:, bodyOnly:)` reads explicit `/Mesh X!` packets
+through their matching `/End X!`. The default includes setup/resource artwork;
+`bodyOnly: true` restricts inspection to the native drawing body. Procedures,
+PostScript literal arrays/dictionaries, strings, binary payloads and embedded
+documents do not supply mesh openings. Both ordinary and private packets retain
+original source spans; each field preserves its `AiNativeInstruction` and exact
+operand tokens.
+
+The qualified schema is version 2 with `/Cartesian` topology. `size` and each
+patch's `firstIndex`/`secondIndex` use the original index axes rather than
+guessing screen row directions. The reader requires unique, in-range patches
+covering the declared grid and four `/N` corners per patch. Allocation is bounded
+by actual token counts, never by an unchecked product of grid dimensions.
+Missing declarations, repeated positions, truncated nodes, mixed command
+representations and incomplete packets throw `FormatException`. Other schema
+versions and topology types throw `UnsupportedError`; the owning source program
+remains intact.
+
+Patch nodes stay in cyclic source order, including `/A` anchors and `/S`
+subdivision points before the first corner. Positions, both source-order
+control points and weights are exposed without dropping intermediate nodes or
+welding duplicated neighboring corners. Version-two corners carry explicit
+opacity and unconverted color components. The initial space is DeviceGray;
+each `/CS` declaration applies to following corners, including across patch
+boundaries. Gray, RGB and CMYK arities and normalized components are checked.
+Named/unknown spaces retain their entire declaration, including ink names and
+alternatives; `deviceName` and `componentCount` remain null. The node tail is
+still decoded, but those spaces' component semantics are not inferred or
+converted. The `R` record, non-unit weights and unknown fields are retained
+without claiming their evaluation.
+
+The dedicated SHA-256-pinned CC 21.1 example has 180 patches, 720 colored corners,
+eight additional anchors and eleven subdivision points. An independent Python
+reader extracts the native stream with pypdf/zlib and compares every field,
+source span and node. It verifies three gray, 671 CMYK and 46 NChannel corners;
+the NChannel declarations contain either Black or Yellow/Magenta/Cyan ink
+alternatives. The recovered 3,609,317 native bytes match exactly. The PDF includes
+a type-seven shading, but this check does not compare its rendering with native
+mesh geometry. The external artwork is ignored and excluded from publication;
+its manifest records the public source and absence of an explicit redistribution
+license.
+
+This is an inspection API. Mesh topology/color editing, named-ink interpretation,
+patch interpolation, native/PDF cache synchronization, older mesh versions and
+Adobe reopening remain further work. `AiNativePdf` still rejects unresolved
+mesh operators instead of dropping them from a regenerated page.
+
 ## Native raster images
 
 `AiNativeRasters.decode(records:, bodyOnly:)` reads embedded binary `XI` image
@@ -1344,7 +1393,8 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |
 | Catalog XMP | Inspect manifest/ingredient references; relink explicitly selected resources while preserving surrounding XML; attach the packet after native/PDF saving | Managed and part-specific relationships, automatic identity/history/pantry maintenance, PostScript packets and Adobe relink qualification |
-| Meshes, effects, plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
+| Meshes | Inspect version-two Cartesian patches, corners, intermediate nodes, source-order handles, opacity and changing color declarations | Named-ink semantics, topology/color editing, interpolation and synchronized native/PDF output |
+| Effects and plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
 | PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, unresolved links/unsupported images, unresolved effects and host scene integration |
 

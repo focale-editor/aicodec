@@ -19,6 +19,23 @@ Decoded documents are written under `output/` for independent validation.
 Source works are not redistributed. Consult each manifest license before
 copying third-party artwork elsewhere.
 
+The separate `mesh_manifest.json` pins one public CC 21.1 educational example.
+It has no identified redistribution license; artwork and generated outputs stay
+ignored and unpublished. The required mesh check compares all 180 patches,
+720 colored corners, eight additional anchors and eleven subdivision points
+with an independent restricted-format Python reader. It checks complete field
+tokens/spans, mixed gray/CMYK/NChannel declarations and exact native extraction.
+This is structural inspection, not mesh rendering or editing qualification.
+
+```sh
+python3 tool/fetch_corpus.py --manifest mesh_manifest.json
+dart run tool/check_native_meshes.dart
+python3 tool/verify_native_meshes.py
+```
+
+The independent check uses pypdf 3.x and Python zlib. Its detailed projections
+and report are under `output/meshes/`; a missing/changed fixture fails the check.
+
 `check_native_corpus.dart` requires extraction and structural parsing for all
 37 fixtures, verifies the nested layer fixture's names and flags, renames a
 layer and artboard where present, decodes native hierarchical and binary records,

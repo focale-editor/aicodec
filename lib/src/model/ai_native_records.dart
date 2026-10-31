@@ -13,6 +13,7 @@ part '../codec/ai_native_gradient_parser.dart';
 part '../codec/ai_native_gradient_resource_parser.dart';
 part '../codec/ai_native_raster_parser.dart';
 part '../codec/ai_native_placement_parser.dart';
+part '../codec/ai_native_mesh_parser.dart';
 part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_live_shape_gradient_editor.dart';
 part '../editing/ai_live_shape_gradient_placement_editor.dart';
@@ -36,6 +37,7 @@ part 'ai_native_rasters.dart';
 part 'ai_native_raster_samples.dart';
 part 'ai_native_placements.dart';
 part 'ai_native_art.dart';
+part 'ai_native_meshes.dart';
 
 /// One source-backed component of Illustrator's native hierarchical records.
 sealed class AiNativeItem {

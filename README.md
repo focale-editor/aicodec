@@ -180,6 +180,11 @@ saving. Mapping XMP references to placed objects remains explicit; managed or
 part-specific relationships reject this edit. See the technical reference for
 the supported structures and preservation policy.
 
+`AiNativeMeshes` inspects version-two Cartesian mesh patches, colored corners,
+intermediate anchors, control points and opacity. Color-space changes and named
+ink declarations retain their exact source fields. Mesh editing and PDF
+regeneration remain unfinished.
+
 ## Scope
 
 AI is not one uniform format. A PDF page can be a compatibility warning rather

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "file": "gradient_mesh_apple_example_1.ai",
+      "url": "https://whsdigitalmedia.weebly.com/uploads/1/3/1/0/13103434/gradient_mesh_apple_example_1.ai",
+      "source": "https://whsdigitalmedia.weebly.com/illustrator-advanced.html",
+      "size": 2527232,
+      "sha256": "9f8c149414d36a439def17608798daaffd1cd73b29f39f5a981c8183590a3053",
+      "revision": "SHA-256-pinned public download, retrieved 2026-10-31; Illustrator creator version 21.1",
+      "license": "Public educational example provided for download by Digital Media and Adobe Lessons. No explicit redistribution license identified; original artwork remains excluded from Git and publication.",
+      "expected": "accept"
+    }
+  ]
+}
