@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify global native focus edits and saved PDF appearances independently."""
+"""Verify global native focus edits independently."""
 
 import argparse
 import hashlib
@@ -11,11 +11,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pypdf import PdfReader, PdfWriter
-from pypdf.generic import ArrayObject, FloatObject, NameObject
 
 from verify_native_gradients import gradient_instances
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
+from corpus_support import REVISION
 
 
 def verify_instances(inkai, original, changed, names, angle, length):
@@ -53,41 +51,8 @@ def verify_instances(inkai, original, changed, names, angle, length):
     return printing, notes
 
 
-def reference_pdf(source, target, angle, length):
-    """Change only the three shared focal coordinates in Adobe's original PDF."""
-    writer = PdfWriter()
-    writer.clone_document_from_reader(PdfReader(source))
-    seen = set()
-    count = 0
-
-    def visit(value):
-        nonlocal count
-        value = value.get_object()
-        if id(value) in seen:
-            return
-        seen.add(id(value))
-        if isinstance(value, dict):
-            if '/ShadingType' in value:
-                assert value['/ShadingType'] == 3
-                assert list(value['/Coords'][2:]) == [0, 0, 0, 1]
-                value[NameObject('/Coords')] = ArrayObject([FloatObject(component) for component in (
-                    length * math.cos(math.radians(angle)), -length * math.sin(math.radians(angle)), 0, 0, 0, 1,
-                )])
-                count += 1
-            for key, child in value.items():
-                if key not in {'/Parent', '/Metadata', '/PieceInfo'}:
-                    visit(child)
-        elif isinstance(value, list):
-            for child in value:
-                visit(child)
-
-    visit(writer.pages[0])
-    assert count == 3
-    writer.write(target)
-
-
 def main():
-    """Require pinned source checksums and the independent reader before renders."""
+    """Require pinned source checksums and independent native focus decoding."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -109,25 +74,7 @@ def main():
         printing, notes = verify_instances(inkai, args.output / f'{name}.original.ps', args.output / f'{name}.edited.ps', entry['names'], entry['angle'], entry['length'])
         total_printing += printing
         total_notes += notes
-    comparisons = []
-    # Use the existing radial-fixture tolerance: native rectangle coordinates
-    # have more precision than Adobe's PDF outlines. Measure this before editing
-    # as well; the shared comparator still requires equal flat pixels and no
-    # more than one channel level of difference within smooth gradient fields.
-    baseline = compare(render_pdf(args.output / 'baseline.reference.pdf', 1200, 675),
-                       render_pdf(args.output / 'baseline.pdf', 1200, 675),
-                       args.output / 'baseline.difference.png', 0.1, gradient=True)
-    for label, angle, length in [('angled', 37, 0.375), ('centered', 0, 0), ('boundary', -72, 1)]:
-        saved = args.output / f'{label}.ai'
-        assert native_programs(saved) == [(args.output / f'{label}.ps').read_bytes()]
-        reference = args.output / f'{label}.reference.pdf'
-        reference_pdf(Path('test/corpus/files/gradient_radial.ai'), reference, angle, length)
-        expected = render_pdf(reference, 1200, 675)
-        for target in [args.output / f'{label}.pdf', saved]:
-            actual = render_pdf(target, 1200, 675)
-            difference = compare(expected, actual, target.with_suffix(f'.{target.suffix[1:]}.difference.png'), 0.1, gradient=True)
-            comparisons.append({'file': target.name, 'meanChannelDifference': difference})
-    result = {'files': len(report), 'printingInstances': total_printing, 'authoringNotes': total_notes, 'baselineMeanChannelDifference': baseline, 'comparisons': comparisons}
+    result = {'files': len(report), 'printingInstances': total_printing, 'authoringNotes': total_notes}
     (args.output / 'oracle-report.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))
 

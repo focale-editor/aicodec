@@ -208,6 +208,6 @@ final class AiNativeRasters {
   /// matrices compensate for a resolution change; no resampling or color
   /// conversion is performed. Existing color/alpha UUIDs change only for changed
   /// planes, and XG marks the embedded copy as modified. Unknown raster layouts
-  /// reject editing. Use AiNativePdf.save to also regenerate PDF artwork.
+  /// reject editing. The host must regenerate matching PDF artwork before saving.
   AiNativeRasters replacePixels({required AiNativeRaster image, required AiNativeRasterSamples samples}) => _replaceNativeRasterSamples(this, image, samples);
 }

@@ -34,7 +34,10 @@ void main() {
   final AiProgram edited = AiNativeEditor.updateLayer(program: program, layer: program.layers.single, name: 'Triangle');
   print('${edited.layers.single.name}: ${edited.paths.length} editable AI7 path');
 
-  final PdfDocument pdf = AiNativePdf.render(program: edited, bounds: artwork.bounds);
+  // The application supplies compatibility artwork independently of AiKit.
+  final PdfDocument pdf = PdfDocument.fromPages(
+    pages: [PdfPageSource(width: 100, height: 80, content: latin1.encode('1 0.3 0 rg 10 10 m 90 10 l 50 70 l h f'))],
+  );
   final AiPdfDocument interchange = AiPdfDocument.forPdfInterchange(pdf: pdf);
   final Uint8List bytes = const AiCodec().encode(interchange);
   final AiPdfDocument reopened = const AiCodec(allowGeneric: true).decode(bytes) as AiPdfDocument;

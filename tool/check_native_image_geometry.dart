@@ -67,17 +67,6 @@ Future<void> main() async {
       }
       final String stem = '${output.path}/$name.${operation.key}';
       await File('$stem.ps').writeAsBytes(changed.records.program.bytes);
-      if (printable) {
-        final PdfDocument pdf;
-        if (document is AiPdfDocument) {
-          final AiPdfDocument saved = AiNativePdf.save(source: native, program: changed.records.program, pageBounds: [bounds]);
-          await File('$stem.ai').writeAsBytes(const AiCodec().encode(saved));
-          pdf = saved.pdf;
-        } else {
-          pdf = AiNativePdf.render(program: changed.records.program, bounds: bounds);
-        }
-        await File('$stem.pdf').writeAsBytes(const PdfEncoder().convert(pdf));
-      }
     }
     // These private fuzzy-mask records have dependent effect semantics.
     for (final AiNativeRaster image in original.images.where((image) => image.instruction.isPrivate)) {
@@ -100,22 +89,17 @@ Future<void> main() async {
       'transforms': transforms,
     });
   }
-  final AiPdfDocument carrier = const AiCodec().decode(await File('test/corpus/output/native-placements/resolved.linked.ai').readAsBytes()) as AiPdfDocument;
-  final AiNativeSource native = AiNativeData.extract(carrier).single;
   final AiNativePlacements original = AiNativePlacements.decode(
-    records: AiNativeRecords.decode(program: AiProgram.decode(bytes: native.bytes)),
+    records: AiNativeRecords.decode(program: AiProgram.decode(bytes: await File('test/corpus/output/native-placements/original.ps').readAsBytes())),
   );
   final AiNativePlacedObject object = original.objects.single;
-  final AiNativeRasterSamples pixels = object.preview!.toSamples();
   final AiBoundingBox bounds = AiBoundingBox(left: 0, bottom: -792, right: 612, top: 0);
   final Map<String, List<double>> transforms = _transforms(bounds);
-  await File('${output.path}/linked.original.ps').writeAsBytes(native.bytes);
+  await File('${output.path}/linked.original.ps').writeAsBytes(original.records.program.bytes);
   for (final MapEntry<String, List<double>> operation in transforms.entries) {
     final AiNativePlacements changed = original.setPlacement(object: object, matrix: _compose(operation.value, object.matrix), rotationRadians: _angle(object.dictionary, operation.value));
     final String stem = '${output.path}/linked.${operation.key}';
     await File('$stem.ps').writeAsBytes(changed.records.program.bytes);
-    await File('$stem.pdf').writeAsBytes(const PdfEncoder().convert(AiNativePdf.render(program: changed.records.program, bounds: bounds, resolvePlacement: (_) => pixels)));
-    await File('$stem.ai').writeAsBytes(const AiCodec().encode(AiNativePdf.save(source: native, program: changed.records.program, pageBounds: [bounds], resolvePlacement: (_) => pixels)));
   }
   report.add({
     'file': 'linked',

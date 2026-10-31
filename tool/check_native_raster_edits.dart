@@ -44,19 +44,6 @@ Future<void> main() async {
         );
       }
       await File('${output.path}/$name.$variant.ps').writeAsBytes(edited.records.program.bytes);
-      final bool printable = original.images.any((image) => image.isPrintable(program: program));
-      if (printable) {
-        final AiBoundingBox bounds = AiBoundingBox.parse(value: RegExp(r'%AI3_Cropmarks:\s*([^\r\n]+)').firstMatch(latin1.decode(program.bytes))![1]!);
-        final PdfDocument pdf;
-        if (document is AiPdfDocument) {
-          final AiPdfDocument saved = AiNativePdf.save(source: source, program: edited.records.program, pageBounds: [bounds]);
-          await File('${output.path}/$name.$variant.ai').writeAsBytes(const AiCodec().encode(saved));
-          pdf = saved.pdf;
-        } else {
-          pdf = AiNativePdf.render(program: edited.records.program, bounds: bounds);
-        }
-        await File('${output.path}/$name.$variant.pdf').writeAsBytes(const PdfEncoder().convert(pdf));
-      }
       variants.add({
         'variant': variant,
         'images': [for (final AiNativeRaster image in edited.images) _identities(image)],

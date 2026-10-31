@@ -150,8 +150,6 @@ void main() {
       check(changed.images.single.colorSamples).deepEquals(original.images.single.colorSamples);
       check(changed.images.single.dictionary).isNull();
       check(changed.images.single.frameRotationRadians).isNull();
-      final PdfDocument pdf = AiNativePdf.render(program: changed.records.program, bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100));
-      check(pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image').length).equals(1);
     }
   });
 

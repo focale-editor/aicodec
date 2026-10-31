@@ -234,8 +234,7 @@ final class AiNativeGradientResources {
   /// source bytes are preserved. Color-only edits do not reinterpret geometry.
   ///
   /// The host composes the ramps using its color profiles and interpolation, and
-  /// regenerates flattened effects before a synchronized save. `AiNativePdf`
-  /// can render supported classic fills into matching PDF appearances.
+  /// regenerates flattened effects and matching PDF artwork before saving.
   /// Explicit ramps prevent stale printing caches; they do not certify that the
   /// host's samples match its stops. Old single-record syntax requires opaque
   /// colors with style codes zero through four.

@@ -25,7 +25,6 @@ Future<void> main() async {
     final AiNativeDrawing isolated = drawing.isolateLiveShapeGradient(shapes: selection, sourceNameBytes: sourceName, nameBytes: latin1.encode('AiKit Selected Gradient'));
     final AiBoundingBox bounds = AiBoundingBox.parse(value: RegExp(r'%AI3_Cropmarks:\s*([^\r\n]+)').firstMatch(latin1.decode(program.bytes))![1]!);
     await File('${output.path}/$name.original.ps').writeAsBytes(program.bytes);
-    await File('${output.path}/$name.original.pdf').writeAsBytes(const AiCodec().encode(document));
     await File('${output.path}/$name.isolated.ps').writeAsBytes(isolated.records.program.bytes);
     final bool radial = name == 'gradient_radial.ai';
     for (final String variant in ['isolated', 'colors', if (radial) 'focus']) {
@@ -55,10 +54,7 @@ Future<void> main() async {
         resources = resources.setRadialFocus(definition: definition, angle: 37, length: 0.375);
       }
       final String stem = '${output.path}/$name.$variant';
-      final AiPdfDocument saved = AiNativePdf.save(source: source, program: resources.records.program, pageBounds: [bounds]);
       await File('$stem.ps').writeAsBytes(resources.records.program.bytes);
-      await File('$stem.ai').writeAsBytes(const AiCodec().encode(saved));
-      await File('$stem.pdf').writeAsBytes(const PdfEncoder().convert(saved.pdf));
       report.add({
         'file': name,
         'variant': variant,

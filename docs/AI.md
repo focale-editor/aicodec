@@ -1,5 +1,8 @@
 # Illustrator format and editing reference
 
+AiKit owns native editable data and serialization. The application owns rendering,
+composition and derived representations; see [the host contract](HOST.md).
+
 ## Format families
 
 `AiDecoder` identifies `%PDF-`, `%!PS-Adobe-` or a DOS binary EPS header.
@@ -452,9 +455,7 @@ the supplied stops. Replacing
 a global swatch changes all its users. Selected live shapes can first isolate a
 resource as described below. General resource creation/removal, hard stops,
 meshes, gradients along/across strokes and flattened appearance
-regeneration remain further work. `AiNativePdf` synchronizes supported classic
-gradient fills and page-aligned strokes; other gradient appearances still require
-host rendering. Definition-local comments are regenerated with the edited resource;
+regeneration remain host responsibilities. Definition-local comments are regenerated with the edited resource;
 external bytes are preserved.
 
 The independent corpus check compares all 378 definitions, 1,103 authoritative
@@ -501,22 +502,14 @@ private comment prefixes. Exact polar no-ops keep original source precision.
 Only the focus operands change: stops, sampled ramps, geometry, named resource
 definitions and unrelated bytes remain intact. Procedures and embedded documents
 are not interpreted. Output growth remains bounded by the native byte limit.
-The host must regenerate the PDF appearance and flattened effects after editing;
-`AiNativePdf.save` synchronizes the supported printable subset. For a local edit,
-first isolate the resource on selected live shapes as described below. Relative
-CC placement can be edited independently through `setLiveShapeGradientPlacement`;
+The host must regenerate the PDF appearance and flattened effects after editing.
+For a local edit, first isolate the resource on selected live shapes as described
+below. Relative CC placement can be edited independently through `setLiveShapeGradientPlacement`;
 arbitrary affine gradient editing and Illustrator reopening remain separate work.
 
 The dedicated corpus checker edits all radial resources across the same 37
 pinned files. An independent parser verifies 45 printing instances and 173
-authoring notes, with exact preservation outside the focus operands. Three
-synchronized CC saves cover centered, angled/interior and boundary foci; their
-native programs are recovered byte-exactly. Six Poppler comparisons against
-Adobe's original PDF with independently changed shading coordinates have a
-maximum mean channel difference of 0.06791/255, matching the 0.06792/255 baseline
-from rounded rectangle edges. Flat pixels remain identical and smooth gradient
-fields differ by at most one channel level. These checks do not establish Adobe
-reopening or flattened-effect regeneration.
+authoring notes, with exact preservation outside the focus operands.
 
 ### Selected live-shape gradient resources
 
@@ -568,21 +561,14 @@ final AiNativeGradientResources focused = resources.setRadialFocus(
 ```
 
 After a visual edit, regenerate PDF appearances and dependent previews before
-saving; `AiNativePdf.save` handles the supported printable subset. Plain-path
-selection, arbitrary appearance graphs, resource deletion and Adobe reopening
+saving through `AiNativeData.replace`. Plain-path selection, arbitrary appearance graphs, resource deletion and Adobe reopening
 remain separate work.
 
 The pinned CC linear/radial corpus selects three of fifteen and three of nine
 shapes respectively. Five variants cover isolation alone, selected colors and
 selected radial focus. Independent parsing checks original resources/styles,
 new bindings and every selected/unselected body command. All four native SVG
-comparisons are pixel-exact. Five saved native programs are recovered byte-exactly;
-ten Poppler comparisons use Adobe's PDF with only selected shading occurrences
-independently edited. Linear comparisons are exact. The maximum radial mean
-channel difference is below 0.06792/255, including isolation alone, matching the
-existing rounded-outline discrepancy. Flat pixels remain identical and smooth
-gradient fields differ by at most one level. These checks do not establish
-Illustrator reopening or arbitrary color-profile equivalence.
+comparisons are pixel-exact.
 
 ### Relative CC gradient placement
 
@@ -636,22 +622,14 @@ and complete, aligned `Bm` intervals; their printing matrices must be contiguous
 Mixed same-name kinds/intervals, legacy geometry, unclipped appearances, stale
 focus or placement caches and unsupported dependencies reject the transaction.
 Exact no-ops retain the original snapshot. New source bytes remain bounded.
-Regenerate PDF appearances and previews before saving; `AiNativePdf.save` covers
-the supported printable subset. General affine shear/reflection of paint,
+The host regenerates PDF appearances and previews before saving.
+General affine shear/reflection of paint,
 plain-path selection and arbitrary appearance/effect graphs remain further work.
 
 The dedicated corpus covers the 15 linear and nine radial CC shapes with full
 and partial selections, including partial placement after object rotation and
 uniform scaling. Independent parsing checks all retained geometry/metadata,
 new style bindings, relative parameters, focus offsets and strip/cap coverage.
-Six saved native programs are recovered exactly. Twelve Poppler comparisons
-independently place Adobe's original PDF shadings using Inkex bounds of Adobe's
-own clip curves. The maximum mean channel difference is below 0.067991/255.
-Flat pixels must remain identical; smooth fields differ by at most one level
-outside reference color and clip boundaries. Clip boundaries are measured from
-Adobe's paths because a white gradient against the white page can hide an edge
-from a contrast-only detector. These checks do not establish Adobe reopening or
-execution of the native printing ramps by Illustrator's PostScript procsets.
 
 ## Native mesh inventory
 
@@ -765,130 +743,10 @@ An independent reader checks every affected/unaffected color and
 ink declaration, every retained geometry token, and exact surrounding bytes.
 Global and body-only inventory are also compared after mark-based setup ramps.
 
-These are native authoring edits. `AiNativePdf.save` can regenerate qualified
-mesh artwork when the rest of the drawing also meets its printable contract;
-other cached previews still need host regeneration. The corpus checker never
-packages edited native bytes with stale PDF pages. Geometry/topology editing,
-color-managed named-ink interpolation, broader mesh layouts, older versions and
-Adobe reopening remain further work.
-
-`AiNativeMeshInterpolation(mesh:, resolveColor:)` now derives immutable tensor
-surfaces and process-color fields directly from native data, independently of the
-PDF compatibility view. `surfaces` exposes sixteen controls per surface in
-`first * 4 + second` order, its original `patch`, and its parameter `bounds` in
-that patch. `surface.positionAt(first:, second:)` uses local surface coordinates;
-`interpolation.colorAt(patch:, first:, second:)` uses original cell coordinates.
-For compound cells, map local coordinates through the surface bounds before
-sampling color. Geometry may fold; it is not projected onto a rectangular grid.
-
-Without a resolver, all corners must already use the same DeviceGray, DeviceRGB
-or DeviceCMYK space. `resolveColor` runs once per corner occurrence, including
-shared copies, and returns an `AiNativeMeshProcessColor` or null to reject.
-Results must use one common space and agree exactly at shared vertices. Named
-inks, mixed device spaces and unknown spaces require this explicit host policy;
-the evaluator does not flatten spot colors or perform color management.
-`opacity` retains constant native corner opacity separately from enclosing
-object/group compositing. Varying corner opacity rejects construction.
-
-```dart
-final AiNativeMeshInterpolation field = AiNativeMeshInterpolation(mesh: mesh);
-final AiNativeMeshSurface surface = field.surfaces.first;
-final ({double x, double y}) point = surface.positionAt(first: 0.5, second: 0.5);
-final AiNativeMeshProcessColor color = field.colorAt(
-  patch: surface.patch,
-  first: (surface.bounds.firstStart + surface.bounds.firstEnd) / 2,
-  second: (surface.bounds.secondStart + surface.bounds.secondEnd) / 2,
-);
-```
-
-The qualified evaluator requires at least two cells on each grid axis, unit
-weights and nondegenerate boundary pieces. Unknown mesh fields, mismatched shared
-boundaries/colors, nonfinite arithmetic and compound boundaries on both axes of
-the same cell reject construction. Outer grid color boundaries need nonzero
-inward tangents; collapsed interior tangents produce zero directional color
-slopes. Intermediate anchors and subdivision points may occur on either one
-pair of opposite sides. Derived storage is bounded by the source node count;
-parameter access requires finite coordinates between zero and one. Foreign
-patches reject color evaluation. Neither the source nor its PDF is changed.
-
-Corner handles follow cell traversal; intermediate handles follow the grid axes.
-Compound pieces are parameterized by their control-polygon lengths. The union of
-opposite-edge partitions divides the cell into tensors. Transverse controls are
-linearly blended between the other two sides, with endpoint displacements
-linearly distributed through the control polygon. Each resulting tensor has
-zero mixed derivatives at its corners. Color slopes use projected boundary
-control travel, extrema limiting and parabolic boundary values. Handle lengths
-are normalized from each boundary piece to the complete logical edge before
-limiting or evaluating color derivatives. Color remains one bicubic field over
-the original cell, including across its geometric surface partitions.
-
-`tool/verify_native_mesh_interpolation.py` independently constructs that field
-from native projections. Its `--dart` mode additionally requires the production
-evaluator's output from `tool/check_native_mesh_interpolation.dart`, compares all
-199 tensor grids and geometry evaluations with the Python derivation, and uses
-the Dart controls/colors for the Adobe PDF comparison. The corpus driver
-explicitly maps only this fixture's canonical process inks to CMYK.
-
-All sixteen controls of each PDF tensor must match native subintervals. Searching
-dyadic positions through 1/64 avoids choosing an incorrect inverse branch on
-folded cells. All 180 source cells, including 17 with intermediate boundary
-knots, are covered by 1,747 PDF patches with no parameter-space holes or overlap.
-Their 6,988 corner samples have a maximum geometry error of 0.001100 point and
-a maximum component error of 0.001960920. Every color sample is within half an
-8-bit component step plus 0.000001 numerical tolerance. Dart and Python differ
-by at most 3.411e-13 point in controls and 2.221e-16 in color components.
-These measurements qualify this source-derived evaluator on the pinned CC file;
-they are not proof of Adobe's internal implementation or general compatibility.
-Additional files, varying opacity and other weights/topologies remain further
-work. Qualified tensors now feed the native/PDF bridge described below.
-
-### Native mesh PDF output
-
-`AiNativePdf.render` and `save` accept direct printable meshes meeting
-`AiNativeMeshInterpolation`'s contract. `resolveMeshColor` supplies the explicit
-common process-color policy and also runs for hidden-layer meshes. Private
-packets do not paint. `meshes.validateAppearance(mesh:)` shares the native edit
-ownership check: resource copies, dependent object/parent appearances and unknown
-fields reject export. Paths, clipping, layer visibility, groups, object alpha and
-blend modes keep their existing scopes; meshes cannot interrupt unfinished paths.
-
-The writer emits PDF type-seven tensors with 32-bit coordinates, 16-bit process
-components and complete flag-zero records. Cubic color coefficients are exposed
-by `colorControlPoints(patch:)` in `first * 4 + second` order; these immutable
-coefficients can exceed the unit range, and the evaluated field is clamped.
-Adaptive binary subdivision chooses the axis reducing the worst coefficient
-error. Bernstein bounds cover the entire clamped field, with component error
-at most `1/1024 + 0.5/65535` including endpoint quantization, apart from numeric
-roundoff. Geometry subdivision is exact up to floating-point and coordinate
-quantization; decode spans must keep each coordinate step at or below 0.0001
-point. Degenerate extents reject. Refinement is bounded by the smaller of 20 and
-`PdfLimits.maxDepth`; work items, stream bytes and aggregate generated bytes also
-consume the existing PDF budgets. Exhaustion rejects instead of coarsening art.
-
-Constant corner opacity is applied once to an isolated opaque mesh form.
-Applying alpha directly to `sh` exposes overlapping renderer tessellation edges
-as a visible grid; the rendered opacity regression prevents that shortcut.
-Enclosing object/group alpha remains separate. Unit cases additionally check
-native/PDF saves after color edits, exact recovery of the edited program,
-retained unrelated metadata, clipping, hidden/private art and bounded failure.
-
-`check_native_mesh_pdf.dart` renders three clearly separated excerpts from the
-pinned CC document: baseline, a CMYK edit to vertex (5,5), and all corners at
-50% opacity. The independent verifier checks all native edits and surrounding
-bytes, retains Adobe's original tensor geometry and ICC color space, and renders
-with Poppler at 1,644 × 1,038. The edited reference uses fixed eight-by-eight
-subdivision of each original Adobe PDF patch and independently evaluated native
-colors; it does not consume AiKit's generated controls or adaptive partition.
-All three comparisons pass: maximum measured mean channel difference over
-painted pixels is 0.328143/255 (whole page 0.040160/255), and the 99th percentile
-of maximum pixel-channel error is at most three levels. Sparse boundary pixels
-can differ substantially; these results do not establish pixel-identical output.
-
-The same checker has a strict `--full` gate for whole-document rendering and
-saved native/PDF edits. It currently rejects this source's unrelated `AI9_Mask`
-and `Xy` transparency state, which requires opacity-mask and inherited-knockout
-support. Excerpt success is not a full-document synchronization pass; no edited
-full document is written by the default check. Adobe reopening remains untested.
+These are native authoring edits. The host supplies matching PDF appearances and
+previews before saving. Mesh interpolation, tessellation and color management
+belong to the application. Geometry/topology editing, broader mesh layouts,
+older versions and Adobe reopening remain further work.
 
 ## Native raster images
 
@@ -945,11 +803,11 @@ names, rotation and original-scale records, is preserved. These identity policie
 are based on observed CC/CS records; they have not been qualified by reopening in
 Adobe Illustrator. They do not regenerate opaque effect or plug-in caches.
 
-Editing requires the same qualified process layout as PDF rendering. Alpha
+Editing requires a qualified native process-color layout. Alpha
 authoring is limited to the observed extended CS/CC headers; legacy 20-operand
 headers can retain or replace opaque/stencil pixels but do not gain invented
-alpha semantics. Use `AiNativePdf.save` with the resulting program to synchronize
-PDF artwork and discard stale document thumbnails. Editing setup resources or
+alpha semantics. Use `AiNativeData.replace` with matching host-supplied PDF
+artwork to save the edited program and discard stale document thumbnails. Editing setup resources or
 private originals does not regenerate dependent opaque appearances.
 
 `rasters.setPlacement(image:, matrix:, rotationRadians:)` sets the complete affine
@@ -979,19 +837,6 @@ include all four new corners and never shrink. Setup/private image edits do not
 expand printable bounds. Nested documents, procedures and deferred DSC headers
 remain intact. `AiNativeEditor.includeBoundsEdits` exposes the same conservative
 extent policy for other qualified editors.
-
-`AiNativePdf` writes these samples through PdfCore as process-color image
-XObjects with separate same-depth soft masks. The native matrix maps a top-left
-pixel origin with image y increasing downwards; the PDF image rectangle keeps
-that origin through reflection, shear and page placement. An explicit image-edge
-clip reproduces Illustrator's antialiased rotated/sheared boundaries; painting
-the image without that clip can differ when edited pixels reach its edges.
-One-bit gray stencils
-use the current nonstroking paint. Object/group opacity applies independently.
-Unknown color spaces, producer flags, positional commands, noncanonical image
-bounds and inconsistent `Xh` metadata reject export. The qualified image bounds
-are `[0, 0, width, height]`. Older comment-encoded/ASCII image layouts, linked `XF`
-images and arbitrary image effects remain outside this rendering contract.
 
 ## Native linked placements
 
@@ -1034,9 +879,8 @@ removed only when no other native string or `IncludeFile` reference uses the pat
 Shared references retain it. Native output and sample sizes remain bounded.
 
 The host can deliberately pass `object.preview!.toSamples()` as a reduced-resolution
-fallback. That choice is never implicit. After embedding, `AiNativePdf.render`
-or `AiNativePdf.save` produces the corresponding image appearance using the
-embedded-raster contract.
+fallback. That choice is never implicit. The application regenerates matching
+appearances after embedding.
 
 `placements.relink(object:, pathBytes:, relativeDirectoryBytes:, preview:)`
 changes one qualified raster reference in an immutable snapshot. All arguments
@@ -1070,35 +914,10 @@ PDF/XMP dependency manifests are preserved, not regenerated by this native edit.
 Use the separate `AiXmpMetadata` API below to update explicitly mapped catalog
 references after saving the native/PDF change.
 
-Both PDF methods also accept `resolvePlacement`, a synchronous
-`AiNativePlacementResolver` returning `AiNativeRasterSamples?`. The callback
-receives each current printable placement, including its source path bytes,
-relative directory, geometry and optional preview. The host resolves and decodes
-files before rendering, using its chosen format and color policy. The kit never
-opens those paths. A null return, absent resolver or unsupported placement rejects
-the export; host exceptions propagate without committing a PDF/native snapshot.
-There is no automatic preview fallback. A caller can explicitly choose
-`(object) => object.preview?.toSamples()` when that lower resolution is acceptable.
-
-Resolved samples use the same process-image, alpha, clipping and object-opacity
-writer as embedded pixels. Every placement is resolved once per export, even
-when several PDF pages share it; separate instances sharing a filename are
-resolved independently. Hidden or nonprinting layer contents are still qualified
-and resolved before their painting is suppressed, matching the strict whole-body
-export policy. Private authoring placements are structurally bounded, preserved
-and never passed to the resolver. Their opaque appearance metadata is not painted.
-Generated visible sample planes count against the aggregate PDF byte limit.
-
-When a link is rendered this way, `AiNativePdf.save` writes the supplied program's
-native file references, relative paths, preview rows and object records unchanged,
-while regenerating the PDF appearance from the resolved pixels. This supports a
-translated link without converting it to embedded artwork. The caller remains
-responsible for choosing pixels that represent the current external resource;
-the method does not refresh native previews or relink files.
 `object.validateRasterLayout()` exposes qualification separately, and
 `object.rasterMatrix(width:, height:)` supplies an immutable pixel-to-native
 transform for host adapters using the same placed extent and origin policy.
-Unresolved links still reject native PDF rendering.
+The host resolves file paths and supplies decoded pixels; AiKit never opens links.
 External PDF/EPS placed artwork, older `XF` links, opaque effect-cache
 regeneration and Adobe reopening remain unqualified.
 
@@ -1107,8 +926,8 @@ explicit affine/frame edit for qualified raster links. A linked matrix maps its
 existing local rectangle with `(a*x + c*y + tx, b*x + d*y + ty)`; its local y axis
 points down. The local rectangle, file path, relative directory, saved preview
 and declarations remain unchanged. `object.frameRotationRadians` reads its frame
-metadata. Render/save with `resolvePlacement` to regenerate the new PDF appearance
-while retaining the native link. Resizing pixels, changing a source file and
+metadata. The host supplies a regenerated PDF appearance when saving the native
+link. Resizing pixels, changing a source file and
 changing its placed geometry are separate operations.
 Catalog XMP placement-resolution fields are preserved, not recomputed by the
 native geometry edit; update them separately when the host maintains that data.
@@ -1188,102 +1007,11 @@ original compression family. It replaces numbered blocks, removes stale native
 thumbnail blocks and retains other producers and private metadata. Its required
 `synchronizedPdf` argument must derive from the original PDF graph, retain
 metadata references and contain the matching appearance after a visual edit.
-This low-level method cannot establish native/PDF equivalence. Renaming a native layer does
+This low-level method cannot establish native/PDF equivalence.
+Renaming a native layer does
 not change painted geometry, so the existing appearance can be reused for that
 operation. Mixed native block families on one owner are rejected for rewriting.
 New blocks use PdfCore allocation, reserving existing dangling references.
-
-### Native printable paths to PDF
-
-`AiNativePdf.render(program:, bounds:)` creates a one-page PDF from the native
-printable instruction stream. `bounds` is an explicit positive-size rectangle in
-native y-up coordinates. It does not guess an artboard from artwork bounds or
-paint private authoring outlines a second time. The supported subset includes
-gray/RGB/CMYK paths, curve shorthands, fill/stroke attributes, dashes, winding
-rules, ordinary/compound groups, clipping groups and layer visibility/printing.
-Native drawing state persists across group boundaries until changed.
-
-The five-value `Xy` form supports opacity, the sixteen standard blend modes,
-group isolation and knockout, with its shape flag zero. A `6 () XW` modifier
-applies the blend state captured at `Xd` to the preceding path or group. Both
-`Xd` flags must be zero or one; they do not repaint an already expanded object.
-A group without `Xd` uses the current state. A `9 () XW` plain-group marker
-introduces no independent opacity. Fill and stroke are
-painted inside one transparency form before applying object opacity, avoiding
-double compositing where they overlap. Compound paths use their final paint
-state once, including contours nested in ordinary `u`/`U` groups. Later state
-changes cannot rewrite that captured compound paint. A clip persists only inside
-its enclosing mask group; translucent
-paint on the clipping path itself is rejected. Nonprinting and hidden layers
-are validated even though they do not paint.
-
-Classic linear and radial gradient fills use the retained absolute `Xm`/`Bm`
-printing matrices, preserving transformed axes, elliptical aspect ratios and
-focal offsets without approximating shape bounds. Linear fills require one
-overall `Xm`, or a single full-interval `Bm` for a two-stop resource. Radial fills
-require one `Bm`; `Bh` angle and distance determine the unit focal point.
-The `Bg` clipping flag controls the fill clip, and `BB` can add a solid stroke
-after that clip is restored. Missing or singular printing geometry rejects export.
-A compound's final contour can carry the shared gradient: all contours then
-clip one shading, preserving holes under the native nonzero or even-odd rule.
-The optional solid stroke covers every contour after that shading clip is
-restored; object opacity applies to the complete fill/stroke once. A complete
-`Bb`/`Bg`/`BB` appearance note with no painted path draws nothing and cannot leak
-into the next object. Its unused resource name does not require rendering.
-
-Unexpanded `1 Bb` gradient strokes retain native path geometry, width, dashes,
-caps, joins and miter limits through PDF shading patterns. They require one
-`S`/`s` appearance, `Bg` flag 1 and `BB` flag 1 or 2; flag 2 closes the stroke.
-Linear and radial fields use the same absolute printing matrices and interpolation
-as fills. A local Form XObject establishes the pattern's initial coordinate
-space so that page origins, artboard cropping and enclosing transparency groups
-move the path and gradient together. Stop opacity affects only this stroke;
-object and group opacity remain separate. Combined `B`/`b` paints inside a
-stroke-gradient instance reject export: separate native fill and stroke
-appearances are required. This covers gradients applied across page coordinates,
-not gradients following or crossing a curved centerline.
-
-Color stops become shared PDF functions in their process color space. Gray can
-join RGB or CMYK stops without a color-profile conversion; gray in an explicitly
-CMYK document becomes black ink only. RGB alternatives can join CMYK in a CMYK
-document. Other mixed/named colors require a host color policy. Midpoints at or
-above 50% use a power curve; those below 50% use its mirrored form. Constant
-endpoint intervals cover stops that do not reach zero or one hundred percent.
-Stop opacity uses the same interpolation and geometry in a separate DeviceGray
-soft mask, independent of the painting color space and object/group opacity.
-This reauthors vector shading functions from the stops; it does not quantize
-colors through the retained byte ramp or execute its printing prolog.
-
-`AiNativePdf.save(source:, program:, pageBounds:)` rebuilds compatibility pages
-and replaces their native data together. It requires a PDF-backed source with
-one extracted native program, including programs aliased by multiple owners.
-Provide one native drawing rectangle for every existing PDF page; dimensions
-must match each MediaBox, with ordinary page units. Existing page origins,
-page trees, metadata, annotation references, original resource bindings and
-other producers' private data remain intact. Native blocks retain their original
-compression family and all owners receive the same program. Stale PDF page
-thumbnails and native thumbnail blocks are removed. The source remains unchanged
-if compilation, page mapping or allocation fails. Unreferenced old objects remain
-in the graph; this is not data redaction.
-
-The edited program must already contain synchronized printable expansions, as
-produced by supported live-shape translations. `XW` known-style markers require
-a bound live shape with an existing printable appearance. This method does not
-regenerate those expansions from opaque authoring records. Gradients along/across strokes,
-coincident stops, multiple independent appearances within a gradient,
-newer interpolation methods, text,
-unsupported raster layouts, linked images, patterns, spot colors, overprint,
-unrecognized embedded drawing data, nested compound
-mask groups and unknown drawing commands currently reject the entire export. This
-includes unsupported commands inside hidden layers. No Adobe prolog executes.
-
-When replacing page artwork, use
-`AiPdfDocument.forPdfInterchange(pdf: changedDocument)` to remove Illustrator
-PieceInfo links while retaining other producers. This prevents stale native
-artwork from taking precedence when reopened. Unreferenced original private
-objects remain in the generic graph; this operation is not data redaction.
-The public `AiPdfDocument(pdf: ...)` constructor preserves an already coherent
-native/PDF graph; callers retaining private authoring data own its consistency.
 
 ## Native artwork creation
 
@@ -1298,8 +1026,7 @@ This is an explicit legacy target. It does not manufacture Illustrator CC
 plug-in dictionaries, live effects, ATE text, meshes or proprietary editable
 gradient/raster records. `AiProgram` can inspect and edit supported portions of
 existing modern programs without converting them to AI7. There is no generic
-PostScript interpreter; `AiNativePdf` separately renders its supported declarative
-printable subset.
+PostScript interpreter or native rendering engine.
 
 ## Legacy PostScript
 
@@ -1354,244 +1081,27 @@ Malformed containers raise `FormatException`; invalid limits raise
 
 ## Compatibility evidence
 
-The external corpus contains 37 upstream Inkscape extension-ai fixtures across
-AI3, AI7, AI9, AI10, CS–CS6 and CC/current samples: paths, gradients, layers,
-colors, raster content, text and opacity. Container checks cover exact legacy
-preservation, tokenization, PDF graph rewrite and private-block byte preservation.
-Native checks require extraction and structural parsing on every file, verify
-the six-layer fixture's names and flags, then rename a layer where present and
-read hierarchical records and binary resources, rename native artboards where
-present, and reopen rewritten native data. Python zlib and reference Zstandard independently
-decode both original and rewritten envelopes (31 PDF fixtures).
+The [external corpus guide](../test/corpus/README.md) lists the executable checks,
+pinned fixtures and independent readers. Native extraction, edits, preservation
+and serialization have separate tests. External SVG rendering of edited native
+programs can additionally check geometry without introducing a renderer in AiKit.
 
-The drawing reader associates all 39 live shapes in the corpus. Eight fixtures
-exercise translation of those 39 solid/gradient shapes, including 35 private
-outlines and redundant metadata copies. The independent Inkscape extension-ai
-reader checks all 112 paths (110 moved and two unchanged), 148 canvas-center
-fields, translated printing matrices and unchanged relative style commands.
-The checker also compares SVG gradient endpoints/centers/foci and color stops.
-SVG rendering through Inkscape compares the edited result with an explicitly
-translated original: seven cases have zero pixel difference; the radial case
-has a maximum mean channel difference of 0.000013/255 in the recorded run.
-Librsvg 2.62.4 produced a larger discrepancy for equivalent radial SVGs whose
-foci touch or slightly exceed their circles; geometry checks and Inkscape
-rendering are therefore required for that case. `tool/verify_live_shapes.py` requires the pinned external
-reader and fails when any fixture/output is missing. Its upstream reader reports
-some unsupported operators, so this is focused translation evidence, not full
-appearance or Adobe reopening validation.
+`ai_native_test.dart` checks host-supplied PDF pages with plain, zlib and Zstandard
+native envelopes, shared owners, retained private metadata and an opaque native
+appearance state. Saving and reopening must retain both supplied representations;
+AiKit does not infer their visual equivalence. Original snapshots stay immutable.
 
-Text validation covers 32 native ATE payloads, with 20 stories across CS–CC
-examples. `tool/verify_native_text.py` uses the same pinned independent reader to
-decode rewritten ASCII85 and compare entire ATE trees, allowing only the selected
-style name to differ. It also compares fonts, frame geometry, run lengths and
-every retained glyph-layout node against exported typed projections. The
-transformed-text fixture contains ten stories, sixteen frames, twenty-four
-effective style ranges, 387 layout nodes and 4,003 cached glyph IDs. Four stories
-omit explicit character runs and inherit their style. Named CS point text and
-its compact successors resolve the same font and point size. Twenty separate
-content edits insert non-BMP characters, a forced break and a paragraph across
-all native stories; the independent checker reconstructs run ownership per UTF-16 unit and compares
-the entire engine tree, including untouched stories and removed caches. These
-edited native programs are not combined with their original PDF previews.
-Sixty additional native edits change character and paragraph features separately,
-including twenty paragraph edits across newly inserted forced-break spans;
-the independent checker verifies complete trees, UTF-16 selection coverage,
-inherited run ownership, both size fields and fresh inline UUIDs. Neither the
-original resources nor unselected feature values may change.
-Sixty-four synthetic font registrations across the 32 engine documents check
-PostScript/TrueType identifiers, version and signed variation fields, fresh UUIDs
-and display-list updates. The independent decoder requires exact semantic
-preservation outside the appended entries. These identities do not claim the
-existence of installed font programs or newly rendered glyphs.
-A separate Linux integration probe used TextShaperLib revision
-`b8918526633258a626dec08e6fc591712509fc04` and its original `curves.otf` fixture.
-It registered `FocaleOutlineFixture`, assigned it at 32 points, replaced the
-story with `fi O`, and shaped three glyphs at UTF-16 clusters 0, 2 and 3.
-AiKit retained the resulting source-segment positions 0, 9.6 and 32 points,
-plus the final CR at 54.4 points. The independent ATE reader verified the
-registered font, selected style, source ranges and positions. This exercised
-host composition without adding a native engine dependency to AiKit; it did not
-write GlyphStrike caches or a PDF appearance.
-Seventeen point/area stories also have their frame/line/segment positions
-reauthored through the composition API. The independent reader compares absolute
-origins (allowing only 1e-8 point floating-point regrouping), source ranges, bounds,
-selection metrics and fourteen automatic-hyphen insertions. Other engine data
-must remain identical. Three path-layout writes explicitly reject missing
-per-glyph geometry. These are source-position checks; old glyph caches are not
-represented as newly shaped text, and no new rendered appearance is claimed.
-Twenty-six native frame resources are translated across the CS/CC text fixtures.
-The independent reader requires unchanged engine trees except for their matrix
-offsets and checks all thirteen accompanying confinement paths. The transformed
-text fixture also moves only its first linked-area frame: exactly one confinement
-path changes, with the other fifteen frame resources and their paths retained.
-The body comparison checks unrelated operators and metadata as well as native
-text references; local cached glyph data remains unchanged.
-Newly shaped text,
-altered text appearance and Adobe reopening remain outside this check.
-
-Unit tests cover compressed and uncompressed envelopes, split markers, owner
-aliases, independent page programs, limits, malformed syntax, atomic edits and
-explicit geometry rejection. A VM test renders authored AI7 using Ghostscript
-and checks visible, hidden and nonprinting layer behavior. That test explicitly
-skips if Ghostscript is unavailable. No Adobe Illustrator installation was used;
-native reopening and complete editing compatibility remain unverified.
-
-`check_native_pdf.dart` regenerates and translates eight fixtures.
-Six have original PDFs: Poppler compares their original and explicitly shifted
-artwork with the rebuilt pages, while pypdf and Python zlib/Zstandard independently
-recover the saved native bytes. Two native-only live-shape fixtures use the
-pinned AI reader's printable stream converted through SVG and Inkscape to PDF;
-private shape reconstruction is excluded because it changes expanded contours.
-Two additional saves change the shared gradient resource to three RGB stops with
-opacity. Their references replace only the original PDF's color/alpha functions.
-All eighteen render comparisons pass at 1,200 pixels wide. The fifteen linear
-instances match exactly before/after translation and recoloring. Radial outlines
-retain more coordinate precision than their original PDF rectangles; their mean
-channel difference is below 0.068/255, concentrated at boundary pixels. Other
-means remain below 0.02/255; unchanged flat colors are required. Gradient fields
-away from sharp boundaries must agree within one channel level. Native data in
-the six translated and two recolored saves is decoded independently.
-The moved opacity fixture has a small boundary difference
-from native `756.999999999999` versus original PDF `757` coordinates. Nine further
-pixel probes check whole-object fill/stroke opacity, a Multiply group, clip scope,
-hidden layers and nonprinting layers. Other blend modes and Adobe reopening are
-not independently qualified by these probes. Two real nonlinear swatches also
-compare generated PDF function values with their independently decoded Adobe
-printing samples, covering midpoints below and above fifty percent. This is
-471 samples across four channels, with maximum difference below 0.5/255.
-This is evidence for classic interpolation, not general color-profile equivalence.
-
-The separate `pdf_manifest.json` adds two complete CC random-gradient drawings
-and `styles.ai`, which contains an unexpanded gradient stroke. The
-`check_native_pdf_compounds.dart` tool saves all three complete drawings, then
-edits their six, six and two painted gradient resources respectively to three
-RGB stops with opacity. Both random-gradient documents include a gradient-filled
-compound used as an expanded stroke, transformed fields, appearance notes and
-solid strokes over gradients. Independent Poppler comparisons against the
-original PDFs, and against original PDFs with only their shading functions and
-opacity masks replaced, pass at 1,920 × 1,080. All six mean channel differences
-are below 0.0004/255, with unchanged flat pixels and one-level agreement inside
-gradient fields. The independent reader verifies edited native stops and cached
-matrix coverage; pypdf and Python zlib/Zstandard recover all six saved programs.
-Eight further pixel probes require real nonzero/even-odd holes, grouped contours,
-object/stop opacity, strokes outside the fill clip and nonpainting gradient notes.
-For `styles.ai`, the reference retains Adobe's original shading pattern and
-geometry, replacing only shared color functions and adding a stroke opacity mask.
-Its mean channel differences are below 0.0001/255, before and after the edit.
-`check_native_pdf_strokes.dart` and `verify_native_pdf_strokes.py` additionally
-check 18 pixels for open/closed strokes, dashes, round/butt caps, cubic geometry,
-linear/radial fields and object/group/stop opacity. Two whole-page comparisons
-are exact after saving with different native drawing rectangles and nonzero PDF
-MediaBox origins; the saved native program is independently recovered unchanged.
-These are complete-page compatibility checks for these fixtures; they do not
-qualify arbitrary native effects or Adobe reopening.
-
-`check_native_rasters.dart` and `verify_native_rasters.py` independently compare
-24 native images from five pinned files, including 20 alpha planes and two
-private gray images. The pinned reader recovers all sample bytes and matrices
-exactly. Two visible images are rebuilt and translated, with four zero-difference
-Poppler comparisons: one against Adobe's original PDF, the other against standard
-PostScript `colorimage` output generated from independently parsed CMYK samples
-and rendered by Ghostscript. The latter is an independent image-operator check,
-not execution of the complete Illustrator program, which lacks its prolog.
-Both saved PDF native programs are recovered unchanged by pypdf and Python
-zlib/Zstandard. Seven additional pixel probes verify separate alpha, image row
-orientation, object opacity and monochrome stencil polarity over a colored
-background. Stencil polarity is checked against Adobe's retained `XIImageMask`
-prolog. Two pinned fixtures
-with UTF-8-transcoded binary samples must reject at their computed boundaries.
-
-`check_native_raster_edits.dart` and `verify_native_raster_edits.py` exercise three
-independent replacements on each of the 24 images: inverted process samples,
-separate alpha changes and host-resampled half-resolution planes. The pinned
-reader verifies all 72 resulting layouts, planes and placement matrices.
-Checks also cover changed/retained UUIDs, collision isolation and retained object
-metadata. Six zero-difference Poppler comparisons use independently replaced image streams in
-the original Adobe PDF or the prior Ghostscript reference, retaining their page
-operators and placement. Three saved native programs are recovered independently.
-
-`check_native_placements.dart` and `verify_native_placements.py` use the intact
-CC linked-image fixture pinned separately in `placement_manifest.json`. Its
-277,504 preview bytes agree exactly with the independent reader, while all five
-setup images remain unchanged after embedding. Three variants incorporate the
-explicit preview or host-supplied full-resolution CMYK samples, with and without
-translation. Ghostscript evaluates the original literal placement operands using
-standard image operators; all three Poppler comparisons have zero differences.
-The original file's high-resolution bounds independently confirm the downward
-local y axis. A synthetic PDF carrier adds a fourth zero-difference comparison
-and exact native-program recovery. The fixture has no original PDF appearance,
-and the host sample source is another corpus image, not the missing external JPEG.
-These checks qualify geometry, samples and synchronization, not Adobe reopening.
-
-The same three variants also render and save with `resolvePlacement`, retaining
-their native links. Six additional zero-difference comparisons check their
-standalone and synchronized PDFs against the Ghostscript references. Independent
-extraction recovers each complete linked program byte for byte, including its
-saved preview and external references. Five Poppler pixel probes check linked
-sample alpha, object opacity, row orientation and clipping over a colored
-background. Focused tests additionally cover shared file paths, private and
-hidden placements, two PDF owners, resolver failures and aggregate byte limits.
-
-`check_native_relinks.dart` and `verify_native_relinks.py` change the real CC
-fixture to an actual generated PNG under the output's `assets` directory. Its
-RGB values are the independently inverted original preview. One native variant
-refreshes the preview and the other removes it. Ghostscript decodes the new
-PostScript filename and relative directory; the pinned reader and Pillow check
-the rewritten ARGB rows. Both variants preserve all five setup images, exact
-geometry operand spelling and following object metadata. Four standalone/saved
-PDF comparisons match a reference using the original placement operands with
-the new pixels, and both saved native programs are recovered exactly. This
-qualifies byte structures and rendering, not Illustrator reopening or XMP updates.
-
-`check_xmp_metadata.dart` and `verify_xmp_metadata.py` qualify XMP separately using
-`xmp_manifest.json`. Adobe's Illustrator CS2 `BlueSquare.ai` supplies a real catalog
-packet with thumbnails and provenance but no dependency manifest. ExifTool's
-`XMP3.xmp` supplies a manifest alongside deliberately non-XMP RDF extensions in
-unrelated properties. Those extensions remain opaque and exact. lxml and ExifTool
-independently read the relinked resource, and pypdf verifies both saved packets and
-retained original object values/stream contents, allowing regenerated stream
-lengths and removal of stale linearization. Two Poppler page comparisons have zero
-differences. The carrier using ExifTool metadata is explicitly synthetic, not
-evidence of a linked Adobe artwork relink or Illustrator reopening. Focused tests
-also cover manifest/ingredient selection, aliases, BOMs, unknown fields,
-source preservation, XML rejection and native/PDF saving before metadata attachment.
-
-`check_native_image_geometry.dart` and `verify_native_image_geometry.py` apply
-nonuniform resizing, a scaled quarter-turn, and combined reflection/shear to 22
-qualified embedded images and one real CC link. The 69 edits retain exact sample
-planes, UUIDs, original scale, local bounds and unrelated source bytes. Both
-redundant image matrices and explicit frame angles are checked independently.
-Two private fuzzy-mask images reject editing. The linked preview and all five
-setup images in that file remain unchanged. Six saved native programs are
-recovered exactly. Twelve Poppler comparisons use transformed original Adobe or
-Ghostscript reference appearances; the largest mean channel difference is below
-0.00981 on the 0–255 scale, with differences confined to the reference edge band
-and none in flat pixels. These checks qualify geometry, samples and PDF/native
-serialization, not Illustrator frame-tool behavior or dependent effect editing.
-
-| Area | Current contract | Remaining work |
-| --- | --- | --- |
-| CC compression and blocks | Decode/rewrite plain, zlib and Zstandard native programs | Additional producer/version corpus coverage |
-| Native layers | Inspect/edit names and visibility/lock/print flags | More private layer appearance semantics |
-| Native records and artboards | Typed dictionaries, arrays, object records, ASCII85 resources, artboard bounds/names and scalar edits | Geometry-dependent synchronization and broader semantic models |
-| Native ATE text | Stories, UTF-16 runs, font registration, style/content/feature edits, forced-break spans, host-composed point/area positions and frame/confinement translation | Shaping, glyph-cache generation, new path composition, advanced typography and synchronized text-content saves |
-| Paths and live shapes | Inspect native/printable geometry; edit plain paths; translate/rotate/uniformly scale five CC shape families with solid/gradient appearances; create AI7 paths | Nonuniform or fixed-stroke/corner resizing, shear/regeneration and remaining positional paints/effects |
-| Gradients | Inspect/translate instances; edit relative CC live-shape placement; rotate/uniformly scale accumulated transforms; isolate live-shape gradient resources for local colors/focus; edit global radial focus, stops and host-composed ramps; render classic process-color fills/strokes with midpoint and opacity functions | General affine paint transforms, plain-path appearance isolation, color-managed ramp composition, hard stops, gradients along/across strokes and newer methods |
-| Groups and paint | Create AI7 groups, solid process fills and strokes; render native compound paths, clipping and object/group transparency | Complete import into typed scene nodes and broader transparency fixtures |
-| Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
-| Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |
-| Catalog XMP | Inspect manifest/ingredient references; relink explicitly selected resources while preserving surrounding XML; attach the packet after native/PDF saving | Managed and part-specific relationships, automatic identity/history/pantry maintenance, PostScript packets and Adobe relink qualification |
-| Meshes | Inspect version-two Cartesian patches and inks; edit shared vertex colors, tints and opacity; evaluate and render qualified tensors with explicit host color resolution; synchronize supported drawings | Geometry/topology editing, broader interpolation layouts, varying opacity, color management, full-document opacity masks and Adobe reopening |
-| Effects and plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
-| PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
-| PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes, qualified meshes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, unresolved links/unsupported images, unresolved effects and host scene integration |
+The former native-to-PDF exporter, mesh interpolation and their dedicated visual
+suites were removed to enforce the format-package boundary. Their previous
+rendering results are historical and are not current compatibility claims.
+There is no Adobe Illustrator reopening validation and no Focale integration
+acceptance yet. Preserved opaque content is not claimed to be natively editable.
 
 ## References
 
 - [Adobe XMP resource-reference fields](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/XMPDataTypes/ResourceRef.md)
 - [Adobe XMP media-management properties](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/xmpMM.md)
 - [Adobe DSC specification](https://web.mit.edu/PostScript/Adobe/Documents/5001.DSC_Spec.pdf), pages 45–46: counted data can include its invoking operator.
-- [Adobe PDF Reference 1.6](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.6.pdf), sections 4.6.3 and 4.9.1: shading patterns and initial form coordinate spaces.
 - [Adobe PDF Reference 1.7](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf), section 4.6.3: tensor-patch control ordering and bilinear PDF mesh colors.
 - [Adobe's AI format overview](https://www.adobe.com/creativecloud/file-types/image/vector/ai-file.html)
 - [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)

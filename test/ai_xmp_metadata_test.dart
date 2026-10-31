@@ -274,10 +274,10 @@ void main() {
     final AiPdfDocument original = _pdf(_packet(_manifest(_reference())), compress: true);
     final AiNativeSource native = AiNativeData.extract(original).single;
     final AiXmpMetadata changed = _relink(AiXmpMetadata.fromPdf(document: original)!);
-    final AiPdfDocument synchronized = AiNativePdf.save(
+    final AiPdfDocument synchronized = AiNativeData.replace(
       source: native,
-      program: AiProgram.decode(bytes: native.bytes),
-      pageBounds: [AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100)],
+      program: native.bytes,
+      synchronizedPdf: original.pdf,
     );
     final AiPdfDocument saved = changed.writeTo(document: synchronized);
     check(AiXmpMetadata.fromPdf(document: saved)!.resources.single.filePath).equals('new.png');

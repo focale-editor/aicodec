@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check edited native pixels and metadata against independent readers and PDFs."""
+"""Check edited native pixels and metadata against an independent reader."""
 
 import argparse
 import importlib
@@ -9,10 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pypdf import PdfReader, PdfWriter
-from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject, NumberObject
 
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
+from corpus_support import REVISION
 from verify_native_rasters import images, samples
 
 
@@ -34,43 +32,6 @@ def replacement(image, variant):
     return width, height, colors, alpha
 
 
-def reference_pdf(source, target, image, variant):
-    """Replace only image planes in an existing independently generated PDF."""
-    width, height, colors, alpha = replacement(image, variant)
-    writer = PdfWriter()
-    writer.clone_document_from_reader(PdfReader(source))
-
-    def plane(data, components):
-        stream = DecodedStreamObject()
-        stream.set_data(data)
-        stream.update(DictionaryObject({
-            NameObject('/Type'): NameObject('/XObject'), NameObject('/Subtype'): NameObject('/Image'),
-            NameObject('/Width'): NumberObject(width), NameObject('/Height'): NumberObject(height),
-            NameObject('/BitsPerComponent'): NumberObject(8),
-            NameObject('/ColorSpace'): NameObject({1: '/DeviceGray', 3: '/DeviceRGB', 4: '/DeviceCMYK'}[components]),
-        }))
-        return stream
-
-    def rewrite(resources):
-        count = 0
-        objects = resources.get('/XObject', DictionaryObject()).get_object()
-        for key, value in list(objects.items()):
-            old = value.get_object()
-            if old.get('/Subtype') == '/Form':
-                count += rewrite(old['/Resources'])
-            elif old.get('/Subtype') == '/Image':
-                assert old['/Width'] == image.h and old['/Height'] == image.w
-                new = plane(colors, image.image_type)
-                if alpha:
-                    new[NameObject('/SMask')] = writer._add_object(plane(alpha, 1))
-                objects[key] = writer._add_object(new)
-                count += 1
-        return count
-
-    assert sum(rewrite(page['/Resources']) for page in writer.pages) == 1
-    writer.write(target)
-
-
 def identities(path):
     """Recover the two known scalar identity keys from pinned native fixtures."""
     pattern = rb'\(([0-9a-fA-F-]{36})\) /(?:UnicodeString|String) \((AI24 Image(?:Alpha)?RawDataUUID)\)'
@@ -78,13 +39,12 @@ def identities(path):
 
 
 def main():
-    """Require exact edited samples, preserved extents and synchronized PDF owners."""
+    """Require exact edited samples, preserved extents and sample identities."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inkai-source', type=Path, required=True)
     parser.add_argument('--output', type=Path, default=Path('test/corpus/output/native-raster-edits'))
-    parser.add_argument('--references', type=Path, default=Path('test/corpus/output/native-rasters'))
     args = parser.parse_args()
     assert subprocess.check_output(['git', '-C', str(args.inkai_source), 'rev-parse', 'HEAD'], text=True).strip() == REVISION
     assert not subprocess.check_output(['git', '-C', str(args.inkai_source), 'status', '--porcelain', '--untracked-files=no'], text=True).strip()
@@ -92,7 +52,7 @@ def main():
     inkai = importlib.import_module('inkai')
     report = json.loads((args.output / 'report.json').read_text())
     assert {row['file']: len(row['images']) for row in report} == {'raster_ai8.ai': 1, 'raster_v2020.ai': 6, 'empty_cs.ai': 5, 'empty_cs2.ai': 5, 'simple_shapes_cc.ai': 7}
-    edits, owners, renders = 0, 0, []
+    edits = 0
     for row in report:
         name = row['file']
         before = images(inkai.parse(str(args.output / f'{name}.native.ps')))
@@ -126,22 +86,9 @@ def main():
                         assert changed[field] == info[field] and (key, changed[field]) in native_ids
                 assert changed['originalScale'] == info['originalScale'] and changed['name'] == info['name']
                 edits += 1
-            visible = [image for image, info in zip(before, row['images']) if info['printable']]
-            if not visible:
-                continue
-            assert len(visible) == 1
-            reference = args.output / f'{name}.{variant}.reference.pdf'
-            reference_pdf(args.references / f'{name}.reference.pdf', reference, visible[0], variant)
-            size = (1920, 1080) if name == 'raster_ai8.ai' else (612, 792)
-            difference = compare(render_pdf(reference, *size), render_pdf(args.output / f'{name}.{variant}.pdf', *size), args.output / f'{name}.{variant}.difference.png', 0.02)
-            if name == 'raster_ai8.ai':
-                assert native_programs(args.output / f'{name}.{variant}.ai') == [path.read_bytes()]
-                owners += 1
-            renders.append({'file': name, 'variant': variant, 'meanChannelDifference': difference})
-            print(f'{name} {variant}: mean channel difference {difference}')
-    assert edits == 72 and owners == 3 and len(renders) == 6
-    (args.output / 'independent-report.json').write_text(json.dumps({'oracleRevision': REVISION, 'imageEdits': edits, 'nativeOwners': owners, 'renders': renders}, indent=2) + '\n')
-    print('Native raster edits: 72 image edits, 3 PDF owners and 6 renders passed')
+    assert edits == 72
+    (args.output / 'independent-report.json').write_text(json.dumps({'oracleRevision': REVISION, 'imageEdits': edits}, indent=2) + '\n')
+    print('Native raster edits: 72 native image edits passed')
 
 
 if __name__ == '__main__':

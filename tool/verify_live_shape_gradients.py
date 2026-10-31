@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify selected native gradient copies, subsequent edits and Adobe PDF views."""
+"""Verify selected native gradient copies, edits and external SVG geometry."""
 
 import argparse
 import copy
@@ -14,12 +14,10 @@ from pathlib import Path
 
 from lxml import etree
 from PIL import Image, ImageChops, ImageStat
-from pypdf import PdfReader, PdfWriter
-from pypdf.generic import ArrayObject, ContentStream, DictionaryObject, FloatObject, NameObject, NumberObject
 
 from verify_live_shapes import walk_body
 from verify_native_gradients import stops, ramps
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
+from corpus_support import REVISION, native_programs
 from verify_live_shape_rotation import close
 
 
@@ -161,49 +159,8 @@ def svg_reference(inkai, original, changed, row, output):
     return mean
 
 
-def reference_pdf(source, target, row):
-    """Clone Adobe shadings only at the three selected painting occurrences."""
-    writer = PdfWriter()
-    writer.clone_document_from_reader(PdfReader(source))
-    page = writer.pages[0]
-    resources = page['/Resources']['/Shading']
-    stream = ContentStream(page['/Contents'], writer)
-    count = 0
-    for operands, operator in stream.operations:
-        if operator != b'sh':
-            continue
-        if count in row['selected'] and row['variant'] != 'isolated':
-            shading = DictionaryObject(resources[operands[0]].get_object())
-            if row['variant'] == 'focus':
-                assert shading['/ShadingType'] == 3 and list(shading['/Coords'][2:]) == [0, 0, 0, 1]
-                shading[NameObject('/Coords')] = ArrayObject([FloatObject(value) for value in (
-                    0.375 * math.cos(math.radians(37)), -0.375 * math.sin(math.radians(37)), 0, 0, 0, 1,
-                )])
-            else:
-                # The radial fixture uses Adobe's Black-only DeviceN space:
-                # native gray is inverse ink coverage, not screen luminance.
-                black = shading['/ColorSpace'] != '/DeviceRGB'
-                if black:
-                    assert list(shading['/ColorSpace'][:3]) == ['/DeviceN', ['/Black'], '/DeviceCMYK']
-                else:
-                    shading[NameObject('/ColorSpace')] = NameObject('/DeviceGray')
-                shading[NameObject('/Function')] = DictionaryObject({
-                    NameObject('/FunctionType'): NumberObject(2),
-                    NameObject('/Domain'): ArrayObject([NumberObject(0), NumberObject(1)]),
-                    NameObject('/C0'): ArrayObject([FloatObject(0.8 if black else 0.2)]),
-                    NameObject('/C1'): ArrayObject([FloatObject(0.2 if black else 0.8)]), NameObject('/N'): NumberObject(1),
-                })
-            name = NameObject(f'/OracleSelected{count}')
-            resources[name] = writer._add_object(shading)
-            operands[0] = name
-        count += 1
-    assert count == row['shapes']
-    page[NameObject('/Contents')] = writer._add_object(stream)
-    writer.write(target)
-
-
 def main():
-    """Require pinned originals and exact saved native programs for every variant."""
+    """Require pinned originals and independently decoded native edits for every variant."""
     if not __debug__:
         raise RuntimeError('Run without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -231,17 +188,7 @@ def main():
         changed = args.output / f'{stem}.ps'
         copies = verify_native(inkai, original, changed, row)
         svg_mean = svg_reference(inkai, original, changed, row, args.output) if variant != 'focus' else None
-        saved = args.output / f'{stem}.ai'
-        assert native_programs(saved) == [changed.read_bytes()]
-        reference = args.output / f'{stem}.reference.pdf'
-        reference_pdf(Path('test/corpus/files', name), reference, row)
-        expected = render_pdf(reference, 1200, 675)
-        comparisons = []
-        for target in [args.output / f'{stem}.pdf', saved]:
-            actual = render_pdf(target, 1200, 675)
-            mean = compare(expected, actual, target.with_suffix(f'.{target.suffix[1:]}.difference.png'), 0.1, gradient=True)
-            comparisons.append({'file': target.name, 'meanChannelDifference': mean})
-        report.append({'file': name, 'variant': variant, 'styleCopies': copies, 'svgMeanChannelDifference': svg_mean, 'pdf': comparisons})
+        report.append({'file': name, 'variant': variant, 'styleCopies': copies, 'svgMeanChannelDifference': svg_mean})
         print(name, variant, 'passed', flush=True)
     (args.output / 'oracle-report.json').write_text(json.dumps(report, indent=2) + '\n')
 

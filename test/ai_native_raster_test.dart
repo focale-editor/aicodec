@@ -5,7 +5,7 @@ import 'package:aikit/aikit.dart';
 import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 
-/// Builds a binary native raster independently of the decoder and PDF writer.
+/// Builds a binary native raster independently of the decoder.
 Uint8List _bytes({
   int width = 2,
   int height = 2,
@@ -56,13 +56,6 @@ XI
 /// Reads the public source-backed inventory with the same limits as its program.
 AiNativeRasters _decode(List<int> bytes) => AiNativeRasters.decode(
   records: AiNativeRecords.decode(program: AiProgram.decode(bytes: bytes)),
-);
-
-/// Renders a fixture without introducing a second image encoder.
-PdfDocument _render(List<int> bytes, {PdfLimits limits = const PdfLimits()}) => AiNativePdf.render(
-  program: AiProgram.decode(bytes: bytes),
-  bounds: AiBoundingBox(left: 0, bottom: 0, right: 100, top: 100),
-  limits: limits,
 );
 
 /// Adds native sample UUIDs alongside unrelated object metadata.
@@ -131,7 +124,6 @@ void main() {
     check(rasters.images.single.instruction.isPrivate).isTrue();
     check(rasters.images.single.colorSamples).deepEquals(samples);
     check(rasters.records.program.instructions.where((instruction) => instruction.operator == 'XI')).isEmpty();
-    check(_render(bytes).objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image')).isEmpty();
   });
 
   test('retains packed rows and sixteen-bit samples without truncating padding', () {
@@ -142,35 +134,8 @@ void main() {
       final Uint8List bytes = _bytes(width: fixture.$1, height: 2, components: 1, bits: fixture.$2, colors: fixture.$3);
       final AiNativeRaster image = _decode(bytes).images.single;
       check(image.colorSamples).deepEquals(fixture.$3);
-      final PdfDocument pdf = _render(bytes);
-      final PdfStream stream = pdf.objects.values.whereType<PdfStream>().singleWhere((stream) => stream.dictionary.name('Subtype') == 'Image');
-      check(stream.dictionary.integer('BitsPerComponent')).equals(fixture.$2);
-      check(pdf.decodeStream(stream)).deepEquals(fixture.$3);
+      check(image.bitsPerComponent).equals(fixture.$2);
     }
-  });
-
-  test('writes process images with separate soft masks and the native upper-left origin', () {
-    final Uint8List bytes = _bytes(alpha: [0, 85, 170, 255]);
-    final PdfDocument pdf = _render(bytes);
-    final List<PdfStream> images = pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image').toList();
-    check(images).length.equals(2);
-    check(images.map((image) => image.dictionary.name('ColorSpace')).toList()).deepEquals(['DeviceGray', 'DeviceRGB']);
-    check(pdf.decodeStream(images.first)).deepEquals([0, 85, 170, 255]);
-    check(pdf.resolve(images.last.dictionary['SMask']!)).equals(images.first);
-    final PdfOperation matrix = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations.lastWhere((operation) => operation.operator == 'cm');
-    check(matrix.operands.cast<PdfNumber>().map((number) => number.value).toList()).deepEquals([4, 0, 0, 6, 10, 14]);
-    check(() => _render(bytes, limits: const PdfLimits(maxDecodedBytes: 8))).throws<FormatException>();
-  });
-
-  test('retains current fill paint for a one-bit stencil without a color space', () {
-    final String source = latin1.decode(_bytes(width: 2, height: 1, components: 1, bits: 1, colors: [0x40], mask: true)).replaceFirst('%%EndSetup', '%%EndSetup\n1 0 0 Xa');
-    final PdfDocument pdf = _render(latin1.encode(source));
-    final PdfStream image = pdf.objects.values.whereType<PdfStream>().singleWhere((stream) => stream.dictionary.name('Subtype') == 'Image');
-    check((image.dictionary['ImageMask']! as PdfBoolean).value).isTrue();
-    check(image.dictionary['ColorSpace']).isNull();
-    check(pdf.decodeStream(image)).deepEquals([0x40]);
-    final PdfOperation paint = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations.singleWhere((operation) => operation.operator == 'rg');
-    check(paint.operands.cast<PdfNumber>().map((number) => number.value).toList()).deepEquals([1, 0, 0]);
   });
 
   test('translates both native matrices while retaining samples and independent metadata', () {
@@ -200,20 +165,6 @@ void main() {
     check(() => _decode(_bytes(mask: true))).throws<FormatException>();
     final String unqualified = latin1.decode(valid).replaceFirst('%%BeginData: 16\nXI\n', 'XI\n%%BeginData: 12\n');
     check(() => _decode(latin1.encode(unqualified))).throws<UnsupportedError>();
-  });
-
-  test('rejects unknown color or placement semantics and unrelated opaque drawing data', () {
-    final String valid = latin1.decode(_bytes());
-    for (final String body in [
-      valid.replaceFirst('/DeviceRGB', '/CustomSpace'),
-      valid.replaceFirst('4 4 0 0\n%%BeginData', '4 4 1 0\n%%BeginData'),
-      valid.replaceFirst('10 20 ] 2 2 0 Xh', '99 20 ] 2 2 0 Xh'),
-      valid.replaceFirst('0 0 2 2 2 2 8', '0 0 3 2 2 2 8'),
-      valid.replaceFirst('XH\n', 'FutureImagePaint\nXH\n'),
-    ]) {
-      check(() => _render(latin1.encode(body))).throws<UnsupportedError>();
-    }
-    check(() => _render(latin1.encode(valid.replaceFirst('%%EndSetup', '%%EndSetup\n%%BeginData: 3\nabc\n%%EndData')))).throws<UnsupportedError>();
   });
 
   test('owns validated replacement bytes including packed and sixteen-bit rows', () {
@@ -281,11 +232,10 @@ void main() {
       check(edited.flags).equals(alpha == null ? 1 : 17);
       check(edited.dictionary!['AI24 ImageRawDataUUID']!.text()).equals(colorIdentity);
       check(alphaIdentities.add(edited.dictionary!['AI24 ImageAlphaRawDataUUID']!.text()!)).isTrue();
-      final PdfDocument pdf = _render(source.records.program.bytes);
-      final List<PdfStream> images = pdf.objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image').toList();
-      check(images).length.equals(alpha == null ? 1 : 2);
-      if (alpha != null) {
-        check(pdf.decodeStream(images.first)).deepEquals(alpha);
+      if (alpha == null) {
+        check(edited.alphaSamples).isNull();
+      } else {
+        check(edited.alphaSamples!).deepEquals(alpha);
       }
     }
   });
@@ -311,9 +261,6 @@ void main() {
     check(image.bitsPerComponent).equals(16);
     check(image.components).equals(1);
     check(image.commands.singleWhere((command) => command.operator == 'XN').operands.single.lexeme).equals('/DeviceGray');
-    final PdfDocument pdf = _render(after.records.program.bytes);
-    final PdfOperation matrix = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations.lastWhere((operation) => operation.operator == 'cm');
-    check(matrix.operands.cast<PdfNumber>().map((number) => number.value).toList()).deepEquals([4, 0, 0, 6, 10, 14]);
   });
 
   test('preserves reflection and shear when changing sample dimensions', () {
@@ -323,13 +270,6 @@ void main() {
       samples: AiNativeRasterSamples(width: 4, height: 1, bitsPerComponent: 8, components: 4, colorSamples: List.filled(16, 128)),
     );
     check(edited.images.single.matrix).deepEquals([-1, 0.5, 8, 6, 10, 20]);
-    final PdfDocument pdf = _render(edited.records.program.bytes);
-    final PdfOperation matrix = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations.lastWhere((operation) => operation.operator == 'cm');
-    check(matrix.operands.cast<PdfNumber>().map((number) => number.value).toList()).deepEquals([-4, 2, 8, 6, 2, 14]);
-    final List<PdfOperation> operations = PdfProgram.fromPage(document: pdf, pageIndex: 0).operations;
-    final int clip = operations.lastIndexWhere((operation) => operation.operator == 'cm') + 1;
-    check(operations.skip(clip).take(4).map((operation) => operation.operator).toList()).deepEquals(['re', 'W', 'n', 'Do']);
-    check(operations[clip].operands.cast<PdfNumber>().map((number) => number.value).toList()).deepEquals([0, 0, 1, 1]);
   });
 
   test('supports wide packed rows whose column count exceeds the source byte count', () {
@@ -352,7 +292,6 @@ void main() {
     check(edited.images.single.colorSamples).deepEquals(colors);
     check(edited.images.single.instruction.isPrivate).isTrue();
     check(edited.images.single.dictionary!['Object name']!.text()).equals('kept');
-    check(_render(edited.records.program.bytes).objects.values.whereType<PdfStream>().where((stream) => stream.dictionary.name('Subtype') == 'Image')).isEmpty();
   });
 
   test('marks retained source links as modified and rejects unqualified metadata', () {
@@ -435,9 +374,7 @@ void main() {
     final AiNativeRaster image = edited.images.single;
     check(image.extensions).isEmpty();
     check(image.imageMask).isTrue();
-    final PdfDocument pdf = _render(edited.records.program.bytes);
-    final PdfStream stream = pdf.objects.values.whereType<PdfStream>().singleWhere((stream) => stream.dictionary.name('Subtype') == 'Image');
-    check(pdf.decodeStream(stream)).deepEquals([0x80]);
+    check(image.colorSamples).deepEquals([0x80]);
     check(
       () => source.replacePixels(
         image: source.images.single,

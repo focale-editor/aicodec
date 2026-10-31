@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
-"""Verify rotated native shapes, accumulated gradients and PDF appearances."""
+"""Verify rotated native shapes, accumulated gradients and external SVG geometry."""
 
 import argparse
 import hashlib
 import importlib
 import json
 import math
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 from lxml import etree
 from PIL import Image, ImageChops, ImageFilter, ImageStat
-from pypdf import PdfReader, PdfWriter, Transformation
 
 from verify_live_shapes import FIXTURES, GEOMETRY, walk_body
-from verify_native_pdf import REVISION, compare, native_programs, printable_svg, render_pdf
+from corpus_support import REVISION, printable_svg
 
 
 def rotate(point, pivot, angle):
@@ -185,26 +183,6 @@ def verify_svg(inkai, original, changed, row, output):
     return mean
 
 
-def reference_pdf(original, target, row):
-    """Transform Adobe's PDF around the same pivot in PDF page coordinates."""
-    if row['file'] == 'page_moved_to_1000_2000_rect200_300.ai':
-        # This pinned native fixture has Adobe's missing-PDF-content notice.
-        # Its actual artwork is one black 200x300 rectangle at (1000,-2300).
-        # Render that independently with standard PostScript, then transform it.
-        assert 'saved without PDF Content' in PdfReader(original).pages[0].extract_text()
-        assert row['bounds'] == [1000, -3080, 2920, -2000]
-        original = target.with_name(target.stem + '.original-rectangle.pdf')
-        postscript = '%!PS-Adobe-3.0\n<< /PageSize [1920 1080] >> setpagedevice\n0 setgray 0 780 200 300 rectfill showpage\n'
-        subprocess.run(['gs', '-q', '-dSAFER', '-dBATCH', '-dNOPAUSE', '-sDEVICE=pdfwrite', f'-sOutputFile={original}', '-'], input=postscript.encode(), check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    writer = PdfWriter()
-    writer.clone_document_from_reader(PdfReader(original))
-    left, bottom, _, _ = row['bounds']
-    pivot = (row['pivot'][0] - left, row['pivot'][1] - bottom)
-    values = matrix((1, 0, 0, 1, 0, 0), pivot, row.get('radians', 0), row.get('factor', 1))
-    writer.pages[0].add_transformation(Transformation(values))
-    writer.write(target)
-
-
 def main():
     """Require pinned artwork and an unchanged independent converter checkout."""
     if not __debug__:
@@ -231,25 +209,7 @@ def main():
         changed = args.output / f'{stem}.ps'
         verify_native(inkai, original, changed, row)
         svg_mean = verify_svg(inkai, original, changed, row, args.output)
-        comparisons = []
-        if row['pdf']:
-            saved = args.output / f'{stem}.ai'
-            assert native_programs(saved) == [changed.read_bytes()]
-            reference = args.output / f'{stem}.reference.pdf'
-            reference_pdf(args.output / f'{name}.original.pdf', reference, row)
-            left, bottom, right, top = row['bounds']
-            width, height = 1200, math.ceil(1200 * (top - bottom) / (right - left))
-            expected = render_pdf(reference, width, height)
-            for target in [args.output / f'{stem}.pdf', saved]:
-                actual = render_pdf(target, width, height)
-                # Poppler rasterizes Adobe's transformed rectangle operator and
-                # the equivalent explicit native path with different edge coverage.
-                # Flat pixels and smooth gradient fields retain the stricter checks.
-                mean = compare(expected, actual, target.with_suffix(f'.{target.suffix[1:]}.difference.png'), 0.1, gradient=name.startswith('gradient_'))
-                comparisons.append({'file': target.name, 'meanChannelDifference': mean})
-        results.append({'file': name, 'variant': row['variant'], 'svgMeanChannelDifference': svg_mean,
-                        'svgSource': 'Printing curves; authoring path effect unsupported by oracle' if name == 'rectangle-rounded-corners-all-different.ai' else 'Native authoring',
-                        'pdfReference': 'Ghostscript known rectangle' if name == 'page_moved_to_1000_2000_rect200_300.ai' else 'Original Adobe PDF', 'pdf': comparisons})
+        results.append({'file': name, 'variant': row['variant'], 'svgMeanChannelDifference': svg_mean})
         print(name, row['variant'], 'passed', flush=True)
     (args.output / 'oracle-report.json').write_text(json.dumps(results, indent=2) + '\n')
 

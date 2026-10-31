@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify native image matrices, retained pixels and affine PDF appearances."""
+"""Verify native image matrices, retained pixels and source preservation."""
 
 import argparse
 import hashlib
@@ -11,13 +11,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image
-from pypdf import PdfReader, PdfWriter, Transformation
 
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
-from verify_native_placements import preview_data, reference_pdf as linked_reference
+from corpus_support import REVISION
+from verify_native_placements import preview_data
 from verify_native_raster_edits import identities
-from verify_native_rasters import images, reference_pdf as raster_reference, samples
+from verify_native_rasters import images, samples
 
 
 def compose(first, second):
@@ -28,17 +26,6 @@ def compose(first, second):
     left, right = rows(first), rows(second)
     product = [[sum(left[i][k] * right[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
     return [product[0][0], product[1][0], product[0][1], product[1][1], product[0][2], product[1][2]]
-
-
-def transformed_pdf(source, target, transform, bounds):
-    """Apply the drawing transform to the independent original PDF appearance."""
-    a, b, c, d, x, y = transform
-    left, bottom, _, _ = bounds
-    page_transform = (a, b, c, d, a * left + c * bottom + x - left, b * left + d * bottom + y - bottom)
-    writer = PdfWriter()
-    writer.clone_document_from_reader(PdfReader(source))
-    writer.pages[0].add_transformation(Transformation(page_transform))
-    writer.write(target)
 
 
 def retained(program):
@@ -72,7 +59,7 @@ def check_angles(before, after, transform, last_only=False):
 
 
 def main():
-    """Require independently recovered native geometry and complete-page agreement."""
+    """Require independently recovered native geometry and retained source data."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -85,7 +72,7 @@ def main():
     inkai = importlib.import_module('inkai')
     report = json.loads((args.output / 'report.json').read_text())
     assert {row['file'] for row in report} == {'raster_ai8.ai', 'raster_v2020.ai', 'empty_cs.ai', 'empty_cs2.ai', 'simple_shapes_cc.ai', 'linked'}
-    comparisons, count, owners = [], 0, 0
+    count = 0
     for row in report:
         name = row['file']
         original_path = args.output / f'{name}.original.ps'
@@ -93,13 +80,10 @@ def main():
         parsed = inkai.parse(str(original_path))
         before = images(parsed)
         assert set(row['transforms']) == {'resize', 'rotate', 'reflect-shear'}
-        reference = args.output / f'{name}.reference.pdf'
         linked = name == 'linked'
         if linked:
             assert hashlib.sha256(original).hexdigest() == 'a67054a916e7791641826237b55ab04919443bdb282126dbc2a27e07dd768d02'
             preview = preview_data(parsed)
-            rgb = Image.frombytes('RGBA', (preview.width, preview.height), preview.raw, 'raw', 'ARGB').convert('RGB').tobytes()
-            linked_reference(original, preview.width, preview.height, 3, rgb, reference)
             pattern = rb'\[([^\]]+)\] 7885 7795 8685 8643 4 4 0'
             original_matrix = list(map(float, re.search(pattern, original)[1].split()))
         else:
@@ -108,11 +92,6 @@ def main():
                 assert inkai.extract(str(pinned)) == original
             else:
                 assert pinned.read_bytes() == original
-            if row['printable']:
-                if row['pdfBacked']:
-                    reference.write_bytes(pinned.read_bytes())
-                else:
-                    raster_reference(before[-1], row['bounds'], reference)
         for variant, transform in row['transforms'].items():
             path = args.output / f'{name}.{variant}.ps'
             raw = path.read_bytes()
@@ -143,29 +122,9 @@ def main():
             else:
                 pattern = rb'\(([-+0-9.eE]+)\) /String \(BBAccumRotation\)'
                 assert re.findall(pattern, raw) == re.findall(pattern, original)
-            if not linked and not row['printable']:
-                continue
-            expected_pdf = args.output / f'{name}.{variant}.reference.pdf'
-            transformed_pdf(reference, expected_pdf, transform, row['bounds'])
-            width, height = (1920, 1080) if not linked and row['pdfBacked'] else (612, 792)
-            expected_png = render_pdf(expected_pdf, width, height)
-            targets = [args.output / f'{name}.{variant}.pdf']
-            if linked or row['pdfBacked']:
-                saved = args.output / f'{name}.{variant}.ai'
-                assert native_programs(saved) == [raw]
-                owners += 1
-                # A different stem avoids replacing the standalone PDF's PNG.
-                carrier = args.output / f'{name}.{variant}.saved.pdf'
-                carrier.write_bytes(saved.read_bytes())
-                if linked:
-                    targets.append(carrier)
-            for target in targets:
-                difference = compare(expected_png, render_pdf(target, width, height), target.with_suffix('.difference.png'), 0.02)
-                comparisons.append({'file': target.name, 'meanChannelDifference': difference})
-                print(f'{target.name}: mean channel difference {difference}')
-    assert count == 69 and owners == 6 and len(comparisons) == 12
-    (args.output / 'independent-verification.json').write_text(json.dumps({'geometryEdits': count, 'nativePrograms': owners, 'renders': comparisons}, indent=2) + '\n')
-    print('Verified 69 geometry edits, six saved native programs and twelve page comparisons.')
+    assert count == 69
+    (args.output / 'independent-verification.json').write_text(json.dumps({'geometryEdits': count}, indent=2) + '\n')
+    print('Verified 69 native geometry edits.')
 
 
 if __name__ == '__main__':

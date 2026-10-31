@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify native image samples, placement edits and PDF rendering independently."""
+"""Verify native image samples and placement edits independently."""
 
 import argparse
 import importlib
@@ -8,10 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image
-from pypdf import PdfReader, PdfWriter, Transformation
 
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
+from corpus_support import REVISION
 
 
 def images(document):
@@ -49,25 +47,8 @@ def samples(image):
     return raw[:color_length], raw[color_length:total]
 
 
-def reference_pdf(image, bounds, path):
-    """Render native CMYK samples using standard PostScript colorimage operators."""
-    assert image.image_type == 4 and image.alpha_channel_count == 0
-    assert [image.llx, image.lly, image.urx, image.ury] == [0, 0, image.h, image.w]
-    colors, _ = samples(image)
-    left, bottom, right, top = bounds
-    source = path.with_suffix('.reference.ps')
-    source.write_text(
-        '%!PS-Adobe-3.0\n'
-        f'<< /PageSize [{right-left} {top-bottom}] >> setpagedevice\n'
-        f'{-left} {-bottom} translate\n'
-        f'[{" ".join(map(str, image.matrix))}] concat\n'
-        f'{image.h} {image.w} 8 [1 0 0 -1 0 0] currentfile /ASCIIHexDecode filter false 4 colorimage\n'
-        + colors.hex() + '>\nshowpage\n', encoding='ascii')
-    subprocess.run(['gs', '-q', '-dSAFER', '-dBATCH', '-dNOPAUSE', '-sDEVICE=pdfwrite', '-dAutoFilterColorImages=false', '-dColorImageFilter=/FlateEncode', '-dDownsampleColorImages=false', f'-sOutputFile={path}', str(source)], check=True, capture_output=True)
-
-
 def main():
-    """Require exact decoded samples, unchanged private resources and real rendering."""
+    """Require exact decoded samples, translated matrices and unchanged resources."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -83,8 +64,7 @@ def main():
     assert {row['file'] for row in rejections} == {'transparent_image.ai', 'image_linked.ai'}
     assert all('raster data boundary' in row['error'] for row in rejections)
     assert {row['file']: len(row['images']) for row in report} == {'raster_ai8.ai': 1, 'raster_v2020.ai': 6, 'empty_cs.ai': 5, 'empty_cs2.ai': 5, 'simple_shapes_cc.ai': 7}
-    count, alpha_count, private_count, owners = 0, 0, 0, 0
-    renders = []
+    count, alpha_count, private_count = 0, 0, 0
     for row in report:
         name = row['file']
         before = images(inkai.parse(str(args.output / f'{name}.native.ps')))
@@ -112,45 +92,10 @@ def main():
                 expected[5] -= 19
             assert all(abs(a-b) < 1e-10 for a, b in zip(second.matrix, expected))
             assert samples(first) == samples(second)
-        original = args.output / f'{name}.reference.pdf'
-        if row['pdfBacked']:
-            original.write_bytes((args.inkai_source / 'tests/data/ai' / name).read_bytes())
-        else:
-            reference_pdf(next(image for info, image in zip(row['images'], before) if info['printable']), row['bounds'], original)
-        writer = PdfWriter()
-        writer.clone_document_from_reader(PdfReader(original))
-        writer.pages[0].add_transformation(Transformation().translate(37, -19))
-        translated = args.output / f'{name}.expected-translated.pdf'
-        writer.write(translated)
-        width, height = (1920, 1080) if row['pdfBacked'] else (612, 792)
-        for variant, reference in [('rebuilt', original), ('translated', translated)]:
-            if row['pdfBacked']:
-                programs = native_programs(args.output / f'{name}.{variant}.ai')
-                assert programs == [(args.output / f'{name}.{"native" if variant == "rebuilt" else "translated"}.ps').read_bytes()]
-                owners += len(programs)
-            expected = render_pdf(reference, width, height)
-            actual = render_pdf(args.output / f'{name}.{variant}.pdf', width, height)
-            difference = compare(expected, actual, args.output / f'{name}.{variant}.difference.png', 0.02)
-            renders.append({'file': name, 'variant': variant, 'meanChannelDifference': difference})
-            print(f'{name} {variant}: mean channel difference {difference}')
-    assert count == 24 and alpha_count == 20 and private_count == 2 and owners == 2
-    probe = render_pdf(args.output / 'alpha-probes.pdf', 600, 600)
-    probes = [(30, 70, (128, 0, 127)), (70, 70, (0, 64, 191)), (30, 30, (0, 0, 255)), (70, 30, (128, 128, 255)), (5, 50, (0, 0, 255))]
-    with Image.open(probe) as image:
-        for x, y, expected in probes:
-            actual = image.getpixel((x * 6, (100-y) * 6))
-            assert max(abs(a-b) for a, b in zip(expected, actual)) <= 1, (x, y, expected, actual)
-    # Adobe's retained XIImageMask prolog uses false imagemask polarity: zero
-    # samples paint, one samples leave the existing page unchanged.
-    prolog = (args.inkai_source / 'tests/data/ai/image_linked_ai8.ai').read_bytes()
-    assert b'/XIImageMask {\n\tXIImageWidth XIImageHeight false' in prolog.replace(b'\r\n', b'\n')
-    stencil = render_pdf(args.output / 'stencil-probes.pdf', 600, 600)
-    with Image.open(stencil) as image:
-        assert image.getpixel((30 * 6, 50 * 6)) == (255, 0, 0)
-        assert image.getpixel((70 * 6, 50 * 6)) == (0, 0, 255)
-    result = {'oracleRevision': REVISION, 'images': count, 'alphaPlanes': alpha_count, 'privateImages': private_count, 'nativeOwners': owners, 'pixelProbes': len(probes) + 2, 'rejectedFiles': [row['file'] for row in rejections], 'renders': renders}
+    assert count == 24 and alpha_count == 20 and private_count == 2
+    result = {'oracleRevision': REVISION, 'images': count, 'alphaPlanes': alpha_count, 'privateImages': private_count, 'rejectedFiles': [row['file'] for row in rejections]}
     (args.output / 'independent-report.json').write_text(json.dumps(result, indent=2) + '\n')
-    print('Native rasters: 24 images, 20 alpha planes, 4 renders and 7 pixel probes passed')
+    print('Native rasters: 24 images, 20 alpha planes and translated native matrices passed')
 
 
 if __name__ == '__main__':

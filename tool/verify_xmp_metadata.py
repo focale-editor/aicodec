@@ -10,7 +10,7 @@ from lxml import etree
 from pypdf import PdfReader
 from pypdf.generic import IndirectObject
 
-from verify_native_pdf import compare, render_pdf
+from corpus_support import compare, render_pdf
 
 
 def structure(value):

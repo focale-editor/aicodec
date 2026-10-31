@@ -4,7 +4,7 @@ import 'dart:math';
 
 import 'package:aikit/aikit.dart';
 
-/// Exercises relative CC placement and synchronized saves on original/transformed art.
+/// Exercises relative CC placement edits on original/transformed art.
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/gradient-placement').create(recursive: true);
   final List<Map<String, Object?>> report = [];
@@ -34,12 +34,8 @@ Future<void> main() async {
         aspectRatio: parameters[4],
       );
       final String stem = '${output.path}/$name.$variant';
-      final AiBoundingBox bounds = AiBoundingBox(left: 0, bottom: -1080, right: 1920, top: 0);
-      final AiPdfDocument saved = AiNativePdf.save(source: source, program: changed.records.program, pageBounds: [bounds]);
       await File('$stem.before.ps').writeAsBytes(drawing.records.program.bytes);
       await File('$stem.ps').writeAsBytes(changed.records.program.bytes);
-      await File('$stem.ai').writeAsBytes(const AiCodec().encode(saved));
-      await File('$stem.pdf').writeAsBytes(const PdfEncoder().convert(saved.pdf));
       report.add({'file': name, 'variant': variant, 'selected': selected, 'shapes': drawing.liveShapes.length, 'parameters': parameters});
       stdout.writeln('$name $variant: ${selected.length} selected shapes');
     }

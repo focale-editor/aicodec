@@ -33,19 +33,10 @@ Future<void> main() async {
     final double pivotX = movedPage ? 1400 : (bounds.left + bounds.right) / 2;
     final double pivotY = movedPage ? -2400 : (bounds.bottom + bounds.top) / 2;
     await File('${output.path}/$name.original.ps').writeAsBytes(program.bytes);
-    if (document is AiPdfDocument) {
-      await File('${output.path}/$name.original.pdf').writeAsBytes(const AiCodec().encode(document));
-    }
     for (final (String, double) variant in [('smaller', 0.5), ('larger', 1.5)]) {
       final AiNativeDrawing changed = drawing.scaleLiveShapes(shapes: drawing.liveShapes, factor: variant.$2, pivotX: pivotX, pivotY: pivotY);
       final String stem = '${output.path}/$name.${variant.$1}';
       await File('$stem.ps').writeAsBytes(changed.records.program.bytes);
-      final bool completePdf = document is AiPdfDocument && !name.startsWith('simple_shapes');
-      if (completePdf) {
-        final AiPdfDocument saved = AiNativePdf.save(source: source, program: changed.records.program, pageBounds: [bounds]);
-        await File('$stem.ai').writeAsBytes(const AiCodec().encode(saved));
-        await File('$stem.pdf').writeAsBytes(const PdfEncoder().convert(saved.pdf));
-      }
       report.add({
         'file': name,
         'variant': variant.$1,
@@ -54,7 +45,6 @@ Future<void> main() async {
         'bounds': [bounds.left, bounds.bottom, bounds.right, bounds.top],
         'shapes': drawing.liveShapes.length,
         'paths': drawing.paths.length,
-        'pdf': completePdf,
       });
       stdout.writeln('$name ${variant.$1}: ${drawing.liveShapes.length} live shapes');
     }

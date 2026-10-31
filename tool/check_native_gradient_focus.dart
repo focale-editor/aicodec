@@ -27,26 +27,6 @@ Future<void> main() async {
     await File('${output.path}/$name.edited.ps').writeAsBytes(changed.records.program.bytes);
     report.add({'file': name, 'names': names.toList(), 'angle': 37, 'length': 0.375});
     stdout.writeln('$name: ${names.length} radial resources');
-    if (name == 'gradient_radial.ai') {
-      final RegExpMatch crop = RegExp(r'%AI3_Cropmarks:\s*([^\r\n]+)').firstMatch(latin1.decode(program.bytes))!;
-      final AiBoundingBox bounds = AiBoundingBox.parse(value: crop[1]!);
-      await File('${output.path}/baseline.reference.pdf').writeAsBytes(const AiCodec().encode(document));
-      await File('${output.path}/baseline.pdf').writeAsBytes(const PdfEncoder().convert(AiNativePdf.render(program: program, bounds: bounds)));
-      for (final (String, double, double) variant in [('angled', 37, 0.375), ('centered', 0, 0), ('boundary', -72, 1)]) {
-        AiNativeGradientResources variantSource = source;
-        for (final String target in names) {
-          variantSource = variantSource.setRadialFocus(
-            definition: variantSource.definitions.firstWhere((definition) => latin1.decode(definition.nameBytes) == target),
-            angle: variant.$2,
-            length: variant.$3,
-          );
-        }
-        final AiPdfDocument saved = AiNativePdf.save(source: native, program: variantSource.records.program, pageBounds: [bounds]);
-        await File('${output.path}/${variant.$1}.ps').writeAsBytes(variantSource.records.program.bytes);
-        await File('${output.path}/${variant.$1}.ai').writeAsBytes(const AiCodec().encode(saved));
-        await File('${output.path}/${variant.$1}.pdf').writeAsBytes(const PdfEncoder().convert(saved.pdf));
-      }
-    }
   }
   await File('${output.path}/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert(report));
 }

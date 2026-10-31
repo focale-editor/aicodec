@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Verify native uniform scaling, isolated stroke styles and PDF appearances."""
+"""Verify native uniform scaling, isolated stroke styles and external SVG geometry."""
 
 import argparse
 import hashlib
 import importlib
 import json
-import math
 import subprocess
 import sys
 from pathlib import Path
 
 from verify_live_shapes import FIXTURES, GEOMETRY, walk_body
-from verify_live_shape_rotation import close, matrix, reference_pdf, verify_svg
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
+from verify_live_shape_rotation import close, matrix, verify_svg
+from corpus_support import REVISION
 
 
 LENGTHS = {'Width', 'Height', 'Radius', 'Radius1', 'Radius2', 'Length',
@@ -158,7 +157,7 @@ def verify_native(inkai, original, changed, row):
 
 
 def main():
-    """Require pinned inputs, visible SVGs and independently transformed PDFs."""
+    """Require pinned inputs, native edits and visible independent SVGs."""
     if not __debug__:
         raise RuntimeError('Run without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -183,20 +182,7 @@ def main():
         changed = args.output / f'{stem}.ps'
         verify_native(inkai, original, changed, row)
         svg_mean = verify_svg(inkai, original, changed, row, args.output)
-        comparisons = []
-        if row['pdf']:
-            saved = args.output / f'{stem}.ai'
-            assert native_programs(saved) == [changed.read_bytes()]
-            reference = args.output / f'{stem}.reference.pdf'
-            reference_pdf(args.output / f'{name}.original.pdf', reference, row)
-            left, bottom, right, top = row['bounds']
-            width, height = 1200, math.ceil(1200 * (top - bottom) / (right - left))
-            expected = render_pdf(reference, width, height)
-            for target in [args.output / f'{stem}.pdf', saved]:
-                actual = render_pdf(target, width, height)
-                mean = compare(expected, actual, target.with_suffix(f'.{target.suffix[1:]}.difference.png'), 0.1, gradient=name.startswith('gradient_'))
-                comparisons.append({'file': target.name, 'meanChannelDifference': mean})
-        results.append({'file': name, 'variant': row['variant'], 'svgMeanChannelDifference': svg_mean, 'pdf': comparisons})
+        results.append({'file': name, 'variant': row['variant'], 'svgMeanChannelDifference': svg_mean})
         print(name, row['variant'], 'passed', flush=True)
     (args.output / 'oracle-report.json').write_text(json.dumps(results, indent=2) + '\n')
 

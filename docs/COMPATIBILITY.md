@@ -1,98 +1,47 @@
-# Native Illustrator compatibility work
+# Native compatibility status
 
-The target is native editing compatibility, starting with recent CC files and
-then older formats. Decoding or preserving a feature is not evidence that it is
-editable. Adobe Illustrator reopening remains a separate acceptance check.
+AiKit implements bounded Illustrator data inspection, source-preserving native
+editing and serialization. Rendering, composition and tools belong to the host;
+Focale integration is deferred. See [the responsibility split](HOST.md) and the
+[detailed format contracts](AI.md).
 
-## Implemented foundations
+## Implemented data contracts
 
-- PDF and legacy containers, exact legacy preservation, immutable snapshots and
-  bounded syntax parsing.
-- Native plain/zlib/Zstandard envelopes, shared-owner rewriting and independent
-  original/rewritten byte comparisons. Zstandard uses published ZCodec 0.2.6.
-- Native layers and source-backed flag/name edits; plain path geometry edits
-  with explicit rejection of unresolved appearance dependencies.
-- Hierarchical native dictionaries, arrays, objects, ASCII85 binary resources,
-  source-backed scalar edits and typed native artboards.
-- Source-backed private/printable paths, compound groups, live-shape/style
-  associations and AI17 metadata alternatives. Atomic translation of five live
-  shape families with solid and linear/radial gradient appearances, including
-  expanded strokes and redundant native centers. Native gradient/paint records,
-  synchronized printing matrices and isolated positional style copies. Eight
-  independently checked translation fixtures.
-- Self-contained AI7 creation for layers, groups and simple path appearance,
-  checked with Ghostscript.
-- Published PsCore 0.2.2 EngineData grammar reused by PsdKit and AiKit. Typed ATE fonts,
-  styles, stories, UTF-16 runs and frame references; preserved unknown layout,
-  source-backed style naming and bounded ASCII85 rewriting.
-- Named CS and compact CC text keys, omitted run tables inheriting normal styles,
-  bounded parent-style resolution and paragraph character defaults. Typed cached
-  layout nodes and glyph IDs, frame matrices and paths. The expanded corpus has
-  37 files, including transformed, linked-area, path and point text.
-- Native UTF-16 content replacement with style inheritance, CR/forced-break span splitting,
-  explicit cache invalidation, bounded expansion and rejection of unresolved
-  auxiliary features. Twenty story edits checked by an independent decoder;
-  composing the new display and PDF remains host work.
-- Native character/paragraph overrides, selected-run splitting, inherited-feature
-  restoration, paired point-size fields and separate inline style identities.
-  Sixty formatting edits compared independently across the twenty stories,
-  including whole-paragraph selections spanning forced line breaks;
-  typography settings are authored, not implemented as a new compositor.
-- Native font registration with stable existing indices, fresh identities,
-  PostScript/TrueType metadata, signed variation coordinates and display lists.
-  Sixty-four additions checked independently; font loading and embedding remain
-  host responsibilities.
-- Host-composed point/area frame, line and segment position writing, with source
-  coverage, linked-frame ownership, explicit overflow, compact reordered ranges
-  and automatic-hyphen maps. Seventeen layouts and fourteen hyphens checked
-  independently; glyph shaping, path geometry and synchronized PDF remain pending.
-- Point/area/path frame translation, including selected linked frames and their
-  native confinement paths. Existing affine matrices and local glyph caches are
-  preserved; 26 frames and 13 paths are checked independently, plus one partial
-  linked-frame selection. Complex confinement appearances and synchronized PDF
-  saves still require further work.
-- Global gradient stop/opacity/color editing with paired native/compatibility
-  records and explicit host-composed printing intervals. All 378 definitions,
-  1,103 stops and 725 intervals are compared independently; 23 resource rewrites,
-  seven color layouts and 24 rendered CC instances are checked. Color-managed
-  ramp composition and flattened appearances remain host responsibilities.
-- Native printable process-color paths rendered through PdfCore and saved with
-  their native program in one snapshot. Compound paths, clipping, hidden and
-  nonprinting layers, object opacity and group blend state are supported.
-  Eighteen independent comparisons cover eight original/translated fixtures and
-  two gradient recolorings; six translated and two recolored saves also have
-  independently decoded native bytes. Nine pixel probes check opacity, Multiply,
-  clipping and layer flags.
-- Classic gradient fills use absolute printing matrices, process-color PDF
-  functions, mirrored midpoints, focal ellipses and independent stop-opacity
-  masks. Two real swatches compare nonlinear PDF functions with their original
-  printing ramps. Native stop writes now follow the corpus's descending linear
-  and ascending radial order. Gradient strokes, hard stops, newer methods, text,
-  rasters and unrepresented drawing operations remain outside this renderer.
+- PDF/PostScript container detection, immutable snapshots and exact legacy bytes.
+- Plain, zlib and Zstandard native envelopes, shared-owner rewriting and saving
+  with a host-supplied PDF. Zstandard uses published ZCodec 0.2.6.
+- Native layers, plain paths, hierarchical records and artboards.
+- Qualified CC live-shape translation, rotation and uniform scaling, including
+  dependent printing geometry, gradients and shared-style isolation.
+- ATE fonts, stories, UTF-16 runs and styles; native content/feature editing,
+  host-composed layouts and frame translation. PsCore 0.2.2 supplies EngineData.
+- Gradient stops, printing ramps supplied by the host, focus, selected resource
+  isolation and relative placement edits.
+- Native mesh inventory, process-color/ink-tint/opacity vertex edits with shared
+  corner updates; source geometry and unknown data remain preserved.
+- Embedded raster samples and alpha, replacement pixels, linked placements,
+  explicit previews, relinking and affine geometry edits.
+- Catalog XMP dependencies and source-preserving resource updates.
+- Typed AI7 creation with layers, groups and simple path appearances.
 
-## Next native editing work
+## Remaining native work
 
-1. Extend live-shape editing beyond translation: resize/rotate/regenerate shape
-   parameters, corners and dependent appearance geometry. Refine exact artwork
-   bounds and support nested appearances and larger versioned alternatives.
-2. Complete known/active styles, multiple fills/strokes, gradient ramp composition,
-   isolated object color edits, resource creation and hard stops, transparency,
-   compound paths, clipping and appearance expansion without flattening editing
-   data into a compatibility preview.
-3. Extend ATE resource/story/run views into synchronized content and feature
-   editing: complete advanced composition semantics, shape glyphs, regenerate
-   frames and cached strikes, and synchronize printable/PDF output. Extend
-   typography fixtures beyond Latin text and cover undo-free references.
-4. Model linked/embedded raster data, meshes, brushes, patterns, symbols, effects
-   and plug-in records with explicit editing contracts.
-5. Extend synchronized native/PDF saves beyond paths and classic gradient fills,
-   integrate the host scene, and validate reopening in Illustrator on representative files.
-6. Extend legacy operator execution and native writing with bounded execution,
-   resource handling and independent rendering checks.
+Extend source-backed models and serialization for unsupported native appearance,
+shape, text, mesh, brush, pattern, symbol, effect and plug-in data, starting with
+CC files. Each edit needs explicit ownership, preservation and rejection rules.
+Extend older formats after the CC contracts are qualified. Arbitrary PostScript
+execution, glyph shaping, mesh tessellation and standalone PDF generation are
+outside the kit's scope.
 
-## Evidence required for each addition
+## Evidence and limitations
 
-Use synthetic regression cases and pinned real fixtures, preserve data outside
-the edited feature, run VM and Node tests, and compare with an independent
-decoder or renderer. Record remaining unsupported semantics in `docs/AI.md`.
-No compatibility percentage is inferred from the number of accepted files.
+Run VM/Node regression tests and the relevant pinned [corpus checks](../test/corpus/README.md).
+Independent readers compare native records, source bytes and edited geometry.
+Some native edits also have external SVG rendering checks. Existing PDF/XMP
+preservation can be verified with Poppler without rendering native art in AiKit.
+The removed native-to-PDF export suites are not current acceptance criteria.
+
+No Adobe Illustrator reopening validation or native Focale integration acceptance
+has been performed. A PDF view, preserved private record or accepted file does
+not establish native editability. Do not infer a compatibility percentage from
+fixture or test counts.

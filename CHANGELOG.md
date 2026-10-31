@@ -8,5 +8,5 @@
 - Source-backed CC mesh inspection with mixed color spaces and intermediate boundary nodes.
 - Shared mesh vertex color/opacity editing, typed ink alternatives and global resource scanning fixes.
 - Native Separation/NChannel mesh tint editing with PDF-qualified component ordering and unchanged ink declarations.
-- Source-derived mesh tensor geometry and process-color evaluation, including compound boundaries and explicit host color resolution.
-- Qualified native mesh PDF rendering with bounded color subdivision, isolated constant opacity and synchronized saves for supported drawings.
+- Removed development native-to-PDF rendering and mesh interpolation APIs to keep rendering in the host application.
+- Retained native editing and serialization with host-supplied PDF appearances; documented the package/host contract and migration.

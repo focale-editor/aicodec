@@ -10,6 +10,11 @@ PsCore supplies the Adobe text-engine grammar shared with PsdKit.
 Source-backed edits preserve unknown records, and typed artwork can be written
 as self-contained AI7 PostScript.
 
+Like PsdKit, AiKit owns editable format data and serialization. Focale owns
+editing tools, rendering and derived representations. AiKit saves the PDF
+appearance supplied by its host; it does not render native Illustrator artwork.
+Focale integration is deferred. See the [host contract](docs/HOST.md).
+
 ## Supported data
 
 - Signature-based detection of PDF and PostScript AI families.
@@ -28,23 +33,19 @@ as self-contained AI7 PostScript.
 - CC live-shape associations and atomic translation of native outlines,
   solid/gradient appearances and parameters, including expanded strokes,
   shared style resources and versioned metadata.
-- Native process-color path rendering into PDF and synchronized saving, with
-  layers, compound paths, clipping, object opacity and group blend modes.
-- Classic linear/radial gradient fills and strokes in PDF, including focal
-  ellipses, midpoint interpolation, stop opacity and synchronized color edits.
 - Isolated live-shape gradient resources for selected-object color/focus edits,
   preserving other users, shared styles and swatches.
 - Relative CC gradient origin, angle, length and radial aspect editing inside
   live shapes, with synchronized printing geometry and copied appearance styles.
 - Binary native raster samples, separate alpha planes and synchronized image
-  translation/PDF saving. Replace embedded pixels, alpha, depth and resolution
+  translation. Replace embedded pixels, alpha, depth and resolution
   while retaining placed extents and renewing changed sample identities.
 - CC linked-file paths, placement and bounded ARGB previews. Translate links or
   incorporate host-decoded image samples into editable native raster artwork.
 - Relink CC raster files with explicit relative directories and refreshed or
   removed previews, retaining geometry and shared file dependencies.
-- Render host-resolved linked images and synchronize PDF appearances while
-  retaining native file references, relative paths and cached previews.
+- Save host-supplied PDF appearances together with native data, retaining shared
+  owners, metadata and other producers; remove stale native thumbnails.
 - AI7 creation with editable layers, groups, Bézier paths, process colors,
   fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
@@ -64,7 +65,7 @@ dependencies:
 
 Adjust the paths to your Dart or Flutter project. Zstandard uses hosted
 ZCodec 0.2.6; text-engine parsing uses hosted PsCore 0.2.2. Until its first
-pub.dev release, PdfCore resolves from the pinned Git revision in `pubspec.yaml`.
+pub.dev release, PdfCore resolves from the Git source in `pubspec.yaml`.
 To work on a sibling PdfCore checkout while developing AiKit, copy
 [`pubspec_overrides.yaml.example`](pubspec_overrides.yaml.example) to the ignored
 `pubspec_overrides.yaml`. Otherwise, `dart pub get` needs no local override.
@@ -137,8 +138,7 @@ effects still require host regeneration before saving a synchronized document.
 color stops, opacity, named colors and sampled printing ramps. `replaceStops`
 updates every same-name definition and its compatibility records atomically,
 using explicit host-composed ramp intervals. Instance geometry stays intact;
-color management and flattened effects remain host work. Supported classic
-fills can be synchronized through `AiNativePdf`.
+color management, PDF appearances and flattened effects remain host work.
 
 `AiNativeDrawing.isolateLiveShapeGradient` copies a named resource and its shared
 styles for selected live shapes. Supply an unused byte name, then decode
@@ -152,26 +152,11 @@ printing matrices and focal offsets together while retaining the shape outlines
 and resource colors. The technical reference explains the native relative units
 and the layouts qualified for synchronized editing.
 
-`AiNativePdf.render(program:, bounds:)` builds a PDF page from supported native
-printable paths, using an explicit drawing-coordinate page rectangle.
-`AiNativePdf.save(source:, program:, pageBounds:)` regenerates existing PDF pages
-and rewrites their shared native program in one immutable snapshot. Metadata and
-annotations are retained; stale thumbnails are removed. This currently supports
-process-color paths, classic gradient fills/strokes, binary embedded images and
-resolved live-shape expansions, including groups, clipping and opacity. Unsupported drawing commands reject
-the complete save.
-
-Both methods accept `resolvePlacement` to render qualified CC raster links from
-host-decoded `AiNativeRasterSamples`. The callback receives the current native
-placement and its raw file references. Saving keeps those references and cached
-previews intact; missing pixels reject the operation. Using the saved preview
-through `(object) => object.preview?.toSamples()` is an explicit fallback.
-
 Embedded images and qualified raster links also expose `setPlacement` for
 host-composed affine geometry and an explicit editing-frame angle. This changes
 placed size/orientation while retaining pixels, identities, paths and previews.
 Unknown dependent cache fields reject the edit; PDF appearances are regenerated
-through `AiNativePdf`.
+by the application before saving.
 
 `AiXmpMetadata` reads catalog manifest/ingredient references and relinks explicitly
 selected resources, with host-supplied paths and optional asset identifiers.
@@ -186,12 +171,8 @@ ink declarations retain their exact source fields. Selected logical vertices
 support process-color, named-ink tint and opacity edits across every neighboring
 corner copy. `inkTints` pairs NChannel components with their correct ink names;
 tint edits preserve the original declarations and device alternatives.
-`AiNativeMeshInterpolation` evaluates qualified tensor geometry and process
-colors, including intermediate boundary knots. Named inks and mixed spaces
-require explicit host color resolution; varying corner opacity is not supported.
-The native PDF bridge renders qualified meshes with bounded color subdivision
-and constant opacity, and saves supported drawings with their edited native data.
-Mesh geometry editing and full-document opacity masks remain unfinished.
+Mesh interpolation, color management and rendering belong to the host. Mesh
+geometry editing and additional native layouts remain unfinished.
 
 ## Scope
 
@@ -200,20 +181,15 @@ than the artwork; `AiNativeData.extract` accesses the native program separately.
 `AiProgram` interprets a structural subset and reports unhandled operators and
 private extensions. It does not execute arbitrary PostScript.
 
-ATE text resources, stories and runs are modeled, while glyph shaping, layout
-regeneration and synchronized text-content editing remain unfinished. Plug-ins,
+ATE text resources, stories and runs are modeled; the host supplies glyph
+composition, cached layouts and matching appearances after editing. Plug-ins,
 effects, meshes, gradient and raster authoring semantics are preserved but not
 fully modeled. Live rectangles, ellipses,
 polygons, stars and lines support translation, rotation and uniform scaling with
 solid and CC linear/radial gradient appearances; nonuniform resizing, shearing and
 parameter-driven regeneration remain unfinished. Geometry edits
 with unresolved private appearance dependencies are rejected. AI7 creation is an
-explicit legacy target, not a reconstruction of CC editing records. The native
-PDF bridge covers supported printable paths, classic gradient fills/strokes and
-binary embedded images and qualified CC links with explicit host-supplied pixels.
-Text, unresolved linked images, unsupported raster layouts,
-gradients along/across strokes and unresolved effects still need host regeneration
-before saving visual edits.
+explicit legacy target, not a reconstruction of CC editing records.
 No Adobe Illustrator reopening validation has been performed.
 
 See [docs/AI.md](docs/AI.md) for editing policies and
@@ -222,6 +198,7 @@ independent implementation and is not affiliated with or endorsed by Adobe.
 
 ## More documentation
 
+- [Package and host responsibilities](docs/HOST.md)
 - [Illustrator container reference](docs/AI.md)
 - [Inspection and PDF interchange example](example/aikit_example.dart)
 - [External corpus and validation scope](test/corpus/README.md)
@@ -241,9 +218,7 @@ dart test --platform node
 The optional corpus checks extraction, layer renaming and native recompression
 on 37 pinned files. Independent zlib/Zstandard decoding checks the resulting
 bytes. Eight fixtures also check live-shape translations against a pinned
-independent reader and renderer. Eight fixtures check regenerated and translated
-PDFs, plus two gradient color/opacity edits, with independent native decoding. These
-checks do not establish complete native
+independent reader and renderer. These checks do not establish complete native
 Illustrator compatibility.
 
 ---

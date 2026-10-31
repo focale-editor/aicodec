@@ -190,7 +190,7 @@ final class AiNativePlacements {
   /// The placed extent and object metadata stay fixed. The file reference and
   /// preview are replaced together; an unused DocumentFiles dependency is
   /// removed. Unknown placement or object-metadata semantics reject conversion.
-  /// Use AiNativePdf.save with the returned program for synchronized PDF artwork.
+  /// The host supplies matching PDF artwork to AiNativeData.replace when saving.
   AiNativeRasters embed({required AiNativePlacedObject object, required AiNativeRasterSamples samples}) => _embedNativePlacement(this, object, samples);
 
   /// Changes one external reference and explicitly replaces or removes its preview.
@@ -201,7 +201,7 @@ final class AiNativePlacements {
   /// the saved preview. No image decoding, resizing or color conversion occurs.
   /// Native geometry and stable object metadata remain unchanged. DocumentFiles
   /// dependencies update atomically, retaining an old path still used elsewhere.
-  /// Use AiNativePdf.save with a resolver for the new file to synchronize its PDF.
+  /// The host resolves the new file and supplies matching PDF artwork when saving.
   AiNativePlacements relink({required AiNativePlacedObject object, required List<int> pathBytes, required List<int>? relativeDirectoryBytes, required AiNativeRasterSamples? preview}) =>
       _relinkNativePlacement(this, object, pathBytes, relativeDirectoryBytes, preview);
 }

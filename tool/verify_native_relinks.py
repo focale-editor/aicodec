@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify relinked native paths, previews, unchanged resources and PDF appearances."""
+"""Verify relinked native paths, previews and unchanged resources."""
 
 import argparse
 import hashlib
@@ -12,8 +12,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
-from verify_native_placements import SOURCE_REVISION, preview_data, reference_pdf
+from corpus_support import REVISION
+from verify_native_placements import SOURCE_REVISION, preview_data
 from verify_native_rasters import images, samples
 
 
@@ -26,7 +26,7 @@ def literal_path(program):
 
 
 def main():
-    """Require independent byte, resource, filename and complete-page agreement."""
+    """Require independent byte, resource, filename and preview agreement."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -46,7 +46,7 @@ def main():
     destination = args.output / 'assets' / 'relinked-apple.png'
     destination.parent.mkdir(parents=True, exist_ok=True)
     expected.save(destination)
-    # The generated resource is the actual file named by both saved AI outputs.
+    # The generated resource is the actual file named by both native outputs.
     report = json.loads((args.output / 'report.json').read_text())
     assert bytes(report['pathBytes']) == str(destination.resolve()).encode('utf8')
     assert bytes(report['relativeDirectoryBytes']) == b'assets'
@@ -57,10 +57,6 @@ def main():
     expected_path = bytes(report['pathBytes'])
     original_path = literal_path(original)
     assert original_path != expected_path
-    reference = args.output / 'reference.pdf'
-    reference_pdf(original, expected.width, expected.height, 3, expected.tobytes(), reference)
-    rendered_reference = render_pdf(reference, 612, 792)
-    renders = []
     for variant in report['variants']:
         program = (args.output / f'{variant}.native.ps').read_bytes()
         decoded = inkai.parse(str(args.output / f'{variant}.native.ps'))
@@ -89,17 +85,8 @@ def main():
             assert rgba.convert('RGB').tobytes() == expected.tobytes()
         else:
             assert b'%AI26_BeginPlacedObjectPreview' not in program
-        assert native_programs(args.output / f'{variant}.ai') == [program]
-        for extension in ['pdf', 'ai']:
-            path = args.output / f'{variant}.{extension}'
-            rendered = render_pdf(path, 612, 792)
-            preserved = args.output / f'{variant}-{extension}.png'
-            rendered.replace(preserved)
-            difference = compare(rendered_reference, preserved, args.output / f'{variant}-{extension}.difference.png', 0.02)
-            renders.append({'variant': f'{variant}.{extension}', 'meanChannelDifference': difference})
-            print(f'{variant}.{extension}: mean channel difference {difference}')
-    (args.output / 'independent-report.json').write_text(json.dumps({'sourceRevision': SOURCE_REVISION, 'readerRevision': REVISION, 'unchangedSetupImages': 5, 'nativePrograms': 2, 'renders': renders}, indent=2) + '\n')
-    print('CC relinking: exact paths, refreshed/removed preview, five unchanged images, two native programs and four renders passed')
+    (args.output / 'independent-report.json').write_text(json.dumps({'sourceRevision': SOURCE_REVISION, 'readerRevision': REVISION, 'unchangedSetupImages': 5, 'nativePrograms': 2}, indent=2) + '\n')
+    print('CC relinking: exact paths, refreshed/removed preview, five unchanged images, two native programs passed')
 
 
 if __name__ == '__main__':

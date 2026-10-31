@@ -16,7 +16,7 @@ Use a Dart SDK compatible with [`pubspec.yaml`](pubspec.yaml). From the package 
 dart pub get
 ```
 
-PdfCore resolves from a pinned Git revision until its first pub.dev release.
+PdfCore resolves from a Git source until its first pub.dev release.
 For work that also modifies PdfCore, clone it as a sibling `PdfCore` directory
 and copy `pubspec_overrides.yaml.example` to the ignored `pubspec_overrides.yaml`.
 The regular checkout does not require that override or a sibling directory.

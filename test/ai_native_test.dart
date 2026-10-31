@@ -13,14 +13,21 @@ const String programText =
     '1 Ap\n0 0 0 1 k\n0 0 m\n10 0 L\n10 10 20 10 20 0 C\nf\nLB\n%%PageTrailer\n%%EOF\n';
 
 /// Builds private-data graphs independently of the native replacement writer.
-AiPdfDocument nativePdf({required AiNativeCompression compression, bool alias = false, bool thumbnail = false, String prefix = 'AIPrivateData', int chunkBytes = 37}) {
+AiPdfDocument nativePdf({
+  required AiNativeCompression compression,
+  bool alias = false,
+  bool thumbnail = false,
+  String prefix = 'AIPrivateData',
+  int chunkBytes = 37,
+  String nativeProgram = programText,
+}) {
   final PdfDocument pdf = PdfDocument.fromPages(
     pages: [
       PdfPageSource(width: 100, height: 100, content: latin1.encode('q Q')),
       if (alias) PdfPageSource(width: 100, height: 100, content: latin1.encode('q Q')),
     ],
   );
-  final Uint8List envelope = AiNativeData.encodeEnvelope(latin1.encode(programText), compression: compression);
+  final Uint8List envelope = AiNativeData.encodeEnvelope(latin1.encode(nativeProgram), compression: compression);
   final Map<PdfReference, PdfValue> objects = {...pdf.objects};
   final Map<String, PdfValue> blocks = {};
   int number = 1;
@@ -57,6 +64,46 @@ AiPdfDocument nativePdf({required AiNativeCompression compression, bool alias = 
 /// Verifies native decompression, byte preservation and coherent source edits.
 void main() {
   for (final AiNativeCompression compression in AiNativeCompression.values) {
+    test('saves host-supplied pages with $compression native data and opaque appearances', () {
+      final String nativeProgram = programText.replaceFirst('1 Ap\n', '1 Ap\n0 1 0 2 1 Xy\n');
+      final AiPdfDocument original = nativePdf(compression: compression, alias: true, thumbnail: true, nativeProgram: nativeProgram);
+      final AiNativeSource source = AiNativeData.extract(original).single;
+      final AiProgram program = AiProgram.decode(bytes: source.bytes);
+      final AiProgram changed = AiNativeEditor.updateLayer(program: program, layer: program.layers.single, name: 'Host-edited layer');
+      // The host supplies each page's appearance; AiKit never interprets Xy.
+      final List<List<int>> appearances = [
+        latin1.encode('0 0 0 1 k 0 0 m 10 0 l 10 10 20 10 20 0 c f'),
+        latin1.encode('q 1 0 0 1 30 40 cm 0 0 0 1 k 0 0 m 10 0 l 10 10 20 10 20 0 c f Q'),
+      ];
+      final PdfEditor host = PdfEditor(document: original.pdf);
+      for (final (int, List<int>) page in appearances.indexed) {
+        host.setPageProgram(
+          pageIndex: page.$1,
+          program: PdfProgram(operations: PdfContent.decode(page.$2), resources: PdfDictionary(), document: host.document),
+        );
+      }
+
+      final AiPdfDocument saved = AiNativeData.replace(source: source, program: changed.bytes, synchronizedPdf: host.document);
+      final AiPdfDocument reopened = const AiCodec().decode(const AiCodec().encode(saved)) as AiPdfDocument;
+
+      final AiNativeSource recovered = AiNativeData.extract(reopened).single;
+      check(recovered.compression).equals(compression);
+      check(recovered.owners).deepEquals([0, 1]);
+      check(recovered.bytes).deepEquals(changed.bytes);
+      check(latin1.decode(recovered.bytes)).contains('0 1 0 2 1 Xy');
+      check(AiProgram.decode(bytes: recovered.bytes).layers.single.name).equals('Host-edited layer');
+      for (int index = 0; index < appearances.length; index++) {
+        check(PdfContent.encode(PdfProgram.fromPage(document: reopened.pdf, pageIndex: index).operations)).deepEquals(PdfContent.encode(PdfContent.decode(appearances[index])));
+        final PdfDictionary pieces = reopened.pdf.dictionary(reopened.pdf.pages[index].dictionary['PieceInfo']!);
+        check(reopened.pdf.dictionary(pieces['OtherProducer']!).integer('Value')).equals(42);
+        final PdfDictionary illustrator = reopened.pdf.dictionary(pieces['Illustrator']!);
+        check(illustrator.integer('Unknown')).equals(17);
+        check((reopened.pdf.dictionary(illustrator['Private']!)['PrivateSentinel']! as PdfString).text).equals('preserve me');
+        check(PdfProgram.fromPage(document: original.pdf, pageIndex: index).operations.map((operation) => operation.operator)).deepEquals(['q', 'Q']);
+      }
+      check(source.bytes).deepEquals(latin1.encode(nativeProgram));
+    });
+
     test('extracts $compression after PDF filtering, split markers and thumbnails', () {
       final AiPdfDocument document = nativePdf(compression: compression, thumbnail: true, chunkBytes: 7);
       final AiNativeSource source = AiNativeData.extract(document).single;

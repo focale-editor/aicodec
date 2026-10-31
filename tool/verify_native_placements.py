@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from verify_native_pdf import REVISION, compare, native_programs, render_pdf
+from corpus_support import REVISION
 from verify_native_rasters import images, samples
 
 SOURCE_REVISION = '41bac2967b0f2bd80bc14fce9c8c0dea01283536'
@@ -44,30 +44,8 @@ def preview_data(document):
     return found[0]
 
 
-def reference_pdf(source, width, height, components, pixels, path):
-    """Have Ghostscript execute original placement operands with standard image operators."""
-    header = re.search(rb'%AI5_BeginPlace\s+%%FileType: 1\s+(\[[^\]]+\][^`]+)`', source)
-    assert header
-    # Only the pinned producer's literal array, scalar operands and filename are
-    # evaluated. Its drawing program and external filename are never executed.
-    code = b'''%!PS-Adobe-3.0
-<< /PageSize [612 792] >> setpagedevice
-0 792 translate
-''' + header[1] + b'''
-pop pop pop pop
-/upper exch def /right exch def /lower exch def /left exch def
-concat
-left lower translate
-right left sub upper lower sub scale
-0 0 1 1 rectclip
-''' + f'{width} {height} 8 [{width} 0 0 {height} 0 0] currentfile /ASCIIHexDecode filter false {components} colorimage\n'.encode() + pixels.hex().encode() + b'>\nshowpage\n'
-    program = path.with_suffix('.ps')
-    program.write_bytes(code)
-    subprocess.run(['gs', '-q', '-dSAFER', '-dBATCH', '-dNOPAUSE', '-sDEVICE=pdfwrite', '-dAutoFilterColorImages=false', '-dColorImageFilter=/FlateEncode', '-dDownsampleColorImages=false', f'-sOutputFile={path}', str(program)], check=True, capture_output=True)
-
-
 def main():
-    """Require pinned bytes, opaque ARGB rows and complete-page reference agreement."""
+    """Require pinned bytes, opaque ARGB rows and unchanged setup resources."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -115,7 +93,6 @@ def main():
     assert max(abs(a-b) for a,b in zip(actual_bounds, expected_bounds)) < 1e-8
     assert bytes(report['pathBytes']) == b'C:\\Users\\me\\Downloads\\Lobo_(apple)_(cropped).jpg'
     assert report['relativeDirectoryBytes'] == []
-    renders = []
     assert {row['variant'] for row in report['variants']} == {'preview', 'resolved', 'translated'} and len(report['variants']) == 3
     for row in report['variants']:
         variant = row['variant']
@@ -128,32 +105,8 @@ def main():
         last = decoded[-1]
         expected = (rgb, bytes([255]) * (256*271)) if variant == 'preview' else (host_colors, b'')
         assert samples(last) == expected
-        source = translated if variant == 'translated' else original
-        reference = args.output / f'{variant}.reference.pdf'
-        reference_pdf(source, row['width'], row['height'], row['components'], expected[0], reference)
-        difference = compare(render_pdf(reference, 612, 792), render_pdf(args.output / f'{variant}.pdf', 612, 792), args.output / f'{variant}.difference.png', 0.02)
-        renders.append({'variant': variant, 'meanChannelDifference': difference})
-        print(f'{variant}: mean channel difference {difference}')
-        assert native_programs(args.output / f'{variant}.linked.ai') == [source]
-        for extension in ['pdf', 'ai']:
-            linked = args.output / f'{variant}.linked.{extension}'
-            # Keep distinct PNGs: the AI carrier and standalone PDF share a stem.
-            rendered = render_pdf(linked, 612, 792)
-            preserved = args.output / f'{variant}.linked-{extension}.png'
-            rendered.replace(preserved)
-            difference = compare(render_pdf(reference, 612, 792), preserved, args.output / f'{variant}.linked-{extension}.difference.png', 0.02)
-            renders.append({'variant': f'{variant}.linked-{extension}', 'meanChannelDifference': difference})
-            print(f'{variant}.linked-{extension}: mean channel difference {difference}')
-    assert native_programs(args.output / 'synchronized.ai') == [(args.output / 'resolved.embedded.ps').read_bytes()]
-    synchronized = compare(render_pdf(args.output / 'resolved.pdf', 612, 792), render_pdf(args.output / 'synchronized.ai', 612, 792), args.output / 'synchronized.difference.png', 0.02)
-    probe = render_pdf(args.output / 'linked-alpha-probes.pdf', 600, 600)
-    probes = [(20, 60, (64, 0, 191)), (35, 60, (0, 128, 127)), (20, 40, (0, 0, 255)), (35, 40, (128, 128, 255)), (45, 60, (0, 0, 255))]
-    with Image.open(probe) as image:
-        for x, y, expected in probes:
-            actual = image.getpixel((x * 6, (100-y) * 6))
-            assert max(abs(a-b) for a,b in zip(actual, expected)) <= 1, (x, y, actual, expected)
-    (args.output / 'independent-report.json').write_text(json.dumps({'sourceRevision': SOURCE_REVISION, 'readerRevision': REVISION, 'previewBytes': len(raw), 'unchangedSetupImages': 5, 'renders': renders, 'synchronizedDifference': synchronized, 'linkedPixelProbes': len(probes)}, indent=2) + '\n')
-    print('CC placement: exact preview, embedded/linked variants, ten page comparisons, four native programs and five linked pixel probes passed')
+    (args.output / 'independent-report.json').write_text(json.dumps({'sourceRevision': SOURCE_REVISION, 'readerRevision': REVISION, 'previewBytes': len(raw), 'unchangedSetupImages': 5, 'embeddedVariants': len(report['variants'])}, indent=2) + '\n')
+    print('CC placement: exact preview, translated placement and three native embedding variants passed')
 
 
 if __name__ == '__main__':
