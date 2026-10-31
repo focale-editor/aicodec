@@ -772,28 +772,76 @@ named-ink interpolation, patch rendering, native/PDF cache synchronization,
 older mesh versions and Adobe reopening remain further work. `AiNativePdf`
 still rejects unresolved mesh operators instead of dropping them from a page.
 
-`tool/verify_native_mesh_interpolation.py` is a research reference for the next
-rendering step, not an enabled `AiNativePdf` path. It constructs tensor geometry
-from source corners/handles and computes color derivatives from projected
-boundary-control travel, limiting extrema and using parabolic boundary values.
-Corner handles follow cell traversal; intermediate knot handles follow the grid
-axes. Piecewise neighboring boundaries are retained when computing derivatives.
-The reference explicitly maps only this fixture's known process inks to CMYK;
-it does not provide general spot-color conversion or opacity interpolation.
+`AiNativeMeshInterpolation(mesh:, resolveColor:)` now derives immutable tensor
+surfaces and process-color fields directly from native data, independently of the
+PDF compatibility view. `surfaces` exposes sixteen controls per surface in
+`first * 4 + second` order, its original `patch`, and its parameter `bounds` in
+that patch. `surface.positionAt(first:, second:)` uses local surface coordinates;
+`interpolation.colorAt(patch:, first:, second:)` uses original cell coordinates.
+For compound cells, map local coordinates through the surface bounds before
+sampling color. Geometry may fold; it is not projected onto a rectangular grid.
 
-The independent comparison matches all sixteen controls of each PDF tensor
-against native subintervals. Searching dyadic positions through 1/64 avoids
-choosing an incorrect inverse branch on folded cells. All 163 simple native
-cells are covered by 1,624 PDF patches with no parameter-space holes or overlap.
-Their 6,496 corner samples have a maximum geometry error of 0.001100 point and
-a maximum color-component error of 0.002086. Eight repeated samples at two
-positions exceed half an 8-bit component step; every sample stays below one
-step. These measured tolerances are qualification evidence for a candidate,
-not proof of Adobe's internal algorithm or general Illustrator compatibility.
-The remaining 17 source cells contain intermediate boundary knots and correspond
-to 123 PDF patches outside this surface comparison. Their surface evaluation,
-non-unit weights, opacity, additional files and independent rendered comparison
-remain required before promoting the candidate to the native/PDF bridge.
+Without a resolver, all corners must already use the same DeviceGray, DeviceRGB
+or DeviceCMYK space. `resolveColor` runs once per corner occurrence, including
+shared copies, and returns an `AiNativeMeshProcessColor` or null to reject.
+Results must use one common space and agree exactly at shared vertices. Named
+inks, mixed device spaces and unknown spaces require this explicit host policy;
+the evaluator does not flatten spot colors or perform color management.
+`opacity` retains constant native corner opacity separately from enclosing
+object/group compositing. Varying corner opacity rejects construction.
+
+```dart
+final AiNativeMeshInterpolation field = AiNativeMeshInterpolation(mesh: mesh);
+final AiNativeMeshSurface surface = field.surfaces.first;
+final ({double x, double y}) point = surface.positionAt(first: 0.5, second: 0.5);
+final AiNativeMeshProcessColor color = field.colorAt(
+  patch: surface.patch,
+  first: (surface.bounds.firstStart + surface.bounds.firstEnd) / 2,
+  second: (surface.bounds.secondStart + surface.bounds.secondEnd) / 2,
+);
+```
+
+The qualified evaluator requires at least two cells on each grid axis, unit
+weights and nondegenerate boundary pieces. Unknown mesh fields, mismatched shared
+boundaries/colors, nonfinite arithmetic and compound boundaries on both axes of
+the same cell reject construction. Outer grid color boundaries need nonzero
+inward tangents; collapsed interior tangents produce zero directional color
+slopes. Intermediate anchors and subdivision points may occur on either one
+pair of opposite sides. Derived storage is bounded by the source node count;
+parameter access requires finite coordinates between zero and one. Foreign
+patches reject color evaluation. Neither the source nor its PDF is changed.
+
+Corner handles follow cell traversal; intermediate handles follow the grid axes.
+Compound pieces are parameterized by their control-polygon lengths. The union of
+opposite-edge partitions divides the cell into tensors. Transverse controls are
+linearly blended between the other two sides, with endpoint displacements
+linearly distributed through the control polygon. Each resulting tensor has
+zero mixed derivatives at its corners. Color slopes use projected boundary
+control travel, extrema limiting and parabolic boundary values. Handle lengths
+are normalized from each boundary piece to the complete logical edge before
+limiting or evaluating color derivatives. Color remains one bicubic field over
+the original cell, including across its geometric surface partitions.
+
+`tool/verify_native_mesh_interpolation.py` independently constructs that field
+from native projections. Its `--dart` mode additionally requires the production
+evaluator's output from `tool/check_native_mesh_interpolation.dart`, compares all
+199 tensor grids and geometry evaluations with the Python derivation, and uses
+the Dart controls/colors for the Adobe PDF comparison. The corpus driver
+explicitly maps only this fixture's canonical process inks to CMYK.
+
+All sixteen controls of each PDF tensor must match native subintervals. Searching
+dyadic positions through 1/64 avoids choosing an incorrect inverse branch on
+folded cells. All 180 source cells, including 17 with intermediate boundary
+knots, are covered by 1,747 PDF patches with no parameter-space holes or overlap.
+Their 6,988 corner samples have a maximum geometry error of 0.001100 point and
+a maximum component error of 0.001960920. Every color sample is within half an
+8-bit component step plus 0.000001 numerical tolerance. Dart and Python differ
+by at most 3.411e-13 point in controls and 2.221e-16 in color components.
+These measurements qualify this source-derived evaluator on the pinned CC file;
+they are not proof of Adobe's internal implementation or general compatibility.
+Additional files, varying opacity, other weights/topologies and independent
+rendered comparisons remain further work. `AiNativePdf` still rejects mesh
+operators until its bounded shading writer and native/PDF bridge are validated.
 
 ## Native raster images
 
@@ -1486,7 +1534,7 @@ serialization, not Illustrator frame-tool behavior or dependent effect editing.
 | Raster images | Decode process samples and alpha; translate/set affine placement and explicit frame angles; replace pixels, depth, channels and resolution with sample UUID renewal; render/save synchronized images | Older ASCII layouts, broader color models, dependent effect caches and Adobe identity/frame-tool qualification |
 | Linked placements | Read CC paths and counted previews; translate/set affine geometry, relink and refresh/remove previews; render/save with host-resolved pixels while retaining links, or embed them | External vector pages, older `XF` links, automatic native/XMP resource mapping, broader producer semantics and Adobe reopening |
 | Catalog XMP | Inspect manifest/ingredient references; relink explicitly selected resources while preserving surrounding XML; attach the packet after native/PDF saving | Managed and part-specific relationships, automatic identity/history/pantry maintenance, PostScript packets and Adobe relink qualification |
-| Meshes | Inspect version-two Cartesian patches, shared vertices, intermediate nodes and typed ink alternatives; edit selected vertex process colors, named-ink tints and opacity | Geometry/topology editing, color-managed interpolation, rendering and synchronized native/PDF output |
+| Meshes | Inspect version-two Cartesian patches and inks; edit shared vertex colors, tints and opacity; evaluate qualified tensor geometry and process colors with explicit host color resolution | Geometry/topology editing, broader interpolation layouts, varying opacity, color management, rendering and synchronized native/PDF output |
 | Effects and plug-ins | Preserve exact source bytes and report unresolved operators | Typed native models, editing and serialization |
 | PostScript | Bounded lexical/structural reading and self-contained subset writing | No arbitrary PostScript execution |
 | PDF compatibility appearance | Regenerate supported printable paths, classic gradient fills/strokes and binary embedded images, saving them with native data; preserve or replace other graphs explicitly | Text, gradients along/across strokes, unresolved links/unsupported images, unresolved effects and host scene integration |

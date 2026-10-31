@@ -43,21 +43,32 @@ python3 tool/verify_native_meshes.py
 python3 tool/verify_native_mesh_paint.py
 python3 tool/verify_native_mesh_inks.py
 python3 tool/verify_native_mesh_interpolation.py
+dart run tool/check_native_mesh_interpolation.dart
+python3 tool/verify_native_mesh_interpolation.py --dart
 ```
 
 The independent check uses pypdf 3.x and Python zlib. Its detailed projections
 and report are under `output/meshes/`; a missing/changed fixture fails the check.
 
-The interpolation research check additionally uses NumPy (qualified with 2.4.6).
-It builds a candidate from native geometry/colors, then compares all sixteen
-PDF controls and corner colors. A bounded dyadic search identifies 1,624 PDF
-patches covering every part of all 163 simple cells, with no gaps or duplicate
-coverage. Geometry must agree within 0.0015 point and color components within
-one 8-bit step. Maximum observed errors are 0.001100 and 0.002086 respectively;
-eight corner occurrences slightly exceed half a component step. The output lists
-the 123 unmatched PDF patches explicitly. Complex cell surfaces, general color
-conversion, opacity and rendered comparisons remain unqualified; the research
-check does not enable mesh rendering in the package.
+The interpolation check additionally uses NumPy (qualified with 2.4.6).
+It builds geometry/colors from native records and compares all sixteen PDF
+controls and corner colors. A bounded dyadic search identifies all 1,747 PDF
+patches covering every part of all 180 source cells, including 17 compound cells,
+with no gaps or duplicate coverage. Geometry must agree within 0.0015 point and
+color components within half an 8-bit step plus 0.000001 numerical tolerance.
+Maximum observed errors are 0.001100 and 0.001960920 respectively; no PDF patches
+remain unmatched and no color samples exceed that gate.
+
+The Dart checker consumes only the independently located parameters, constructs
+199 surfaces from the original native program and evaluates 6,988 colors.
+`--dart` requires that projection and uses its controls/colors for the PDF
+comparison; it also checks all controls and geometry evaluations against the
+Python derivation (maximum difference 3.411e-13 point), with color agreement
+within 2.221e-16. Reports are separate from the Python-only research results.
+Both drivers explicitly resolve only this fixture's canonical process inks.
+General color conversion, varying opacity, both-axis compound boundaries in one
+cell, additional files and rendered comparisons remain unqualified. This check
+validates the public evaluator, not an enabled `AiNativePdf` mesh export path.
 
 `check_native_corpus.dart` requires extraction and structural parsing for all
 37 fixtures, verifies the nested layer fixture's names and flags, renames a

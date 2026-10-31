@@ -186,6 +186,9 @@ ink declarations retain their exact source fields. Selected logical vertices
 support process-color, named-ink tint and opacity edits across every neighboring
 corner copy. `inkTints` pairs NChannel components with their correct ink names;
 tint edits preserve the original declarations and device alternatives.
+`AiNativeMeshInterpolation` evaluates qualified tensor geometry and process
+colors, including intermediate boundary knots. Named inks and mixed spaces
+require explicit host color resolution; varying corner opacity is not supported.
 Mesh geometry editing and PDF regeneration remain unfinished.
 
 ## Scope
