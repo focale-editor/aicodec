@@ -242,7 +242,7 @@ AiNativeLayers _duplicateNativeLayers(
 ) {
   final List<AiNativeLayer> selected = _selectedLayers(model, layers);
   final List<AiNativeLayer> descendants = _layerDescendants(model, selected);
-  final Set<String> reserved = _nativeIdentityNames(model.structure);
+  final Set<String> reserved = identifiers.isEmpty && artworkIdentifiers.isEmpty ? {} : _nativeIdentityNames(model.structure);
   final List<AiSourceEdit> replacements = _layerCopyEdits(model, descendants, identifiers, names, reserved);
   replacements.addAll(
     _objectCopyEdits(

@@ -220,6 +220,7 @@ final class AiNativeDrawing {
   ///
   /// Geometry, paint, qualified object metadata and CC point counts are copied.
   /// [identifiers] supplies a fresh XML name for every identified selected path.
+  /// Names must differ from all saved XMLUID wrappers, including opaque owners.
   /// Anonymous copies stay anonymous; existing references retain their targets.
   /// Paint/lock/visibility state remains in place and is inherited by each copy.
   /// Private authoring paths, derived expansions, compound/clip members and

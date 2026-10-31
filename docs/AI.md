@@ -245,7 +245,7 @@ final AiProgram changed = inserted.drawing.records.program;
 This inserts an empty sibling, retaining the selected header's flags, operand
 layout and DSC wrapper convention. Names are explicit bytes, safely escaped as
 PostScript strings. Identified templates require a caller-supplied fresh portable
-ASCII XML name; collisions with existing XML artwork identities reject. Anonymous
+ASCII XML name; collisions with saved native `XMLUID` values reject. Anonymous
 templates stay anonymous. A present `AE` becomes zero for the new panel entry.
 No artwork, paint assignment or original identity is copied into the new layer.
 
@@ -320,11 +320,21 @@ ordinary subtrees immediately after each selected original. Every identified
 layer descendant requires one entry in `identifiers`, keyed by its current
 `AiNativeLayer` handle. Every identified path/group descendant requires an entry
 in `artworkIdentifiers`, keyed by its original drawing handle. Values
-must be fresh portable ASCII XML names, distinct from existing qualified artwork
-identities and every other copy in the transaction. Missing descendants, extra
+must be fresh portable ASCII XML names, distinct from all saved native `XMLUID`
+values and every other copy in the transaction. Missing descendants, extra
 or foreign handles and collisions reject. Both maps share one identity namespace
 and aggregate encoded-byte budget; a new artwork ID cannot reuse a new layer ID.
 Anonymous layers and objects stay anonymous.
+Reservation includes wrappers in unrecognized record owners, private records and
+both saved version branches, using decoded literal/hexadecimal string bytes.
+Those values may be declarations or references: reusing either could introduce
+a collision or bind a previously unresolved reference to the copy. They remain
+unchanged, and repeated existing values do not prevent a distinct new name.
+An unresolved `XMLUID` value shape rejects new identity allocation. Anonymous
+copies allocate no identities and do not require that extra qualification.
+Ordinary string fields, artboard UUIDs and separate embedded documents do not
+share this namespace. This is reservation of explicit native wrappers, not
+decoding identities hidden inside unknown binary or plug-in encodings.
 Optional `names` entries replace existing display-name byte strings in the copies;
 other display names and saved expansion flags remain unchanged.
 
@@ -334,6 +344,10 @@ assignments preserve inherited and outgoing paint, as for movement. External
 references to original identities remain attached to the original objects; this
 API does not redirect those references to the copies. Opaque, derived or privately
 referenced artwork inside the selected subtree still requires another contract.
+Seven reservation regressions cover these boundaries across path/group copies,
+subtree copies and empty-layer insertion. Independent checks additionally verify
+fresh copies and exact collision refusals beside injected `XMLUID` wrappers in
+the synthetic source and one pinned CC document, without changing those owners.
 
 `remove(layers:)` deletes complete selected subtrees and their consumed point
 counts, retaining persistent assignments needed by following artwork. Nested

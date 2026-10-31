@@ -11,11 +11,20 @@ List<int> _nativeLiteralString(List<int> value, int maxBytes) {
   return latin1.encode('(${value.map((byte) => '\\${byte.toRadixString(8).padLeft(3, '0')}').join()})');
 }
 
-/// Reserves qualified XML artwork identities without merging equal source owners.
-Set<String> _nativeIdentityNames(AiNativeStructure structure) => {
-  for (final AiNativeObjectIdentifier identifier in structure.identifiers)
-    if (identifier.kind == .xmlArt) latin1.decode(identifier.bytes),
-};
+/// Reserves every saved XML wrapper, including opaque owners and both branches.
+///
+/// Unknown owners may declare or refer to a name. Allocating that name would
+/// collide with an identity or capture a reference, so neither can be reused.
+Set<String> _nativeIdentityNames(AiNativeStructure structure) {
+  final Set<String> result = {};
+  for (final AiNativeContainer record in structure.drawing.records.containers.where((record) => record.type == 'XMLUID')) {
+    if (record.entries.length != 1 || record.entries.single.key != null || record.entries.single.type != null || record.entries.single.items.length != 1 || record.entries.single.stringBytes == null) {
+      throw UnsupportedError('Allocating artwork identities requires a single string in every saved XMLUID wrapper.');
+    }
+    result.add(latin1.decode(record.entries.single.stringBytes!));
+  }
+  return result;
+}
 
 /// Encodes one fresh identity and replaces only its source-owned string token.
 AiSourceEdit _nativeIdentityEdit(AiNativeObjectIdentifier identifier, List<int> identifierBytes, Set<String> reserved, int maxBytes) {
@@ -41,6 +50,9 @@ List<AiSourceEdit> _objectCopyEdits(AiNativeDrawing drawing, List<AiNativeItem> 
   final Set<AiNativeItem> expected = objects.map((object) => object.source).toSet();
   if (identifiers.length != expected.length || identifiers.keys.any((source) => !expected.contains(source))) {
     throw ArgumentError('Copies require fresh identifiers for exactly their identified source objects and descendants.');
+  }
+  if (objects.isEmpty) {
+    return [];
   }
   final Set<String> names = reserved ?? _nativeIdentityNames(drawing._objects.structure);
   final List<AiSourceEdit> edits = [];

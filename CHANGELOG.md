@@ -30,3 +30,4 @@
 - Added combined layer/artwork identity allocation for subtree copies and shared whole-source reference qualification for identified path, group and layer removal.
 - Added complete ordinary-group panel/default-style ownership and lifecycle, preserving nested metadata and qualified path opacity through copies, deletion, reordering and moves.
 - Qualified identified-artwork deletion beside known CC document settings, empty reference tables and bounded ICC payloads, preserving document metadata while rejecting unknown or nonempty reference owners.
+- Reserved native XML identity values in unrecognized owners and version alternatives when creating identified copies, preventing collisions and accidental binding of retained references.

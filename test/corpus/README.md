@@ -201,8 +201,12 @@ and changing paint. Six transactions cover root/batch copies with new layer and
 artwork IDs, path/group removal, subtree deletion and removal of all roots. The
 unchanged external parser checks both inventories, complete topology, metadata,
 point counts, effective state, layer declarations and exact unselected bytes.
-The source has only qualified declarative owners. These checks do not establish
-reference decoding for resource-bearing CC files or Adobe reopening.
+The original source has only qualified declarative owners. Four additional
+transactions inject an unknown `XMLUID` owner into this source and the pinned
+`units-20x40mm_origin_topleft_CC.ai` Document: each allows a distinct fresh copy
+and refuses collision with the injected value. The reader independently binds
+the injected owner; exact source checks prove provenance and preservation. The
+ten transactions do not establish arbitrary reference decoding or Adobe reopening.
 
 ```sh
 dart run tool/check_native_identity_lifecycle.dart

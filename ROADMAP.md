@@ -273,6 +273,20 @@ groups and compound topology. There is no general modern object lifecycle API.
   layer, combined-identity and object-metadata transactions regenerated and
   independently rechecked. No Adobe reopening or broader reference support is
   inferred from these results.
+  Fresh identity allocation now reserves every explicit native `XMLUID` wrapper,
+  including unrecognized/private owners and both saved alternatives. Unresolved
+  wrapper shapes reject allocation; anonymous copies retain their existing
+  ownership contract. Seven regressions cover decoded escaped/hexadecimal names,
+  repeated reservations, all four allocation APIs, embedded-document isolation,
+  opaque preservation and atomic refusal. The independent identity suite now
+  checks ten transactions: six previous edits plus two fresh copies and two
+  collision refusals beside injected unknown wrappers in a synthetic source and
+  a pinned CC document. Unknown binary reference schemas remain unresolved;
+  this does not complete the lifecycle task.
+  Latest validation: 481 VM/480 Node tests, clean format/fix/analysis, all ten
+  identity transactions checked independently and all 22 layer/16 object-metadata
+  transactions regenerated and independently rechecked. No host integration or
+  broader reference qualification was introduced.
 - [ ] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
 - [ ] Support editing ordinary native compound paths and clipping relationships

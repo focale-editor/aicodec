@@ -113,6 +113,7 @@ final class AiNativeLayers {
   /// [nameBytes] is an explicit native name. Identified templates require fresh
   /// [identifierBytes]; anonymous templates remain anonymous. Flags and wrapper
   /// conventions come from [after], with a closed panel entry and no artwork.
+  /// Fresh names cannot reuse any saved native XMLUID, including opaque owners.
   /// A saved layer-view declaration requires [discardViewState] because its
   /// reference mapping is unqualified. Root counts update in the same transaction.
   AiNativeLayers insertAfter({required AiNativeLayer after, required List<int> nameBytes, List<int>? identifierBytes, bool discardViewState = false}) =>

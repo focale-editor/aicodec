@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:aikit/aikit.dart';
 
 import '../test/ai_native_identity_lifecycle_test.dart' show artworkCopyIdentifiers, identityLifecycleSource, layerCopyIdentifiers;
+import '../test/ai_native_identity_reservation_test.dart' show identityReservationSource;
 import 'native_layer_support.dart';
 import 'native_object_support.dart';
 
@@ -19,7 +20,6 @@ Future<void> main() async {
     ),
   );
   await File('${output.path}/original.ps').writeAsBytes(before.drawing.records.program.bytes);
-  final AiNativeObjects objects = AiNativeObjects.decode(drawing: before.drawing);
   final List<Map<String, Object?>> rows = [];
 
   /// Records one exact request without deriving expected results from edited data.
@@ -31,10 +31,18 @@ Future<void> main() async {
     List<AiNativeItem> selectedObjects = const [],
     Map<AiNativeLayer, List<int>> layerIdentifiers = const {},
     Map<AiNativeItem, List<int>> artworkIdentifiers = const {},
+    AiNativeLayers? input,
+    String source = 'synthetic',
   }) async {
+    final AiNativeLayers original = input ?? before;
+    final AiNativeObjects objects = AiNativeObjects.decode(drawing: original.drawing);
+    final String originalFile = input == null ? 'original.ps' : '$label.original.ps';
     final String result = '$label.ps';
+    await File('${output.path}/$originalFile').writeAsBytes(original.drawing.records.program.bytes);
     await File('${output.path}/$result').writeAsBytes(after.drawing.records.program.bytes);
     rows.add({
+      'source': source,
+      'original': originalFile,
       'result': result,
       'operation': operation,
       'layers': selectedLayers.map((layer) => layer.index).toList(),
@@ -45,7 +53,7 @@ Future<void> main() async {
       'artworkIdentifiers': [
         for (final MapEntry<AiNativeItem, List<int>> entry in artworkIdentifiers.entries) {'object': objects.objects.indexOf(objects.forSource(entry.key)), 'bytes': entry.value},
       ],
-      'before': _inventory(before),
+      'before': _inventory(original),
       'after': _inventory(after),
     });
     stdout.writeln('$result passed');
@@ -93,5 +101,49 @@ Future<void> main() async {
     AiNativeLayers.decode(drawing: before.drawing.removeGroups(groups: before.drawing.groups)),
     selectedObjects: before.drawing.groups,
   );
+  const String payload = '/XMLUID : (reserved) ; (UnknownIdentity) ,\n';
+  const String file = 'units-20x40mm_origin_topleft_CC.ai';
+  final AiProgram real = AiProgram.decode(bytes: AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$file').readAsBytes())).single.bytes);
+  final AiNativeContainer document = AiNativeRecords.decode(program: real).roots.singleWhere((record) => record.type == 'Document');
+  final int position = document['Recorded']!.container!.end - 1;
+  final Map<String, List<int>> inputs = {
+    'reserved': latin1.encode(identityReservationSource('/Dictionary : $payload ;')),
+    file: [...real.bytes.take(position), ...latin1.encode(payload), ...real.bytes.skip(position)],
+  };
+  for (final MapEntry<String, List<int>> entry in inputs.entries) {
+    final AiNativeLayers original = AiNativeLayers.decode(
+      drawing: AiNativeDrawing.decode(
+        records: AiNativeRecords.decode(program: AiProgram.decode(bytes: entry.value)),
+      ),
+    );
+    final Map<AiNativeLayer, List<int>> layerIdentifiers = entry.key == 'reserved' ? layerCopyIdentifiers(original) : {original.layers.single: latin1.encode('Copy_CC')};
+    final Map<AiNativeItem, List<int>> artworkIdentifiers = entry.key == 'reserved' ? artworkCopyIdentifiers(original) : {};
+    await record(
+      '${entry.key}.copy',
+      'copy',
+      original.duplicate(layers: [original.layers.first], identifiers: layerIdentifiers, artworkIdentifiers: artworkIdentifiers, discardViewState: true),
+      input: original,
+      source: entry.key,
+      selectedLayers: [original.layers.first],
+      layerIdentifiers: layerIdentifiers,
+      artworkIdentifiers: artworkIdentifiers,
+    );
+    layerIdentifiers[original.layers.first] = latin1.encode('reserved');
+    try {
+      original.duplicate(layers: [original.layers.first], identifiers: layerIdentifiers, artworkIdentifiers: artworkIdentifiers, discardViewState: true);
+      throw StateError('The existing non-artwork XMLUID allowed an identity collision.');
+    } on ArgumentError {
+      await record(
+        '${entry.key}.reject-copy',
+        'reject-copy',
+        original,
+        input: original,
+        source: entry.key,
+        selectedLayers: [original.layers.first],
+        layerIdentifiers: layerIdentifiers,
+        artworkIdentifiers: artworkIdentifiers,
+      );
+    }
+  }
   await File('${output.path}/report.json').writeAsString('${const JsonEncoder.withIndent('  ').convert(rows)}\n');
 }

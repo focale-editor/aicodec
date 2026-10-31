@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 from corpus_support import REVISION
+from verify_native_document_settings import objects as setup_objects
 from verify_native_group_lifecycle import check_bytes as group_bytes, parent
 from verify_native_layer_lifecycle import verify_bytes as layer_bytes
 from verify_native_layers import verified_inventory
@@ -18,6 +19,8 @@ from verify_native_objects import checked_inventory, semantic
 from verify_native_path_lifecycle import patch
 
 SYNTHETIC_SHA256 = '8b7fda23e237d357ddb1d38b31e926dd0e65e6b2f130c332be660062dfc5d5c6'
+RESERVATION_SOURCE = 'units-20x40mm_origin_topleft_CC.ai'
+RESERVATION = b'/XMLUID : (reserved) ; (UnknownIdentity) ,\n'
 
 
 def layers(tree):
@@ -67,6 +70,13 @@ def verify_request(row):
         'remove-paths.ps': ('remove-paths', [], [0, 2], [], []),
         'remove-group.ps': ('remove-groups', [], [1], [], []),
     }
+    for label in ('reserved', RESERVATION_SOURCE):
+        for operation in ('copy', 'reject-copy'):
+            layer_ids = [(0, 'Copy_A'), (1, 'Copy_A1')] if label == 'reserved' else [(0, 'Copy_CC')]
+            object_ids = requests['copy-root.ps'][4] if label == 'reserved' else []
+            if operation == 'reject-copy':
+                layer_ids[0] = (0, 'reserved')
+            requests[label + '.' + operation + '.ps'] = (operation, [0], [], layer_ids, object_ids)
     operation, selected_layers, selected_objects, layer_ids, object_ids = requests[row['result']]
     assert row['operation'] == operation and row['layers'] == selected_layers and row['objects'] == selected_objects
     assert row['layerIdentifiers'] == [dict(layer=index, bytes=list(value.encode())) for index, value in layer_ids]
@@ -109,26 +119,56 @@ def main():
     sys.path.insert(0, str(args.inkai_source.resolve()))
     inkai = importlib.import_module('inkai')
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(rows) == 6 and {row['result'] for row in rows} == {'copy-root.ps', 'copy-batch.ps', 'remove-root.ps', 'remove-all.ps', 'remove-paths.ps', 'remove-group.ps'}
-    source = args.output / 'original.ps'
-    before = source.read_bytes()
-    assert hashlib.sha256(before).hexdigest() == SYNTHETIC_SHA256
+    expected = {'copy-root.ps', 'copy-batch.ps', 'remove-root.ps', 'remove-all.ps', 'remove-paths.ps', 'remove-group.ps'}
+    expected |= {label + '.' + operation + '.ps' for label in ('reserved', RESERVATION_SOURCE) for operation in ('copy', 'reject-copy')}
+    assert len(rows) == len(expected) == 10 and {row['result'] for row in rows} == expected
     checked = []
     for row in rows:
         verify_request(row)
+        source = args.output / row['original']
+        before = source.read_bytes()
+        if row['source'] == 'synthetic':
+            assert row['original'] == 'original.ps' and row['result'] in expected and not row['result'].startswith(('reserved.', RESERVATION_SOURCE))
+            assert hashlib.sha256(before).hexdigest() == SYNTHETIC_SHA256
+        else:
+            from inkai.parser.hierarchy_objects import Document
+
+            assert row['source'] in ('reserved', RESERVATION_SOURCE)
+            assert row['result'] == row['source'] + '.' + row['operation'] + '.ps'
+            assert row['original'] == row['result'][:-3] + '.original.ps'
+            assert before.count(RESERVATION) == 1
+            roots = list(setup_objects(inkai.parse(str(source)).setup))
+            if row['source'] == 'reserved':
+                envelope = b'/Dictionary : ' + RESERVATION + b' ;\n'
+                assert before.count(envelope) == 1
+                assert hashlib.sha256(before.replace(envelope, b'', 1)).hexdigest() == SYNTHETIC_SHA256
+                owners = [item for item in roots if isinstance(item, dict) and 'UnknownIdentity' in item]
+                assert owners == [{'_type': 'Dictionary', 'UnknownIdentity': 'reserved'}]
+            else:
+                manifest = json.loads(Path('test/corpus/document_manifest.json').read_text())['files']
+                entry = next(item for item in manifest if item['file'] == RESERVATION_SOURCE)
+                original = Path('test/corpus/files', RESERVATION_SOURCE).read_bytes()
+                assert len(original) == entry['size'] and hashlib.sha256(original).hexdigest() == entry['sha256']
+                assert before.replace(RESERVATION, b'', 1) == original
+                owners = [item for item in roots if isinstance(item, Document)]
+                assert len(owners) == 1 and owners[0].Recorded['UnknownIdentity'] == 'reserved'
         target = args.output / row['result']
         after = target.read_bytes()
         verified_inventory(inkai, source, row['before']['layers'])
         verified_inventory(inkai, target, row['after']['layers'])
         tree, objects = checked_inventory(inkai, source, row['before']['objects'])
         changed, _ = checked_inventory(inkai, target, row['after']['objects'])
-        assert expected_tree(tree, objects, row) == semantic(changed), row['result']
-        verify_bytes(before, after, row, objects)
+        if row['operation'] == 'reject-copy':
+            assert before == after
+            assert row['layerIdentifiers'][0]['bytes'] == list(b'reserved')
+        else:
+            assert expected_tree(tree, objects, row) == semantic(changed), row['result']
+            verify_bytes(before, after, row, objects)
         if row['operation'] not in ('copy', 'remove-layers'):
             assert row['before']['layers']['rootCount'] == row['after']['layers']['rootCount']
         checked.append(row['result'])
         print(row['result'], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, copies=2, removals=4), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, copies=4, removals=4, collisionRejections=2), indent=2) + '\n')
 
 
 if __name__ == '__main__':
