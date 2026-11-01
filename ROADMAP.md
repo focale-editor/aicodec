@@ -1013,9 +1013,9 @@ groups and compound topology. There is no general modern object lifecycle API.
   Validation: 934 VM/933 Node tests pass. All 87 independent contour transactions
   pass after regenerating the preceding 71. Formatting, analysis, fix dry-run,
   Python compilation and diff checks are clean.
-- [ ] Narrow conservative whole-document refusals only after proving the selected
+- [x] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
-  **In progress — retained gradient neighbors:** bounded standalone `Bb/BB`
+  **Retained gradient qualification:** bounded standalone `Bb/BB`
   instances now remain exact beside ordinary contour edits and movement. Each
   reference must resolve to one unconditional gradient definition in its own
   resource namespace. Complete geometry/count ownership is checked independently
@@ -1028,15 +1028,34 @@ groups and compound topology. There is no general modern object lifecycle API.
   rules, lifecycle neighbors, immutability, limits and 100 shared-resource instances.
   Seventeen independent outcomes include thirteen successful synthetic edits and
   four exact refusals. The complete original linear/radial CC fixtures still stop
-  at their ATE 11 snapshots; the independent reader confirms that version and empty
+  at their ATE 11 snapshots in that initial increment; the independent reader confirms that version and empty
   main/undo-free frame/story inventories. No setup substitution enables a success.
   Full source patches, gradient definitions/instances, ordinary hierarchy and
   scalar state pass, including sixteen Adobe-prolog projections for ordinary
-  attributes only. General isolation and ATE 11 retention remain open; this does
-  not qualify gradient rendering or Adobe reopening.
+  attributes only. That increment does not qualify gradient rendering or Adobe reopening.
   Validation: 943 VM/942 Node tests and all 104 independent contour outcomes pass
   after regenerating the previous 87. Formatting, analysis, fix dry-run, Python
   compilation and diff checks are clean.
+  **Completed — empty ATE 11 isolation:** each independently owned main/undo-free
+  snapshot now retains its empty frame/story namespaces and optional bounded
+  composer descriptor. Unknown owners, opaque tokens, populated ATE 11 snapshots,
+  malformed descriptors and dangling displays still reject. Eight regressions
+  cover contour edits/movement, identified deletion, artboard lifecycle, mixed
+  versions, exact binary preservation and aggregate source byte/node budgets.
+  Six successful transactions edit two explicitly appended ordinary branches in
+  the complete linear/radial CC producer programs. The independent verifier proves
+  each preparation as one prescribed insertion; no original setup or artwork is
+  substituted. Both text snapshots, gradient definitions/instances, private shape
+  data and unselected bytes remain exact. The original derived contours continue
+  to reject ordinary editing. The expanded gradient suite has 23 outcomes and 32
+  Adobe-prolog state projections, with private source indices retained explicitly
+  in the printing projection. The isolation task is complete for these qualified
+  boundaries; unknown dependencies still require their own feature contracts in
+  later milestones. This does not qualify populated ATE 11 editing, gradient
+  rendering or Adobe UI reopening.
+  Validation: 951 VM/950 Node tests pass, together with all 110 independent contour
+  outcomes and 32 reference-scope/resource cases after regeneration. Formatting,
+  analysis, fix dry-run, Python compilation and diff checks are clean.
 
 **Acceptance:** nested groups, shared resources, hidden/locked objects, multiple
 artboards and unselected opaque content retain identity and ordering after each

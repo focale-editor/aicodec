@@ -821,22 +821,29 @@ dart run tool/check_native_contour_branch_movement.dart
 python3 tool/verify_native_contour_branch_movement.py --inkai-source /tmp/extension-ai
 ```
 
-The contour/gradient isolation suite adds seventeen outcomes from five pinned
+The contour/gradient isolation suite covers twenty-three outcomes from five pinned
 synthetic programs and two complete original producer files. Legacy and relative
 CC layouts, geometry preceding `Bb`, shared gradient names and artwork/resource
 name collisions undergo geometry edits, contour movement and complete-group
-movement. Thirteen transactions pass; two movements explicitly refuse
+movement. Thirteen synthetic transactions pass; two movements explicitly refuse
 unrestorable scalar state. The complete original `gradient_linear.ai` and
-`gradient_radial.ai` still refuse ATE 11 text isolation. The independent reader
-checks both main and undo-free versions and their empty frame/story inventories;
-their source programs remain exact. No producer setup is replaced to obtain a pass.
+`gradient_radial.ai` now retain their empty ATE 11 snapshots. Their selected original
+shape contours still refuse ordinary editing because they are derived. Two ordinary
+branches are then appended inside the last layer of each complete producer program,
+with explicit scalar assignments. Exact independently prescribed byte insertions
+prove that preparation; no original setup or artwork is replaced. Geometry,
+contour movement and complete-group movement produce six successful transactions.
+The independent reader checks both main and undo-free versions, absent frame/story
+inventories and the radial fixture's composer descriptor, retaining all binary bytes.
 
 The verifier reuses the contour geometry, movement and group contracts to bind
 every reported span and compare prescribed hierarchy, metadata, geometry, counts,
 consumed state and full source patches. Gradient instances, shared definitions,
-stops and fallback data are independently decoded and remain unchanged. Sixteen
+stops and fallback data are independently decoded and remain unchanged. Thirty-two
 Adobe-prolog probes compare ordinary stroke and final state only; the probe does
-not execute gradient commands or qualify their rendered output. Existing manifest
+not execute gradient commands or qualify their rendered output. Private paths and
+groups keep explicit empty slots in the printing projection so native source indices
+cannot address a different contour after a private shape. Existing manifest
 provenance, licensing, checksums and publication exclusions apply.
 
 ```bash

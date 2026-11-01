@@ -105,34 +105,44 @@ def interpreter_state(document, prefix, native):
 
     Private scalars are exposed only for this probe. Opaque metadata and modern
     opacity operators are not executed; their exact data is checked separately.
+    Unprojected private paths/groups keep a None slot so native source indices
+    never address a different printing contour after a private shape.
     """
     probe = b'\n[ currentlinecap currentlinejoin currentlinewidth currentmiterlimit currentdash ] ==\n'
     output, count, stack, paths, groups = bytearray(prefix + b'\n'), 0, [], [], []
     for item in walk_body(document.trailer):
         operator, operands, private = command(item)
-        if operator not in OPERATORS or private and not native:
+        if operator not in OPERATORS:
             continue
+        projected = native or not private
         if operator in ('u', '*u', 'q'):
-            stack.append(dict(kind=operator))
+            stack.append(dict(kind=operator, projected=projected))
         elif operator == 'm':
-            output.extend(probe)
-            paths.append(dict(index=count, compound=next((node for node in reversed(stack) if node['kind'] == '*u'), None)))
-            count += 1
+            paths.append(dict(index=count if projected else None, compound=next((node for node in reversed(stack) if node['kind'] == '*u' and node['projected']), None)))
+            if projected:
+                output.extend(probe)
+                count += 1
         elif operator in ('U', '*U', 'Q'):
             node = stack.pop()
             assert node['kind'].upper() == operator
-            node['index'] = count
-            output.extend(probe)
-            count += 1
+            assert node['projected'] == projected
+            node['index'] = count if projected else None
+            if projected:
+                output.extend(probe)
+                count += 1
             groups.append(node)
-        output.extend((' '.join(value.decode('ascii') if isinstance(value, bytes) else str(value) for value in operands) + ' ' + operator + '\n').encode('ascii'))
+        if projected:
+            output.extend((' '.join(value.decode('ascii') if isinstance(value, bytes) else str(value) for value in operands) + ' ' + operator + '\n').encode('ascii'))
     assert not stack
     output.extend(probe)
     result = subprocess.run(['gs', '-q', '-dSAFER', '-dNODISPLAY', '-dBATCH', '-dNOPAUSE', '-'], input=output, capture_output=True, timeout=30)
     assert result.returncode == 0, result.stdout.decode() + result.stderr.decode()
     values = result.stdout.decode().splitlines()
     assert len(values) == count + 1 and all(re.fullmatch(r'[\[\]\d.eE+\- ]+', value) for value in values)
-    return [values[(path['compound'] or path)['index']] for path in paths], [values[group['index']] for group in groups], values[-1]
+    outlines = inventory(document)
+    assert len(paths) == len(outlines)
+    assert [path['index'] is None for path in paths] == [path['private'] and not native for path in outlines]
+    return [None if path['index'] is None else values[(path['compound'] or path)['index']] for path in paths], [None if group['index'] is None else values[group['index']] for group in groups], values[-1]
 
 
 def checked_paths(data, spans, paths, metadata):

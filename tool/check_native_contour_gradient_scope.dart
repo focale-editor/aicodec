@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
+import '../test/ai_native_artwork_movement_test.dart' show movementState;
 import '../test/ai_native_contour_gradient_scope_test.dart' show contourGradientSource;
 import '../test/ai_native_contour_movement_test.dart' show contourMovementContour, contourMovementGroup;
 import '../test/ai_native_group_creation_test.dart' show groupCreationDrawing;
@@ -30,22 +31,38 @@ Future<void> main() async {
     'unknown': contourGradientSource(reset: false),
   };
   for (final String name in ['gradient_linear.ai', 'gradient_radial.ai']) {
-    sources[name] = latin1.decode(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single.bytes);
+    final String source = latin1.decode(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single.bytes);
+    sources[name] = source;
+    final AiNativeDrawing original = groupCreationDrawing(source);
+    final int position = AiNativeLayers.decode(drawing: original).layers.last.source.end.start;
+    const String insertion = '\n$movementState\n0 1 0 0 0 Xy\nu 2 As 10 0 m 11 1 L S U\nu 2 As 20 0 m 21 1 L S U\n';
+    sources['$name.prepared'] = source.replaceRange(position, position, insertion);
   }
   for (final MapEntry<String, String> entry in sources.entries) {
     final AiNativeDrawing before = groupCreationDrawing(entry.value);
     await File('${output.path}/${entry.key}.original.ps').writeAsBytes(before.records.program.bytes);
+    final bool prepared = entry.key.endsWith('.prepared');
     for (final String variant in entry.key.endsWith('.ai') ? ['geometry'] : ['geometry', 'move', 'group']) {
       AiNativeDrawing result = before;
       String? error;
       try {
         result = switch (variant) {
           'geometry' => before.editPaths(
-            edits: [AiNativePathEdit(path: before.paths.first, segments: topologyGeometry())],
+            edits: [AiNativePathEdit(path: prepared ? before.paths[before.paths.length - 2] : before.paths.first, segments: topologyGeometry())],
             bounds: topologyBounds,
           ),
-          'move' => before.moveContours(paths: [contourMovementContour(before, 10)], group: contourMovementGroup(before, 'Right'), bounds: topologyBounds, inheritParentFlags: true),
-          _ => before.moveContourGroups(groups: [contourMovementGroup(before, 'Left')], parent: contourMovementGroup(before, 'Right'), bounds: topologyBounds, inheritParentFlags: true),
+          'move' => before.moveContours(
+            paths: [if (prepared) before.paths[before.paths.length - 2] else contourMovementContour(before, 10)],
+            group: prepared ? before.groups.last : contourMovementGroup(before, 'Right'),
+            bounds: topologyBounds,
+            inheritParentFlags: true,
+          ),
+          _ => before.moveContourGroups(
+            groups: [if (prepared) before.groups[before.groups.length - 2] else contourMovementGroup(before, 'Left')],
+            parent: prepared ? before.groups.last : contourMovementGroup(before, 'Right'),
+            bounds: topologyBounds,
+            inheritParentFlags: true,
+          ),
         };
       } on UnsupportedError catch (failure) {
         error = failure.message;

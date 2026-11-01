@@ -1035,15 +1035,17 @@ The gradient's scalar effects remain an unknown-state boundary. Geometry-only
 edits preserve all state instructions; movement still proves inherited and
 outgoing attributes separately in both projections, refusing unknown output
 that could reach a retained consumer. No default paint values are inferred.
-Nine regressions and seventeen independent outcomes cover these boundaries:
-thirteen accepted synthetic transactions, two unrestorable-state refusals and
-two unchanged original CC refusals. The latter, `gradient_linear.ai` and
-`gradient_radial.ai`, still require qualification of their empty ATE 11 snapshots;
-the independent reader confirms that version and their absent frames/stories.
-The accepted cases retain shared resources, identities and exact unselected
-bytes. Sixteen Adobe-prolog projections check ordinary stroke/final attributes;
-they do not execute or validate gradient rendering. Broader whole-document
-isolation remains in progress.
+Seventeen regressions and twenty-three independent outcomes cover these boundaries:
+thirteen accepted synthetic transactions, six edits in complete CC producer
+programs, two unrestorable-state refusals and two protected-derived-path refusals.
+`gradient_linear.ai` and `gradient_radial.ai` retain their empty ATE 11 snapshots.
+Their original private/printing shape contours remain protected. The six successful
+edits operate on two ordinary branches explicitly appended inside the last layer;
+the independent verifier proves this preparation without replacing any original
+setup or artwork. Shared resources, identities and every unselected byte survive.
+Thirty-two Adobe-prolog projections check ordinary stroke/final attributes;
+they do not execute or validate gradient rendering. Unknown owners and unproven
+inherited/outgoing state still reject rather than bypassing dependency checks.
 
 `compoundArtwork(paths:, groups:, bounds:)` wraps consecutive ordinary sibling
 contours and complete ordinary subgroups in an anonymous `*u`/`*U` owner. Input
@@ -1912,6 +1914,21 @@ setup or artwork dependencies reject. Named CS text schemas and live-shape,
 painted or executable confinements remain unqualified here. Retaining populated
 text does not grant creation/deletion of stories, frame reflow or cache regeneration.
 Artwork identity deletion retains its separate, stricter reference qualification.
+
+Compact ATE 11 is additionally retained when **each** main/undo-free snapshot has
+no frames and no stories. An optional `/1/4` descriptor contains exactly three
+nonnegative portable integer components and a string identifier; its bytes are
+preserved without interpreting the components. Its composer role is inferred from
+the matching ATE layout described by the independent
+[py_aep format research](https://forticheprod.github.io/py-aep/file_format/#defaults-style-sheets-and-settings)
+and the Illustrator descriptor in the pinned radial-gradient fixture. Resource
+tables, display indices, preferences and dictionary boundaries keep their existing
+checks. Unknown extensions, executable tokens, newer versions and populated ATE 11
+remain rejected by this isolation contract. This permits unrelated contour,
+artboard and identified-artwork lifecycle operations; it does not extend text
+editing, composition or alternate-model synchronization. Eight regressions check
+independent mixed-version snapshots, exact binary retention, malformed descriptors,
+dangling references and aggregate byte/node limits on VM and Node.
 
 Retained font setup recognizes the mark-based `TE`/`TZ` grammar from AI7
 section 3.3. A font mark ends at its operator, not at a `]`; it cannot make later

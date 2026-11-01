@@ -8,10 +8,12 @@ import importlib
 import io
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 from corpus_support import REVISION, native_programs
+from verify_live_shapes import walk_body
 from verify_native_clipping_lifecycle import prolog
 from verify_native_contour_group_movement import verify as verify_groups
 from verify_native_contour_movement import verify as verify_contours
@@ -29,6 +31,23 @@ SOURCES = {
 }
 PRODUCERS = ('gradient_linear.ai', 'gradient_radial.ai')
 GRADIENT_COMMANDS = {'Bb', 'BB', 'Bg', 'Bh', 'Xm', 'Bm', 'Bc'}
+INSERTION = b'\n0 A 0 Xw 0.1 g 0 G 2 w [] 0 d 0 O 0 R 0 XR 0 D 0 Ap 0 J 0 j 10 M\n0 1 0 0 0 Xy\nu 2 As 10 0 m 11 1 L S U\nu 2 As 20 0 m 21 1 L S U\n'
+
+
+def text_snapshots(document):
+    """Independently decode both empty ATE 11 owners and their composer records."""
+    section = document.setup.first_subsection_of_type(b'%AI11_BeginTextDocument')
+    binaries = [child for child in section.children if type(child).__name__ in ('AI11TextDocument', 'AI11UndoFreeTextDocument')]
+    text_parser = importlib.import_module('inkai.parser.text').TextDocumentParser
+    stream = importlib.import_module('inkai.parser.streamreader').StreamWrapper
+    assert [type(binary).__name__ for binary in binaries] == ['AI11TextDocument', 'AI11UndoFreeTextDocument']
+    for binary in binaries:
+        engine = text_parser.read_object(stream(io.BytesIO(binary.Data)))
+        assert engine['/98']['/0'] == 11
+        assert not engine['/0'].get('/8', {}).get('/0') and not engine['/1'].get('/1')
+        if '/4' in engine['/1']:
+            assert engine['/1']['/4'] == {'/0': 7, '/1': 8, '/2': 1, '/3': 'Illustrator'}
+    return [binary.Data for binary in binaries]
 
 
 def contour_spans(data, report):
@@ -50,44 +69,48 @@ def verify(inkai, output, row, prefix):
     original_file, result_file = output / f'{name}.original.ps', output / f'{name}.{variant}.ps'
     before, after = original_file.read_bytes(), result_file.read_bytes()
     if name in PRODUCERS or name == 'unknown' and variant != 'geometry':
-        expected = 'Artboard text isolation requires the qualified compact ATE version.' if name in PRODUCERS else 'Contour movement cannot restore unknown outgoing appearance values.' if variant == 'move' else 'Contour edits cannot restore unknown final attributes.'
+        expected = 'Path topology edits require authoritative ordinary geometry, not derived appearances or live-shape parameters.' if name in PRODUCERS else 'Contour movement cannot restore unknown outgoing appearance values.' if variant == 'move' else 'Contour edits cannot restore unknown final attributes.'
         assert row['error'] == expected and before == after and row['before'] == row['after']
         if name in PRODUCERS:
-            document = inkai.parse(str(original_file))
-            section = document.setup.first_subsection_of_type(b'%AI11_BeginTextDocument')
-            binaries = [child for child in section.children if type(child).__name__ in ('AI11TextDocument', 'AI11UndoFreeTextDocument')]
-            text_parser = importlib.import_module('inkai.parser.text').TextDocumentParser
-            stream = importlib.import_module('inkai.parser.streamreader').StreamWrapper
-            assert len(binaries) == 2
-            for binary in binaries:
-                engine = text_parser.read_object(stream(io.BytesIO(binary.Data)))
-                assert engine['/98']['/0'] == 11
-                assert not engine['/0'].get('/8', {}).get('/0') and not engine['/1'].get('/1')
+            text_snapshots(inkai.parse(str(original_file)))
         return
     assert row['error'] is None
     original_doc, actual_doc = inkai.parse(str(original_file)), inkai.parse(str(result_file))
     original_gradients, actual_gradients = gradient_instances(original_doc), gradient_instances(actual_doc)
-    expected_instances = 2 if name == 'shared' else 1
+    prepared = name.endswith('.prepared')
+    expected_instances = 68 if name == 'gradient_linear.ai.prepared' else 58 if prepared else 2 if name == 'shared' else 1
     assert len(original_gradients) == len(actual_gradients) == expected_instances
-    assert list(original_doc.setup.gradients) == list(actual_doc.setup.gradients) == ['path_target']
-    assert repr(original_doc.setup.gradients['path_target'].children) == repr(actual_doc.setup.gradients['path_target'].children)
+    assert list(original_doc.setup.gradients) == list(actual_doc.setup.gradients)
+    if not prepared:
+        assert list(original_doc.setup.gradients) == ['path_target']
+    for key in original_doc.setup.gradients:
+        assert repr(original_doc.setup.gradients[key].children) == repr(actual_doc.setup.gradients[key].children)
     for original, actual in zip(original_gradients, actual_gradients, strict=True):
         assert [command(item) for item in original] == [command(item) for item in actual]
         geometry = next(item for item in original if item.command == 'Bg')
-        assert geometry.name == 'path_target'
+        if not prepared:
+            assert geometry.name == 'path_target'
+    if prepared:
+        body_gradients = [item for item in walk_body(original_doc.trailer) if getattr(item, 'command', None) == 'Bg']
+        assert len(body_gradients) == (15 if name == 'gradient_linear.ai.prepared' else 9)
+        assert all(item.name in original_doc.setup.gradients for item in body_gradients)
+        assert text_snapshots(original_doc) == text_snapshots(actual_doc)
     previous = contour_spans(before, row['before'])
     current = contour_spans(after, row['after'])
+    selected_path = len(previous['paths']) - 2 if prepared else 0
+    selected_group = len(previous['groups']) - 2 if prepared else 0
+    target = len(previous['groups']) - 1 if prepared else 1
     if variant == 'geometry':
-        verify_geometry(inkai, output, dict(source=name, variant=variant, original=original_file.name, result=result_file.name, before=previous['paths'], after=current['paths']), ('original', [0], [], None))
+        verify_geometry(inkai, output, dict(source=name, variant=variant, original=original_file.name, result=result_file.name, before=previous['paths'], after=current['paths']), ('original', [selected_path], [], None))
     elif variant == 'move':
-        verify_contours(inkai, output, dict(source=name, variant=variant, before=previous['paths'], after=current['paths'], beforeGroups=previous['groups'], afterGroups=current['groups']), ([0], 1, None, None, False), prefix)
+        verify_contours(inkai, output, dict(source=name, variant=variant, before=previous['paths'], after=current['paths'], beforeGroups=previous['groups'], afterGroups=current['groups']), ([selected_path], target, None, None, False), prefix)
     else:
         assert variant == 'group'
-        verify_groups(inkai, output, dict(source=name, variant=variant, before=previous, after=current), ('original', [0], 1, None), prefix)
+        verify_groups(inkai, output, dict(source=name, variant=variant, before=previous, after=current), ('original', [selected_group], target, None), prefix)
 
 
 def main():
-    """Require thirteen accepted transactions and four exact conservative refusals."""
+    """Require nineteen accepted transactions and four exact conservative refusals."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -104,15 +127,20 @@ def main():
     for name in PRODUCERS:
         fixture, entry = Path('test/corpus/files', name), manifest[name]
         assert fixture.stat().st_size == entry['size'] and hashlib.sha256(fixture.read_bytes()).hexdigest() == entry['sha256'] and entry['revision'] == REVISION and entry['license']
-        assert native_programs(fixture) == [(args.output / f'{name}.original.ps').read_bytes()]
+        original = (args.output / f'{name}.original.ps').read_bytes()
+        assert native_programs(fixture) == [original]
+        position = list(re.finditer(rb'^LB\s*$', original, re.MULTILINE))[-1].start()
+        prepared = (args.output / f'{name}.prepared.original.ps').read_bytes()
+        assert prepared == original[:position] + INSERTION + original[position:]
+        assert text_snapshots(inkai.parse(str(args.output / f'{name}.original.ps'))) == text_snapshots(inkai.parse(str(args.output / f'{name}.prepared.original.ps')))
     rows = json.loads((args.output / 'report.json').read_text())
-    expected = {(name, variant) for name in SOURCES for variant in ('geometry', 'move', 'group')} | {(name, 'geometry') for name in PRODUCERS}
-    assert len(rows) == len(expected) == 17 and {(row['source'], row['variant']) for row in rows} == expected
+    expected = {(name, variant) for name in [*SOURCES, *(f'{name}.prepared' for name in PRODUCERS)] for variant in ('geometry', 'move', 'group')} | {(name, 'geometry') for name in PRODUCERS}
+    assert len(rows) == len(expected) == 23 and {(row['source'], row['variant']) for row in rows} == expected
     prefix = prolog()
     for row in rows:
         verify(inkai, args.output, row, prefix)
         print(row['source'], row['variant'], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=[f'{row["source"]}/{row["variant"]}' for row in rows], accepted=13, refused=4, producerRefusals=2, ordinaryStateProjections=16, ghostscript=subprocess.check_output(['gs', '--version'], text=True).strip()), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=[f'{row["source"]}/{row["variant"]}' for row in rows], accepted=19, refused=4, producerRefusals=2, completeProducerEdits=6, ordinaryStateProjections=32, ghostscript=subprocess.check_output(['gs', '--version'], text=True).strip()), indent=2) + '\n')
 
 
 if __name__ == '__main__':

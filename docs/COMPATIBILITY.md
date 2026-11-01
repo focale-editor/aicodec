@@ -35,6 +35,10 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   and resource definitions. Unknown local dependencies reject.
 - ATE fonts, stories, UTF-16 runs and styles; native content/feature editing,
   host-composed layouts and frame translation. PsCore 0.2.2 supplies EngineData.
+- Ordinary contour/compound/clip lifecycle keeps qualified gradient neighbors
+  and empty ATE 11 main/undo-free snapshots unchanged. Movement proves inherited
+  and outgoing state; private/printing shape contours remain protected. Unknown
+  dependencies and populated ATE 11 still require separate qualification.
 - Gradient stops, printing ramps supplied by the host, focus, selected resource
   isolation and relative placement edits.
 - Native mesh inventory, process-color/ink-tint/opacity vertex edits with shared

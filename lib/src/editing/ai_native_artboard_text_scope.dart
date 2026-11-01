@@ -6,6 +6,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// artboard changes do not rewrite stories, typography or cached composition.
 /// Artwork identity deletion additionally requires empty frame/story namespaces;
 /// retaining populated text beside board edits does not qualify its hyperlinks.
+/// ATE 11 snapshots currently require empty namespaces for every caller.
 ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) _artboardTextScope(AiNativeLayers layers, {bool requireEmpty = false}) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiNativeContainer> main = records.roots.where((record) => record.type == 'AI11TextDocument').toList();
@@ -88,11 +89,13 @@ List<PsEngineValue> _artboardTextArray(PsEngineValue? value) {
 /// Checks domain boundaries before retaining typography and composition payloads.
 _ArtboardTextSnapshot _artboardTextEngine(PsEngineDocument engine) {
   final PsEngineDictionary root = _artboardTextDictionary(engine.root, {'0', '1', '98'});
+  bool emptyOnly = false;
   if (root['98'] case final PsEngineValue version) {
     final PsEngineDictionary header = _artboardTextDictionary(version, {'0'});
-    if (header['0'] is! PsEngineNumber || !const {7, 9}.contains((header['0']! as PsEngineNumber).value)) {
+    if (header['0'] is! PsEngineNumber || !const {7, 9, 11}.contains((header['0']! as PsEngineNumber).value)) {
       throw UnsupportedError('Artboard text isolation requires the qualified compact ATE version.');
     }
+    emptyOnly = (header['0']! as PsEngineNumber).value == 11;
   }
   final PsEngineDictionary resources = _artboardTextDictionary(root['0'], {'1', '2', '3', '4', '5', '6', '8', '9'});
   final List<int> frames = [];
@@ -101,6 +104,9 @@ _ArtboardTextSnapshot _artboardTextEngine(PsEngineDocument engine) {
     final PsEngineValue? definitions = table['0'] ?? (entry.key == '8' ? PsEngineArray(values: []) : null);
     if (definitions is! PsEngineArray) {
       throw UnsupportedError('Text resources require an explicit resource array.');
+    }
+    if (emptyOnly && entry.key == '8' && definitions.values.isNotEmpty) {
+      throw UnsupportedError('ATE 11 isolation requires empty frame and story namespaces in each snapshot.');
     }
     for (final PsEngineValue value in definitions.values) {
       final PsEngineDictionary wrapper = _artboardTextDictionary(value, {'0'});
@@ -124,8 +130,15 @@ _ArtboardTextSnapshot _artboardTextEngine(PsEngineDocument engine) {
       }
     }
   }
-  final PsEngineDictionary objects = _artboardTextDictionary(root['1'], {'0', '1', '2', '3'});
-  final List<List<int>> stories = [for (final PsEngineValue story in _artboardTextArray(objects['1'])) _artboardTextStory(story, frames.length)];
+  final PsEngineDictionary objects = _artboardTextDictionary(root['1'], {'0', '1', '2', '3', if (emptyOnly) '4'});
+  final List<PsEngineValue> storyValues = _artboardTextArray(objects['1']);
+  if (emptyOnly && storyValues.isNotEmpty) {
+    throw UnsupportedError('ATE 11 isolation requires empty frame and story namespaces in each snapshot.');
+  }
+  final List<List<int>> stories = [for (final PsEngineValue story in storyValues) _artboardTextStory(story, frames.length)];
+  if (objects['4'] case final PsEngineValue composer) {
+    _artboardTextComposer(composer);
+  }
   if (objects['0'] case final PsEngineValue settings) {
     _artboardTextSettings(settings);
   }
@@ -138,6 +151,20 @@ _ArtboardTextSnapshot _artboardTextEngine(PsEngineDocument engine) {
     throw UnsupportedError('Artboard text isolation cannot qualify opaque ATE tokens.');
   }
   return _ArtboardTextSnapshot(frames: frames, stories: stories);
+}
+
+/// Retains the empty ATE 11 composer descriptor without interpreting its components.
+void _artboardTextComposer(PsEngineValue value) {
+  final PsEngineDictionary composer = _artboardTextDictionary(value, {'0', '1', '2', '3'});
+  for (final String key in ['0', '1', '2']) {
+    final PsEngineValue? component = composer[key];
+    if (component is! PsEngineNumber || component.value < 0 || component.value > 9007199254740991 || component.value != component.value.truncate()) {
+      throw const FormatException('Invalid retained ATE composer component.');
+    }
+  }
+  if (composer['3'] is! PsEngineString) {
+    throw const FormatException('Invalid retained ATE composer identifier.');
+  }
 }
 
 /// Checks text preferences without accepting arbitrary document-level extensions.
