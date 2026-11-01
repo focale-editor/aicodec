@@ -878,6 +878,32 @@ dart run tool/check_native_artboard_svg_filters.dart
 python3 tool/verify_native_artboard_svg_filters.py --inkai-source /tmp/extension-ai
 ```
 
+The brush-descriptor suite retains all 36 producer plug-in sections, including
+their four ordered brush panels, and all six calligraphic references from the
+three complete Chrome Highlight appearances. The independent parser compares
+literal fragments, complete parameters and plug-in/name pairs; panel references
+and artwork-tile dependencies resolve independently. The twenty carrier
+transactions also compare all original appearance, brush/raster, SVG-filter and
+text resources. The synthetic case shares names across four brush namespaces
+and native artboard IDs; its compound appearance wrapper matches the independent
+reader's supported execution representation. Direct basic-filter execution is
+covered by the VM/Node regressions separately.
+
+Six additional lifecycle transactions operate on the complete original
+`text_transforms.ai` native program, including creation before/after the original,
+resizing, reordering, and deletion of the new or original active board. Their
+predecessor chain, exact requested Document changes, retained board dictionary
+trivia and every byte outside those edits are checked independently. This
+qualifies complete native-program operations for that fixture; Adobe reopening
+and host-supplied PDF composition remain separate. The two simple CC originals
+still require additional perspective-grid settings, and `flowtext.ai` still
+requires Band's blend ownership.
+
+```bash
+dart run tool/check_native_artboard_brush_descriptors.dart
+python3 tool/verify_native_artboard_brush_descriptors.py --inkai-source /tmp/extension-ai
+```
+
 ## Native print selections
 
 The print-job suite reuses the three CC unit/origin fixtures pinned in

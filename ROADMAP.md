@@ -846,6 +846,21 @@ groups and compound topology. There is no general modern object lifecycle API.
   Full validation: 834 VM/833 Node tests, clean format/fix/analysis and all twenty
   new independent transactions, including producer resource and text comparisons.
   This artboard task remains open pending those dependency owners.
+  Retained brush descriptors now resolve plug-in/name identities independently
+  of native artwork and artboard IDs. Known calligraphic, art/pattern and bristle
+  layouts retain their complete literal fragments; manager-panel order and
+  artwork tiles are checked. Calligraphic appearances retain typed parameters,
+  owned strokes and matching `GObjRef` descriptors. Eight regressions cover all
+  board operations, name escaping, references, unknown/executable data and limits.
+  Twenty carrier transactions compare all 36 producer descriptor sections and
+  six calligraphic references, plus the complete retained resource/text data.
+  Six further transactions now exercise the complete original text_transforms
+  program through creation, resize, reorder and removal, with exact independent
+  Document and unselected-byte checks. The simple CC originals next require
+  additional perspective-grid settings; flowtext still requires Band's blend
+  owners. This artboard task remains open; no brush renderer was introduced.
+  Full validation: 842 VM/841 Node tests, clean format/fix/analysis and all 26
+  independent transactions, including the six complete-source lifecycle edits.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

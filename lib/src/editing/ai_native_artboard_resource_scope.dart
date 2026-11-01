@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Qualified pattern/symbol names, source spans and owned metadata retained together.
-typedef _ArtboardResourceScope = ({Set<String> patterns, Set<String> symbols, List<({int start, int end})> ranges, Set<AiNativeContainer> objects});
+/// Qualified artwork resource names, source spans and owned metadata retained together.
+typedef _ArtboardResourceScope = ({Set<String> patterns, Set<String> symbols, Set<String> brushes, List<({int start, int end})> ranges, Set<AiNativeContainer> objects});
 
 /// Qualifies direct CC resource artwork without evaluating PostScript programs.
 _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
@@ -161,7 +161,7 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
   for (final AiNativeDrawing drawing in scope.drawings) {
     _artboardResourceArtwork(layers, drawing, references, patterns);
   }
-  return (patterns: Set.unmodifiable(patterns), symbols: Set.unmodifiable(symbols), ranges: List.unmodifiable(ranges), objects: Set.unmodifiable(objects));
+  return (patterns: Set.unmodifiable(patterns), symbols: Set.unmodifiable(symbols), brushes: Set.unmodifiable(brushes), ranges: List.unmodifiable(ranges), objects: Set.unmodifiable(objects));
 }
 
 /// Checks the ordinary tile rectangle and matching pattern wrapper name.

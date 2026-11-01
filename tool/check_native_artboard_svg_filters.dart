@@ -10,7 +10,7 @@ import 'check_native_artboard_brushes.dart' show retainedBrushCarrier;
 import 'check_native_artboards.dart' show artboardInventory;
 
 /// Copies all native filter trees with their exact attributes and animations.
-String _carrier(AiNativeSource source) {
+String retainedSvgFilterCarrier(AiNativeSource source) {
   final String text = latin1.decode(source.bytes);
   final List<String> filters = RegExp(r'%AI10_BeginSVGFilter[\s\S]*?%AI10_EndSVGFilter').allMatches(text).map((match) => match[0]!).toList();
   if (filters.length != 1 || AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes)).roots.where((root) => root.type == 'SVGFilter').length != 18) {
@@ -26,7 +26,7 @@ Future<void> main() async {
   for (final String name in ['simple_cc_legacy.ai', 'simple_v2020.ai', 'text_transforms.ai', 'flowtext.ai']) {
     final AiNativeSource source = AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single;
     await File('${output.path}/$name.producer.ps').writeAsBytes(source.bytes);
-    carriers[name] = _carrier(source);
+    carriers[name] = retainedSvgFilterCarrier(source);
   }
   carriers['synthetic-filter'] = artboardSource(extra: artboardSvgFilter());
   final List<Map<String, Object?>> rows = [];

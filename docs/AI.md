@@ -1536,8 +1536,27 @@ and alpha sizes even for producers whose `BeginData` count covers only color;
 sample bytes cannot supply resource, record or DSC delimiters. Unknown image
 layouts, opaque annotations, executable values, unrelated data and crossing
 owners reject before any edit. These rules qualify resource preservation during
-artboard changes. Brush assignment descriptors, calligraphic `GObjRef` ownership,
-brush-instance editing and synthesized stroke geometry remain separate contracts.
+artboard changes; brush-instance editing and synthesized stroke geometry remain
+separate contracts.
+
+Setup `%AI8_BeginPluginObject` sections retain complete literal fragment chains
+and distinct plug-in/name identities. Qualified layouts include calligraphic
+scalar parameters with leading marker `1`, art/pattern descriptors with marker
+`2`, five explicit artwork slots and observed gray/RGB color fields, and bristle
+parameters with marker `0` and the built-in CS5 library identity. Artwork references
+must resolve in the brush-artwork namespace. These observed native layouts do
+not imply general plug-in execution or support for unknown descriptor versions.
+The brush-manager panel retains its original order; entries must resolve to
+distinct descriptors even when declarations appear later in setup. Descriptor
+numbers, fragment syntax, ownership and inventory/output budgets are checked.
+
+Retained calligraphic appearance filters require the known module identifier,
+local typed parameters, an owned stroke and one literal `GObjRef/PluginObject`
+pair resolving to the same brush plug-in. Names matching artboard UUIDs remain
+independent. Incomplete/mismatched references, duplicate definitions, unknown
+providers or fields, executable payloads, conditional sections and unsupported
+layouts reject atomically. Existing source bytes, sample planes and appearances
+remain unchanged; no brush expansion or stroke rendering is introduced.
 
 Native `%AI10_BeginSVGFilter` collections retain every ordered `SVGFilter`/`Def`
 tree with its complete XML-node envelopes, literal attributes and child arrays.
@@ -2261,7 +2280,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources and local SVG-filter trees can remain unchanged. Calligraphic assignment, blend ownership and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Blend ownership, further document settings and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
