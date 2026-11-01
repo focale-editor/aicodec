@@ -794,6 +794,22 @@ groups and compound topology. There is no general modern object lifecycle API.
   Full validation: 809 VM/808 Node tests, clean format/fix/analysis and all 122
   independent transactions, including the previous 102 symbol/text/lifecycle
   outcomes regenerated and checked against their original sources.
+  Retained appearance qualification now has an artboard-specific graph inspector,
+  independent of shape-transformation permissions. Ordered chain/stack filters,
+  repeated and hidden paints, gradients/patterns and seven local effect families
+  retain exact typed parameters. Mode-zero named style applications are indexed
+  with their dependencies; empty names no longer create fictitious missing uses.
+  Focused cases cover ordinary/private assignments, legacy plug-in identifiers,
+  malformed fields, executable or opaque data and unresolved resources. Twenty
+  independent transactions compare 50 complete producer symbols and 46 complete
+  style graphs, including the full Film masks and styles, plus a synthetic graph.
+  The carriers explicitly exclude Band's blend dependencies and Chrome Highlight's
+  calligraphic brush reference. Whole producer files still need setup brush,
+  SVG-filter, blend and other ownership qualification; the artboard task stays open.
+  Full validation: 817 VM/816 Node tests, clean format/fix/analysis and 142
+  independent transactions. The previous 122 symbol/text/lifecycle/mask outcomes
+  were regenerated and rechecked; all 20 appearance outcomes compare exact
+  producer graphs and retained native bytes.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

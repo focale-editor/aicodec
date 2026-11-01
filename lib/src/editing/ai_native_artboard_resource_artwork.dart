@@ -73,9 +73,9 @@ void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Ma
       if (command.operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(command.operands.last.kind)) {
         throw const FormatException('Retained resource styles require literal operands.');
       }
-      final bool reset = const {6, 9}.contains(command.operands.first.number) && aiStringBytes(command.operands.last).isEmpty;
-      if (!reset && (command.operands.first.number != 1 || references[command.start]?.resolution != .resolved)) {
-        throw UnsupportedError('Retained resource styles require empty resets or one resolved definition.');
+      final bool reset = const {0, 1, 6, 9}.contains(command.operands.first.number) && aiStringBytes(command.operands.last).isEmpty;
+      if (!reset && (!const {0, 1}.contains(command.operands.first.number) || references[command.start]?.resolution != .resolved)) {
+        throw UnsupportedError('Retained resource styles require unnamed applications or one resolved definition.');
       }
     } else if (command.operator == 'p' || command.operator == 'P') {
       _artboardPatternUse(command, patterns);

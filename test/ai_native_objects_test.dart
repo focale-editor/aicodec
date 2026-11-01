@@ -260,7 +260,7 @@ void main() {
     check(result.paths).length.equals(3);
     check(result.removePaths(paths: [result.paths.first]).paths).length.equals(2);
     final AiNativeDrawing dependent = _drawing(objectSource('${movementPath(10)}\n$dictionary\n0 XW ${movementPath(20)}'));
-    check(() => dependent.duplicatePaths(paths: [dependent.paths.last])).throws<UnsupportedError>();
+    check(() => dependent.duplicatePaths(paths: [dependent.paths.last])).throws<FormatException>();
   });
 
   test('reports qualified metadata without qualifying private or opaque artwork', () {

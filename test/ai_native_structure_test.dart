@@ -150,6 +150,22 @@ void main() {
     check(structure.resourceUses[0].owner!.source).isA<AiNativeContainer>().has((record) => record.type, 'type').equals('Art');
   });
 
+  test('resolves mode-zero style assignments and excludes unnamed applications', () {
+    final AiNativeDrawing drawing = _drawing(
+      setup: '$_begin\n$_style\n/Art : 0 (Shared) XW ;\n$_end',
+      body: '0 (Shared) XW\n%_0 (Missing) XW\n0 () XW\n1 () XW',
+    );
+    final AiNativeStructure structure = AiNativeStructure.decode(drawing: drawing);
+    check(structure.resourceUses.map((use) => use.resolution)).deepEquals([
+      AiNativeResourceResolution.resolved,
+      AiNativeResourceResolution.conditional,
+      AiNativeResourceResolution.missing,
+    ]);
+    check(structure.usesOf(structure.resources.single)).length.equals(2);
+    check(structure.resourceUses.last.instruction.isPrivate).isTrue();
+    check(() => AiNativeStructure.decode(drawing: _drawing(body: '0 /Shared XW'))).throws<FormatException>();
+  });
+
   test('retains duplicate names and refuses dependent live-shape edits', () {
     final AiNativeDrawing source = printingFixture();
     final AiNativeContainer style = source.records.roots.singleWhere((record) => record.type == 'KnownStyle');

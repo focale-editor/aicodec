@@ -120,7 +120,7 @@ final class AiNativeObjectIdentifier {
 
 /// Named resource families with qualified reference syntax.
 enum AiNativeStructureResourceKind {
-  /// KnownStyle declaration referenced by mode-one XW commands.
+  /// KnownStyle declaration referenced by named mode-zero/one XW commands.
   knownStyle,
 
   /// Global Bd declaration referenced by complete Bg gradient instances.

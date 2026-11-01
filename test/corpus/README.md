@@ -777,8 +777,8 @@ Whole-native comparisons permit only the declared Document/crop edits.
 
 These carriers qualify resource retention, not symbol-instance editing or full
 producer artboard edits. The separate mask suite below qualifies retained mask
-payloads. Full symbol appearance graphs, blend owners, brush and SVG-filter
-resources still require further qualification.
+payloads. The appearance suite below checks additional complete style graphs;
+blend owners, brush and SVG-filter resources still need qualification.
 
 ```sh
 dart run tool/check_native_artboard_symbols.dart
@@ -797,13 +797,36 @@ also retain and independently compare the producers' text, fonts, gradients,
 patterns and palettes. Two synthetic sources cover raster and vector masks with
 separate symbol/artboard identities.
 
-This qualifies mask retention without claiming that all `Film` style dependencies
-or the complete producer document are accepted. Feather appearance descriptors,
-further styles, blend owners and other resource families remain separate work.
+This suite isolates mask retention; the appearance suite below includes complete
+`Film` symbols and their style dependencies. Neither suite establishes acceptance
+of the complete original producer document.
 
 ```sh
 dart run tool/check_native_artboard_masks.dart
 python3 tool/verify_native_artboard_masks.py --inkai-source /tmp/extension-ai
+```
+
+The retained-appearance suite checks twenty further transactions. Four real
+carriers copy 50 complete symbols and 46 complete style definitions, including
+all fifteen symbols of each of the first three producers and five from
+`flowtext.ai`. The blend source `Band` and the style `Chrome Highlight`, which
+references a calligraphic brush, are explicitly excluded pending their dependency
+contracts. No part of a retained symbol or style is stripped. Source provenance,
+these exact selections and constructed-carrier hashes are independently checked.
+
+The external reader compares all ordered style parts, descriptor fields, paint
+commands, masks and raster samples against the original producers and every
+edited result. Mode-zero and mode-one named uses resolve; unnamed applications
+remain unchanged without inventing a missing style. All producer text, fonts,
+gradients, patterns and palettes remain independently checked as well. A synthetic
+case adds hidden paint parts, advanced local blending and an effect whose title
+equals an artboard identity. Whole-native checks permit only the prescribed
+Document/crop changes. These tests establish retention, not effect execution,
+general appearance editing or complete-producer artboard acceptance.
+
+```sh
+dart run tool/check_native_artboard_styles.dart
+python3 tool/verify_native_artboard_styles.py --inkai-source /tmp/extension-ai
 ```
 
 ## Native print selections

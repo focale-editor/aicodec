@@ -313,11 +313,13 @@ List<AiNativeResourceUse> _nativeResourceUses(AiNativeDrawing drawing, AiNativeV
   }
   final List<_NativeStructureReference> references = [];
   for (final AiNativeInstruction instruction in _structureCommands(drawing)) {
-    if (instruction.operator == 'XW' && instruction.operands.firstOrNull?.number == 1) {
-      if (!_marker(instruction, 1)) {
+    if (instruction.operator == 'XW' && const {0, 1}.contains(instruction.operands.firstOrNull?.number)) {
+      if (!_marker(instruction, instruction.operands.first.number!.toInt())) {
         throw const FormatException('Invalid known-style resource reference.');
       }
-      references.add((kind: .knownStyle, instruction: instruction, name: instruction.operands[1]));
+      if (aiStringBytes(instruction.operands[1]).isNotEmpty) {
+        references.add((kind: .knownStyle, instruction: instruction, name: instruction.operands[1]));
+      }
     }
   }
   for (final AiNativeGradient gradient in _readGradientInstances(drawing.records)) {

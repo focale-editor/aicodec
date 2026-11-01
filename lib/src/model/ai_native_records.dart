@@ -49,6 +49,7 @@ part '../editing/ai_native_group_selection.dart';
 part '../editing/ai_native_artwork_creation.dart';
 part '../editing/ai_native_artboard_editor.dart';
 part '../editing/ai_native_artboard_references.dart';
+part '../editing/ai_native_artboard_styles.dart';
 part '../editing/ai_native_artboard_artwork_scope.dart';
 part '../editing/ai_native_artboard_setup_scope.dart';
 part '../editing/ai_native_artboard_palette_scope.dart';

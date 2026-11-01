@@ -1448,10 +1448,23 @@ atomically.
 
 Artboard edits have a separate retained-dependency scope. Qualified ordinary
 artwork, complete CC pairs and shared literal resources remain exact. This scope
-also accepts literal `SimpleStyle` process paints, plug-in name inventories,
+also accepts literal `SimpleStyle` paints, qualified `ActiveStyle` graphs, plug-in name inventories,
 existing style-name lists, resolved symbol lists and qualified process/named-color
 and gradient/pattern palettes. These are preserved declarations, not permission to
 execute plug-ins, edit symbol instances or synthesize artwork.
+
+Retained active styles keep ordered chain/stack filters, repeated fill/stroke
+parts, visibility, blending and filter-local typed dictionaries. Named colors,
+pattern paints and complete gradient instances use the same bounded reference
+checks as retained resources. Known local descriptors cover stroke offset,
+feather, rounded corners, offset path, drop shadow, outer glow and transformation.
+Their recorded parameters and legacy module names remain exact, including
+inactive parts and numeric values expressed in the existing document basis.
+Only each filter's known fields and owned paint records qualify; unknown fields,
+external plug-ins, executable values, duplicate keys, opaque annotations and
+missing/ambiguous named resources reject. No filter is executed, recomputed or
+made transformable by this artboard-only retention contract. Brush references
+and other appearance families still need their own dependency qualification.
 
 Palette indices, cell order, optional names, none paints (`Pn`) and group names
 with their two Boolean flags (`Pg`) remain exact. `Xs` CMYK and `Xz` RGB/CMYK
@@ -1480,8 +1493,9 @@ Direct `%AI14_BeginSymbol` definitions share those bounded artwork checks and
 retain their literal name and complete ordinary/private geometry. Symbol-local
 registration type, nine-slice grid, pixel-perfect flag, compound-shape mode,
 rotation and XML artwork identities remain distinct from artboard identities.
-Pattern paints and mode-one `XW` style assignments require unique unconditional
-definitions; empty mode-six/nine resets are retained. Named fill/stroke colors,
+Pattern paints and named mode-zero/one `XW` style assignments require unique
+unconditional definitions; unnamed mode-zero/one applications and empty
+mode-six/nine assignments are retained. Named fill/stroke colors,
 literal opacity, blend mode, isolation, knockout and alpha-as-shape flags remain
 exact. The retained scalar domains follow the Adobe SDK's
 [blend-style definitions](https://ai-sdk-2020.84.nz/html/_a_i_mask_8h), without
@@ -1520,8 +1534,8 @@ the first board moves or changes size. Binary bytes and node counts share bounds
 across both snapshots. Area/path drawing references require an owned unpainted
 confinement curve with literal `X=`/`X+` boundaries, checked point counts and
 qualified rotation metadata. Direct text identities and names are preserved.
-Literal style assignments must resolve to a setup definition; empty mode-six
-style resets and ordinary Boolean fill/stroke flags are retained without applying
+Named mode-zero/one style assignments must resolve to a setup definition; empty
+mode-zero/one/six/nine assignments and ordinary Boolean fill/stroke flags are retained without applying
 their paints.
 
 Unknown engine owners, frame categories, cached node tags/fields, opaque tokens,
@@ -1733,7 +1747,7 @@ complete block has no membership in that block; a span crossing a boundary
 rejects. Strings, procedures, embedded documents and binary payloads cannot
 contribute version delimiters. No target Illustrator version is selected.
 
-Named resource links currently cover `KnownStyle`/mode-one `XW` and global
+Named resource links currently cover `KnownStyle`/mode-zero/one `XW` and global
 `Bd`/complete `Bg` instances. The index includes qualified uses inside native
 `Art`, paint styles and setup pattern/symbol artwork; inspecting those references
 does not implement pattern/symbol editing. References outside indexed structural
@@ -1744,6 +1758,10 @@ Duplicate definitions remain separate. A use is `resolved`, `missing`,
 dependencies. Opposite branches of the same block cannot bind each other.
 Conditions in separate blocks are not assumed equivalent. Unknown plug-in
 dependency schemas remain opaque.
+An empty `XW` name is an unnamed application, not a missing named-style use;
+it remains in the source command inventory without an invented resource link.
+Malformed mode-zero applications now raise `FormatException` consistently with
+mode-one applications, rather than being left as opaque unsupported state.
 
 The inventory rejects crossing lexical owners, references/names split across
 version boundaries, unresolved qualified style layouts and malformed saved

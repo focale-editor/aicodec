@@ -95,10 +95,10 @@ void _artboardRetainedStyleUse(AiNativeInstruction command, AiNativeResourceUse?
     throw UnsupportedError('Retained styles require ordinary literal references.');
   }
   final num? mode = command.operands.first.number;
-  if (mode == 6 && aiStringBytes(command.operands.last).isEmpty) {
+  if (const {0, 1, 6, 9}.contains(mode) && aiStringBytes(command.operands.last).isEmpty) {
     return;
   }
-  if (mode != 1 || reference?.resolution != .resolved) {
+  if (!const {0, 1}.contains(mode) || reference?.resolution != .resolved) {
     throw UnsupportedError('Retained style assignments require one resolved setup definition.');
   }
 }

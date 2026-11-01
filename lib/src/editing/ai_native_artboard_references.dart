@@ -6,6 +6,7 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   final _ArtboardResourceScope resources = _artboardResourceScope(layers);
   final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
   final Map<AiNativeInstruction, AiNativeResourceUse> styles = {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction: use};
+  final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in styles.values) use.instruction.start: use};
   // The retained-body checker owns every interval outside each complete pair.
   final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
     layers,
@@ -22,7 +23,7 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   for (final AiNativeContainer record in model.records.roots.where((record) => !dictionaries.contains(record))) {
     switch (record.type) {
       case 'KnownStyle':
-        _artboardRetainedStyle(layers, record);
+        _artboardRetainedStyle(layers, record, references, resources.patterns);
       case 'Document':
         _referenceDocument(layers, record);
       case 'AI11TextDocument' || 'AI11UndoFreeTextDocument':
@@ -54,37 +55,4 @@ void _artboardSetupRecord(AiNativeLayers layers, AiNativeContainer record, {List
       throw UnsupportedError('Artboard dependency records cannot hide conditional or opaque annotations.');
     }
   }
-}
-
-/// Preserves simple process paints without requiring shape-transformation state.
-void _artboardRetainedStyle(AiNativeLayers layers, AiNativeContainer style) {
-  if (style['Def']?.container?.type != 'SimpleStyle') {
-    _referenceLiteralStyle(layers.drawing, style);
-    return;
-  }
-  _artboardSetupRecord(layers, style);
-  final AiNativeContainer simple = style['Def']!.container!;
-  if (style.hasBinary ||
-      style.entries.length != 2 ||
-      style['Name']?.type != null ||
-      style['Name']?.stringBytes == null ||
-      style['Def']!.type != null ||
-      simple.hasBinary ||
-      simple.entries.length != 1 ||
-      simple['Paint']?.type != null ||
-      simple['Paint']?.isQualifier != false ||
-      simple['Paint']!.items.any((item) => item is! AiNativeToken)) {
-    throw UnsupportedError('Retained simple styles require a literal name and one paint command field.');
-  }
-  final _NativeCommandReader reader = _NativeCommandReader(maxDepth: layers.drawing.records.program.limits.maxDepth);
-  for (final AiNativeToken item in simple['Paint']!.items.cast<AiNativeToken>()) {
-    final AiNativeInstruction? command = reader.add(item.token, isPrivate: false);
-    if (command == null || _nativeArtworkStateKey(command) != null) {
-      continue;
-    }
-    if (command.operator != 'Xd' || command.numbers?.length != 2 || command.numbers!.any((value) => value != 0 && value != 1)) {
-      throw UnsupportedError('Retained simple styles have no artboard dependency contract for ${command.operator}.');
-    }
-  }
-  reader.finish();
 }
