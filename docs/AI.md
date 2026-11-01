@@ -1450,7 +1450,7 @@ Artboard edits have a separate retained-dependency scope. Qualified ordinary
 artwork, complete CC pairs and shared literal resources remain exact. This scope
 also accepts literal `SimpleStyle` process paints, plug-in name inventories,
 existing style-name lists, empty symbol lists and qualified process/named-color
-and gradient palettes. These are preserved declarations, not permission to
+and gradient/pattern palettes. These are preserved declarations, not permission to
 execute plug-ins, edit symbol instances or synthesize artwork.
 
 Palette indices, cell order, optional names, none paints (`Pn`) and group names
@@ -1460,9 +1460,21 @@ as artboard identities or restricted to an English registration label. Palette
 gradients require a complete fill `Bb`/`BB` instance, flag-two geometry and one
 unconditionally resolved setup definition. Their palette-local coordinates and
 printing matrices remain unchanged. Missing/ambiguous resources, malformed or
-overlapping cells, private operands, opaque annotations, executable paints and
-pattern dependencies reject. This retention contract does not grant swatch,
+overlapping cells, private operands, opaque annotations and executable paints
+reject. This retention contract does not grant swatch,
 gradient or pattern lifecycle edits.
+
+Direct CC pattern definitions retain their literal byte names, nonempty tile
+rectangles, ordinary/private artwork and local editor metadata. Ordinary,
+compound and clipping groups, path geometry, owned masks and point counts are
+checked without instantiating tiles. Gradient instances require unique
+unconditional definitions and cannot cross group, state or metadata boundaries.
+Qualified tile-editor flags, dimensions, rotation and local gradient transforms
+retain their original coordinates. Palette `p`/`P` references resolve in the
+separate pattern namespace and preserve offsets, scales, rotation, reflection,
+shear and six-value matrices. Duplicate/missing names, conditional boundaries,
+unknown metadata, executable tile programs and opaque payloads reject. Old
+PostScript string-program tiles remain outside this direct-artwork contract.
 
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
 retained with compact ATE versions 7 and 9. Point, area and path frames use
@@ -1560,19 +1572,26 @@ definition alongside complete Document values and exact unselected native bytes.
 Nine populated-text regressions cover both compact versions, point/area/path
 frames, linked references, independent undo-free namespaces, a mapped PDF save,
 malformed/opaque dependencies and original depth/node limits. Independent checks
-verify 24 native artboard edits in six checksum-pinned carriers. Four carriers
+verify 28 native artboard edits in seven checksum-pinned carriers. Four carriers
 copy the exact font setup, ATE snapshots, origins, drawing references, confinement geometry
-and attached metadata from pinned CC files; two synthetic carriers exercise
-main/undo-free ownership. The independent parser compares all copied text with
+and attached metadata from pinned CC files; three synthetic carriers exercise
+main/undo-free ownership and a counted clipping/gradient pattern. The independent parser compares all copied text with
 the original producers and all outcomes, including 16 frames across ten stories
 in `text_transforms.ai`. Font encodings are independently compared with the
 producer and every outcome, and their complete source setup remains byte-exact.
 Eight additional regressions cover font marks, all four artboard operations,
 gradient isolation, malformed declarations and unchanged deletion guards. These
-checks isolate the retained text/font contract; they do not qualify artboard edits
-of the full producer files. Those now pass gradient-bank, named-color and gradient
-palette qualification before rejecting their pattern palette cells. Pattern
-artwork and other complex setup owners remain unqualified for artboard retention.
+checks now also retain each producer's complete pattern/gradient banks and palette.
+Each real carrier has two patterns with 102 paths (177 in `flowtext.ai`) and 16
+gradient definitions (20 in `flowtext.ai`). Independent comparisons cover all
+pattern commands/metadata, gradient commands/operands, palette references and
+exact source bytes. Eight pattern regressions cover all four edits, private and
+ordinary tiles, empty definitions, clipping/count ownership, resource references,
+malformed transforms, unsupported execution and original depth limits.
+These carriers do not qualify artboard edits of the full producer files. Those
+now pass their patterns and palettes before rejecting symbol inventories or
+other setup art dictionaries, including brush resources. Those complex owners
+still require separate dependency qualification.
 Adobe reopening remains unqualified.
 
 ### Native print selections during artboard edits

@@ -7,6 +7,7 @@ import importlib
 import io
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -14,15 +15,41 @@ from corpus_support import REVISION, native_programs
 from verify_live_shapes import walk_body
 from verify_native_page_saves import native_edit
 from verify_native_text import field, resources
+from verify_native_group_lifecycle import command
 
 CARRIERS = {
-    'simple_cc_legacy.ai': 'f829f530322dba0db1cfda7dd6c49767256276fb1695df1aa2811e0747fbfe68',
-    'simple_v2020.ai': 'e1a4f5d023e5639e585e580e5e27ad18734726c8851c2f2bbdfe630b9872887d',
-    'text_transforms.ai': '581040cc1c974c944e6c71f4a647fd4de6ce10b75ea6fffeb8a8bcbab290593c',
-    'flowtext.ai': '5cc3e5a3c0dae935560effedb9d6c8e6986d2e3771885d08605a3411b1431351',
+    'simple_cc_legacy.ai': 'a1da186a162f0bad52d83c5f976c091098ac49ba9be523544b7fc27dcdf83b8a',
+    'simple_v2020.ai': '3e3b7ae49aee7d1ba8fe7634e277361f8518494869e5f85120949aebd2730257',
+    'text_transforms.ai': '9fe7b42d1a85c373187dae3f847c0d5b7f4602c73dedc3c160f4755aaa24432a',
+    'flowtext.ai': '2f8fe8eb26ef471aa15e4ceed829dcdff2e3aa146626895212e1245c0bf7e4a3',
     'synthetic-main': '7e6a9ec87819bcd12fefd6d8e6bdddd4e626a4f9ba78a85c195720f5970f932c',
     'synthetic-undo': '1f810674463a07a2172a13f8ca24281db4c7bfff1cb49075e5564505b989d8df',
+    'synthetic-pattern': 'af9961c1fd6a372e330654c3693bab3f80eb39c921a17d6f59c55ffc69c2b669',
 }
+
+
+def resource_state(document):
+    """Check complete pattern commands/metadata, gradient banks and palette links."""
+    patterns = list(document.setup.all_subsections_of_type_recursive(b'%AI3_BeginPattern:'))
+    gradients = list(document.setup.all_subsections_of_type_recursive(b'%AI5_BeginGradient:'))
+    palette = document.setup.first_subsection_of_type(b'%AI5_BeginPalette')
+    gradient_names = {gradient.arguments[0] for gradient in gradients}
+    pattern_names = {pattern.arguments[0] for pattern in patterns}
+    assert len(gradient_names) == len(gradients) and len(pattern_names) == len(patterns)
+    uses = list(walk_body(palette.children)) if palette is not None else []
+    for pattern in patterns:
+        uses.extend(walk_body(pattern.children))
+    for use in uses:
+        if getattr(use, 'command', None) == 'Bg':
+            assert use.tokens[1] in gradient_names
+        elif getattr(use, 'command', None) in ('p', 'P'):
+            assert use.tokens[0] in pattern_names
+    return dict(
+        patterns=[normalized(pattern) for pattern in patterns],
+        gradients=[(gradient.arguments, [(command(child), tuple(child.token_is_string)) for child in gradient.children]) for gradient in gradients],
+        palette=normalized(palette),
+        paths=sum(getattr(child, 'command', None) == 'm' for pattern in patterns for child in walk_body(pattern.children)),
+    )
 
 
 def normalized(value):
@@ -71,6 +98,7 @@ def text_state(document, text_parser, stream):
                if getattr(child, 'command', None) in ('[', 'TE')
                or type(child).__name__ == 'Encoding'
                or isinstance(child, tuple) and child[0] == 'AI55J_Tsume'],
+        resources=resource_state(document),
     )
 
 
@@ -91,7 +119,7 @@ def main():
     manifest = {entry['file']: entry for entry in json.loads(Path('test/corpus/manifest.json').read_text())['files']}
     rows = json.loads((args.output / 'report.json').read_text())
     expected = {(name, operation) for name in CARRIERS for operation in ('create', 'resize', 'reorder', 'remove')}
-    assert len(rows) == len(expected) == 24 and {(row['source'], row['operation']) for row in rows} == expected
+    assert len(rows) == len(expected) == 28 and {(row['source'], row['operation']) for row in rows} == expected
     originals, states = {}, {}
     for name, checksum in CARRIERS.items():
         original = args.output / f'{name}.original.ps'
@@ -100,6 +128,9 @@ def main():
         states[name] = text_state(inkai.parse(str(original)), text_parser, stream)
         assert states[name]['counts'] == ([2, 3, 3] if name.startswith('synthetic-') else [10, 16, 16] if name == 'text_transforms.ai' else [1, 1, 1])
         if not name.startswith('synthetic-'):
+            assert len(states[name]['resources']['patterns']) == 2
+            assert states[name]['resources']['paths'] == (177 if name == 'flowtext.ai' else 102)
+            assert len(states[name]['resources']['gradients']) == (20 if name == 'flowtext.ai' else 16)
             assert states[name]['fonts'] and sum(value[0] == 'Encoding' for value in states[name]['fonts']) >= 1
             entry, fixture = manifest[name], Path('test/corpus/files', name)
             assert entry['revision'] == REVISION and fixture.stat().st_size == entry['size']
@@ -108,6 +139,11 @@ def main():
             assert native_programs(fixture) == [producer.read_bytes()]
             font_setup = producer.read_bytes().split(b'%%BeginSetup', 1)[1].split(b'%AI5_Begin_NonPrinting', 1)[0]
             assert font_setup and font_setup in originals[name]
+            for section in re.findall(rb'%AI5_Begin_NonPrinting[\s\S]*?%AI5_End_NonPrinting--', producer.read_bytes()):
+                if b'%AI5_BeginGradient:' in section or b'%AI3_BeginPattern:' in section:
+                    assert section in originals[name]
+            palette = re.search(rb'%AI5_BeginPalette[\s\S]*?%AI5_EndPalette', producer.read_bytes()).group()
+            assert palette in originals[name]
             assert text_state(inkai.parse(str(producer)), text_parser, stream) == states[name]
     checked = []
     for row in rows:
@@ -117,7 +153,7 @@ def main():
         assert text_state(inkai.parse(str(target)), text_parser, stream) == states[name]
         checked.append(f'{name}/{operation}')
         print(checked[-1], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, producerTextCarriers=4, syntheticCarriers=2), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, producerTextCarriers=4, syntheticCarriers=3), indent=2) + '\n')
 
 
 if __name__ == '__main__':

@@ -744,6 +744,23 @@ groups and compound topology. There is no general modern object lifecycle API.
   and later complex setup owners still require qualification, so this task
   remains open. Full validation: 785 VM/784 Node tests and clean format, fix and
   analysis.
+  Direct CC pattern definitions now retain ordinary/private paths, compound and
+  clipping groups, checked point counts, local editor metadata and uniquely
+  resolved gradient instances. Palette fill/stroke references preserve complete
+  pattern transforms in a separate name namespace. Unknown/conditional owners,
+  malformed topology or operands, executable programs and opaque payloads reject
+  atomically. Eight regressions cover all four artboard edits and original limits.
+  The independent text/font suite now checks 28 transactions in seven pinned
+  carriers, including complete producer pattern/gradient banks and palettes. Each
+  real carrier contains two patterns with 102 paths (177 in `flowtext.ai`) and 16
+  gradient definitions (20 in `flowtext.ai`); all commands, metadata, references
+  and copied source bytes are compared with the original producer and every
+  outcome. The 54 existing lifecycle transactions were regenerated and rechecked
+  after sharing bounded drawing topology. These carriers qualify retained
+  resource data, not full-producer editing: symbol inventories and other setup
+  owners, including brush resources, remain unresolved, so this task stays open.
+  Full validation: 793 VM/792 Node tests, 82 independent transactions and clean
+  format, fix and analysis. No renderer or Focale integration was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

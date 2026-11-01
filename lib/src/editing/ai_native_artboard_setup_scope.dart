@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Retains declarative setup inventories separately from instantiated artwork.
-List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers) {
+List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {required Set<String> patternNames}) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiToken> tokens = records._projection.tokens;
   final List<AiNativeContainer> styles = records.roots.where((record) => record.type == 'KnownStyle' && record.end <= records.program.bodyStart).toList();
@@ -86,7 +86,7 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers) {
         if (values.any((value) => records._projection.isPrivate(value.start))) {
           throw UnsupportedError('Retained palettes require ordinary operands and commands.');
         }
-        _artboardPalette(values, records.program.limits, gradientUses);
+        _artboardPalette(values, records.program.limits, gradientUses, patternNames);
       } else if (token.lexeme == '%AI9_BeginArtStyleList') {
         if (values.any((value) => !const {AiTokenKind.string, AiTokenKind.hexString}.contains(value.kind) || !styleNames.contains(latin1.decode(aiStringBytes(value))))) {
           throw UnsupportedError('Retained style lists require existing literal style names.');

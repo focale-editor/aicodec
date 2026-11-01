@@ -64,8 +64,10 @@ final class _NativeDrawingReader {
   }
 
   /// Builds exact path/group spans, then binds native live-shape representations.
-  AiNativeDrawing read() {
-    final List<AiNativeItem> items = _items();
+  AiNativeDrawing read() => readItems(_items());
+
+  /// Builds the same topology for an already bounded source command interval.
+  AiNativeDrawing readItems(List<AiNativeItem> items) {
     final List<AiNativePath> paths = [];
     final List<AiNativeGroup> groups = [];
     final List<AiNativeInstruction> geometry = [];

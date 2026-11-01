@@ -103,8 +103,8 @@ void _artboardRetainedStyleUse(AiNativeInstruction command, AiNativeResourceUse?
   }
 }
 
-/// Keeps compound and clipping geometry in its original global coordinate basis.
-void _artboardRetainedPath(AiNativeLayers layers, AiNativePath path, List<AiNativeItem> items, AiNativeInstruction? count) {
+/// Keeps compound and clipping geometry in its recorded coordinate basis.
+void _artboardRetainedPath(AiNativeLayers layers, AiNativePath path, List<AiNativeItem> items, AiNativeInstruction? count, {bool? clipping}) {
   if (path.geometry.skip(1).any((command) => command.operator == 'm') ||
       path.geometry.any((command) => command.numbers!.any((value) => value.abs() > 9007199254740991)) ||
       items.length < path.geometry.length + 1 ||
@@ -115,14 +115,14 @@ void _artboardRetainedPath(AiNativeLayers layers, AiNativePath path, List<AiNati
   final List<AiNativeItem> controls = items.sublist(path.geometry.length, items.length - 1);
   bool closed = path.closed;
   if (controls.isNotEmpty) {
-    final List<AiNativeStructureNode> parents = _artworkParents(layers.structure, layers.structure.parentOf(layers.structure.nodeFor(path)));
+    final bool inClip = clipping ?? _artworkParents(layers.structure, layers.structure.parentOf(layers.structure.nodeFor(path))).any((parent) => parent.kind == .clip);
     if (controls.length != 2 ||
         controls.first is! AiNativeInstruction ||
         controls.last is! AiNativeInstruction ||
         !const {'h', 'H'}.contains((controls.first as AiNativeInstruction).operator) ||
         (controls.last as AiNativeInstruction).operator != 'W' ||
-        controls.cast<AiNativeInstruction>().any((command) => command.isPrivate || command.operands.isNotEmpty) ||
-        !parents.any((parent) => parent.kind == .clip)) {
+        controls.cast<AiNativeInstruction>().any((command) => command.isPrivate != path.isPrivate || command.operands.isNotEmpty) ||
+        !inClip) {
       throw UnsupportedError('Retained path masks require h/H W before paint inside an owned clipping group.');
     }
     closed |= (controls.first as AiNativeInstruction).operator == 'h';

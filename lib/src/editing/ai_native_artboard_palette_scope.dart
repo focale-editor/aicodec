@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Keeps palette cells and their local paint references separate from artboards.
-void _artboardPalette(List<AiToken> tokens, AiNativeLimits limits, Map<int, AiNativeResourceUse> gradientUses) {
+void _artboardPalette(List<AiToken> tokens, AiNativeLimits limits, Map<int, AiNativeResourceUse> gradientUses, Set<String> patternNames) {
   final _NativeCommandReader reader = _NativeCommandReader(maxDepth: limits.maxDepth);
   final List<AiNativeInstruction> gradient = [];
   bool opened = false;
@@ -55,7 +55,11 @@ void _artboardPalette(List<AiToken> tokens, AiNativeLimits limits, Map<int, AiNa
         gradient.add(command);
         continue;
       }
-      _artboardPaletteColor(command);
+      if (command.operator == 'p' || command.operator == 'P') {
+        _artboardPatternUse(command, patternNames);
+      } else {
+        _artboardPaletteColor(command);
+      }
       paint = true;
     }
   }
@@ -98,3 +102,19 @@ void _artboardPaletteColor(AiNativeInstruction command) {
 
 /// Retains byte names without interpreting localization or another namespace.
 bool _artboardPaletteName(AiToken token) => const {AiTokenKind.string, AiTokenKind.hexString}.contains(token.kind) && aiStringBytes(token).isNotEmpty;
+
+/// Preserves pattern transforms while resolving their distinct resource names.
+void _artboardPatternUse(AiNativeInstruction command, Set<String> names) {
+  final List<AiToken> operands = command.operands;
+  if (operands.length != 18 ||
+      !_artboardPaletteName(operands.first) ||
+      operands[10].kind != .arrayStart ||
+      operands.last.kind != .arrayEnd ||
+      [...operands.sublist(1, 10), ...operands.sublist(11, 17)].any((value) => value.number == null || !value.number!.isFinite || value.number!.abs() > 9007199254740991) ||
+      !const {0, 1}.contains(operands[6].number)) {
+    throw const FormatException('Retained pattern paints require literal names, transforms and a six-value matrix.');
+  }
+  if (!names.contains(latin1.decode(aiStringBytes(operands.first)))) {
+    throw UnsupportedError('Retained pattern paints require one qualified setup definition.');
+  }
+}

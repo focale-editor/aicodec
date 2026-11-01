@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:aikit/aikit.dart';
 
 import '../test/ai_native_artboard_lifecycle_test.dart' show newArtboard;
+import '../test/ai_native_artboard_palette_test.dart' show artboardPaletteGradient;
+import '../test/ai_native_artboard_patterns_test.dart' show artboardPattern, artboardPatternPalette;
 import '../test/ai_native_artboard_text_test.dart' show artboardTextDrawing, artboardTextEngineSource, populatedArtboardSource;
 import '../test/ai_native_artboards_test.dart' show artboardModel, artboardSource;
 import 'check_native_artboards.dart' show artboardInventory;
 
-/// Copies exact font setup, text snapshots and drawing owners into a test carrier.
+/// Copies exact retained font, gradient, pattern, palette and text owners.
 String retainedTextCarrier(AiNativeSource source) {
   final String text = latin1.decode(source.bytes);
   final AiNativeRecords records = AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes));
@@ -35,7 +37,20 @@ String retainedTextCarrier(AiNativeSource source) {
     }
   }
   final String headers = RegExp(r'^%%Document(?:Needed)?Fonts:[^\r\n]*', multiLine: true).allMatches(text).map((match) => match[0]!).join('\n');
-  return artboardSource(extra: '${text.substring(fontStart, fontEnd)}${text.substring(setupStart, setupEnd)}', body: body.toString()).replaceFirst('%%EndComments', '$headers\n%%EndComments');
+  final String resources = RegExp(r'%AI5_Begin_NonPrinting[\s\S]*?%AI5_End_NonPrinting--')
+      .allMatches(text)
+      .map((match) => match[0]!)
+      .where((section) => section.contains('%AI5_BeginGradient:') || section.contains('%AI3_BeginPattern:'))
+      .join('\n');
+  final int paletteStart = text.indexOf('%AI5_BeginPalette');
+  final int paletteEnd = text.indexOf('%AI5_EndPalette', paletteStart) + '%AI5_EndPalette'.length;
+  if (resources.isEmpty || paletteStart < 0 || paletteEnd <= paletteStart) {
+    throw StateError('The producer patterns, gradients and palette require explicit source sections.');
+  }
+  return artboardSource(
+    extra: '${text.substring(fontStart, fontEnd)}$resources\n${text.substring(paletteStart, paletteEnd)}\n${text.substring(setupStart, setupEnd)}',
+    body: body.toString(),
+  ).replaceFirst('%%EndComments', '$headers\n%%EndComments');
 }
 
 /// Emits native artboard transactions with unchanged producer text and caches.
@@ -49,6 +64,7 @@ Future<void> main() async {
   }
   carriers['synthetic-main'] = populatedArtboardSource();
   carriers['synthetic-undo'] = populatedArtboardSource(undo: artboardTextEngineSource(), body: artboardTextDrawing(snapshot: 1));
+  carriers['synthetic-pattern'] = populatedArtboardSource().replaceFirst('%%EndSetup', '$artboardPaletteGradient$artboardPattern$artboardPatternPalette\n%%EndSetup');
   final List<Map<String, Object?>> rows = [];
   for (final MapEntry<String, String> carrier in carriers.entries) {
     final AiNativeArtboards before = artboardModel(carrier.value);

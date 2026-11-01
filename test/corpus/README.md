@@ -731,12 +731,12 @@ dart run tool/check_native_artboard_lifecycle.dart
 python3 tool/verify_native_artboard_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
-The retained-text suite checks 24 artboard transactions in six checksum-pinned
+The retained-text suite checks 28 artboard transactions in seven checksum-pinned
 carriers. Four copy exact text setup blocks, global origins, drawing references,
 confinement curves and attached metadata from `simple_cc_legacy.ai`,
 `simple_v2020.ai`, `text_transforms.ai` and `flowtext.ai`, already pinned in
-`manifest.json`. Two synthetic sources exercise separate main/undo-free model
-selection. The text transformations fixture contributes ten stories and sixteen
+`manifest.json`. Three synthetic sources exercise separate main/undo-free model
+selection and a counted clipping/gradient pattern. The text transformations fixture contributes ten stories and sixteen
 point, area and path frames, including linked frames and retained glyph caches.
 
 The unmodified inkai reader independently decodes both binary snapshots and all
@@ -746,10 +746,16 @@ native byte comparisons permit only the declared Document/crop edits. The carrie
 also retain the producers' complete font setup and font-name headers. The
 independent reader compares encoding marks, declarations, names and flags with
 the original producers and all edited outcomes; source checks retain every font
-setup byte. These are explicitly synthetic artboard carriers with original
-producer text and fonts; they do not claim full-source artboard edit support for
-those four files. Their palettes and other complex setup resources remain
-outside the qualified scope.
+setup byte. Each real carrier additionally retains the producer's complete
+pattern/gradient banks and palette, including both patterns: 102 paths in each
+of the first three sources and 177 in `flowtext.ai`, with 16 and 20 gradient
+definitions respectively. The oracle compares complete pattern commands and
+metadata, gradient commands/operands and palette references with the producer
+and every outcome, while requiring byte-exact copied resource sections. These
+are explicitly synthetic artboard carriers with original producer text, fonts
+and resources; they do not claim full-source artboard edit support for those
+four files. Symbol inventories and other complex owners, including brush
+resources, still require separate qualification.
 
 ```sh
 dart run tool/check_native_artboard_text.dart
