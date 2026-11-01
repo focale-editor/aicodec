@@ -89,23 +89,29 @@ final class AiNativeGradient extends AiNativeItem {
   bool get onStroke => opening.numbers?.singleOrNull == 1;
 }
 
-/// An interpreted command list inside a native fill, stroke or blend record.
+/// An interpreted command list inside a native fill, stroke, blend or simple style.
 final class AiNativePaintStyle {
   /// Original style container, retaining unknown native fields.
   final AiNativeContainer record;
 
-  /// Native commands in the style's Def entry, with exact source spans.
+  /// Native commands in the style's Def or Paint entry, with exact source spans.
   final List<AiNativeInstruction> instructions;
 
   /// Validated gradient instances without flattening multiple style parts.
   final List<AiNativeGradient> gradients;
 
+  /// Ordered literal paint assignments, including repeated settings.
+  ///
+  /// These are source assignments, not composed or inherited appearance values.
+  /// Unknown commands remain in [instructions]; no defaults are synthesized.
+  late final List<AiNativePaintAssignment> assignments = _nativePaintAssignments(instructions);
+
   /// Reads one paint style from an existing immutable records snapshot.
   factory AiNativePaintStyle.decode({required AiNativeRecords records, required AiNativeContainer record}) {
-    if (!records.containers.contains(record) || !const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type)) {
+    if (!records._ownedContainers.contains(record) || !const {'FillStyle', 'StrokeStyle', 'BlendStyle', 'SimpleStyle'}.contains(record.type)) {
       throw ArgumentError('Expected a paint style owned by this native snapshot.');
     }
-    final AiNativeEntry? definition = record['Def'];
+    final AiNativeEntry? definition = record[record.type == 'SimpleStyle' ? 'Paint' : 'Def'];
     if (definition == null || definition.items.any((item) => item is! AiNativeToken)) {
       throw const FormatException('Native paint style has no command definition.');
     }

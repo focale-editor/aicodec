@@ -2380,12 +2380,59 @@ ownership, state, resources or count conventions throw `UnsupportedError`;
 stale/duplicate handles and invalid constructor arguments throw `ArgumentError`;
 configured parsing ceilings throw `AiLimitException`.
 
+## Ordered native appearances
+
+`AiNativeAppearances.decode(structure:)` exposes every source `KnownStyle`
+declaration, including duplicate names and unused styles. Each
+`AiNativeAppearance` retains its resource owner, original definition and potential
+named uses. `resolve(use:)` returns a definition only for a uniquely resolved
+reference from the same snapshot. Missing, ambiguous and conditional references
+remain explicit; selecting a part does not isolate one user of a shared style.
+
+Active styles expose a preorder `parts` inventory, with `parentIndex` and ordered
+`childIndices` preserving the complete `Execution` tree. Stacks and chains stay
+distinct. Hidden parts, repeated fills/strokes and effect-local paint fields keep
+their original owners. `forSource(record:)` selects an exact part handle;
+foreign/stale handles reject. `SimpleStyle` exposes its separate `simplePaint`
+commands. Unknown definitions and filter nodes keep their original records.
+
+Each part exposes its literal filter-name bytes and both flags, optional local
+visibility, native `FillOrStroke` selector, parameter dictionary and ordered
+paint payloads. Absent visibility remains null; it is not resolved through
+ancestors. `FillOrStroke` is a saved native field, not the host's UI selection.
+Known fill parts expose explicit `UseEvenOdd` values. Ordinary stroke descriptors
+identify centered alignment only when no contradictory offset field is present.
+`Adobe Stroke Offset` with the qualified built-in module locator exposes explicit
+inside/outside alignment; absent flags and external modules do not acquire a
+default alignment. Future descriptor flags, unknown parameters and opaque effects
+are retained without execution or semantic editing claims.
+
+`AiNativePaintStyle.assignments` exposes source-ordered literal process colors,
+overprint, width, cap/join, miter limit, dash lengths/phase, winding and both `Xd`
+flags. Repeated assignments remain separate, including across unknown commands;
+these are not effective or inherited values. Seven-operand `Xa`/`XA` retains
+both authored CMYK and RGB alternatives. Dash phase can be negative and an empty
+array explicitly means a solid stroke. Unknown instructions, named colors,
+patterns and gradient commands remain in the full command inventory; they are
+not converted into process-color assignments. No defaults, color conversion or
+appearance composition are synthesized. Literal assignments are validated when
+their view is requested, with the original portable numeric and parsing limits.
+
+This inspection API does not yet provide synchronized selected-part or shared-style
+edits. Capability reports distinguish typed graph/settings data from preserved
+effects and do not advertise appearance editing. Serialization of original data
+retains every unknown byte. The independent corpus check compares 98 complete
+styles, 834 parts and 135 named uses across six untouched CC producer programs and
+one synthetic multiple-paint fixture, including field ownership and every reported
+paint assignment. This is native decoding evidence, not Adobe reopening or host
+rendering acceptance; see [the corpus procedure](../test/corpus/README.md#ordered-native-appearances).
+
 ## Gradients and paint styles
 
 `AiNativeDrawing.gradients` exposes `Bb`/`BB` instances, relative `Bg` geometry,
 radial `Bh` focus and absolute `Xm`/`Bm`/`Bc` printing matrices. It retains the
 paths consumed by each instance and any gradient-stroke selector.
-`AiNativePaintStyle.decode` reads owned fill, stroke and blend command lists
+`AiNativePaintStyle.decode` reads owned fill, stroke, blend and simple-style command lists
 without flattening repeated appearance parts.
 
 `AiNativeGradientResources.decode` reads global `Bd`/`BD` definitions, including
@@ -2625,6 +2672,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Inspection and exact source preservation | Selected-part/shared-style editing and printing synchronization remain incomplete; no effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

@@ -27,6 +27,10 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   gradient references report missing, ambiguous and conditional ownership.
 - Source-local capability reports distinguish typed data, qualified operations,
   opaque preservation, unsupported structures, malformed data and inspection limits.
+- Ordered named appearance trees retain multiple fills/strokes, exact part and
+  parameter ownership, shared uses, local visibility, qualified stroke alignment
+  and literal paint/dash assignments. Unknown effects remain preserved; synchronized
+  selected-part/shared-style editing is still open.
 - Qualified CC live-shape translation, rotation and uniform scaling, including
   dependent printing geometry, gradients and shared-style isolation.
 - Host-supplied contours and complete groups for separate, bound CC printing

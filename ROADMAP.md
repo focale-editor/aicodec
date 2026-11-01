@@ -1069,6 +1069,19 @@ isolation and relative placement. General appearance editing remains incomplete.
 
 - [ ] Expose ordered multiple fills/strokes and selected appearance parts, shared
   style ownership, stroke alignment/dashes and supported native paint settings.
+  In progress: `AiNativeAppearances` now retains complete ordered stack/chain
+  trees, exact selected-part handles and shared/ambiguous/conditional style uses.
+  Multiple and effect-local paints remain separate. Qualified stroke alignment,
+  winding, literal process colors, overprint, width/cap/join/miter, dash and `Xd`
+  assignments are exposed without composed values or inherited defaults. Unknown
+  descriptors and source extensions remain available; capability reports claim
+  inspection only. The independent reader compares all 98 styles, 834 parts and
+  135 uses from six complete untouched CC programs plus one synthetic fixture.
+  Synchronized selected-part/shared-style edits and dependent printing updates
+  still need their editing contracts before this task can be checked off.
+  Validation: 963 VM/962 Node tests pass. The complete appearance comparison and
+  the capability check on all 37 pinned sources pass independently. Formatting,
+  analysis, fix dry-run, Python compilation and diff checks are clean.
 - [ ] Add native opacity, blend, isolation, knockout and opacity-mask records,
   including mask artwork, linked/disabled/inverted state and dependent references.
   These are data contracts; compositing remains in the application.

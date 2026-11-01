@@ -23,6 +23,33 @@ envelopes independently. To verify downloads without network access or writes:
 python3 tool/fetch_corpus.py --verify-only
 ```
 
+## Ordered native appearances
+
+```sh
+dart run tool/check_native_appearances.dart
+python3 tool/verify_native_appearances.py --inkai-source /tmp/extension-ai
+```
+
+Use the unchanged independent reader and Python dependencies described below.
+The inventory includes the complete native programs of `simple_cc_legacy.ai`,
+`simple_v2020.ai`, `text_transforms.ai`, `flowtext.ai`, `gradient_linear.ai` and
+`gradient_radial.ai`, plus one synthetic ordered multiple-paint style. It covers
+98 styles, 834 parts and 135 named uses. No original setup, text, effect or artwork
+is substituted to make the producer programs readable.
+
+The verifier checks the pinned reader revision and fixture provenance, licenses,
+sizes and checksums, independently extracts the exact original native bytes, and
+pins the synthetic program's checksum. It binds each reported style, part, use
+and paint instruction to an independently decoded source range. It compares full
+tree order/parents, hidden parts, selectors, shared name resolution, winding,
+qualified stroke alignment, effect-local paint ownership and all literal paint
+assignments, including dual process colors and dash phase. Complete inventories
+prevent a partial style or subtree from satisfying the check. Output and its
+`independent-report.json` remain ignored under `output/appearances`.
+
+This qualifies source inspection. It does not establish synchronized appearance
+edits, rendered equivalence, Illustrator reopening or Focale integration.
+
 ## Independent reader
 
 Checks using `--inkai-source` require this unchanged external checkout:

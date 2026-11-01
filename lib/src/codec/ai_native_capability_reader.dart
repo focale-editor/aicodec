@@ -287,5 +287,48 @@ final class _NativeCapabilityReader {
     for (final AiNativeGradient gradient in drawing.gradients) {
       add(.gradient, gradient.start, gradient.end, .typed, 'Native gradient instance and its printing geometry.');
     }
+    if (!truncated && drawing.records.roots.any((record) => record.type == 'KnownStyle')) {
+      inspect(.appearance, 0, drawing.records.program.bodyStart, () => appearances(AiNativeAppearances.decode(structure: AiNativeObjects.decode(drawing: drawing).structure)));
+    }
+  }
+
+  /// Distinguishes source graph inspection from synchronized appearance editing.
+  void appearances(AiNativeAppearances model) {
+    for (final AiNativeAppearance style in model.styles) {
+      final AiNativeStructureNode declaration = style.resource.definition;
+      add(
+        .appearance,
+        declaration.start,
+        declaration.end,
+        const {'SimpleStyle', 'ActiveStyle'}.contains(style.definition.type) ? .typed : .preserved,
+        'Named appearance ownership and ordered source parts; shared-use and printing synchronization remain separate editing contracts.',
+      );
+      for (final AiNativeAppearancePart part in style.parts) {
+        final bool opaque = const {AiNativeAppearancePartKind.opaque, AiNativeAppearancePartKind.effect}.contains(part.kind);
+        add(
+          .appearance,
+          part.record.start,
+          part.record.end,
+          opaque ? .preserved : .typed,
+          opaque
+              ? 'Opaque appearance or effect descriptor retained without semantic editing support.'
+              : 'Native ${part.kind.name} part, local visibility and ordered payloads; no rendering or editing guarantee.',
+          selector: 'appearance-part:${part.record.start}',
+        );
+      }
+      for (final AiNativePaintStyle paint in [?style.simplePaint, for (final AiNativeAppearancePart part in style.parts) ...part.paints.map((paint) => paint.style)]) {
+        inspect(.appearance, paint.record.start, paint.record.end, () {
+          final int count = paint.assignments.length;
+          add(
+            .appearance,
+            paint.record.start,
+            paint.record.end,
+            .typed,
+            '$count literal paint assignments; unknown commands and inherited values remain separate.',
+            selector: 'appearance-paint:${paint.record.start}',
+          );
+        });
+      }
+    }
   }
 }

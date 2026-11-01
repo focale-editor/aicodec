@@ -48,6 +48,9 @@ enum AiNativeFeature {
   /// Authoritative live-shape data and appearance associations.
   liveShape,
 
+  /// Ordered named appearance graphs and literal paint settings.
+  appearance,
+
   /// Gradient instance geometry.
   gradient,
 
