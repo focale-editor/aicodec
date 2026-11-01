@@ -2,6 +2,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Checks retained resource geometry and local paint without instantiating artwork.
 void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map<int, AiNativeResourceUse> references, Set<String> patterns) {
+  _artboardResourceBlendPaths(drawing);
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, AiNativeGroup> groups = {for (final AiNativeGroup group in drawing.groups) group.start: group};
   final Set<AiNativeInstruction> endings = {for (final AiNativeGroup group in drawing.groups) group.closing};

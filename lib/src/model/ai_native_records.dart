@@ -57,6 +57,7 @@ part '../editing/ai_native_artboard_setup_scope.dart';
 part '../editing/ai_native_artboard_palette_scope.dart';
 part '../editing/ai_native_artboard_resource_scope.dart';
 part '../editing/ai_native_artboard_resource_artwork.dart';
+part '../editing/ai_native_artboard_resource_blends.dart';
 part '../editing/ai_native_artboard_resource_masks.dart';
 part '../editing/ai_native_artboard_resource_rasters.dart';
 part '../editing/ai_native_artboard_font_scope.dart';

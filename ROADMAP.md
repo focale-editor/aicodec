@@ -584,9 +584,12 @@ groups and compound topology. There is no general modern object lifecycle API.
   editing, broader reference isolation, appearance families and creation of new
   CC live-shape parameters retain their separate tasks. Adobe reopening remains
   unqualified; no host renderer or derived representation generator was added.
-- [ ] Add artboard creation, removal, resize and reorder with a declared mapping
+- [x] Add artboard creation, removal, resize and reorder with a declared mapping
   to host-supplied PDF pages. Artboards, crop bounds and drawing bounds stay distinct.
-  **In progress:** `AiNativeArtboards` now retains explicit document ownership,
+  **Completed for the documented native CC dependency and mapped-save profiles.**
+  The implementation history below records each increment; the final paragraph
+  states the completed contracts and remaining separate feature families.
+  `AiNativeArtboards` now retains explicit document ownership,
   ordered boards, separate `CropAreaActive`, selection, `LastArtboardID` and
   initial crop declarations. A pinned five-page Illustrator 30.6 source confirms
   that active index 4 differs from selected index 2, and that LastArtboardID 67 is
@@ -861,6 +864,27 @@ groups and compound topology. There is no general modern object lifecycle API.
   owners. This artboard task remains open; no brush renderer was introduced.
   Full validation: 842 VM/841 Node tests, clean format/fix/analysis and all 26
   independent transactions, including the six complete-source lifecycle edits.
+  **Final qualification:** saved Boolean perspective locks/ruler visibility and
+  integer active-plane settings now remain exact. Resource-local paired K/A/B
+  annotations retain both directly owned endpoint paths and their intermediate
+  artwork, without recomputing a blend. Seven regressions cover all four board
+  operations, local namespaces, malformed/missing pairs, attachment ownership,
+  scalar types, immutable refusal and original limits. Thirty independently
+  checked transactions use complete, unmodified producer programs from
+  simple_cc_legacy, simple_v2020, text_transforms, flowtext and layers_and_sublayers.
+  Every edited Document field, retained board dictionary, resource/text owner and
+  unselected byte is checked against the prescribed predecessor. The five source
+  PDFs retain pinned provenance and checksums; no setup substitution enables these
+  edits. Native create/remove/resize/reorder, independent crop/drawing bounds,
+  active/selection/history state, print-range identity remapping, explicit host
+  page mappings and full/font-filtered header caches are now implemented and
+  verified together. Final checks pass: 849 VM/848 Node tests, clean format/fix/
+  analysis and 141 regenerated independent outcomes (30 complete-source, 54
+  lifecycle, 20 state/rectangle, 20 print-selection and 17 mapped-save cases).
+  Unknown dependency layouts still reject atomically. Editing advanced resource
+  families belongs to later milestones; general Adobe reopening and the Reuters
+  drawing body remain unqualified. Ordinary compound/clip semantic editing and
+  narrowing other whole-source refusals remain the next separate tasks.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

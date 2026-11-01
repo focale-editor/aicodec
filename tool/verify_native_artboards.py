@@ -27,7 +27,7 @@ def requests(names):
     result = {}
     for name in names:
         result[name, 'inspection'] = None, False, False, False
-        if name.startswith('units-'):
+        if name.startswith('units-') or name == 'layers_and_sublayers.ai':
             result[name, 'bounds'] = 0, False, False, False
             result[name, 'explicit'] = 0, True, True, False
         else:
@@ -113,7 +113,7 @@ def main():
     manifest = {entry['file']: entry for entry in json.loads(Path('test/corpus/artboard_manifest.json').read_text())['files']}
     expected = requests(manifest)
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(manifest) == 6 and len(rows) == len(expected) == 19
+    assert len(manifest) == 6 and len(rows) == len(expected) == 20
     assert {(row['source'], row['variant']) for row in rows} == expected.keys()
     verified, cache, checked = set(), {}, []
     for row in rows:
@@ -137,7 +137,7 @@ def main():
         verify(inkai, source, target, row, cache)
         checked.append(f'{name}/{variant}')
         print(checked[-1], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, inspections=6, realResizes=6, syntheticResizes=4, refusals=3), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, inspections=6, realResizes=8, syntheticResizes=4, refusals=2), indent=2) + '\n')
 
 
 if __name__ == '__main__':

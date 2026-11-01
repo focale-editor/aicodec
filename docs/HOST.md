@@ -73,11 +73,11 @@ generating print pages or changing unrelated printer choices. See the
 [native print contract](AI.md#native-print-selections-during-artboard-edits).
 
 Native artboard edits preserve the global coordinate basis and all retained
-artwork. In the qualified empty-text CC profile, the main and undo-free ATE
-snapshots, text ruler origin and unused typography resources stay byte-exact.
+artwork. Qualified compact ATE 7/9 main and undo-free snapshots, linked frames,
+text ruler origin and typography resources stay byte-exact.
 Changing the first board does not move the drawing or infer a new text origin.
-Populated text and other unresolved dependency families still require their own
-qualification; preservation of an unused resource does not make it editable.
+Unknown text profiles and unresolved dependency families still require their own
+qualification; preserving a resource does not make it editable.
 Qualified ordinary compound and clipping groups can also remain exact during an
 artboard edit. Their geometry, masks, metadata and child order stay in place;
 this does not grant the host independent path/group lifecycle operations on

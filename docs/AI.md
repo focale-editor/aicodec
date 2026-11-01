@@ -1403,6 +1403,11 @@ Out-of-range active indices, malformed fields and ambiguous owners reject.
 declaration separately from board rectangles, ruler origins, drawing bounds and
 PDF media/crop/trim/art boxes. Repeated or conditional crop headers reject.
 
+Saved perspective view controls remain independent: Boolean grid/station-point
+locks and ruler visibility, plus the integer active-plane selection, are retained
+with their original types and values. Board edits do not alter perspective-grid
+geometry or interpret these controls as artboard identities.
+
 `resize(artboard:, bounds:, cropBounds:, rulerOrigin:)` changes one current owned
 rectangle without moving native artwork. Bounds require positive dimensions and
 finite portable coordinates. The required `cropBounds` argument is an explicit
@@ -1463,8 +1468,9 @@ inactive parts and numeric values expressed in the existing document basis.
 Only each filter's known fields and owned paint records qualify; unknown fields,
 external plug-ins, executable values, duplicate keys, opaque annotations and
 missing/ambiguous named resources reject. No filter is executed, recomputed or
-made transformable by this artboard-only retention contract. Brush references
-and other appearance families still need their own dependency qualification.
+made transformable by this artboard-only retention contract. Qualified brush
+references use the separate descriptor ownership contract below; unknown
+appearance families still require their own dependency qualification.
 
 Palette indices, cell order, optional names, none paints (`Pn`) and group names
 with their two Boolean flags (`Pg`) remain exact. `Xs` CMYK and `Xz` RGB/CMYK
@@ -1558,6 +1564,17 @@ providers or fields, executable payloads, conditional sections and unsupported
 layouts reject atomically. Existing source bytes, sample planes and appearances
 remain unchanged; no brush expansion or stroke rendering is introduced.
 
+Retained resource paths may carry the observed `ShapeBlendPathType: K` endpoint
+annotations. A directly owning ordinary group must contain one `A` path with
+`ShapeBlendMatchToAfter: ALL` and one `B` path with
+`ShapeBlendMatchToBefore: ALL`, both in the same source representation. The labels
+belong to that group, independently of artboard UUIDs or other groups. Each
+dictionary must immediately follow its path's paint operator. The endpoints,
+intermediate paths and annotation bytes stay unchanged. Unknown or incomplete
+pairs, duplicate labels, raster/group/compound attachments and crossed ownership
+reject. This qualifies preservation of the saved Band symbol; it does not create,
+recompute or semantically edit a blend.
+
 Native `%AI10_BeginSVGFilter` collections retain every ordered `SVGFilter`/`Def`
 tree with its complete XML-node envelopes, literal attributes and child arrays.
 The artboard inspector recognizes local scalar filter primitives, lighting and
@@ -1628,14 +1645,15 @@ editing of the compound/clip children.
 The operations edit native data only: host-supplied compatibility pages and
 cached headers must also be synchronized before a complete save. The save APIs now
 update qualified PDF `AIMetaData` header copies and accept explicit PDF page
-mappings as described above. Broader artboard isolation for unqualified text
-profiles and complex setup resource/object families remains in the open roadmap task.
+mappings as described above. Unknown text profiles, resource layouts and object
+families still reject when their dependencies cannot be qualified. Native
+editing of those families remains separate from retaining them during board edits.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
 explicit crop/origin choices, CC pairs/resources, malformed input, conditional
-ownership and limits. Nineteen independent transactions cover six real-source
-inspections, six resizes in three pinned CC sources (including large canvases and
-moved origins), four synthetic resizes and three unchanged refusals. The large
+ownership and limits. Twenty independent transactions cover six real-source
+inspections, eight resizes in four pinned CC sources (including large canvases,
+moved origins and nested layers), four synthetic resizes and two unchanged refusals. The large
 five-page fixture's native qualification is inspection-only: the independent reader also reports
 unsupported body operators, so only its separately bound Document metadata is
 qualified. Explicit page-identity replacement preserves that complete native body
@@ -1712,10 +1730,24 @@ rasters: 1,024 and 870 exact sample bytes respectively. The reader compares ever
 mask field, nested command, raster descriptor and sample with the producer and
 each result, alongside text/font/pattern data and whole-source preservation.
 These masks come from the `Film` symbol; its other appearance dependencies are
-not removed from, or claimed qualified in, the original document. Full producers
-still require further style references/appearance graphs, blend owners, brushes
-and SVG filters before artboard edits can be qualified end to end.
-Adobe reopening remains unqualified.
+not removed from the original document. The later appearance, brush, filter and
+endpoint-annotation contracts above complete their retention for the producer
+programs checked below. Adobe reopening remains unqualified.
+
+Thirty independent lifecycle transactions now use the complete original native
+programs of `simple_cc_legacy.ai`, `simple_v2020.ai`, `text_transforms.ai`,
+`flowtext.ai` and `layers_and_sublayers.ai`. Native source bytes are matched to
+independent extraction from each checksum-pinned PDF before any operation.
+Each source undergoes resize, creation before/after its original board, reorder,
+and removal of either the new or original active board, with explicit predecessor
+snapshots. Independent Document parsing checks every requested value, retained
+board dictionary and separator; patch comparison requires all other bytes to
+remain exact. Resource/text parsing additionally compares appearances, symbols,
+masks, brush descriptors and samples, filters, fonts and text snapshots. Band's
+two annotations remain attached to the first and last of its ten saved paths.
+These results qualify native program edits, while the separate seventeen mapped
+save cases qualify host-supplied PDF pages and cached-header synchronization.
+Neither suite establishes Adobe reopening or host rendering.
 
 ### Native print selections during artboard edits
 
@@ -2280,7 +2312,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Blend ownership, further document settings and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

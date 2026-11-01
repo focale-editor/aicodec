@@ -106,7 +106,10 @@ const Map<String, Set<String>> _referenceDocumentNotRecorded = {
     'AI20 Document PixelPerfect',
     'AI9 no overprint in composite',
     'AISaveMultipleArtboards',
+    'PerspectiveGrid_LockUnlock',
+    'PerspectiveGrid_LockUnlockGridStationPoint',
     'PerspectiveGrid_ShowHide',
+    'PerspectiveGrid_ShowHideRulers',
     'PerspectiveGrid_Snap',
     'SnapWhileDrawing',
     'SnapWhileMoving_anchorPoints',
@@ -123,6 +126,7 @@ const Map<String, Set<String>> _referenceDocumentNotRecorded = {
     'AI12 Document Profile Size',
     'AI9 Document Setup panel',
     'LastArtboardID',
+    'PerspectiveGrid_ActivePlane',
   },
   'Real': {
     'AI11 EPS Gradient and Mesh Resolution',

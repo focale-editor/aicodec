@@ -92,7 +92,7 @@ Future<void> main() async {
       records: AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes)),
     );
     await record(name, 'inspection', model);
-    if (name.startsWith('units-')) {
+    if (name.startsWith('units-') || name == 'layers_and_sublayers.ai') {
       await record(name, 'bounds', model, selected: 0);
       await record(name, 'explicit', model, selected: 0, crop: true, origin: true);
     } else {

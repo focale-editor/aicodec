@@ -681,9 +681,10 @@ one native program, independently extracted from every owner. Active index 4,
 selected index 2, LastArtboardID 67 and the separate crop rectangle are checked
 without inferring them from PDF page order, count or dimensions.
 
-Nineteen fixed transactions cover six real inspections, six successful rectangle
-edits in three CC sources, four checksum-pinned synthetic edits (including mixed
-CC pairs/resources) and three immutable refusals. The unmodified reader binds each
+Twenty fixed transactions cover six real inspections, eight successful rectangle
+edits in four CC sources, four checksum-pinned synthetic edits (including mixed
+CC pairs/resources) and two immutable refusals. The nested-layer source now also
+qualifies both resize variants with its complete producer setup. The unmodified reader binds each
 reported Document span to its full parse, compares all document fields, and
 requires exact original bytes outside the requested coordinate/crop tokens. The
 large Reuters source remains inspection-only: upstream body-parser warnings are
@@ -896,12 +897,36 @@ predecessor chain, exact requested Document changes, retained board dictionary
 trivia and every byte outside those edits are checked independently. This
 qualifies complete native-program operations for that fixture; Adobe reopening
 and host-supplied PDF composition remain separate. The two simple CC originals
-still require additional perspective-grid settings, and `flowtext.ai` still
-requires Band's blend ownership.
+required additional perspective-grid settings, and `flowtext.ai` required Band's
+blend ownership at that stage; the complete-source suite below covers both.
 
 ```bash
 dart run tool/check_native_artboard_brush_descriptors.dart
 python3 tool/verify_native_artboard_brush_descriptors.py --inkai-source /tmp/extension-ai
+```
+
+The complete-source suite exercises thirty transactions across the original
+`simple_cc_legacy.ai`, `simple_v2020.ai`, `text_transforms.ai`, `flowtext.ai` and
+`layers_and_sublayers.ai` programs. The first four use `manifest.json`; the fifth
+uses `artboard_manifest.json`. All revisions, source sizes and checksums are
+verified before independently extracting the original native bytes. No producer
+setup, resource, drawing or text record is removed or replaced to enable an edit.
+
+Each source undergoes six prescribed lifecycle steps: resize, create before the
+original, reverse that order, remove the new board, separately create an active
+board after the original, then remove the original. The verifier binds every
+step to its specified predecessor and checks complete Document values, board
+dictionary trivia and exact bytes outside the intended changes. All retained
+appearance, symbol, mask, brush/sample, descriptor, filter and text resources
+are independently parsed again. Band's endpoint annotations must belong to the
+first and last of the same group's ten saved paths; the intermediate artwork
+stays exact. Perspective locks, ruler visibility and active-plane fields retain
+their original types and values. These checks establish native preservation,
+not blend generation, Adobe reopening or host PDF composition.
+
+```bash
+dart run tool/check_native_artboard_complete_sources.dart
+python3 tool/verify_native_artboard_complete_sources.py --inkai-source /tmp/extension-ai
 ```
 
 ## Native print selections

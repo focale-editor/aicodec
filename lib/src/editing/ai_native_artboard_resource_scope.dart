@@ -246,6 +246,7 @@ void _artboardSymbolMetadata(_ArtboardResourceInspection scope, AiNativeContaine
         'BBAccumRotation',
         'AIArtName',
         'Object name',
+        if (raster == null) ..._artboardResourceBlendFields,
         if (raster != null) ...['AI24 ImageRawDataUUID', 'AI24 ImageAlphaRawDataUUID'],
       },
       if (raster != null) 'Real': {'Raster Art Original Scale'},
