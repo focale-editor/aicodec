@@ -19,6 +19,9 @@ SOURCES = {
     'settings': 'c74a591901980f0cd751de5f79a40ab101f53279537ad16f7d705c57182001b6',
     'simple-selected': '9618b13fd1fd2261ad9b96cbd9f60b65ca8de593a0d015b3a2d154be33afaa92',
     'simple-shared': '9618b13fd1fd2261ad9b96cbd9f60b65ca8de593a0d015b3a2d154be33afaa92',
+    'order-selected': 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf',
+    'order-shared': 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf',
+    'order-nested': 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf',
 }
 GROUP = b'u\n0.7 0.6 0.5 Xa\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU'
 SIMPLE_GROUP = b'u\n1 0 0 0 k\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU'
@@ -35,14 +38,43 @@ def replace_once(data, before, after):
     return data.replace(before, after)
 
 
+def ordered_style(data, original, nested):
+    """Prescribe stack and optional chain permutations using verified source trees."""
+    parts = original['parts']
+    assert parts[0]['children'] == [1, 6, 7] and parts[1]['children'] == [2, 3, 4, 5]
+    orders = {1: [5, 4, 3, 2], **({0: [7, 6, 1]} if nested else {})}
+
+    def subtree(index):
+        part = parts[index]
+        start, end = part['record']
+        contents = data[start:end]
+        edits = [(parts[slot]['record'][0] - start, parts[slot]['record'][1] - start, subtree(child))
+                 for slot, child in zip(part['children'], orders.get(index, part['children']), strict=True)]
+        for first, last, value in reversed(edits):
+            contents = contents[:first] + value + contents[last:]
+        if nested and index == 2:
+            contents = replace_once(contents, b'0 /Visible', b'1 /Visible')
+            contents = replace_once(contents, b'1 /Bool (UseEvenOdd)', b'0 /Bool (UseEvenOdd)')
+            contents = replace_once(contents, b'0.2 0.3 0.4 Xa', b'0.7 0.6 0.5 Xa')
+        if nested and index == 6:
+            contents = replace_once(contents, b'1 /Bool (StrokeOffsetInside)', b'0 /Bool (StrokeOffsetInside)')
+        return contents
+
+    start, end = original['record']
+    first, last = parts[0]['record']
+    return data[start:first] + subtree(0) + data[last:end]
+
+
 def expected(before, variant, original):
     """Prescribe every changed byte, including unaffected objects and metadata."""
     simple = variant.startswith('simple-')
-    shared = variant in ('shared', 'simple-shared')
+    shared = variant in ('shared', 'simple-shared', 'order-shared')
     start, end = original['styles'][0]['record']
     # The inventory checker has bound this entire span to an independent style.
     style = before[start:end]
-    if variant == 'settings':
+    if variant.startswith('order-'):
+        style = ordered_style(before, original['styles'][0], variant == 'order-nested')
+    elif variant == 'settings':
         for old, new in [
             (b'0 /Visible', b'1 /Visible'),
             (b'1 /Bool (UseEvenOdd)', b'0 /Bool (UseEvenOdd)'),
@@ -57,7 +89,7 @@ def expected(before, variant, original):
         style = replace_once(style, b'0.1 0.2 0.3 0.4 k', b'1.0 0.0 0.0 0.0 k')
     else:
         style = replace_once(style, b'0.2 0.3 0.4 Xa', b'0.7 0.6 0.5 Xa')
-    users = [0, 1] if shared else [1] if variant == 'settings' else [0]
+    users = [0, 1] if shared else [1] if variant in ('settings', 'order-nested') else [0]
     edits = []
     if shared:
         edits.append((start, end, style))
@@ -100,7 +132,7 @@ def main():
         after = (args.output / f'{variant}.after.ps').read_bytes()
         assert hashlib.sha256(before).hexdigest() == checksum
         parts = 0 if variant.startswith('simple-') else 8
-        styles = 1 if variant in ('shared', 'simple-shared') else 2
+        styles = 1 if variant in ('shared', 'simple-shared', 'order-shared') else 2
         verify(inkai, args.output, inventory[f'{variant}.before'], expected=(1, parts, 2))
         verify(inkai, args.output, inventory[f'{variant}.after'], expected=(styles, styles * parts, 2))
         assert after == expected(before, variant, inventory[f'{variant}.before'])

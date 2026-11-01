@@ -93,6 +93,9 @@ AiNativeAppearances _editNativeAppearance(
       if (_nativeArtworkStateKey(change.assignment.instruction) case final String key) key else ...state.writes,
     if (parts.isNotEmpty) ...{...state.writes, 'XR'},
   };
+  if (paints.isEmpty) {
+    changedState.removeAll(_nativeAppearanceOrderState(appearance, parts, state.reads));
+  }
   _shapeFollowingDependencies(drawing, bundles, {
     for (final _NativeShapeBundle bundle in bundles) bundle.shape: (bundle: bundle, prefix: [], suffix: [], unresolved: changedState, printingUnresolved: {}, discard: false),
   });
@@ -167,7 +170,7 @@ List<AiSourceEdit> _nativeAppearanceChanges(AiNativeAppearances model, AiNativeA
       flag(part.parameters?['StrokeOffsetInside'], part.strokeAlignment == null ? null : part.strokeAlignment == .inside, alignment == .inside);
     }
   }
-  return edits;
+  return _nativeAppearanceOrderEdits(model, appearance, parts, edits);
 }
 
 /// Reuses the literal operand grammar and retains comments between source tokens.

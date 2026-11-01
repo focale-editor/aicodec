@@ -57,11 +57,13 @@ dart run tool/check_native_appearance_edits.dart
 python3 tool/verify_native_appearance_edits.py --inkai-source /tmp/extension-ai
 ```
 
-Five generated transactions cover one isolated user, both users of a shared
+Eight generated transactions cover one isolated user, both users of a shared
 definition and combined part visibility/winding, dual process colors, stroke
 width, dash growth, alignment and saved-label changes, plus isolated and shared
-SimpleStyle process-fill edits. The unchanged pinned reader
-decodes all ten complete before/after appearance inventories. Pinned synthetic
+SimpleStyle process-fill edits. Three further cases cover isolated/shared stack
+orders and nested chain/stack orders with simultaneous paint/setting changes.
+The unchanged pinned reader decodes all sixteen complete before/after appearance
+inventories. Pinned synthetic
 source checksums and explicit expected byte substitutions additionally require
 the complete output to contain only the intended style, reference, supplied group
 and bounds changes. Original private geometry, live-shape parameters, metadata
@@ -69,7 +71,11 @@ alternatives, unselected style parts and users cannot disappear inside a broad
 allowed edit region. Results stay under the ignored `output/appearance-edits`.
 
 These synthetic cases verify native serialization/state with host-supplied
-expansions. They do not qualify visual equivalence.
+expansions. They do not qualify visual equivalence. The ordering fixture adds
+explicit scalar resets between the two synthetic users; it does not alter a
+downloaded producer source. The expected delta reconstructs prescribed
+permutations from independently bound original subtrees, retaining every other
+byte and applying the selected scalar changes to the moved source owner.
 
 ### Complete producer appearance edits
 
@@ -80,7 +86,7 @@ python3 tool/verify_native_appearance_producers.py --inkai-source /tmp/extension
 
 Both `simple_shapes.ai` and `simple_shapes_cc.ai` are complete original producer
 programs from the pinned manifest. No setup, neighbor, metadata or artwork is
-replaced before editing. Each transaction isolates the first live shape under
+replaced before editing. The two color transactions isolate the first live shape under
 the explicit name `Selected cyan` and changes its saved white process fill to
 host-supplied CMYK/RGB cyan alternatives. The host supplies the corresponding
 printing group, retaining its expanded black stroke and outgoing state.
@@ -93,13 +99,26 @@ An independently specified complete-file delta allows only the copied style,
 its fill operands, one named use, the matching printing operands and canonical
 bounds spelling. All other bytes must remain exact.
 
-InkAI's printing projection and Inkscape render both versions at width 1200.
-The comparison requires identical dimensions, alpha, green and blue channels;
+Two separate transactions reverse the original stroke/conduit/fill stack to
+fill/conduit/stroke, preserving every native child byte. Their supplied printing
+groups retain the original black inside-stroke compound, then paint a white
+rectangle on top using the original authoritative private contour. Source point
+count conventions and outgoing scalar assignments remain consistent. The exact
+whole-file oracle separately prescribes the copied tree order, rebound name,
+complete supplied group and bounds spelling.
+
+InkAI's printing projection and Inkscape render each original and edited program
+at width 1200. Color comparisons require identical dimensions, alpha, green and blue channels;
 red may only decrease, with at least 1000 pixels changing by 200 or more. Both
 fixtures change 44,274 pixels in the same selected-fill bounds. This verifies the
 supplied white-to-cyan ink while retaining geometry/opacity; it is not general
-appearance rendering acceptance or Adobe reopening. Generated sources, SVG/PNG
-renders, difference images and the independent report remain ignored under
+appearance rendering acceptance or Adobe reopening. For the order changes, a
+separate SVG reference places a 450-by-250 white rectangle at the original native
+bounds above the independently decoded original outline. Every RGBA pixel of the
+edited output must match that composition exactly. Both fixtures lighten 1,308
+edge pixels. Alpha also changes at antialiased edges, as required by the new
+layering; it is checked against the reference instead of the previous image.
+Generated sources, SVG/PNG renders, difference images and the independent report remain ignored under
 `output/appearance-producers`.
 
 The generator also attempts global edits of these programs and requires their

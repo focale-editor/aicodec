@@ -1084,7 +1084,7 @@ isolation and relative placement. General appearance editing remains incomplete.
   alternatives remain unchanged. Alignment changes also require the host's label
   bytes when a saved DisplayString exists. Unknown effects, caches, unresolved
   following state and incomplete coverage reject. Capabilities report validation
-  requirements, not unconditional editability. Five independent synthetic
+  requirements, not unconditional editability. Eight independent synthetic
   transactions compare all original/edited trees and the exact full-file delta.
   Process-only `SimpleStyle` definitions now share the selected/shared editing
   contract through their separate paint payload. Explicit assignments determine
@@ -1102,15 +1102,33 @@ isolation and relative placement. General appearance editing remains incomplete.
   44,274 changed pixels per fixture, identical alpha/green/blue and no red
   increase. This qualifies those supplied expansions, not Adobe reopening or
   arbitrary effect rendering.
-  Non-live-shape uses, additional appearance graph operations and broader
+  `AiNativeAppearancePartChange.childOrder` now permutes every direct child of
+  an existing stack or chain, preserving whole subtrees. Nested orders compose
+  with paint/setting changes against the original handles. Private/ordinary
+  boundary crossings, stale/foreign/missing/duplicate children and unresolved
+  following state reject atomically. Pure permutations retain provably identical
+  explicit noncolor scalar state only when all parts are visible and no inherited
+  value is required; winding must also agree with each saved fill flag.
+  Eight regressions cover these contracts. Three more synthetic transactions
+  independently verify isolated/shared stack order and nested chain/stack order
+  with simultaneous field changes, including the complete expected byte delta.
+  Two further transactions reorder the complete producer programs' original
+  stroke/conduit/fill stacks. Host-supplied printing places the existing inside
+  stroke below a white rectangle following the native authoritative contour.
+  Every output RGBA pixel matches a separately composed SVG reference; each file
+  lightens 1,308 edge pixels. The expected antialiasing/alpha change is checked
+  against that reference, while unselected artwork and native subtrees remain
+  exact. This does not establish Adobe UI reopening or arbitrary effect output.
+  Non-live-shape uses, part creation/removal/reparenting and broader
   complete-producer acceptance remain open. Shared edits of these two sources
   still reject conditional setup inventories; other complete CC sources still
   reject unresolved state consumed by following `AI11Text` owners.
-  Validation: 982 VM/981 Node tests, five synthetic appearance edits, both
-  complete producer transactions, the 98-style/834-part/135-use inventory and
-  capability checks on all 37 pinned sources pass. The producer generator also
-  requires the two explicit shared-edit refusals. Formatting, analysis, fix
-  dry-run, Python compilation and diff checks are clean.
+  Validation: 990 VM/989 Node tests, eight synthetic appearance edits and
+  four complete producer transactions pass. The producer generator also requires
+  the two explicit shared-edit refusals. The 98-style/834-part/135-use inventory
+  and capability checks on all 37 pinned sources passed in the previous increment;
+  those inspection contracts are unchanged. Formatting, analysis, fix dry-run,
+  Python compilation and diff checks are clean.
 - [ ] Add native opacity, blend, isolation, knockout and opacity-mask records,
   including mask artwork, linked/disabled/inverted state and dependent references.
   These are data contracts; compositing remains in the application.

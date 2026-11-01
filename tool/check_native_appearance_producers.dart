@@ -36,6 +36,23 @@ AiNativePrintingGroupReplacement _printing(AiNativeSource source, AiNativeDrawin
   );
 }
 
+/// Authors this fixture's white rectangle above its retained inside-stroke ink.
+AiNativePrintingGroupReplacement _orderedPrinting(AiNativeSource source, AiNativeDrawing drawing, AiLiveShape shape) {
+  final AiNativeGroup group = shape.appearanceGroup!;
+  final AiNativeGroup stroke = drawing.groups.singleWhere((candidate) => candidate.compound && candidate.start > group.start && candidate.end < group.end);
+  final AiNativeInstruction black = drawing.items.whereType<AiNativeInstruction>().singleWhere((item) => item.operator == 'Xa' && item.start > stroke.start && item.end < stroke.end);
+  final bool counted = drawing.items.whereType<AiNativeInstruction>().any((item) => item.operator == 'As' && item.start > group.start && item.end < group.end);
+  final AiProgram program = drawing.records.program;
+  final String outline = latin1.decode(program.bytes.sublist(stroke.start, stroke.end));
+  final String outgoing = latin1.decode(program.bytes.sublist(black.start, black.end));
+  final String geometry = shape.path!.geometry.map((command) => '${command.operands.map((operand) => operand.lexeme).join(' ')} ${command.operator}').join('\n');
+  return AiNativePrintingGroupReplacement(
+    shape: shape,
+    bytes: latin1.encode('u\n0 O\n0 1 0 0 0 Xy\n0 J 0 j 1 w 10 M []0 d\n0 XR\n0 Ae\n$outline\n${counted ? '4 As\n' : ''}0 D\n0 0 0 0 1 1 1 Xa\n$geometry\nf\n$outgoing\n1 D\nU'),
+    bounds: source.asPostScript().boundingBox!,
+  );
+}
+
 /// Changes real complete producer programs without removing setup or neighbors.
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/appearance-producers').create(recursive: true);
@@ -78,7 +95,15 @@ Future<void> main() async {
       printing: groups,
       nameBytes: latin1.encode('Selected cyan'),
     );
+    final AiNativeAppearancePart stack = style.parts.singleWhere((part) => part.kind == .stack);
+    final AiNativeAppearances ordered = model.updateSelected(
+      appearance: style,
+      parts: [AiNativeAppearancePartChange(part: stack, childOrder: stack.childIndices.reversed.map((index) => style.parts[index]).toList())],
+      printing: [_orderedPrinting(source, drawing, shape)],
+      nameBytes: latin1.encode('Fill above stroke'),
+    );
     await File('${output.path}/$name.selected.ps').writeAsBytes(changed.structure.drawing.records.program.bytes);
+    await File('${output.path}/$name.ordered.ps').writeAsBytes(ordered.structure.drawing.records.program.bytes);
     rows.add({
       'file': name,
       'selectedShapes': selected.map(drawing.liveShapes.indexOf).toList(),
@@ -87,8 +112,9 @@ Future<void> main() async {
       'sharedRejection': sharedRejection,
       'before': {'source': '$name.before', ...appearanceInventory(model)},
       'after': {'source': '$name.selected', ...appearanceInventory(changed)},
+      'ordered': {'source': '$name.ordered', ...appearanceInventory(ordered)},
     });
-    stdout.writeln('$name: ${selected.length} users, ${model.styles.length}/${changed.styles.length} styles');
+    stdout.writeln('$name: fill and order edits, ${selected.length} users, ${model.styles.length}/${changed.styles.length} styles');
   }
   await File('${output.path}/report.json').writeAsString('${const JsonEncoder.withIndent('  ').convert(rows)}\n');
 }

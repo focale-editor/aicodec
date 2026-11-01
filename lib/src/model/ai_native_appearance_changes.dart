@@ -30,7 +30,7 @@ final class AiNativePaintChange {
   }
 }
 
-/// Changes explicit fields of one exact appearance part without replacing it.
+/// Changes explicit settings or direct child order of one exact appearance part.
 final class AiNativeAppearancePartChange {
   /// Current source part, distinct from any other fill or stroke in the tree.
   final AiNativeAppearancePart part;
@@ -49,6 +49,12 @@ final class AiNativeAppearancePartChange {
   /// Preserve the original string encoding; the kit does not translate labels.
   final List<int>? alignmentLabelBytes;
 
+  /// Complete permutation of a stack or chain's existing direct child handles.
+  ///
+  /// Each child keeps its entire subtree. This does not insert, remove or reparent
+  /// parts. Paint and setting edits in moved descendants use the original handles.
+  final List<AiNativeAppearancePart>? childOrder;
+
   /// Captures an explicit change; missing fields are not filled with defaults.
   AiNativeAppearancePartChange({
     required this.part,
@@ -56,8 +62,10 @@ final class AiNativeAppearancePartChange {
     this.evenOdd,
     this.strokeAlignment,
     List<int>? alignmentLabelBytes,
-  }) : alignmentLabelBytes = alignmentLabelBytes == null ? null : List.unmodifiable(alignmentLabelBytes) {
-    if (visible == null && evenOdd == null && strokeAlignment == null) {
+    List<AiNativeAppearancePart>? childOrder,
+  }) : alignmentLabelBytes = alignmentLabelBytes == null ? null : List.unmodifiable(alignmentLabelBytes),
+       childOrder = childOrder == null ? null : List.unmodifiable(childOrder) {
+    if (visible == null && evenOdd == null && strokeAlignment == null && childOrder == null) {
       throw ArgumentError('An appearance part change requires a supplied setting.');
     }
     if (alignmentLabelBytes != null && (strokeAlignment == null || alignmentLabelBytes.any((byte) => byte < 0 || byte > 255))) {

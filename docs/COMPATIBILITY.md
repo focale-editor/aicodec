@@ -32,9 +32,11 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   and literal paint/dash assignments. Qualified active-style and process-only
   SimpleStyle changes synchronize
   selected or shared CC users with host-supplied printing groups, including saved
-  alignment labels. Two complete CC programs qualify selected process-fill edits
+  alignment labels. Stack/chain child permutations support nested orders and
+  simultaneous source setting edits without dropping or reparenting subtrees.
+  Two complete CC programs qualify selected process-fill and stack-order edits
   with independent native/printing comparisons. Unknown effects remain preserved;
-  other user families, graph changes and global complete-producer appearance
+  other user families, part creation/removal/reparenting and global complete-producer appearance
   editing are still open. Conditional setup inventories and unresolved following
   text state remain explicit rejection boundaries.
 - Qualified CC live-shape translation, rotation and uniform scaling, including

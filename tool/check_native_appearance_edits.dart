@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:aikit/aikit.dart';
 
 import '../test/ai_native_appearance_editing_test.dart' show appearanceAssignment, appearanceEditingModel, appearanceEditingSource, appearancePrinting;
+import '../test/ai_native_appearance_order_test.dart' show appearanceOrderSource, reverseAppearanceChildren;
 import '../test/ai_native_simple_style_editing_test.dart' show simpleAppearanceSource;
 import 'check_native_appearances.dart' show appearanceInventory;
 
@@ -11,12 +12,16 @@ import 'check_native_appearances.dart' show appearanceInventory;
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/appearance-edits').create(recursive: true);
   final List<Map<String, Object?>> rows = [];
-  for (final String variant in ['selected', 'shared', 'settings', 'simple-selected', 'simple-shared']) {
+  for (final String variant in ['selected', 'shared', 'settings', 'simple-selected', 'simple-shared', 'order-selected', 'order-shared', 'order-nested']) {
     final bool simple = variant.startsWith('simple-');
-    final bool shared = variant == 'shared' || variant == 'simple-shared';
+    final bool ordered = variant.startsWith('order-');
+    final bool nested = variant == 'order-nested';
+    final bool shared = variant == 'shared' || variant.endsWith('-shared');
     final AiNativeAppearances source = appearanceEditingModel(
       source: simple
           ? simpleAppearanceSource()
+          : ordered
+          ? appearanceOrderSource()
           : variant == 'settings'
           ? appearanceEditingSource().replaceFirst('1 /Bool (StrokeOffsetInside)', '(Inside) /String (DisplayString) , 1 /Bool (StrokeOffsetInside)')
           : appearanceEditingSource(),
@@ -33,23 +38,26 @@ Future<void> main() async {
             AiNativePaintChange(assignment: appearanceAssignment(style, 6, .strokeColor), values: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
           ]
         : [
-            AiNativePaintChange(assignment: appearanceAssignment(style, 2, .fillColor), values: [0.7, 0.6, 0.5]),
+            if (!ordered || nested) AiNativePaintChange(assignment: appearanceAssignment(style, 2, .fillColor), values: [0.7, 0.6, 0.5]),
           ];
+    final List<AiNativeAppearancePartChange> parts = [
+      if (ordered) reverseAppearanceChildren(style, 1),
+      if (nested) reverseAppearanceChildren(style, 0),
+      if (variant == 'settings' || nested) ...[
+        AiNativeAppearancePartChange(part: style.parts[2], visible: true, evenOdd: false),
+        AiNativeAppearancePartChange(part: style.parts[6], strokeAlignment: .outside, alignmentLabelBytes: nested ? null : latin1.encode('Outside')),
+      ],
+    ];
     final List<AiNativePrintingGroupReplacement> printing = [
-      for (final int index in shared ? [0, 1] : [if (variant == 'settings') 1 else 0])
+      for (final int index in shared ? [0, 1] : [if (variant == 'settings' || nested) 1 else 0])
         if (simple) appearancePrinting(source, index, bytes: 'u\n1 0 0 0 k\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU') else appearancePrinting(source, index),
     ];
     final AiNativeAppearances changed = shared
-        ? source.updateShared(appearance: style, paints: paints, printing: printing)
+        ? source.updateShared(appearance: style, paints: paints, parts: parts, printing: printing)
         : source.updateSelected(
             appearance: style,
             paints: paints,
-            parts: [
-              if (variant == 'settings') ...[
-                AiNativeAppearancePartChange(part: style.parts[2], visible: true, evenOdd: false),
-                AiNativeAppearancePartChange(part: style.parts[6], strokeAlignment: .outside, alignmentLabelBytes: latin1.encode('Outside')),
-              ],
-            ],
+            parts: parts,
             printing: printing,
             nameBytes: latin1.encode('Selected'),
           );
