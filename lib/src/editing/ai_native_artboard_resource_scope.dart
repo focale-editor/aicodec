@@ -6,7 +6,7 @@ typedef _ArtboardResourceScope = ({Set<String> patterns, Set<String> symbols, Se
 /// Qualifies direct CC resource artwork without evaluating PostScript programs.
 _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
   final AiNativeRecords records = layers.drawing.records;
-  final List<AiToken> tokens = records._projection.tokens;
+  final AiNativeArtworkResources resources = _nativeArtworkResources(layers.structure, requireOrdinary: true);
   final Set<String> patterns = {};
   final Set<String> symbols = {};
   final Set<String> brushes = {};
@@ -14,90 +14,28 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
   final List<({int start, int end})> ranges = [];
   final Set<AiNativeContainer> objects = {};
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use};
-  bool setup = false;
-  int procedure = 0;
-  int embedded = 0;
-  int root = 0;
-  for (int index = 0; index < tokens.length && tokens[index].start < records.program.bodyStart; index++) {
-    final AiToken opening = tokens[index];
-    while (root < records.roots.length && records.roots[root].end <= opening.start) {
-      root++;
+  for (final AiNativeArtworkResource resource in resources.resources) {
+    if (resource.nameBytes.isEmpty) {
+      throw const FormatException('Retained resources require nonempty literal names.');
     }
-    if (root < records.roots.length && opening.start >= records.roots[root].start) {
-      continue;
-    }
-    if (opening.kind == .procedureStart) {
-      procedure++;
-    } else if (opening.kind == .procedureEnd) {
-      procedure--;
-    }
-    if (procedure != 0 || opening.kind != .comment) {
-      continue;
-    }
-    if (opening.lexeme.startsWith('%%BeginDocument')) {
-      embedded++;
-    } else if (opening.lexeme == '%%EndDocument') {
-      embedded--;
-    }
-    if (embedded != 0) {
-      continue;
-    }
-    if (opening.lexeme == '%%BeginSetup') {
-      setup = true;
-    } else if (opening.lexeme == '%%EndSetup') {
-      setup = false;
-    }
-    final bool pattern = opening.lexeme.startsWith('%AI3_BeginPattern:');
-    final bool symbol = opening.lexeme == '%AI14_BeginSymbol';
-    final bool brush = opening.lexeme == '%AI8_BeginBrushPattern';
-    if (!setup || !pattern && !symbol && !brush) {
-      continue;
-    }
-    final List<AiToken> contents = [];
-    final String ending = pattern
-        ? '%AI3_EndPattern'
-        : brush
-        ? '%AI8_EndBrushPattern'
-        : '%AI10_EndSymbol';
-    while (++index < tokens.length && tokens[index].start < records.program.bodyStart && !(tokens[index].kind == .comment && tokens[index].lexeme == ending)) {
-      final AiToken token = tokens[index];
-      if (token.kind != .comment) {
-        contents.add(token);
-      }
-    }
-    if (index >= tokens.length || tokens[index].start >= records.program.bodyStart || contents.length < (pattern ? 6 : 1)) {
-      throw const FormatException('Retained resources require complete boundaries and a literal declaration.');
-    }
-    final AiToken closing = tokens[index];
-    if (contents.any((token) => token.number != null && (!token.number!.isFinite || token.number!.abs() > 9007199254740991))) {
-      throw const FormatException('Retained resource values must be finite portable numbers.');
-    }
-    if (records._projection.isPrivate(opening.start) ||
-        records._projection.isPrivate(closing.start) ||
-        layers.structure.versions.blocks.any((block) => block.start < closing.end && block.end > opening.start)) {
-      throw UnsupportedError('Retained resources require unconditional ordinary declaration boundaries.');
-    }
-    if (!_artboardPaletteName(contents.first) || records._projection.isPrivate(contents.first.start)) {
-      throw const FormatException('Retained resources require an ordinary literal name.');
-    }
-    if (pattern) {
-      _artboardPatternHeader(records, opening, contents);
-    }
-    if (!(pattern
-            ? patterns
-            : brush
-            ? brushes
-            : symbols)
-        .add(latin1.decode(aiStringBytes(contents.first)))) {
+    final Set<String> names = switch (resource.kind) {
+      .pattern => patterns,
+      .symbol => symbols,
+      .brush => brushes,
+    };
+    if (!names.add(latin1.decode(resource.nameBytes))) {
       throw UnsupportedError('Retained resource names must identify a unique definition in their namespace.');
     }
-    final int start = contents[pattern ? 4 : 0].end;
-    final int end = pattern ? contents.last.start : closing.start;
-    final List<AiNativeContainer> metadata = _pathInterval(records.roots, start, end, (record) => record.start).toList();
-    final List<AiNativeRaster> rasters = contents.any((token) => token.kind == .data) ? _pathInterval(scope.rasters, start, end, (image) => image.start).toList() : [];
+    if (resource.tokens.any((token) => token.number != null && (!token.number!.isFinite || token.number!.abs() > 9007199254740991))) {
+      throw const FormatException('Retained resource values must be finite portable numbers.');
+    }
+    final List<AiNativeRaster> rasters = resource.rasters;
     final Map<AiNativeContainer, AiNativeRaster> rasterOwners = {};
+    if (resource.tokens.any((token) => token.kind == .data)) {
+      scope._rasters ??= resource._reader.rasters;
+    }
     for (final AiNativeRaster image in rasters) {
-      if (image.end > end) {
+      if (image.end > resource.artworkEnd) {
         throw const FormatException('A retained image crosses its resource boundary.');
       }
       _artboardResourceRaster(records, image);
@@ -105,86 +43,23 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
         rasterOwners[image.dictionary!] = image;
       }
     }
-    _artboardResourceAnnotations(scope, opening.end, closing.start, rasters, metadata: metadata);
-    final List<AiNativeItem> items = [];
-    final _NativeCommandReader reader = _NativeCommandReader(maxDepth: records.program.limits.maxDepth);
-    int owner = 0;
-    int rasterIndex = 0;
-    AiNativeRaster? active;
-    for (final AiToken token in contents.skip(pattern ? 5 : 1).take(contents.length - (pattern ? 6 : 1))) {
-      while (owner < metadata.length && metadata[owner].end <= token.start) {
-        owner++;
+    final AiNativeDrawing drawing = resource._drawing;
+    for (final AiNativeContainer record in resource.metadata) {
+      if (resource.kind == .pattern && !rasterOwners.containsKey(record)) {
+        _artboardPatternMetadata(layers, record);
+      } else {
+        _artboardSymbolMetadata(scope, record, raster: rasterOwners[record]);
       }
-      if (owner < metadata.length && token.start >= metadata[owner].start) {
-        if (token.start == metadata[owner].start) {
-          reader.finish();
-          if (metadata[owner].end > end) {
-            throw const FormatException('Resource metadata crosses its declaration boundary.');
-          }
-          if (pattern && !rasterOwners.containsKey(metadata[owner])) {
-            _artboardPatternMetadata(layers, metadata[owner]);
-          } else {
-            _artboardSymbolMetadata(scope, metadata[owner], raster: rasterOwners[metadata[owner]]);
-          }
-          items.add(metadata[owner]);
-          objects.add(metadata[owner]);
-        }
-        continue;
-      }
-      while (rasterIndex < rasters.length && rasters[rasterIndex].end <= token.start) {
-        rasterIndex++;
-      }
-      if (rasterIndex < rasters.length && token.start >= rasters[rasterIndex].start) {
-        final AiNativeRaster image = rasters[rasterIndex];
-        if (token.end > image.end) {
-          throw const FormatException('Retained image tokens cross their owned section.');
-        }
-        if (!identical(active, image)) {
-          reader.finish();
-          items.add(image);
-          active = image;
-        }
-        continue;
-      }
-      final AiNativeInstruction? instruction = reader.add(token, isPrivate: records._projection.isPrivate(token.start));
-      if (instruction != null) {
-        if (instruction.operator == 'N' && instruction.operands.isNotEmpty) {
-          throw const FormatException('A retained raster terminator cannot consume operands.');
-        }
-        items.add(instruction);
-      }
+      objects.add(record);
     }
-    reader.finish();
-    scope.drawings.add(_NativeDrawingReader(records: records).readItems(items));
-    ranges.add((start: opening.start, end: closing.end));
+    _artboardResourceAnnotations(scope, resource.opening.end, resource.closing.start, rasters, metadata: resource.metadata);
+    scope.drawings.add(drawing);
+    ranges.add((start: resource.start, end: resource.end));
   }
   for (final AiNativeDrawing drawing in scope.drawings) {
     _artboardResourceArtwork(layers, drawing, references, patterns);
   }
   return (patterns: Set.unmodifiable(patterns), symbols: Set.unmodifiable(symbols), brushes: Set.unmodifiable(brushes), ranges: List.unmodifiable(ranges), objects: Set.unmodifiable(objects));
-}
-
-/// Checks the ordinary tile rectangle and matching pattern wrapper name.
-void _artboardPatternHeader(AiNativeRecords records, AiToken opening, List<AiToken> contents) {
-  final List<AiToken> label = AiPostScript.tokenize(
-    latin1.encode(opening.lexeme.substring('%AI3_BeginPattern:'.length)),
-    maxBytes: records.program.limits.maxDecodedBytes,
-    maxTokens: records.program.limits.maxTokens,
-    maxDepth: records.program.limits.maxDepth,
-  );
-  if (label.length != 1 || !_artboardPaletteName(label.single) || !_gradientBytesEqual(aiStringBytes(label.single), aiStringBytes(contents.first))) {
-    throw const FormatException('Pattern wrapper and declaration names must match.');
-  }
-  final List<AiToken> bounds = contents.sublist(1, 5);
-  if (contents.take(5).any((token) => records._projection.isPrivate(token.start)) ||
-      bounds.any((token) => token.number == null) ||
-      bounds[0].number! >= bounds[2].number! ||
-      bounds[1].number! >= bounds[3].number! ||
-      contents.last.kind != .executableName ||
-      contents.last.lexeme != 'E' ||
-      records._projection.isPrivate(contents.last.start)) {
-    throw const FormatException('Pattern setup requires an ordinary nonempty tile rectangle and E terminator.');
-  }
 }
 
 /// Keeps tile-editor settings and local gradient transforms free of board links.

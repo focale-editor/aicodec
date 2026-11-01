@@ -2394,6 +2394,48 @@ ownership, state, resources or count conventions throw `UnsupportedError`;
 stale/duplicate handles and invalid constructor arguments throw `ArgumentError`;
 configured parsing ceilings throw `AiLimitException`.
 
+## Native artwork resource ownership
+
+`AiNativeArtworkResources.decode(structure:)` inventories complete setup
+declarations carried by `%AI3_BeginPattern`, `%AI14_BeginSymbol` and
+`%AI8_BeginBrushPattern`. `AiNativeAppearances.artworkResources` exposes the same
+source association lazily. Definitions retain their namespace, literal name,
+complete wrapper and artwork spans, optional pattern rectangle and enclosing
+version memberships. Duplicate names and both conditional branches remain
+separate; the inventory does not choose a target version or infer an instance.
+
+Each definition exposes immutable local `items`, `paths`, `groups`, `gradients`,
+`metadata`, `tokens` and `rasters`. Source positions refer to the original complete
+program. Private authoring and ordinary printing geometry stay distinct. Unknown
+commands, fields, annotations and binary payloads remain available, without
+executing procedures or embedded programs. Nested mask records remain records;
+their images appear in `rasters` without flattening mask geometry into the parent.
+Names, bounds, source framing and local topology remain subject to the original
+byte, token and nesting limits.
+
+`forUse(use:)` requires an exact reference from the original structure and returns
+its containing resource, or null for body, palette and other applications outside
+these declarations. Each resource's `uses` retains all known style and gradient
+handles, including references inside nested metadata. Missing, ambiguous and
+conditional resolutions remain explicit. This is not a complete instance or
+plug-in dependency graph. Local paths are inspection handles, not body-edit
+handles; resource appearance edits still need a separate complete owner,
+dependent-instance coverage and supplied representations.
+
+The artboard/reference retention checker shares this declaration and artwork
+reader while retaining its stricter uniqueness, ordinary/conditional, metadata,
+effect and reference qualifications. Eight unit regressions exercise ownership,
+namespaces, unknown payloads, immutable handles, conditional/private definitions,
+binary delimiter lookalikes and source limits. Independent inspection of seven
+complete pinned CC programs plus one synthetic source covers 149 declarations,
+1,921 paths, 676 groups, 49 images and 365 known applications (148 styles and 217
+gradients). Complete source extraction, geometry, metadata, image framing/sample
+spans and reference resolution are checked against the unchanged pinned reader.
+The verifier bounds image planes from `XI` dimensions and framing separately from
+that reader's known leading-whitespace and trailing-private-prefix artifacts.
+These checks qualify source data and ownership, not resource editing, native
+rendering, instance recomposition or Adobe reopening.
+
 ## Ordered native appearances
 
 `AiNativeAppearances.decode(structure:)` exposes every source `KnownStyle`
@@ -3045,6 +3087,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
+| Setup artwork resources | Pattern/symbol/brush names, namespaces, source spans, tile bounds, local geometry, metadata, images and known style/gradient applications | Source-owned inspection and shared retention validation | Duplicate and conditional definitions remain separate. Local paths do not become body-edit handles. Appearance changes, complete instance dependencies and supplied representation coverage remain incomplete. |
 | Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Private-contour and qualified private ordinary/compound-group users share the supplied-group contract; group edits have synthetic serialization/state acceptance. Selected and shared stroke edits pass in three additional complete producers, retaining version-one dash adjustment and empty generative provenance. Qualified nested literal styles support explicit child selection and shared coverage through one complete enclosing printing group, with per-use dependency checks and native-only restoration before sibling consumers. Private clipping groups expose exact contour/mask ownership and preserve scoped contour state; complete supplied printing groups accept qualified masks. Ordinary enclosing clipping parents retain their masks and saved contour state across selected/shared edits, with independent synthetic data/state acceptance. Resource/text users, opacity-mask resources, broader producer coverage and unprovable following state remain incomplete; uniform explicit state restoration qualifies isolated fills before retained text in two further complete producers. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

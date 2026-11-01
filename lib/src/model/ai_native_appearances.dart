@@ -196,6 +196,12 @@ final class AiNativeAppearances {
   /// Reads bounded source graphs without converting unknown filters to paint.
   factory AiNativeAppearances.decode({required AiNativeStructure structure}) => _nativeAppearances(structure);
 
+  /// Setup patterns, symbols and brush artwork containing known style applications.
+  ///
+  /// These definitions expose local source data. Body-pair editing still requires
+  /// its own complete printing owner and does not authorize resource mutations.
+  late final AiNativeArtworkResources artworkResources = AiNativeArtworkResources.decode(structure: structure);
+
   /// Freezes the complete source inventory.
   AiNativeAppearances._({required this.structure, required List<AiNativeAppearance> styles, required List<AiNativeResourceUse> uses})
     : styles = List.unmodifiable(styles),

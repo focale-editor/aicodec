@@ -268,6 +268,30 @@ descriptors. Colors remain byte-checked separately, as in the clipping suite.
 No producer interoperability, visual equivalence or Adobe reopening is claimed.
 Sources and reports stay ignored under `output/appearance-ancestors`.
 
+### Setup artwork resources and appearance ownership
+
+```sh
+python3 tool/fetch_corpus.py --manifest direct_shape_manifest.json
+dart run tool/check_native_artwork_resources.dart
+python3 tool/verify_native_artwork_resources.py --inkai-source /tmp/extension-ai
+```
+
+The suite reuses seven complete CC programs pinned by `manifest.json` and
+`direct_shape_manifest.json`, plus one checksum-pinned synthetic fixture. It
+compares every pattern, symbol and brush declaration with the unchanged external
+reader: 149 resources, 1,921 paths, 676 groups, 49 images, 148 style uses and 217
+gradient uses. Namespace/name ownership, complete source extraction, all local
+geometry, group membership, direct metadata, raster framing and sample boundaries,
+and known-reference resolution are checked independently. Image dimensions and
+framing delimit the actual sample planes; known external-reader whitespace or
+private-prefix artifacts are checked separately, without changing that reader.
+
+These are inspection results for the source ownership needed by later resource
+appearance edits. They do not qualify dependent-instance editing, composition or
+Adobe reopening. VM/Node tests additionally cover duplicate/conditional/private
+definitions, foreign handles, opaque extensions, binary delimiter lookalikes and
+parser limits. Outputs remain ignored under `output/artwork-resources`.
+
 ### Complete producer appearance edits
 
 ```sh
