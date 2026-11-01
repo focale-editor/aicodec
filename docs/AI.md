@@ -2419,7 +2419,8 @@ these declarations. Each resource's `uses` retains all known style and gradient
 handles, including references inside nested metadata. Missing, ambiguous and
 conditional resolutions remain explicit. This is not a complete instance or
 plug-in dependency graph. Local paths are inspection handles, not body-edit
-handles; resource appearance edits still need a separate complete owner,
+handles. Qualified complete appearance pairs can now be bound with
+`AiNativeAppearances.artworkFor(use:)`; resource mutation still requires
 dependent-instance coverage and supplied representations.
 
 The artboard/reference retention checker shares this declaration and artwork
@@ -2435,6 +2436,26 @@ The verifier bounds image planes from `XI` dimensions and framing separately fro
 that reader's known leading-whitespace and trailing-private-prefix artifacts.
 These checks qualify source data and ownership, not resource editing, native
 rendering, instance recomposition or Adobe reopening.
+
+`AiNativeAppearanceArtwork.resource` identifies the exact enclosing declaration
+for a bound setup pair; it is null for body pairs. Authoring paths, groups,
+clipping topology and live shapes retain resource-local geometry and absolute
+source positions. Outer and nested `use` handles remain those of the original
+global structure. Local lexical inspection does not duplicate applications or
+bind a pair across declarations. Ordinary symbol ancestors may retain qualified
+registration, guide and nine-slice grid fields; parent effects and unknown
+metadata still reject. Resource-local shape inspection uses the complete
+document for global style/layer validation. Body binding does not eagerly parse
+unrelated resource artwork.
+
+Seven regressions cover local/global ownership, private nested uses, clipping,
+live shapes, equal resource names, foreign handles and atomic mutation refusal.
+Independent complete-source checks bind 26 pairs across six synthetic layouts
+and seven pinned CC programs, including both `Add Favorite` symbol users in each
+producer. Film opacity-mask artwork and the unresolved nested Search appearance
+remain unqualified. `updateSelected` and `updateShared` explicitly reject resource
+replacements until the dependent-instance representation transaction is implemented;
+a successfully bound pair is not permission to save a stale dependent expansion.
 
 ## Ordered native appearances
 
@@ -2502,7 +2523,7 @@ Users without the separate bound CC authoring/printing pair do not yet have this
 editing contract.
 
 `artworkFor(use:)` returns an immutable `AiNativeAppearanceArtwork` for a
-qualified `1 (name) XW` body application. It binds an ordinary printing group,
+qualified `1 (name) XW` body or setup resource application. It binds an ordinary printing group,
 the empty-name `6 () XW` boundary and authoritative private artwork: a single
 contour ending in `n` or `N`, or a nonempty ordinary/compound/clipping group. Optional
 metadata and panel flags remain owned by the same lexical
@@ -2511,7 +2532,8 @@ and version context. An ordinary user has no fabricated live-shape handler;
 saved alternate dictionaries. `dictionary` and `printingDictionary` are optional
 for ordinary users. Qualified labels, identities and finite accumulated rotation
 remain exact; unknown fields, caches, interleaved path state, conditional pairs,
-resource-local applications and crossed owners reject. Point counts must agree
+crossed owners reject. Resource ownership and its separate mutation boundary are
+described above. Point counts must agree
 with their native contour and explicit closing endpoint.
 
 `authoring` exposes the authoritative `AiNativePath` or `AiNativeGroup`.

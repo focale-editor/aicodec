@@ -17,10 +17,40 @@ from verify_live_shapes import walk_body
 from verify_native_artboard_text import normalized
 from verify_native_group_lifecycle import command, descendant_paths, inventory as group_inventory
 from verify_native_path_topology import bind, inventory
-from verify_native_structure import native_values, parsed
+from verify_native_structure import native_values, parsed, version_ranges
 
 PRODUCERS = ('simple_shapes.ai', 'simple_shapes_cc.ai', 'stroke_styles.ai', 'fill_stroke_test_cc.ai', 'styles.ai', 'text_transforms.ai', 'opacity.ai')
 WRAPPERS = {'pattern': b'%AI3_BeginPattern:', 'symbol': b'%AI14_BeginSymbol', 'brush': b'%AI8_BeginBrushPattern'}
+
+
+def direct_records(items):
+    """Flatten the reader's version lists while keeping record fields nested."""
+    for item in walk_body(items):
+        if isinstance(item, list):
+            yield from direct_records(item)
+        elif isinstance(item, dict):
+            yield item
+
+
+def metadata(data, spans, items, start, end):
+    """Bind complete records, including older branches discarded by the reader."""
+    older = []
+    for block in version_ranges(data):
+        if start <= block['start'] < block['end'] <= end and block['older'] is not None:
+            first, last = block['older']
+            selected = [span for span in spans if first <= span[0] < span[1] <= last]
+            records = list(direct_records(parsed(data[first:last])))
+            assert len(selected) == len(records)
+            for span, record in zip(selected, records, strict=True):
+                decoded, = parsed(data[slice(*span)])
+                assert normalized(decoded) == normalized(record)
+                older.append(span)
+    current = [span for span in spans if span not in older]
+    records = list(direct_records(items))
+    assert len(records) == len(current)
+    for span, record in zip(current, records, strict=True):
+        decoded, = parsed(data[slice(*span)])
+        assert normalized(decoded) == normalized(record)
 
 
 def resource(data, report, section, declarations):
@@ -47,11 +77,7 @@ def resource(data, report, section, declarations):
         prefix = b'%_' if reported['private'] else b''
         assert [command(item) for item in walk_body(parsed(prefix + data[slice(*reported['span'])]))] == group['commands']
         assert reported['paths'] == [next(index for index, candidate in enumerate(group_paths) if candidate is path) for path in descendant_paths(group)]
-    records = [item for item in walk_body(section.children) if isinstance(item, dict)]
-    assert len(records) == len(report['metadata'])
-    for span, record in zip(report['metadata'], records, strict=True):
-        decoded, = parsed(data[slice(*span)])
-        assert normalized(decoded) == normalized(record)
+    metadata(data, report['metadata'], section.children, *report['span'])
     values = list(native_values(section.children))
     uses = [item for item in values if getattr(item, 'command', None) == 'Bg' or getattr(item, 'command', None) == 'XW' and item.tokens[0] in (b'0', b'1') and item.tokens[1]]
     assert Counter(('gradient' if item.command == 'Bg' else 'knownStyle', item.tokens[1]) for item in uses) == Counter((item['kind'], bytes(item['name'])) for item in report['uses'])

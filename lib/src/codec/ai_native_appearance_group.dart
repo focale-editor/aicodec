@@ -1,11 +1,15 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies an immutable private group tree without expanding its appearance.
-({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners, List<AiNativePathTopology> contours}) _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
+({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners, List<AiNativePathTopology> contours}) _nativeAppearanceGroup(
+  AiNativeAppearances model,
+  AiNativeStructure structure,
+  AiNativeGroup group,
+) {
   if (!group.opening.isPrivate || !const {'u', '*u', 'q'}.contains(group.opening.operator) || group.paths.isEmpty) {
     throw UnsupportedError('Grouped appearances require a nonempty private ordinary, compound or clipping group.');
   }
-  final AiNativeDrawing drawing = model.structure.drawing;
+  final AiNativeDrawing drawing = structure.drawing;
   final List<AiNativePathTopology> contours = _nativeGroupContours(drawing, group);
   final Map<AiNativePath, AiNativePathTopology> topology = {for (final AiNativePathTopology contour in contours) contour.path: contour};
   final List<AiNativeItem> items = _pathInterval(drawing.items, group.start, group.end, (item) => item.start).toList();
@@ -24,7 +28,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
     final AiNativeItem item = items[index];
     if (item is AiNativeContainer) {
       final AiNativeItem? owner = index == 0 ? null : endings[items[index - 1].end];
-      if (owner == null || count != null || panel || !drawing.records._projection.isPrivate(item.start) || !_sameNativeObjectOwner(model.structure.nodeFor(owner), model.structure.nodeFor(item))) {
+      if (owner == null || count != null || panel || !drawing.records._projection.isPrivate(item.start) || !_sameNativeObjectOwner(structure.nodeFor(owner), structure.nodeFor(item))) {
         throw UnsupportedError('Grouped appearance metadata requires direct private ownership.');
       }
       _nativeAppearanceDictionary(item);
@@ -85,7 +89,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
           style == null ||
           reference.versions.isNotEmpty ||
           style.resource.versions.isNotEmpty ||
-          !_sameNativeObjectOwner(model.structure.nodeFor(owner), model.structure.nodeFor(item))) {
+          !_sameNativeObjectOwner(structure.nodeFor(owner), structure.nodeFor(item))) {
         throw UnsupportedError('Nested appearances require one unconditional named style and a direct private artwork owner.');
       }
       owners[reference] = owner;

@@ -59,6 +59,9 @@ final class AiNativeArtworkResource {
   /// Local topology that must not be passed to body mutation APIs.
   late final AiNativeDrawing _drawing = _reader.drawing(this);
 
+  /// Local lexical ownership with original absolute source positions.
+  late final AiNativeStructure _structure = AiNativeStructure.decode(drawing: _drawing);
+
   /// Images inside this declaration, inspected without decoding their pixels.
   ///
   /// Includes images in nested metadata such as opacity masks; [items] retains

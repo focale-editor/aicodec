@@ -215,12 +215,15 @@ final class AiNativeAppearances {
     return use.resolution == .resolved ? styles.singleWhere((style) => identical(style.resource, use.candidates.single)) : null;
   }
 
-  /// Binds a named body use to its native artwork and separate printing group.
+  /// Binds a named use to its native artwork and separate printing group.
   ///
   /// Live shapes, private paths and private groups share this ownership contract.
   /// Access private child uses through the enclosing owner's `nestedUses`; they
   /// share its printing group rather than accepting an independent binding here.
-  /// Unknown metadata, conditional owners and resource-local uses reject.
+  /// Setup artwork exposes its enclosing `resource`, with local geometry and
+  /// original global style handles. This association does not qualify resource
+  /// mutations or dependent instances. Unknown metadata and conditional owners
+  /// reject.
   AiNativeAppearanceArtwork artworkFor({required AiNativeResourceUse use}) => _nativeAppearanceArtwork(this, use);
 
   /// Changes a shared definition and all qualified dependent printing groups.

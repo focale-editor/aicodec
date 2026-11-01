@@ -57,7 +57,16 @@ void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeCo
 /// Qualifies a complete source bundle rather than its individual private paths.
 ///
 /// Callers opting out must qualify affected neighbors and enclosing effects separately.
-_NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure, {bool qualifyNeighbors = true, bool clipping = false}) {
+/// Resource-local drawings supply their complete document for global style/layer
+/// validation while geometry and lexical ownership remain local.
+_NativeShapeBundle _shapeBundle(
+  AiNativeDrawing drawing,
+  AiLiveShape shape,
+  AiNativeStructure structure, {
+  bool qualifyNeighbors = true,
+  bool clipping = false,
+  AiNativeDrawing? document,
+}) {
   final AiNativeGroup group = _printingShapeGroup(drawing, shape, clipping: clipping);
   if (!_shapeParameters.containsKey(shape.handler)) {
     throw UnsupportedError('Shape copies require a known native shape handler.');
@@ -68,7 +77,7 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
   final AiNativeInstruction? panel = object.expansion;
   final int start = panel?.start ?? shape.start;
   final AiNativeStructureNode owner = structure.nodeFor(group);
-  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  final AiNativeLayers layers = AiNativeLayers.decode(drawing: document ?? drawing);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
   if (qualifyNeighbors) {
     int boundary = drawing.liveShapes.where((other) => other.isBound && other.end <= start).fold(drawing.records.program.bodyStart, (end, other) => max(end, other.end));
@@ -187,7 +196,7 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
   if (markers != 2) {
     throw UnsupportedError('A copied shape requires exactly one printing/authoring style pair.');
   }
-  final ({Set<String> reads, Set<String> writes}) style = _shapeCopyStyleState(drawing, shape);
+  final ({Set<String> reads, Set<String> writes}) style = _shapeCopyStyleState(document ?? drawing, shape);
   for (final AiNativeResourceUse use in structure.resourceUses.where(
     (use) => use.instruction.start >= start && use.instruction.end <= shape.end || use.instruction.start >= shape.style!.start && use.instruction.end <= shape.style!.end,
   )) {

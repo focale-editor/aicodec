@@ -46,6 +46,9 @@ AiNativeAppearances _editNativeAppearance(
   if (selected.toSet().length != selected.length || replacements.any((replacement) => !identical(replacement.artwork._owner, model))) {
     throw ArgumentError('Appearance expansions require distinct current artwork handles.');
   }
+  if (replacements.any((replacement) => replacement.artwork.resource != null)) {
+    throw UnsupportedError('Resource appearance edits require dependent-instance representation coverage.');
+  }
   if (selected.any((use) => !appearance.uses.contains(use) || !identical(model.resolve(use: use), appearance))) {
     throw UnsupportedError('Each supplied expansion must belong to a uniquely bound user of the selected style.');
   }

@@ -204,7 +204,8 @@ List<AiNativeObjectIdentifier> _nativeObjectIdentifiers(AiNativeRecords records,
 /// Returns qualified commands from the drawing and explicitly native art/styles.
 Iterable<AiNativeInstruction> _structureCommands(AiNativeDrawing drawing) sync* {
   yield* drawing.items.whereType<AiNativeInstruction>();
-  yield* _structureSetupArtwork(drawing.records);
+  final Set<int> local = drawing.items.whereType<AiNativeInstruction>().where((item) => item.start < drawing.records.program.bodyStart).map((item) => item.token.start).toSet();
+  yield* _structureSetupArtwork(drawing.records).where((item) => !local.contains(item.token.start));
   for (final AiNativeContainer record in drawing.records.containers) {
     if (record.type == 'Art') {
       yield* AiNativeArt.decode(records: drawing.records, record: record).items.whereType<AiNativeInstruction>();

@@ -13,6 +13,12 @@ final class AiNativeAppearanceArtwork {
   /// Exact named-style application at the end of the authoring pair.
   final AiNativeResourceUse use;
 
+  /// Enclosing setup declaration, or null for document-body artwork.
+  ///
+  /// Resource coordinates and printing ownership stay local to this declaration.
+  /// Binding does not establish instance dependencies or authorize resource edits.
+  final AiNativeArtworkResource? resource;
+
   /// Authoritative private path or group, separate from its printing expansion.
   final AiNativeItem authoring;
 
@@ -71,6 +77,7 @@ final class AiNativeAppearanceArtwork {
   AiNativeAppearanceArtwork._({
     required this._owner,
     required this.use,
+    required this.resource,
     required this.authoring,
     required this.printingGroup,
     required this.dictionary,

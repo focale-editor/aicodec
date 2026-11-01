@@ -3,24 +3,32 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Resolves a complete source pair without inventing live-shape parameters.
 AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, AiNativeResourceUse use) {
   final AiNativeAppearance? style = model.resolve(use: use);
-  final AiNativeDrawing drawing = model.structure.drawing;
-  final AiProgram program = drawing.records.program;
+  final AiProgram program = model.structure.drawing.records.program;
+  final AiNativeArtworkResource? resource = use.instruction.start < program.bodyStart ? model.artworkResources.forUse(use: use) : null;
   if (!_marker(use.instruction, 1) ||
       style == null ||
       use.versions.isNotEmpty ||
       style.resource.versions.isNotEmpty ||
       use.instruction.isPrivate ||
-      use.instruction.start < program.bodyStart ||
-      use.instruction.end > program.bodyEnd) {
-    throw UnsupportedError('Appearance artwork requires a uniquely resolved unconditional body use.');
+      resource?.isPrivate == true ||
+      use.instruction.start < (resource?.artworkStart ?? program.bodyStart) ||
+      use.instruction.end > (resource?.artworkEnd ?? program.bodyEnd)) {
+    throw UnsupportedError('Appearance artwork requires a uniquely resolved unconditional body or resource use.');
+  }
+  final AiNativeStructure structure = resource?._structure ?? model.structure;
+  final AiNativeDrawing drawing = structure.drawing;
+  final AiNativeInstruction? instruction = drawing.items.whereType<AiNativeInstruction>().where((item) => item.start == use.instruction.start && item.end == use.instruction.end).singleOrNull;
+  if (instruction == null) {
+    throw UnsupportedError('Appearance artwork requires a direct source command outside nested metadata.');
   }
   final AiLiveShape? shape = drawing.liveShapes.where((shape) => shape.end == use.instruction.end).singleOrNull;
   if (shape != null) {
-    final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, model.structure, qualifyNeighbors: false, clipping: true);
-    _nativeAppearanceParents(model.structure, bundle.start, shape.end, shape.appearanceGroup!);
+    final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, structure, qualifyNeighbors: false, clipping: true, document: model.structure.drawing);
+    _nativeAppearanceParents(structure, bundle.start, shape.end, shape.appearanceGroup!, resource: resource);
     return AiNativeAppearanceArtwork._(
       owner: model,
       use: use,
+      resource: resource,
       authoring: shape.path!,
       printingGroup: shape.appearanceGroup!,
       dictionary: shape.dictionary,
@@ -45,7 +53,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
       throw UnsupportedError('Appearance artwork requires one authoritative private contour before its style use.');
     }
   } else if (authoringGroup != null) {
-    final ({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners, List<AiNativePathTopology> contours}) retained = _nativeAppearanceGroup(model, authoringGroup);
+    final ({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners, List<AiNativePathTopology> contours}) retained = _nativeAppearanceGroup(model, structure, authoringGroup);
     metadata.addAll(retained.metadata);
     nestedOwners.addAll(retained.owners);
     contours.addAll(retained.contours);
@@ -96,20 +104,20 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   }
   _printingState(drawing, group, clipping: true);
   _printingPointCounts(drawing, group);
-  final AiNativeStructureNode owner = model.structure.nodeFor(group);
-  for (final AiNativeItem item in [authoring, use.instruction, ?dictionary, ?printingDictionary]) {
-    if (!_sameNativeObjectOwner(owner, model.structure.nodeFor(item))) {
+  final AiNativeStructureNode owner = structure.nodeFor(group);
+  for (final AiNativeItem item in [authoring, instruction, ?dictionary, ?printingDictionary]) {
+    if (!_sameNativeObjectOwner(owner, structure.nodeFor(item))) {
       throw UnsupportedError('Appearance artwork cannot cross lexical owners or version branches.');
     }
   }
   [?dictionary, ?printingDictionary].forEach(_nativeAppearanceDictionary);
   final AiNativeInstruction? expansion = drawing._objects.forSource(group).expansion;
   if (expansion != null &&
-      (expansion.isPrivate || expansion.numbers?.length != 1 || !const {0, 1}.contains(expansion.numbers!.single) || !_sameNativeObjectOwner(owner, model.structure.nodeFor(expansion)))) {
+      (expansion.isPrivate || expansion.numbers?.length != 1 || !const {0, 1}.contains(expansion.numbers!.single) || !_sameNativeObjectOwner(owner, structure.nodeFor(expansion)))) {
     throw UnsupportedError('Appearance artwork has an unqualified outer panel flag.');
   }
   final int start = expansion?.start ?? group.start;
-  _nativeAppearanceParents(model.structure, start, use.instruction.end, group);
+  _nativeAppearanceParents(structure, start, use.instruction.end, group, resource: resource);
   if (_nativeObjectMetadataComments(drawing, start, use.instruction.end)) {
     throw UnsupportedError('Appearance artwork contains unresolved structured comments or payloads.');
   }
@@ -126,10 +134,11 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     }
     commands.add(item);
   }
-  final ({Set<String> reads, Set<String> writes}) state = _nativeLiteralStyleState(drawing, style.resource.definition.source as AiNativeContainer);
+  final ({Set<String> reads, Set<String> writes}) state = _nativeLiteralStyleState(model.structure.drawing, style.resource.definition.source as AiNativeContainer);
   return AiNativeAppearanceArtwork._(
     owner: model,
     use: use,
+    resource: resource,
     authoring: authoring,
     printingGroup: group,
     dictionary: dictionary,
@@ -143,7 +152,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     styleReads: {
       use.instruction.end: state.reads,
       for (final AiNativeResourceUse nested in nestedOwners.keys)
-        nested.instruction.end: _nativeLiteralStyleState(drawing, model.resolve(use: nested)!.resource.definition.source as AiNativeContainer).reads,
+        nested.instruction.end: _nativeLiteralStyleState(model.structure.drawing, model.resolve(use: nested)!.resource.definition.source as AiNativeContainer).reads,
     },
   );
 }
@@ -174,7 +183,7 @@ void _nativeAppearanceDictionary(AiNativeContainer dictionary) {
 }
 
 /// Requires an unconditional pair whose enclosing effects need no new expansion.
-void _nativeAppearanceParents(AiNativeStructure structure, int start, int end, AiNativeGroup group) {
+void _nativeAppearanceParents(AiNativeStructure structure, int start, int end, AiNativeGroup group, {AiNativeArtworkResource? resource}) {
   if (structure.versions.memberships(start: start, end: end).isNotEmpty) {
     throw UnsupportedError('Appearance artwork requires an unconditional source owner.');
   }
@@ -186,10 +195,33 @@ void _nativeAppearanceParents(AiNativeStructure structure, int start, int end, A
       if (enclosing.opening.isPrivate || enclosing.closing.isPrivate || enclosing.opening.operands.isNotEmpty || enclosing.closing.operands.isNotEmpty) {
         throw UnsupportedError('Appearance artwork requires ordinary literal enclosing groups.');
       }
-      _ordinaryObjectFollowing(structure.drawing, enclosing, clipping: true);
+      if (resource == null) {
+        _ordinaryObjectFollowing(structure.drawing, enclosing, clipping: true);
+      } else {
+        _nativeAppearanceResourceParent(structure.drawing, enclosing);
+      }
     } else if (parent.source case final AiLayer layer) {
       final AiNativeLayers layers = AiNativeLayers.decode(drawing: structure.drawing);
       _qualifiedLayerHeader(layers, layers.layerFor(layer));
     }
   }
+}
+
+/// Retains direct resource registration metadata without qualifying parent effects.
+void _nativeAppearanceResourceParent(AiNativeDrawing drawing, AiNativeGroup group) {
+  final AiNativeObject object = drawing._objects.forSource(group);
+  if (object._ownershipIssue case final String issue) {
+    throw UnsupportedError(issue);
+  }
+  if (object.bindingIssue != null && object.dictionary != null) {
+    final AiNativeContainer dictionary = object.dictionary!;
+    _referenceFields(dictionary, {
+      'Bool': {'AI13PatternEnableGuides', 'AI15PixelPerfectSymbolEnablekey'},
+      'Int': {'AI13PatternExportType', 'AI13PatternRegistrationType'},
+      'RealMatrix': {'AI13Pattern9SliceScalingGridKey'},
+      'String': {'AIArtName', 'Object name', 'BBAccumRotation'},
+    });
+    _artboardResourceRotation(dictionary);
+  }
+  _ordinaryPathFollowing(drawing.items, object.end, clipping: true);
 }
