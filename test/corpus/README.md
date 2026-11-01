@@ -60,7 +60,7 @@ python3 tool/verify_native_appearance_edits.py --inkai-source /tmp/extension-ai
 Eight generated transactions cover one isolated user, both users of a shared
 definition and combined part visibility/winding, dual process colors, stroke
 width, dash growth, alignment and saved-label changes, plus isolated and shared
-SimpleStyle process-fill edits. Three further cases cover isolated/shared stack
+SimpleStyle process-fill edits. Three of these cases cover isolated/shared stack
 orders and nested chain/stack orders with simultaneous paint/setting changes.
 The unchanged pinned reader decodes all sixteen complete before/after appearance
 inventories. Pinned synthetic
@@ -76,6 +76,29 @@ explicit scalar resets between the two synthetic users; it does not alter a
 downloaded producer source. The expected delta reconstructs prescribed
 permutations from independently bound original subtrees, retaining every other
 byte and applying the selected scalar changes to the moved source owner.
+
+### Native appearance child lifecycle
+
+```sh
+dart run tool/check_native_appearance_graphs.dart
+python3 tool/verify_native_appearance_graphs.py --inkai-source /tmp/extension-ai
+```
+
+Seven transactions exercise explicit creation, removal, original snapshot copying,
+reparenting, shared updates with nested ordering, private source records and typed
+part creation. The last case creates a chain containing a stack, a dual process
+fill, gray/RGB/CMYK strokes and a conduit. The strokes cover center/inside/outside
+alignment, host labels, opacity, overprint, winding, cap/join/miter, width and
+dashes. These synthetic groups qualify native serialization/state contracts,
+not visual equivalence with a host composition.
+
+The unchanged pinned reader decodes all fourteen complete before/after trees.
+The independent checker pins the original source hash and the exact private-line
+projection, specifies each new descriptor and ownership change, and requires the
+complete expected byte delta. Copies must retain original bytes even when the
+retained source part is edited. Comments and source wrappers remain outside the
+removed child fields. Generated sources and reports stay ignored under
+`output/appearance-graphs`.
 
 ### Complete producer appearance edits
 
@@ -94,7 +117,7 @@ printing group, retaining its expanded black stroke and outgoing state.
 The verifier checks manifest provenance, revision, license, size and SHA-256,
 then independently decodes every before/after style, part and use. Original
 inventories contain 17/143/26 and 18/149/26 styles/parts/uses, respectively. Each
-output adds exactly one six-part style and rebinds one of the existing uses.
+color output adds exactly one six-part style and rebinds one of the existing uses.
 An independently specified complete-file delta allows only the copied style,
 its fill operands, one named use, the matching printing operands and canonical
 bounds spelling. All other bytes must remain exact.
@@ -107,6 +130,14 @@ count conventions and outgoing scalar assignments remain consistent. The exact
 whole-file oracle separately prescribes the copied tree order, rebound name,
 complete supplied group and bounds spelling.
 
+Two further transactions add a cyan fill before the stack's original three
+children, producing a new seven-part style named `Added cyan fill`. Original
+native parts and printing paths remain exact. The host appends a full cyan
+rectangle following the original authoritative contour above the retained ink
+and restores outgoing assignments. The byte oracle requires that precise
+native/printing insertion and one rebound use; the original six-part style is
+unchanged. Every original and new style/part/use is independently decoded.
+
 InkAI's printing projection and Inkscape render each original and edited program
 at width 1200. Color comparisons require identical dimensions, alpha, green and blue channels;
 red may only decrease, with at least 1000 pixels changing by 200 or more. Both
@@ -118,6 +149,11 @@ bounds above the independently decoded original outline. Every RGBA pixel of the
 edited output must match that composition exactly. Both fixtures lighten 1,308
 edge pixels. Alpha also changes at antialiased edges, as required by the new
 layering; it is checked against the reference instead of the previous image.
+For fill creation, a separate reference keeps both original fill and stroke and
+appends a cyan rectangle at the same authoritative bounds. All RGBA pixels must
+match. Both fixtures change 44,274 pixels: green and blue change at 1,308 edge
+pixels and alpha at 874, all within the red-change region. This checks creation
+of an additional fill without confusing it with replacement of the old fill.
 Generated sources, SVG/PNG renders, difference images and the independent report remain ignored under
 `output/appearance-producers`.
 

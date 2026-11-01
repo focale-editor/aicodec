@@ -2,8 +2,15 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Proves uniform explicit scalar assignments unchanged by pure permutations.
 Set<String> _nativeAppearanceOrderState(AiNativeAppearance appearance, List<AiNativeAppearancePartChange> changes, Set<String> reads) {
-  if (changes.any((change) => change.childOrder == null || change.visible != null || change.evenOdd != null || change.strokeAlignment != null) ||
-      appearance.parts.any((part) => part.visible != true)) {
+  if (changes.any((change) => change.childOrder == null || change.visible != null || change.evenOdd != null || change.strokeAlignment != null)) {
+    return {};
+  }
+  return _nativeAppearanceScalarState(appearance, reads).keys.toSet();
+}
+
+/// Returns uniform explicit noncolor outputs of an entirely visible appearance.
+Map<String, AiNativeInstruction> _nativeAppearanceScalarState(AiNativeAppearance appearance, Set<String> reads) {
+  if (appearance.parts.any((part) => part.visible != true)) {
     return {};
   }
   final Map<String, List<AiNativeInstruction>> assignments = {};
@@ -21,7 +28,7 @@ Set<String> _nativeAppearanceOrderState(AiNativeAppearance appearance, List<AiNa
     for (final MapEntry<String, List<AiNativeInstruction>> entry in assignments.entries)
       if (entry.value.every((command) => _sameNativeArtworkState(command, entry.value.first)) &&
           (entry.key != 'XR' || appearance.parts.where((part) => part.kind == .fill).every((part) => part.evenOdd == (entry.value.first.numbers!.single == 1))))
-        entry.key,
+        entry.key: entry.value.first,
   };
 }
 

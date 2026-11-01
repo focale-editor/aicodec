@@ -93,12 +93,6 @@ AiNativeAppearances _editNativeAppearance(
       if (_nativeArtworkStateKey(change.assignment.instruction) case final String key) key else ...state.writes,
     if (parts.isNotEmpty) ...{...state.writes, 'XR'},
   };
-  if (paints.isEmpty) {
-    changedState.removeAll(_nativeAppearanceOrderState(appearance, parts, state.reads));
-  }
-  _shapeFollowingDependencies(drawing, bundles, {
-    for (final _NativeShapeBundle bundle in bundles) bundle.shape: (bundle: bundle, prefix: [], suffix: [], unresolved: changedState, printingUnresolved: {}, discard: false),
-  });
   final AiNativeDrawing result = AiNativeDrawing.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: program, edits: edits),
@@ -107,7 +101,21 @@ AiNativeAppearances _editNativeAppearance(
   if (result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => drawing.liveShapes[entry.$1].isBound && !entry.$2.isBound)) {
     throw const FormatException('Appearance changes disrupted native authoring or printing ownership.');
   }
-  return AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: result));
+  final AiNativeAppearances updated = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: result));
+  if (parts.any((change) => change.children != null)) {
+    final AiNativeAppearance changed = updated.styles.singleWhere((style) => _sameNativeBytes(style.resource.nameBytes, nameBytes ?? appearance.resource.nameBytes));
+    final ({Set<String> reads, Set<String> writes}) next = _nativeLiteralStyleState(result, changed.resource.definition.source as AiNativeContainer);
+    changedState.addAll(next.writes);
+    final Map<String, AiNativeInstruction> before = _nativeAppearanceScalarState(appearance, state.reads);
+    final Map<String, AiNativeInstruction> after = _nativeAppearanceScalarState(changed, next.reads);
+    changedState.removeWhere((key) => before.containsKey(key) && after.containsKey(key) && _sameNativeArtworkState(before[key], after[key]));
+  } else if (paints.isEmpty) {
+    changedState.removeAll(_nativeAppearanceOrderState(appearance, parts, state.reads));
+  }
+  _shapeFollowingDependencies(drawing, bundles, {
+    for (final _NativeShapeBundle bundle in bundles) bundle.shape: (bundle: bundle, prefix: [], suffix: [], unresolved: changedState, printingUnresolved: {}, discard: false),
+  });
+  return updated;
 }
 
 /// Binds every change to an exact selected field before writing numeric tokens.
@@ -169,6 +177,14 @@ List<AiSourceEdit> _nativeAppearanceChanges(AiNativeAppearances model, AiNativeA
       }
       flag(part.parameters?['StrokeOffsetInside'], part.strokeAlignment == null ? null : part.strokeAlignment == .inside, alignment == .inside);
     }
+  }
+  if (parts.any((change) => change.children != null)) {
+    return _NativeAppearanceGraphEditor(
+      appearance: appearance,
+      records: model.structure.drawing.records,
+      changes: {for (final AiNativeAppearancePartChange change in parts) change.part: change},
+      scalarEdits: edits,
+    ).build();
   }
   return _nativeAppearanceOrderEdits(model, appearance, parts, edits);
 }

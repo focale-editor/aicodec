@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:aikit/aikit.dart';
 
+import '../test/ai_native_appearance_graph_test.dart' show newAppearanceFill;
 import 'check_native_appearances.dart' show appearanceInventory;
 
 /// Host-authored white and cyan alternatives, without kit-side color conversion.
@@ -49,6 +50,36 @@ AiNativePrintingGroupReplacement _orderedPrinting(AiNativeSource source, AiNativ
   return AiNativePrintingGroupReplacement(
     shape: shape,
     bytes: latin1.encode('u\n0 O\n0 1 0 0 0 Xy\n0 J 0 j 1 w 10 M []0 d\n0 XR\n0 Ae\n$outline\n${counted ? '4 As\n' : ''}0 D\n0 0 0 0 1 1 1 Xa\n$geometry\nf\n$outgoing\n1 D\nU'),
+    bounds: source.asPostScript().boundingBox!,
+  );
+}
+
+/// Composes a new cyan fill above all existing ink without changing old paths.
+AiNativePrintingGroupReplacement _addedPrinting(AiNativeSource source, AiNativeDrawing drawing, AiLiveShape shape) {
+  final AiNativeGroup group = shape.appearanceGroup!;
+  final AiNativeGroup stroke = drawing.groups.singleWhere((candidate) => candidate.compound && candidate.start > group.start && candidate.end < group.end);
+  final AiNativeInstruction black = drawing.items.whereType<AiNativeInstruction>().singleWhere((item) => item.operator == 'Xa' && item.start > stroke.start && item.end < stroke.end);
+  final bool counted = drawing.items.whereType<AiNativeInstruction>().any((item) => item.operator == 'As' && item.start > group.start && item.end < group.end);
+  final AiProgram program = drawing.records.program;
+  final String outgoing = latin1.decode(program.bytes.sublist(black.start, black.end));
+  final String geometry = shape.path!.geometry.map((command) => '${command.operands.map((operand) => operand.lexeme).join(' ')} ${command.operator}').join('\n');
+  if (program.bytes[group.end - 1] != 85) {
+    throw StateError('The source printing group must end in its closing U operator.');
+  }
+  return AiNativePrintingGroupReplacement(
+    shape: shape,
+    bytes: AiNativeEditor.copyRange(
+      program: program,
+      start: group.start,
+      end: group.end,
+      edits: [
+        AiSourceEdit(
+          start: group.end - 1,
+          end: group.end - 1,
+          bytes: latin1.encode('0 O\n0 1 0 0 0 Xy\n0 XR\n${counted ? '4 As\n' : ''}0 D\n${_cyan.join(' ')} Xa\n$geometry\nf\n$outgoing\n1 D\n'),
+        ),
+      ],
+    ),
     bounds: source.asPostScript().boundingBox!,
   );
 }
@@ -102,8 +133,23 @@ Future<void> main() async {
       printing: [_orderedPrinting(source, drawing, shape)],
       nameBytes: latin1.encode('Fill above stroke'),
     );
+    final AiNativeAppearances added = model.updateSelected(
+      appearance: style,
+      parts: [
+        AiNativeAppearancePartChange(
+          part: stack,
+          children: [
+            AiNativeAppearanceChild.create(definition: newAppearanceFill()),
+            for (final int index in stack.childIndices) AiNativeAppearanceChild.retain(part: style.parts[index]),
+          ],
+        ),
+      ],
+      printing: [_addedPrinting(source, drawing, shape)],
+      nameBytes: latin1.encode('Added cyan fill'),
+    );
     await File('${output.path}/$name.selected.ps').writeAsBytes(changed.structure.drawing.records.program.bytes);
     await File('${output.path}/$name.ordered.ps').writeAsBytes(ordered.structure.drawing.records.program.bytes);
+    await File('${output.path}/$name.added.ps').writeAsBytes(added.structure.drawing.records.program.bytes);
     rows.add({
       'file': name,
       'selectedShapes': selected.map(drawing.liveShapes.indexOf).toList(),
@@ -113,8 +159,9 @@ Future<void> main() async {
       'before': {'source': '$name.before', ...appearanceInventory(model)},
       'after': {'source': '$name.selected', ...appearanceInventory(changed)},
       'ordered': {'source': '$name.ordered', ...appearanceInventory(ordered)},
+      'added': {'source': '$name.added', ...appearanceInventory(added)},
     });
-    stdout.writeln('$name: fill and order edits, ${selected.length} users, ${model.styles.length}/${changed.styles.length} styles');
+    stdout.writeln('$name: fill, order and creation edits, ${selected.length} users, ${model.styles.length}/${changed.styles.length} styles');
   }
   await File('${output.path}/report.json').writeAsString('${const JsonEncoder.withIndent('  ').convert(rows)}\n');
 }

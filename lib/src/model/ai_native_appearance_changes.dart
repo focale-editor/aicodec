@@ -55,6 +55,14 @@ final class AiNativeAppearancePartChange {
   /// parts. Paint and setting edits in moved descendants use the original handles.
   final List<AiNativeAppearancePart>? childOrder;
 
+  /// Complete replacement children for a stack or chain.
+  ///
+  /// Omitted children are removed; retained handles may move between changed
+  /// parents but must occur once in the resulting tree. Copies retain their
+  /// original snapshot, independently of edits to the retained source part.
+  /// This is mutually exclusive with [childOrder].
+  final List<AiNativeAppearanceChild>? children;
+
   /// Captures an explicit change; missing fields are not filled with defaults.
   AiNativeAppearancePartChange({
     required this.part,
@@ -63,10 +71,15 @@ final class AiNativeAppearancePartChange {
     this.strokeAlignment,
     List<int>? alignmentLabelBytes,
     List<AiNativeAppearancePart>? childOrder,
+    List<AiNativeAppearanceChild>? children,
   }) : alignmentLabelBytes = alignmentLabelBytes == null ? null : List.unmodifiable(alignmentLabelBytes),
-       childOrder = childOrder == null ? null : List.unmodifiable(childOrder) {
-    if (visible == null && evenOdd == null && strokeAlignment == null && childOrder == null) {
+       childOrder = childOrder == null ? null : List.unmodifiable(childOrder),
+       children = children == null ? null : List.unmodifiable(children) {
+    if (visible == null && evenOdd == null && strokeAlignment == null && childOrder == null && children == null) {
       throw ArgumentError('An appearance part change requires a supplied setting.');
+    }
+    if (children != null && childOrder != null) {
+      throw ArgumentError('Appearance children and childOrder cannot be combined on one parent.');
     }
     if (alignmentLabelBytes != null && (strokeAlignment == null || alignmentLabelBytes.any((byte) => byte < 0 || byte > 255))) {
       throw ArgumentError('An alignment label requires an alignment change and native byte data.');

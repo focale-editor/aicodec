@@ -2452,7 +2452,7 @@ an empty solid-stroke array. Numeric-token edits preserve intervening comments a
 private prefixes. `AiNativeAppearancePartChange` selects explicit saved visibility,
 fill winding or inside/outside stroke alignment. Missing fields are not silently
 inserted. Switching between a built-in centered stroke and an offset-stroke filter
-requires a different graph contract. If an offset stroke has a `DisplayString`,
+requires replacing that child through the graph contract below. If an offset stroke has a `DisplayString`,
 an alignment change must also supply `alignmentLabelBytes` in its source encoding;
 the kit does not invent or translate a label.
 
@@ -2464,6 +2464,33 @@ snapshot, from inner to outer owners. Comments and private prefixes inside moved
 records follow their subtrees; field separators and surrounding bytes remain in
 their source slots. Reordering across different ordinary/private start or end
 boundaries rejects. Missing, duplicate, foreign or indirect children also reject.
+
+`AiNativeAppearancePartChange.children` instead replaces a stack or chain's
+complete ordered child list. It is mutually exclusive with `childOrder` on that
+parent. Each `AiNativeAppearanceChild` explicitly retains a current handle,
+copies its original source snapshot, or creates an authored
+`AiNativeAppearancePartDefinition`. Omitted children are removed. Retained
+subtrees may move between changed parents, including out of a removed ancestor,
+but each retained handle must occur once. Cycles, duplicate ownership, foreign
+handles and changes targeting removed parts or source-only copies reject.
+Copies do not inherit simultaneous edits to the retained original. Nested
+child replacements, permutations and scalar edits compose in one transaction.
+
+New definitions support fills, strokes, stacks, chains and conduits. Paints
+require one explicit gray/RGB/CMYK color or authored CMYK and RGB alternatives;
+the kit performs no conversion. Paint defaults explicitly encode normal blend,
+full opacity, nonzero winding and no overprint. Strokes also encode width,
+cap/join/miter, dash lengths and phase. Inside/outside strokes serialize offset
+descriptors and require host-supplied display-label bytes; centered strokes use
+the built-in descriptor. New compound parts own their complete child lists.
+Unsupported kinds, misplaced settings and invalid numeric/color payloads reject.
+
+Lifecycle changes require a uniformly ordinary or private execution tree. The
+writer retains original subtree bytes and comments around removed child fields,
+adds only the required field syntax and preserves private line prefixes.
+Expansion depth, visited children, dash operands and intermediate/output byte
+sizes are bounded before publishing a new snapshot. Final parsing still enforces
+the native grammar and aggregate limits.
 
 Every affected user requires an `AiNativePrintingGroupReplacement`, including
 host-computed ink bounds. The existing complete-group contract validates owned
@@ -2481,6 +2508,11 @@ read an inherited value for that scalar. Winding also requires each fill's saved
 `UseEvenOdd` to agree with the literal `XR` value. Missing/hidden parts, divergent
 assignments and combined paint/flag edits do not receive this proof. Fill and
 stroke colors remain unresolved because order can affect their outgoing values.
+For lifecycle changes, new assignments join the changed-state set, even when
+the original parent was empty. A noncolor scalar is proved unchanged only when
+the original and resulting trees both satisfy the uniform explicit-state proof
+and their assigned values agree. Newly introduced or removed settings cannot
+silently become inherited state for following artwork.
 Enclosing applied appearances, unknown selected effects/parameters, ambiguous or
 conditional styles, stale/foreign handles, duplicate changes, captured names,
 incomplete shared-use coverage and conflicting supplied groups reject atomically.
@@ -2502,6 +2534,18 @@ the existing inside-stroke expansion below a white rectangle following the
 authoritative native contour. All output pixels match an independent SVG
 composition of the original outline and that rectangle; the changed edge
 antialiasing is retained rather than mistaken for unchanged alpha.
+Seven further synthetic transactions independently check creation, removal,
+original snapshot copying, reparenting, shared updates with nested permutations,
+private records and all five authored part kinds. Gray/RGB/CMYK strokes include
+center/inside/outside alignment, opacity, overprint, winding and dash settings.
+Every tree and complete-file byte delta is checked. These synthetic host groups
+exercise serialization/state contracts, not visual equivalence.
+Two additional complete-producer transactions prepend a new cyan fill to the
+original stack. Every original part and printing path stays exact; the supplied
+group adds one full authoritative rectangle above the original ink and restores
+outgoing state. All RGBA pixels match an independently composed cyan SVG
+rectangle above the original fill and stroke. Each copied style has seven parts,
+while its original six-part definition remains untouched.
 These tests do not qualify Adobe reopening or arbitrary appearance rendering.
 Shared edits of those complete programs still reject conditional setup
 inventories; other programs with following `AI11Text` owners require a separate
@@ -2753,7 +2797,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, nested stack/chain reordering and process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | Explicit fields and existing numeric layouts only; other user families, part creation/removal/reparenting and global complete-producer editing remain incomplete. Two complete producer programs qualify selected process-fill and stack-order edits. No effect execution or composed defaults. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Other user families and global complete-producer editing remain incomplete. Two complete producer programs qualify selected process-fill, stack-order and fill-creation edits. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

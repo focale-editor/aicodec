@@ -1119,12 +1119,31 @@ isolation and relative placement. General appearance editing remains incomplete.
   lightens 1,308 edge pixels. The expected antialiasing/alpha change is checked
   against that reference, while unselected artwork and native subtrees remain
   exact. This does not establish Adobe UI reopening or arbitrary effect output.
-  Non-live-shape uses, part creation/removal/reparenting and broader
+  `AiNativeAppearancePartChange.children` now replaces complete child lists with
+  explicit retained handles, original snapshot copies and new immutable part
+  definitions. It supports creation/removal/reparenting, extraction from removed
+  ancestors and nested changes, while rejecting cycles, duplicate ownership,
+  foreign handles and edits targeting removed/source-only parts. New process
+  fills/strokes, stacks/chains and conduits have explicit settings; offset strokes
+  require host label bytes. Source comments/private prefixes and copied subtrees
+  remain exact. Expansion and parsing remain bounded. Newly introduced state
+  is checked against following artwork; unchanged scalar proofs compare both
+  original and resulting trees. Twelve regressions cover these contracts.
+  Seven independent synthetic transactions verify all original/edited trees and
+  the exact complete-file delta, including all authored kinds and process stroke
+  spaces/alignment/settings. Two additional complete-producer transactions create
+  a cyan fill above each original stack. Original native parts and printing paths
+  remain exact, the copied styles grow from six to seven parts, and every output
+  RGBA pixel matches a separate SVG composition above the original fill/stroke.
+  The creation changes 44,274 pixels per fixture, including 1,308 green/blue edge
+  pixels and 874 alpha samples. These checks qualify the supplied expansions;
+  the synthetic lifecycle groups qualify serialization/state, not visual output.
+  Non-live-shape uses and broader
   complete-producer acceptance remain open. Shared edits of these two sources
   still reject conditional setup inventories; other complete CC sources still
   reject unresolved state consumed by following `AI11Text` owners.
-  Validation: 990 VM/989 Node tests, eight synthetic appearance edits and
-  four complete producer transactions pass. The producer generator also requires
+  Validation: 1002 VM/1001 Node tests, fifteen synthetic appearance edits and
+  six complete producer transactions pass. The producer generator also requires
   the two explicit shared-edit refusals. The 98-style/834-part/135-use inventory
   and capability checks on all 37 pinned sources passed in the previous increment;
   those inspection contracts are unchanged. Formatting, analysis, fix dry-run,

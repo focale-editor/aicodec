@@ -15,6 +15,7 @@ from PIL import Image, ImageChops
 
 from corpus_support import REVISION
 from verify_native_appearance_edits import replace_once, string
+from verify_native_appearance_graphs import NEW_FILL, patch
 from verify_native_appearances import verify
 from verify_native_printing import render
 
@@ -23,15 +24,39 @@ WHITE = b'0 0 0 0 1 1 1 Xa'
 CYAN = b'1.0 0.0 0.0 0.0 0.0 1.0 1.0 Xa'
 
 
-def expected(data, row, ordered=False):
+def added_children(data, parts):
+    """Insert one new top paint while retaining every old subtree verbatim."""
+    stack = parts[1]
+    start, end = stack['record']
+    assert stack['children'] == [2, 3, 4]
+    values = [NEW_FILL, *(data[slice(*parts[index]['record'])] for index in (2, 3, 4))]
+    insertion = parts[2]['record'][0] - start
+    edits = [(insertion, insertion, b''.join(value + b' /Part ,\n' for value in values))]
+    for index in (2, 3, 4):
+        first, last = parts[index]['record']
+        field = re.match(rb'\s*(/Part)\s*(,?)', data[last:end])
+        assert field
+        edits.append((first - start, last - start, b''))
+        for group in (1, 2):
+            first, final = field.span(group)
+            if final > first:
+                edits.append((last + first - start, last + final - start, b''))
+    return patch(data[start:end], edits)
+
+
+def expected(data, row, mode='fill'):
     """Specify exact changes after independently binding all inventory spans."""
     assert row['selectedShapes'] == [0] and row['style'] == 9 and row['part'] == 4
     style = row['before']['styles'][9]
     assert bytes(style['name']) == b'Anon amY4LCj5JfA=' and style['uses'] == [21]
     start, end = style['record']
-    name = b'Fill above stroke' if ordered else b'Selected cyan'
+    name = {'fill': b'Selected cyan', 'ordered': b'Fill above stroke', 'added': b'Added cyan fill'}[mode]
     copy = data[start:end]
-    if ordered:
+    if mode == 'added':
+        parts = style['parts']
+        first, last = parts[1]['record']
+        copy = copy[:first - start] + added_children(data, parts) + copy[last - start:]
+    elif mode == 'ordered':
         parts = style['parts']
         assert parts[1]['children'] == [2, 3, 4]
         assert parts[2]['strokeAlignment'] == 'inside' and parts[4]['visible']
@@ -50,7 +75,7 @@ def expected(data, row, ordered=False):
     assert foreground.count(WHITE) == 1
     color = body + foreground.index(WHITE)
     edits = [(end, end, b'\n' + copy + b'\n'), (*use['span'], b'1 ' + string(name) + b' XW')]
-    if ordered:
+    if mode != 'fill':
         group_start = body + foreground.index(b'\nu\n') + 1
         group_end = group_start + data[group_start:use['span'][0]].index(b'\nU\n%_/ArtDictionary') + 2
         group = data[group_start:group_end]
@@ -60,7 +85,11 @@ def expected(data, row, ordered=False):
         # Bind the supplied rectangle to its original private authoritative path.
         assert b'%_' + geometry.replace(b'\n', b'\n%_') + b'\n%_n' in data[group_end:use['span'][0]]
         count = b'4 As\n' if b'4 As\n' in group else b''
-        replacement = b'u\n0 O\n0 1 0 0 0 Xy\n0 J 0 j 1 w 10 M []0 d\n0 XR\n0 Ae\n' + outline + b'\n' + count + b'0 D\n' + WHITE + b'\n' + geometry + b'\nf\n' + black + b'\n1 D\nU'
+        if mode == 'added':
+            assert group.endswith(b'\nU')
+            replacement = group[:-1] + b'0 O\n0 1 0 0 0 Xy\n0 XR\n' + count + b'0 D\n' + CYAN + b'\n' + geometry + b'\nf\n' + black + b'\n1 D\nU'
+        else:
+            replacement = b'u\n0 O\n0 1 0 0 0 Xy\n0 J 0 j 1 w 10 M []0 d\n0 XR\n0 Ae\n' + outline + b'\n' + count + b'0 D\n' + WHITE + b'\n' + geometry + b'\nf\n' + black + b'\n1 D\nU'
         edits.append((group_start, group_end, replacement))
     else:
         edits.append((color, color + len(WHITE), CYAN))
@@ -72,17 +101,19 @@ def expected(data, row, ordered=False):
     return data
 
 
-def order_reference(original, output):
+def order_reference(original, output, added=False):
     """Compose the known opaque rectangle above the original inside-stroke ink."""
     tree = etree.parse(output / f'{original.name}.svg')
     group, = tree.xpath('/*[local-name()="svg"]/*[local-name()="g"]/*[local-name()="g"][1]')
     fill, stroke = list(group)
     assert fill.get('d') == 'M 269.5 398.5 L 269.5 149.5 L 718.5 149.5 L 718.5 398.5 L 269.5 398.5 Z'
     assert 'fill:#ffffff' in fill.get('style') and 'fill:#000000' in stroke.get('style')
-    group.remove(fill)
-    rectangle = etree.SubElement(group, '{http://www.w3.org/2000/svg}rect', x='269', y='149', width='450', height='250', style=fill.get('style'))
+    if not added:
+        group.remove(fill)
+    style = fill.get('style').replace('fill:#ffffff', 'fill:#00ffff') if added else fill.get('style')
+    rectangle = etree.SubElement(group, '{http://www.w3.org/2000/svg}rect', x='269', y='149', width='450', height='250', style=style)
     assert rectangle.getprevious() is stroke
-    svg = output / f'{original.name}.order-reference.svg'
+    svg = output / f'{original.name}.{"added" if added else "order"}-reference.svg'
     png = svg.with_suffix('.png')
     svg.write_bytes(etree.tostring(tree))
     subprocess.run(['inkscape', str(svg), '--export-type=png', '--export-width=1200', f'--export-filename={png}'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -116,12 +147,15 @@ def main():
         original = args.output / f'{name}.before.ps'
         changed = args.output / f'{name}.selected.ps'
         ordered = args.output / f'{name}.ordered.ps'
+        added = args.output / f'{name}.added.ps'
         assert original.read_bytes() == data
         verify(inkai, args.output, row['before'], expected=counts)
         verify(inkai, args.output, row['after'], expected=(counts[0] + 1, counts[1] + 6, counts[2]))
         verify(inkai, args.output, row['ordered'], expected=(counts[0] + 1, counts[1] + 6, counts[2]))
+        verify(inkai, args.output, row['added'], expected=(counts[0] + 1, counts[1] + 7, counts[2]))
         assert changed.read_bytes() == expected(data, row)
-        assert ordered.read_bytes() == expected(data, row, ordered=True)
+        assert ordered.read_bytes() == expected(data, row, mode='ordered')
+        assert added.read_bytes() == expected(data, row, mode='added')
         before, after = render(inkai, original, args.output), render(inkai, changed, args.output)
         assert before.size == after.size
         # White-to-cyan removes red only. Unchanged alpha and green/blue prove
@@ -145,7 +179,18 @@ def main():
         order_pixels = sum(lighter.histogram()[1:])
         assert order_pixels > 500, 'The opaque top fill did not cover the original inside stroke'
         lighter.save(args.output / f'{name}.ordered.difference.png')
-        results.append(dict(file=name, changedPixels=changed_pixels, changedBounds=difference.getbbox(), orderChangedPixels=order_pixels, orderChangedBounds=lighter.getbbox(), styles=counts[0] + 1, parts=counts[1] + 6, uses=counts[2], sharedRejection=row['sharedRejection']))
+        created = render(inkai, added, args.output)
+        reference = order_reference(original, args.output, added=True)
+        assert created.size == reference.size and created.tobytes() == reference.tobytes(), 'Created printing differs from the independent SVG composition'
+        delta = ImageChops.difference(before, created)
+        # The new full cyan rectangle covers the original fill and inner stroke;
+        # compare all RGBA samples, including antialiased edge coverage changes.
+        created_pixels = sum(pixel != (0, 0, 0, 0) for pixel in delta.get_flattened_data())
+        assert created_pixels == changed_pixels == 44274
+        assert sum(delta.getchannel('G').histogram()[1:]) == sum(delta.getchannel('B').histogram()[1:]) == order_pixels == 1308
+        assert sum(delta.getchannel('A').histogram()[1:]) == 874
+        delta.save(args.output / f'{name}.added.difference.png')
+        results.append(dict(file=name, changedPixels=changed_pixels, changedBounds=difference.getbbox(), orderChangedPixels=order_pixels, orderChangedBounds=lighter.getbbox(), createdChangedPixels=created_pixels, createdChangedBounds=delta.getbbox(alpha_only=False), styles=counts[0] + 1, parts=counts[1] + 6, createdParts=counts[1] + 7, uses=counts[2], sharedRejection=row['sharedRejection']))
         print(name, 'passed', flush=True)
     (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, outcomes=results), indent=2) + '\n')
 
