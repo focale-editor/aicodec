@@ -201,7 +201,7 @@ void main() {
     check(() => malformed.reorder(artboards: malformed.artboards.reversed.toList(), cropBounds: null)).throws<FormatException>();
   });
 
-  test('rejects populated text families and unknown ATE owners in either snapshot', () {
+  test('rejects incomplete text objects and unknown ATE owners in either snapshot', () {
     for (final PsEngineDictionary engine in [
       emptyArtboardTextEngine(
         objects: {

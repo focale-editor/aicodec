@@ -1,7 +1,14 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies unchanged geometry without granting its children independent edits.
-void _artboardArtworkInterval(AiNativeLayers layers, int start, int end, Map<int, AiNativeLayer> headers) {
+void _artboardArtworkInterval(
+  AiNativeLayers layers,
+  int start,
+  int end,
+  Map<int, AiNativeLayer> headers, {
+  required Set<AiNativeContainer> textOwners,
+  required Map<AiNativeInstruction, AiNativeResourceUse> styles,
+}) {
   final AiNativeDrawing drawing = layers.drawing;
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in _pathInterval(drawing.paths, start, end, (path) => path.start)) path.start: path};
   final Map<int, AiNativeGroup> groups = {for (final AiNativeGroup group in drawing.groups.where((group) => group.start >= start && group.start < end)) group.start: group};
@@ -32,7 +39,7 @@ void _artboardArtworkInterval(AiNativeLayers layers, int start, int end, Map<int
       }
       continue;
     }
-    if (_ordinaryObjectAttachment(drawing, item)) {
+    if (_ordinaryObjectAttachment(drawing, item) || textOwners.contains(item)) {
       if (count != null) {
         throw UnsupportedError('A retained point count crosses object metadata.');
       }
@@ -56,6 +63,12 @@ void _artboardArtworkInterval(AiNativeLayers layers, int start, int end, Map<int
         throw const FormatException('Invalid retained native point count.');
       }
       count = item;
+    } else if (item.operator == 'XW') {
+      _artboardRetainedStyleUse(item, styles[item]);
+    } else if (item.operator == 'Xd') {
+      if (item.isPrivate || item.numbers?.length != 2 || item.numbers!.any((value) => value != 0 && value != 1)) {
+        throw UnsupportedError('Retained fill/stroke flags require ordinary literal Booleans.');
+      }
     } else if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Artboard dependency inspection does not cover ${item.operator}.');
     }
@@ -73,6 +86,20 @@ void _artboardArtworkInterval(AiNativeLayers layers, int start, int end, Map<int
     (token) => token.kind == .data || token.kind == .comment && !wrappers.contains(token.start) && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')),
   )) {
     throw UnsupportedError('Retained artwork contains unresolved annotations or opaque payloads.');
+  }
+}
+
+/// Resolves unchanged style uses without applying their paints or effects.
+void _artboardRetainedStyleUse(AiNativeInstruction command, AiNativeResourceUse? reference) {
+  if (command.isPrivate || command.operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(command.operands.last.kind)) {
+    throw UnsupportedError('Retained styles require ordinary literal references.');
+  }
+  final num? mode = command.operands.first.number;
+  if (mode == 6 && aiStringBytes(command.operands.last).isEmpty) {
+    return;
+  }
+  if (mode != 1 || reference?.resolution != .resolved) {
+    throw UnsupportedError('Retained style assignments require one resolved setup definition.');
   }
 }
 

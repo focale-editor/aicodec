@@ -1454,15 +1454,27 @@ RGB/CMYK registration colors. These are preserved declarations, not permission t
 execute plug-ins, edit symbol instances or synthesize artwork.
 
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
-retained when both compact ATE payloads have no stories or frames and no drawing
-text references exist. Their unused font/typography resources remain in their
-own namespace; the global text ruler origin must be explicit and is unchanged.
+retained with compact ATE versions 7 and 9. Point, area and path frames use
+explicit canvas geometry; story frame lists and cached frame references resolve
+within the selected snapshot. Ordinary unconditional `AI11Text` records select
+the main or undo-free story/frame namespace explicitly. An empty or missing
+undo-free model cannot satisfy a reference to that model. Linked frames retain
+their original order and transforms. Fonts, typography and composition caches
+remain byte-identical; the global text ruler origin must be explicit and is unchanged.
 Template-box, page-origin and canvas-scale declarations remain exact, even when
 the first board moves or changes size. Binary bytes and node counts share bounds
-across both snapshots. Unknown engine owners, opaque tokens, populated text,
-conditional/ambiguous wrappers, dangling display-list indices and unknown setup
-or artwork dependencies reject. The qualified text payloads are retained as
-unused data; this does not establish a populated-text lifecycle contract.
+across both snapshots. Area/path drawing references require an owned unpainted
+confinement curve with literal `X=`/`X+` boundaries, checked point counts and
+qualified rotation metadata. Direct text identities and names are preserved.
+Literal style assignments must resolve to a setup definition; empty mode-six
+style resets and ordinary Boolean fill/stroke flags are retained without applying
+their paints.
+
+Unknown engine owners, frame categories, cached node tags/fields, opaque tokens,
+conditional/ambiguous wrappers, dangling story/frame/display indices and unknown
+setup or artwork dependencies reject. Named CS text schemas and live-shape,
+painted or executable confinements remain unqualified here. Retaining populated
+text does not grant creation/deletion of stories, frame reflow or cache regeneration.
 Artwork identity deletion retains its separate, stricter reference qualification.
 
 The retained body may contain ordinary compound paths (`*u`/`*U`) and clipping
@@ -1479,8 +1491,8 @@ editing of the compound/clip children.
 The operations edit native data only: host-supplied compatibility pages and
 cached headers must also be synchronized before a complete save. The save APIs now
 update qualified PDF `AIMetaData` header copies and accept explicit PDF page
-mappings as described above. Broader artboard isolation for populated text and
-complex resource/object families remains in the open roadmap task.
+mappings as described above. Broader artboard isolation for unqualified text
+profiles and complex setup resource/object families remains in the open roadmap task.
 
 Nine regressions cover independent state, multiple owners, exact source changes,
 explicit crop/origin choices, CC pairs/resources, malformed input, conditional
@@ -1513,6 +1525,18 @@ fixture is synthetic and checksum-pinned; all six outcomes also retain the exact
 independently parsed drawing commands, including one compound, two clipping
 groups, three mask paths and five point counts. These checks do not qualify a
 real Adobe-produced clipped document or editable compound/clip topology.
+
+Nine populated-text regressions cover both compact versions, point/area/path
+frames, linked references, independent undo-free namespaces, a mapped PDF save,
+malformed/opaque dependencies and original depth/node limits. Independent checks
+verify 24 native artboard edits in six checksum-pinned carriers. Four carriers
+copy the exact ATE snapshots, origins, drawing references, confinement geometry
+and attached metadata from pinned CC files; two synthetic carriers exercise
+main/undo-free ownership. The independent parser compares all copied text with
+the original producers and all outcomes, including 16 frames across ten stories
+in `text_transforms.ai`. These isolate the retained-text contract: they do not
+qualify artboard edits of the full producer files, whose gradient banks and other
+complex setup dependencies still reject. Adobe reopening remains unqualified.
 
 ### Native print selections during artboard edits
 
@@ -2073,7 +2097,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only; artboard-specific isolation and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text can remain unchanged with resolved point/area/path frame references; complex setup-resource isolation and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

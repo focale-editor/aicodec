@@ -3,11 +3,18 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Qualifies retained owners separately from artwork identity deletion.
 void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: model.records));
+  final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
+  final Map<AiNativeInstruction, AiNativeResourceUse> styles = {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction: use};
   // The retained-body checker owns every interval outside each complete pair.
-  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(layers, _layerHeaderItems(layers), inspect: _artboardArtworkInterval, qualifyShapeNeighbors: false);
+  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
+    layers,
+    _layerHeaderItems(layers),
+    inspect: (model, start, end, headers) => _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: styles),
+    qualifyShapeNeighbors: false,
+  )..addAll(text.objects);
   final List<({int start, int end})> independent = _referenceGradientRanges(layers);
   independent.addAll(_artboardSetupRanges(layers));
-  independent.addAll(_artboardEmptyTextScope(layers));
+  independent.addAll(text.ranges);
   for (final AiNativeContainer record in model.records.roots.where((record) => !dictionaries.contains(record))) {
     switch (record.type) {
       case 'KnownStyle':

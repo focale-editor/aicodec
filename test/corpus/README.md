@@ -723,6 +723,27 @@ dart run tool/check_native_artboard_lifecycle.dart
 python3 tool/verify_native_artboard_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+The retained-text suite checks 24 artboard transactions in six checksum-pinned
+carriers. Four copy exact text setup blocks, global origins, drawing references,
+confinement curves and attached metadata from `simple_cc_legacy.ai`,
+`simple_v2020.ai`, `text_transforms.ai` and `flowtext.ai`, already pinned in
+`manifest.json`. Two synthetic sources exercise separate main/undo-free model
+selection. The text transformations fixture contributes ten stories and sixteen
+point, area and path frames, including linked frames and retained glyph caches.
+
+The unmodified inkai reader independently decodes both binary snapshots and all
+body text references, compares the copied data against the original producer,
+resolves each drawing-to-story-to-frame selection and checks every result. Whole
+native byte comparisons permit only the declared Document/crop edits. These
+are explicitly synthetic artboard carriers with original producer text; they do
+not claim full-source artboard edit support for those four files. Their complex
+gradient banks and other setup resources remain outside the qualified scope.
+
+```sh
+dart run tool/check_native_artboard_text.dart
+python3 tool/verify_native_artboard_text.py --inkai-source /tmp/extension-ai
+```
+
 ## Native print selections
 
 The print-job suite reuses the three CC unit/origin fixtures pinned in

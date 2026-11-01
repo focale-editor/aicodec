@@ -1,20 +1,23 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Qualifies unused ATE resources without discarding their separate snapshots.
+/// Qualifies text-local references without discarding their separate snapshots.
 ///
-/// Empty text documents have no positioned stories or frames. Their font and
-/// typography defaults remain in the text resource namespace, and are retained
-/// byte-for-byte. Unknown top-level owners and actual text objects still reject.
-List<({int start, int end})> _artboardEmptyTextScope(AiNativeLayers layers) {
+/// Frames retain canvas coordinates and an explicit global ruler origin. Native
+/// artboard changes do not rewrite stories, typography or cached composition.
+({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) _artboardTextScope(AiNativeLayers layers) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiNativeContainer> main = records.roots.where((record) => record.type == 'AI11TextDocument').toList();
   final List<AiNativeContainer> undo = records.roots.where((record) => record.type == 'AI11UndoFreeTextDocument').toList();
   if (main.isEmpty && undo.isEmpty) {
-    return [];
+    if (records.containers.any((record) => record.type == 'AI11Text')) {
+      throw const FormatException('Native drawing text has no text document.');
+    }
+    return (ranges: [], objects: {});
   }
-  if (main.length != 1 || undo.length > 1 || records.containers.any((record) => record.type == 'AI11Text')) {
-    throw UnsupportedError('Artboard text isolation requires one empty main document and at most one empty undo-free snapshot.');
+  if (main.length != 1 || undo.length > 1) {
+    throw UnsupportedError('Artboard text isolation requires one main document and at most one undo-free snapshot.');
   }
+  final List<_ArtboardTextSnapshot> snapshots = [];
   int bytesRemaining = records.program.limits.maxDecodedBytes;
   int nodesRemaining = records.program.limits.maxTokens;
   for (final AiNativeContainer record in [...main, ...undo]) {
@@ -24,7 +27,7 @@ List<({int start, int end})> _artboardEmptyTextScope(AiNativeLayers layers) {
     if (!record.hasBinary ||
         record.entries.length != (primary ? 1 : 0) ||
         primary && (origin == null || origin.type != null || origin.numbers?.length != 2 || origin.numbers!.any((value) => !value.isFinite || value.abs() > 9007199254740991))) {
-      throw UnsupportedError('Empty text isolation requires an explicit global ruler origin and exact binary ownership.');
+      throw UnsupportedError('Text isolation requires an explicit global ruler origin and exact binary ownership.');
     }
     if (bytesRemaining <= 0 || nodesRemaining <= 0) {
       throw const AiLimitException(message: 'Artboard text dependency inspection exceeds its aggregate budget.');
@@ -34,13 +37,14 @@ List<({int start, int end})> _artboardEmptyTextScope(AiNativeLayers layers) {
       bytes: bytes,
       limits: PsEngineLimits(maxBytes: bytesRemaining, maxNodes: nodesRemaining, maxDepth: records.program.limits.maxDepth, maxStringBytes: bytesRemaining),
     );
-    _artboardEmptyTextEngine(engine);
+    snapshots.add(_artboardTextEngine(engine));
     bytesRemaining -= bytes.length;
     nodesRemaining -= engine.values.length;
   }
+  final Set<AiNativeContainer> objects = _artboardTextObjects(layers, snapshots);
   final List<AiToken> wrappers = records._projection.tokens.where((token) => token.kind == .comment && const {'%AI11_BeginTextDocument', '%AI11_EndTextDocument'}.contains(token.lexeme)).toList();
   if (wrappers.isEmpty) {
-    return [];
+    return (ranges: [], objects: objects);
   }
   final AiNativeContainer last = undo.isEmpty ? main.single : undo.single;
   if (wrappers.length != 2 ||
@@ -53,7 +57,7 @@ List<({int start, int end})> _artboardEmptyTextScope(AiNativeLayers layers) {
       wrappers.any((token) => layers.structure.versions.memberships(start: token.start, end: token.end).isNotEmpty)) {
     throw UnsupportedError('Artboard text isolation requires one unconditional ordered text wrapper.');
   }
-  return [for (final AiToken token in wrappers) (start: token.start, end: token.end)];
+  return (ranges: [for (final AiToken token in wrappers) (start: token.start, end: token.end)], objects: objects);
 }
 
 /// Requires a known compact ATE dictionary boundary rather than guessing aliases.
@@ -64,38 +68,41 @@ PsEngineDictionary _artboardTextDictionary(PsEngineValue? value, Set<String> key
   return value;
 }
 
-/// Requires an optional array to contain no active text or frame objects.
-void _artboardEmptyTextArray(PsEngineValue? value) {
-  if (value != null && (value is! PsEngineArray || value.values.isNotEmpty)) {
-    throw UnsupportedError('Artboard isolation of populated text documents requires a separate dependency contract.');
+/// Reads an optional text-local array without interpreting opaque scalar data.
+List<PsEngineValue> _artboardTextArray(PsEngineValue? value) {
+  if (value == null) {
+    return const [];
   }
+  if (value is! PsEngineArray) {
+    throw const FormatException('Invalid text-local array.');
+  }
+  return value.values;
 }
 
-/// Checks domain boundaries before retaining unused font and typography payloads.
-void _artboardEmptyTextEngine(PsEngineDocument engine) {
+/// Checks domain boundaries before retaining typography and composition payloads.
+_ArtboardTextSnapshot _artboardTextEngine(PsEngineDocument engine) {
   final PsEngineDictionary root = _artboardTextDictionary(engine.root, {'0', '1', '98'});
   if (root['98'] case final PsEngineValue version) {
     final PsEngineDictionary header = _artboardTextDictionary(version, {'0'});
-    if (header['0'] is! PsEngineNumber || (header['0']! as PsEngineNumber).value != 9) {
+    if (header['0'] is! PsEngineNumber || !const {7, 9}.contains((header['0']! as PsEngineNumber).value)) {
       throw UnsupportedError('Artboard text isolation requires the qualified compact ATE version.');
     }
   }
   final PsEngineDictionary resources = _artboardTextDictionary(root['0'], {'1', '2', '3', '4', '5', '6', '8', '9'});
+  final List<int> frames = [];
   for (final MapEntry<String, PsEngineValue> entry in resources.values.entries) {
     final PsEngineDictionary table = _artboardTextDictionary(entry.value, {'0', '1'});
-    if (entry.key == '8') {
-      _artboardEmptyTextArray(table['0']);
-      _artboardEmptyTextArray(table['1']);
-      continue;
-    }
-    final PsEngineValue? definitions = table['0'];
+    final PsEngineValue? definitions = table['0'] ?? (entry.key == '8' ? PsEngineArray(values: []) : null);
     if (definitions is! PsEngineArray) {
-      throw UnsupportedError('Unused text resources require an explicit resource array.');
+      throw UnsupportedError('Text resources require an explicit resource array.');
     }
     for (final PsEngineValue value in definitions.values) {
       final PsEngineDictionary wrapper = _artboardTextDictionary(value, {'0'});
       if (wrapper['0'] is! PsEngineDictionary) {
-        throw UnsupportedError('Unused typography resources require owned dictionaries.');
+        throw UnsupportedError('Typography resources require owned dictionaries.');
+      }
+      if (entry.key == '8') {
+        frames.add(_artboardTextFrame(wrapper['0']!));
       }
     }
     final PsEngineValue? display = table['1'];
@@ -112,18 +119,19 @@ void _artboardEmptyTextEngine(PsEngineDocument engine) {
     }
   }
   final PsEngineDictionary objects = _artboardTextDictionary(root['1'], {'0', '1', '2', '3'});
-  _artboardEmptyTextArray(objects['1']);
+  final List<List<int>> stories = [for (final PsEngineValue story in _artboardTextArray(objects['1'])) _artboardTextStory(story, frames.length)];
   if (objects['0'] case final PsEngineValue settings) {
     _artboardTextSettings(settings);
   }
   for (final String key in ['2', '3']) {
     if (objects[key] != null && objects[key] is! PsEngineDictionary) {
-      throw const FormatException('Invalid unused normal text features.');
+      throw const FormatException('Invalid retained normal text features.');
     }
   }
   if (engine.values.any((value) => value is PsEngineToken)) {
     throw UnsupportedError('Artboard text isolation cannot qualify opaque ATE tokens.');
   }
+  return _ArtboardTextSnapshot(frames: frames, stories: stories);
 }
 
 /// Checks text preferences without accepting arbitrary document-level extensions.

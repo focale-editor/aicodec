@@ -696,6 +696,27 @@ groups and compound topology. There is no general modern object lifecycle API.
   at retained `AI11Text` ownership, before later setup dependencies are checked.
   Those owners, linked frame/confining-path relationships and independent text
   snapshots remain part of this open artboard dependency task.
+  Populated compact ATE 7/9 text now has a retained-dependency contract. Drawing
+  references resolve against the explicitly selected main/undo-free snapshot;
+  story frame order, cached frame references, point/area/path geometry, global
+  origins and owned unpainted confinements remain unchanged. Text identities,
+  literal style assignments and scalar fill/stroke flags retain their separate
+  namespaces. Unknown owners, schemas, frame kinds, cached tags, executable or
+  opaque confinements, dangling references and aggregate inspection excesses
+  reject atomically. Nine regressions include linked frames, both snapshots,
+  mapped serialization and further editing, malformed input and original limits.
+  Twenty-four independent transactions pass in six checksum-pinned carriers:
+  four contain exact producer text from the files above (including ten stories
+  and sixteen frames in `text_transforms.ai`), and two exercise synthetic
+  main/undo-free ownership. The oracle compares both complete ATE payloads,
+  origins, drawing references, metadata, confinement commands and retained native
+  bytes against the producers and each result. Full validation: 769 VM/768 Node
+  tests and clean format, fix and analysis; the existing 48 lifecycle and 19
+  state/rectangle/refusal transactions also pass. These carriers qualify retained
+  text, not edits of the four full producer documents. Those now pass text/body
+  inspection but still reject their nested gradient banks before later complex
+  setup dependencies are checked. This broader resource isolation keeps the
+  artboard task open. No text recomposition, host integration or renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
