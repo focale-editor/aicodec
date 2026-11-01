@@ -2437,10 +2437,11 @@ rendering acceptance; see [the corpus procedure](../test/corpus/README.md#ordere
 
 ### Selected-part and shared-style changes
 
-`updateSelected(appearance:, paints:, parts:, printing:, nameBytes:)` copies one
-qualified active or simple style under an explicit fresh byte name and rebinds
-only the CC shape users identified by `printing`. The original shared definition and all
-other uses remain unchanged. `updateShared(appearance:, paints:, parts:, printing:)`
+`updateSelected(appearance:, paints:, parts:, artwork:, printing:, nameBytes:)`
+copies one qualified active or simple style under an explicit fresh byte name
+and rebinds only the CC users identified by `artwork` or `printing`. The original
+shared definition and all other uses remain unchanged.
+`updateShared(appearance:, paints:, parts:, artwork:, printing:)`
 instead updates the definition in place, requiring coverage of every named use
 and a qualified whole-source reference inventory. An unused qualified style
 needs no printing group. `SimpleStyle` accepts literal process paint assignments
@@ -2451,6 +2452,28 @@ unless the source explicitly assigns them. This extends scalar appearance
 editing and its shared state qualification, not live-shape geometry transforms.
 Users without the separate bound CC authoring/printing pair do not yet have this
 editing contract.
+
+`artworkFor(use:)` returns an immutable `AiNativeAppearanceArtwork` for a
+qualified `1 (name) XW` body application. It binds an ordinary printing group,
+the empty-name `6 () XW` boundary and one authoritative private contour ending
+in `n` or `N`. Optional metadata and panel flags remain owned by the same lexical
+and version context. An ordinary user has no fabricated live-shape handler;
+`liveShape` is null. Live-shape users reuse their existing binding, including
+saved alternate dictionaries. `dictionary` and `printingDictionary` are optional
+for ordinary users. Qualified labels, identities and finite accumulated rotation
+remain exact; unknown fields, caches, interleaved path state, conditional pairs,
+resource-local applications and crossed owners reject. Point counts must agree
+with their native contour and explicit closing endpoint.
+
+Pass `AiNativeAppearanceReplacement(artwork:, bytes:, bounds:)` through `artwork`
+for ordinary or live-shape users. Existing `AiNativePrintingGroupReplacement`
+values remain available through `printing` as a live-shape shorthand. Both lists
+may participate in one transaction, but each use must appear exactly once.
+Foreign/stale handles and duplicate ownership across the lists reject. Qualified
+following ordinary pairs and independent contours join the dependency pass;
+unqualified owners remain rejection boundaries whenever unresolved state reaches
+them. This does not grant ordinary path lifecycle methods ownership of private
+appearance contours.
 
 Each `AiNativePaintChange` selects one exact assignment from one paint payload.
 Numeric commands retain their operator and operand count, including both channels
@@ -2500,7 +2523,7 @@ Expansion depth, visited children, dash operands and intermediate/output byte
 sizes are bounded before publishing a new snapshot. Final parsing still enforces
 the native grammar and aggregate limits.
 
-Every affected user requires an `AiNativePrintingGroupReplacement`, including
+Every affected user requires one supplied appearance replacement, including
 host-computed ink bounds. The existing complete-group contract validates owned
 geometry, counts, resources and identical outgoing printing state. Native edits,
 optional style copying/rebinding, all supplied groups and bounds are applied in
@@ -2590,6 +2613,19 @@ are retained. Gray, RGB/CMYK, custom and newer named colors expose their recorde
 alternatives and tint data; no color-profile conversion is implicit.
 `AiNativeGradientColor`, `AiNativeGradientStop` and `AiNativeGradientRamp` provide
 the immutable color, stop and channel data used by resource edits.
+
+Six further transactions edit the two ordinary style users in each complete
+`stroke_styles.ai`, `fill_stroke_test_cc.ai` and `fill_stroke_test.ai` program.
+They change centered or inside-stroke process colors to explicit host-supplied
+magenta alternatives. Native geometry, metadata, all other styles and users
+remain exact. Independent decoding checks every style/part/use, an exact byte
+oracle covers each complete program, and every output RGBA pixel matches a
+separate recoloring of the original SVG stroke. Counted and uncounted paths both
+pass. Full-source shared changes in these three producers still reject retained
+advanced dash dictionaries or `GenAIRecorded`; the verifier requires those
+specific rejections. Mixed live-shape/ordinary shared transactions pass synthetic
+regressions. These results qualify serialization and supplied ink, not Adobe UI
+reopening or arbitrary effect rendering.
 
 ### Stops, focus and resource ownership
 
@@ -2820,7 +2856,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Other user families and unresolved following text state remain incomplete. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Ordinary private-contour users share the supplied-group contract; six selected stroke edits pass in three additional complete producers. Resource/group/text users and unresolved following text state remain incomplete. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

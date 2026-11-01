@@ -27,10 +27,17 @@ void _layerLifecyclePrefix(AiNativeLayers model, AiNativeLayer layer, Map<int, A
 }
 
 /// Validates an ordinary interval without interpreting opaque object families.
-List<AiNativeInstruction> _layerInterval(AiNativeLayers model, int start, int end, Map<int, AiNativeLayer> headers, {bool privateState = false}) {
+List<AiNativeInstruction> _layerInterval(
+  AiNativeLayers model,
+  int start,
+  int end,
+  Map<int, AiNativeLayer> headers, {
+  bool privateState = false,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
+}) {
   final AiNativeDrawing drawing = model.drawing;
   final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).toList();
-  final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: model.structure);
+  final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: model.structure, appearanceArtwork: appearanceArtwork);
   final Set<AiNativeInstruction> geometry = {
     for (final AiNativePath path in paths) ...[...path.geometry, path.paint],
     ...counts.values.whereType<AiNativeInstruction>(),

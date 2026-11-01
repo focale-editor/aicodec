@@ -333,6 +333,33 @@
       "revision": "1a5f42a0b0407fc869e032420570682048810108",
       "license": "SPDX-FileCopyrightText: 2022 Adam Belis\n\nSPDX-License-Identifier: GPL-2.0-or-later",
       "expected": "accept"
+    },
+    {
+      "file": "stroke_styles.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/stroke_styles.ai",
+      "size": 245509,
+      "sha256": "f5db387f8993f80e5394346b4581867b15696d87d5dfb933a31de776945bc1f1",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "fill_stroke_test_cc.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/fill_stroke_test_cc.ai",
+      "size": 993967,
+      "sha256": "c3d7e775587afba3b8be9c9d1a10b364a96cd239899f2d252087d805bdbca0a1",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
+    },
+    {
+      "file": "fill_stroke_test.ai",
+      "url": "https://gitlab.com/inkscape/extras/extension-ai/-/raw/1a5f42a0b0407fc869e032420570682048810108/tests/data/ai/fill_stroke_test.ai",
+      "size": 996339,
+      "sha256": "66fbe8cbf9f893d7a4bceddac30dac28d5f485224c280e52ab11670319b62fe0",
+      "revision": "1a5f42a0b0407fc869e032420570682048810108",
+      "license": "SPDX-FileCopyrightText: 2025 Manpreet Singh <manpreet.singh.dev@proton.me>\n\nSPDX-License-Identifier: GPL-2.0-or-later",
+      "expected": "accept"
     }
   ]
 }

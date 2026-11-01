@@ -18,13 +18,23 @@ List<AiSourceEdit> _nativePrintingGroupEdits(AiNativeDrawing drawing, List<AiNat
   if (replacements.isEmpty || replacements.map((replacement) => replacement.shape).toSet().length != replacements.length) {
     throw ArgumentError('Printing replacement requires a nonempty distinct shape selection.');
   }
+  return _nativePrintingSourceEdits(drawing, [
+    for (final AiNativePrintingGroupReplacement replacement in replacements) (group: _printingShapeGroup(drawing, replacement.shape), bytes: replacement.bytes, bounds: replacement.bounds),
+  ]);
+}
+
+/// Shares expansion validation across live-shape and ordinary appearance users.
+List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({AiNativeGroup group, List<int> bytes, AiBoundingBox bounds})> replacements) {
+  if (replacements.isEmpty || replacements.map((replacement) => replacement.group).toSet().length != replacements.length) {
+    throw ArgumentError('Printing replacement requires distinct owned groups.');
+  }
   final AiProgram program = drawing.records.program;
   final List<AiSourceEdit> edits = [];
   final List<AiBoundingBox> bounds = [];
   AiNativeGradientResources? resources;
   int total = 0;
-  for (final AiNativePrintingGroupReplacement replacement in replacements) {
-    final AiNativeGroup source = _printingShapeGroup(drawing, replacement.shape);
+  for (final ({AiNativeGroup group, List<int> bytes, AiBoundingBox bounds}) replacement in replacements) {
+    final AiNativeGroup source = replacement.group;
     total += replacement.bytes.length;
     if (total > program.limits.maxDecodedBytes) {
       throw const AiLimitException(message: 'Supplied printing groups exceed native output limits.');

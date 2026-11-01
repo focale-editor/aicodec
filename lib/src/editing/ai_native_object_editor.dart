@@ -106,8 +106,12 @@ void _nativeReferenceScope(
   Set<AiNativeContainer>? bodyDictionaries,
   _ArtboardResourceScope? retainedResources,
   _ArtboardBrushScope? retainedBrushes,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
-  final Set<AiNativeContainer> dictionaries = {...bodyDictionaries ?? _nativeReferenceBody(model, headers), ...?retainedResources?.objects};
+  final Set<AiNativeContainer> dictionaries = {
+    ...bodyDictionaries ?? _nativeReferenceBody(model, headers, appearanceArtwork: appearanceArtwork, qualifyShapeNeighbors: appearanceArtwork.isEmpty),
+    ...?retainedResources?.objects,
+  };
   final List<_NativeFontEncoding> fonts = [];
   final List<({int start, int end})> independent = _referenceGradientRanges(model, fontDeclarations: fonts)
     ..addAll(_artboardFontSetupRanges(model, fonts))
@@ -139,14 +143,18 @@ void _nativeReferenceScope(
 Set<AiNativeContainer> _nativeReferenceBody(
   AiNativeLayers model,
   Map<int, AiNativeLayer> headers, {
-  void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>) inspect = _referenceArtworkInterval,
+  void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>)? inspect,
   bool qualifyShapeNeighbors = true,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
+  final void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>) inspectInterval =
+      inspect ?? (model, start, end, headers) => _referenceArtworkInterval(model, start, end, headers, appearanceArtwork: appearanceArtwork);
   final List<_NativeShapeBundle> shapes = [
     for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true))
       _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors),
   ];
   final Set<AiNativeContainer> dictionaries = {
+    for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...[?item.dictionary, ?item.printingDictionary],
     for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
     for (final AiNativeLayer layer in model.layers)
       if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,
@@ -155,10 +163,17 @@ Set<AiNativeContainer> _nativeReferenceBody(
   };
   final AiProgram program = model.drawing.records.program;
   int position = program.bodyStart;
-  for (final _NativeShapeBundle bundle in shapes) {
-    inspect(model, position, bundle.start, headers);
-    position = bundle.shape.end;
+  final List<_NativeSubtreeSpan> owners = [
+    for (final _NativeShapeBundle bundle in shapes) (start: bundle.start, end: bundle.shape.end),
+    for (final AiNativeAppearanceArtwork item in appearanceArtwork.where((item) => item.liveShape == null)) (start: item.start, end: item.end),
+  ]..sort((first, second) => first.start.compareTo(second.start));
+  for (final _NativeSubtreeSpan owner in owners) {
+    if (owner.start < position) {
+      throw UnsupportedError('Reference inspection requires disjoint complete appearance owners.');
+    }
+    inspectInterval(model, position, owner.start, headers);
+    position = owner.end;
   }
-  inspect(model, position, program.bodyEnd, headers);
+  inspectInterval(model, position, program.bodyEnd, headers);
   return dictionaries;
 }

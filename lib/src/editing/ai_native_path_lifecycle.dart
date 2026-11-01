@@ -1,7 +1,12 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Validates one batch before any source offset or object identity changes.
-Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing drawing, List<AiNativePath> paths, {AiNativeStructure? ownership}) {
+Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(
+  AiNativeDrawing drawing,
+  List<AiNativePath> paths, {
+  AiNativeStructure? ownership,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
+}) {
   final Set<AiNativePath> owned = drawing.paths.toSet();
   if (paths.isEmpty || paths.toSet().length != paths.length || paths.any((path) => !owned.contains(path))) {
     throw ArgumentError('Path lifecycle operations require distinct owned source paths.');
@@ -72,14 +77,20 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(AiNativeDrawing draw
     }
     if (plain.hasDependentAppearance) {
       final int index = _pathOffset(bound, path.start + 1, (shape) => shape.end);
-      final AiLiveShape? preceding = index == 0 ? null : bound[index - 1];
+      final int? shapeEnd = index == 0 ? null : bound[index - 1].end;
+      final int? artworkEnd = appearanceArtwork.where((artwork) => artwork.end <= path.start).map((artwork) => artwork.end).fold<int?>(null, (end, value) => end == null ? value : max(end, value));
+      final int? preceding = shapeEnd == null
+          ? artworkEnd
+          : artworkEnd == null
+          ? shapeEnd
+          : max(shapeEnd, artworkEnd);
       if (!_ordinaryMetadataPrefix(drawing, previousEnds[path]!, path.start, allowStateOnly: drawing._objects.forSource(path).liveShape != null) &&
           (preceding == null ||
-              _pathInterval(items, preceding.end, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)) &&
-                  !_ordinaryMetadataPrefix(drawing, preceding.end, path.start, allowStateOnly: true))) {
+              _pathInterval(items, preceding, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)) &&
+                  !_ordinaryMetadataPrefix(drawing, preceding, path.start, allowStateOnly: true))) {
         throw UnsupportedError('The selected path has unresolved appearance dependencies.');
       }
-      // Mode-one XW ends the preceding bound shape. Its resolved postfix style
+      // Mode-one XW ends the preceding qualified appearance owner. Its resolved postfix style
       // does not turn a later ordinary path into a private printing expansion.
       // Qualified layer headers may separate these independent native owners.
       // A direct shape's own qualified dictionary also sets the plain flag;

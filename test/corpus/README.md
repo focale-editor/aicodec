@@ -184,6 +184,46 @@ Other complete sources with following `AI11Text` owners still reject unresolved
 native state. Those boundaries remain open and do not turn inspection-only
 inventories into editing acceptance.
 
+### Ordinary CC appearance users
+
+```sh
+dart run tool/check_native_appearance_artwork.dart
+python tool/verify_native_appearance_artwork.py --inkai-source /tmp/extension-ai
+```
+
+The manifest additionally pins `stroke_styles.ai`, `fill_stroke_test_cc.ai` and
+`fill_stroke_test.ai`, including SPDX provenance and checksums. The first stores
+its complete native program in PDF private data; the Python reader independently
+extracts it. The other two are complete PostScript sources. All setup, preceding
+artwork and following objects remain present during the actual edits.
+
+Each source contains two non-live-shape appearance users. Six transactions copy
+their original six-part style under `Magenta stroke`, change the selected stroke
+color's explicit CMYK/RGB alternatives, rebind one use, and attach its supplied
+printing group. Centered strokes recolor their explicit `XA`; inside-stroke
+expansions recolor their existing compound fill. The host restores the original
+outgoing color before the group closes. Native geometry, optional dictionaries,
+point-count conventions and unselected owners remain exact.
+
+Original inventories contain 22/173/31 and 18/149/27 styles/parts/uses (the latter
+in both fill/stroke files). The verifier compares every original and edited
+record with InkAI. Its separate full-program byte oracle allows only the copied
+style, rebound use, changed printing operands/restored boundary and equivalent
+bounds spelling. The original printing SVG provides an independent reference:
+only the identified centered stroke or expanded inside-stroke path is recolored.
+Every output RGBA pixel must match that reference; alpha remains identical.
+At width 1200 the two centered strokes change 1,786 and 1,800 pixels; the two
+inside strokes change 3,594 and 3,573 pixels in each source convention.
+
+All six full-source shared attempts must still reject with the recorded reason:
+`stroke_styles.ai` retains advanced dash dictionaries outside the literal style
+state contract, and the fill/stroke files retain an unqualified `GenAIRecorded`
+owner. Unit tests separately cover successful ordinary/shared and mixed
+live-shape/ordinary transactions. Rejection is not counted as shared editing
+acceptance. Generated programs, SVG/PNG references and `verification.json` stay
+ignored under `output/appearance-artwork`. These checks establish the supplied
+expansions and preservation contract, not Adobe reopening or general rendering.
+
 ## Independent reader
 
 Checks using `--inkai-source` require this unchanged external checkout:

@@ -119,7 +119,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
     bytes: bytes.takeBytes(),
     replacement: (
       commands: commands,
-      styles: styles,
+      styles: styles.map((offset, bundle) => MapEntry(offset, bundle.styleReads)),
       prefix: prefix,
       suffix: suffix,
       unresolved: unresolved,

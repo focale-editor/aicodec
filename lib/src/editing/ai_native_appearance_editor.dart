@@ -7,6 +7,7 @@ AiNativeAppearances _editNativeAppearance(
   List<AiNativePaintChange> paints,
   List<AiNativeAppearancePartChange> parts,
   List<AiNativePrintingGroupReplacement> printing,
+  List<AiNativeAppearanceReplacement> artwork,
   List<int>? nameBytes,
 ) {
   if (!model.styles.contains(appearance) || paints.isEmpty && parts.isEmpty) {
@@ -24,29 +25,37 @@ AiNativeAppearances _editNativeAppearance(
   _artboardRetainedStyle(layers, declaration, {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use}, {}, {});
   final ({Set<String> reads, Set<String> writes}) state = _nativeLiteralStyleState(drawing, declaration);
   final List<AiSourceEdit> styleEdits = _nativeAppearanceChanges(model, appearance, paints, parts);
-  final List<AiLiveShape> shapes = printing.map((replacement) => replacement.shape).toList();
-  if (shapes.toSet().length != shapes.length || shapes.any((shape) => !drawing.liveShapes.contains(shape))) {
-    throw ArgumentError('Appearance expansions require distinct current shape handles.');
-  }
-  final List<AiNativeResourceUse> selected = [];
-  final List<_NativeShapeBundle> bundles = [];
-  for (final AiLiveShape shape in shapes) {
-    final List<AiNativeResourceUse> uses = appearance.uses.where((use) => use.instruction.end == shape.end).toList();
-    if (!identical(shape.style, declaration) || uses.length != 1 || uses.single.resolution != .resolved || uses.single.versions.isNotEmpty) {
-      throw UnsupportedError('Each supplied expansion must belong to a uniquely bound user of the selected style.');
+  final List<AiNativeAppearanceReplacement> replacements = [...artwork];
+  for (final AiNativePrintingGroupReplacement replacement in printing) {
+    if (!drawing.liveShapes.contains(replacement.shape)) {
+      throw ArgumentError('Appearance expansions require current shape handles.');
     }
-    selected.add(uses.single);
-    final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, model.structure, qualifyNeighbors: false);
-    // In-place edits retain preceding state and object placement. Enclosing
-    // appearances still need their own expansion and cannot be bypassed here.
-    for (final AiNativeStructureNode parent in _artworkParents(model.structure, model.structure.parentOf(model.structure.nodeFor(shape.appearanceGroup!)))) {
-      if (parent.source case final AiNativeGroup group) {
-        _ordinaryObjectFollowing(drawing, group);
-      }
+    final AiNativeResourceUse? use = appearance.uses.where((use) => use.instruction.end == replacement.shape.end).singleOrNull;
+    if (use == null) {
+      throw UnsupportedError('Each supplied expansion must belong to the selected appearance.');
     }
-    bundles.add(bundle);
+    replacements.add(
+      AiNativeAppearanceReplacement(
+        artwork: model.artworkFor(use: use),
+        bytes: replacement.bytes,
+        bounds: replacement.bounds,
+      ),
+    );
   }
-  final List<AiSourceEdit> edits = [if (printing.isNotEmpty) ..._nativePrintingGroupEdits(drawing, printing)];
+  final List<AiNativeResourceUse> selected = replacements.map((replacement) => replacement.artwork.use).toList();
+  if (selected.toSet().length != selected.length || replacements.any((replacement) => !identical(replacement.artwork._owner, model))) {
+    throw ArgumentError('Appearance expansions require distinct current artwork handles.');
+  }
+  if (selected.any((use) => !appearance.uses.contains(use) || !identical(model.resolve(use: use), appearance))) {
+    throw UnsupportedError('Each supplied expansion must belong to a uniquely bound user of the selected style.');
+  }
+  final List<AiNativeAppearanceArtwork> retained = _nativeRetainedAppearanceArtwork(model);
+  final List<AiSourceEdit> edits = [
+    if (replacements.isNotEmpty)
+      ..._nativePrintingSourceEdits(drawing, [
+        for (final AiNativeAppearanceReplacement replacement in replacements) (group: replacement.artwork.printingGroup, bytes: replacement.bytes, bounds: replacement.bounds),
+      ]),
+  ];
   if (nameBytes == null) {
     if (appearance.uses.length != selected.length || appearance.uses.any((use) => !selected.contains(use))) {
       throw UnsupportedError('A shared appearance change must cover every source use and its printing owner.');
@@ -54,10 +63,10 @@ AiNativeAppearances _editNativeAppearance(
     // The known-use inventory cannot establish that opaque owners have no links.
     final _ArtboardResourceScope resources = _artboardResourceScope(layers);
     final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.brushes);
-    _nativeReferenceScope(layers, _layerHeaderItems(layers), retainedResources: resources, retainedBrushes: brushes);
+    _nativeReferenceScope(layers, _layerHeaderItems(layers), retainedResources: resources, retainedBrushes: brushes, appearanceArtwork: retained);
     edits.addAll(styleEdits);
   } else {
-    if (printing.isEmpty ||
+    if (replacements.isEmpty ||
         nameBytes.isEmpty ||
         model.styles.any((style) => _sameNativeBytes(style.resource.nameBytes, nameBytes)) ||
         model.uses.any((use) => _sameNativeBytes(use.nameBytes, nameBytes))) {
@@ -114,10 +123,46 @@ AiNativeAppearances _editNativeAppearance(
   } else if (paints.isEmpty) {
     changedState.removeAll(_nativeAppearanceOrderState(appearance, parts, state.reads));
   }
-  _shapeFollowingDependencies(drawing, bundles, {
-    for (final _NativeShapeBundle bundle in bundles) bundle.shape: (bundle: bundle, prefix: [], suffix: [], unresolved: changedState, printingUnresolved: {}, discard: false),
-  });
+  if (updated.uses.length != model.uses.length) {
+    throw const FormatException('Appearance changes disrupted named source ownership.');
+  }
+  for (final AiNativeResourceUse use in selected) {
+    updated.artworkFor(use: updated.uses[model.uses.indexOf(use)]);
+  }
+  _sourceFollowingDependencies(drawing, {
+    for (final AiNativeAppearanceReplacement replacement in replacements)
+      (start: replacement.artwork.start, end: replacement.artwork.end): (
+        commands: replacement.artwork._commands,
+        styles: {replacement.artwork.end: replacement.artwork._styleReads},
+        prefix: [],
+        suffix: [],
+        unresolved: changedState,
+        printingUnresolved: {},
+        discard: false,
+      ),
+  }, retainedArtwork: retained);
   return updated;
+}
+
+/// Discovers qualified ordinary pairs without requiring unrelated opaque users.
+///
+/// Unqualified owners remain in the intervening source: dependency inspection
+/// rejects them if unresolved state reaches them, and shared scope always checks
+/// them. They are never silently counted as covered or safe to edit.
+List<AiNativeAppearanceArtwork> _nativeRetainedAppearanceArtwork(AiNativeAppearances model) {
+  final AiNativeDrawing drawing = model.structure.drawing;
+  final Set<int> shapes = drawing.liveShapes.map((shape) => shape.end).toSet();
+  final List<AiNativeAppearanceArtwork> result = [];
+  for (final AiNativeResourceUse use in model.uses.where(
+    (use) => use.instruction.start >= drawing.records.program.bodyStart && use.instruction.end <= drawing.records.program.bodyEnd && !shapes.contains(use.instruction.end),
+  )) {
+    try {
+      result.add(model.artworkFor(use: use));
+    } on UnsupportedError {
+      // The source interval remains unqualified for the dependency/scope pass.
+    }
+  }
+  return result;
 }
 
 /// Binds every change to an exact selected field before writing numeric tokens.

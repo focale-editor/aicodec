@@ -1154,15 +1154,35 @@ isolation and relative placement. General appearance editing remains incomplete.
   Independent projections additionally decode both 65-cell producer palette
   alternatives and all three synthetic nested paths. Actual edits use untouched
   complete sources, with no discarded setup or neighbors.
-  Non-live-shape uses and broader complete-producer acceptance remain open;
-  other complete CC sources still reject unresolved state consumed by following
-  `AI11Text` owners.
-  Validation: 1011 VM/1010 Node tests, sixteen synthetic appearance edits and
-  twelve complete producer transactions pass. All 54 independent artboard lifecycle
-  transactions pass again after the palette-scope change. The 98-style/834-part/135-use inventory
-  and capability checks on all 37 pinned sources passed in the previous increment;
-  those inspection contracts are unchanged. Formatting, analysis, fix dry-run,
-  Python compilation and diff checks are clean.
+  `artworkFor(use:)` now binds qualified ordinary private contours to their
+  separate printing groups without inventing live-shape parameters. Immutable
+  `AiNativeAppearanceArtwork`/`AiNativeAppearanceReplacement` handles join the
+  existing selected/shared API; mixed live-shape and ordinary users can be edited
+  atomically. Optional object names, identities and rotation metadata stay exact.
+  Lexical/version crossings, unknown metadata, stale/duplicate owners,
+  inconsistent point counts and unresolved following dependencies reject.
+  Following ordinary pairs and independent contours use the same qualified
+  source boundary. Ten regressions cover these contracts, including limits.
+  Six complete-producer transactions recolor the two ordinary strokes in each
+  `stroke_styles.ai`, `fill_stroke_test_cc.ai` and `fill_stroke_test.ai` program.
+  All original/edited styles, parts and uses pass independent decoding; exact
+  whole-program byte oracles preserve all native geometry and neighbors.
+  Every RGBA pixel matches a separate original-SVG stroke recoloring, with
+  identical alpha. Centered strokes change 1,786/1,800 pixels; inside strokes
+  change 3,594/3,573 pixels in both counted and uncounted sources.
+  Full-source shared changes in these new producers still reject advanced dash
+  dictionaries or `GenAIRecorded`. The corpus checks require those rejections;
+  synthetic mixed/shared transactions pass. Resource/group/text users, broader
+  producer support and unresolved state consumed by following `AI11Text` owners
+  remain open.
+  Validation: 1021 VM/1020 Node tests and all 40 corpus container outcomes pass.
+  Six new complete-producer transactions pass independent byte/tree/pixel checks;
+  the sixteen existing synthetic appearance edits and twelve previous complete
+  producer transactions pass again. All 54 independent artboard lifecycle
+  transactions passed after the preceding palette-scope change. The earlier
+  98-style/834-part/135-use inventory and 37-source capability checks remain
+  inspection evidence, not editing acceptance for the new producers. Formatting,
+  analysis, fix dry-run, Python compilation and diff checks are clean.
 - [ ] Add native opacity, blend, isolation, knockout and opacity-mask records,
   including mask artwork, linked/disabled/inverted state and dependent references.
   These are data contracts; compositing remains in the application.

@@ -188,9 +188,16 @@ final class AiNativeAppearances {
     return use.resolution == .resolved ? styles.singleWhere((style) => identical(style.resource, use.candidates.single)) : null;
   }
 
+  /// Binds a named body use to its native contour and separate printing group.
+  ///
+  /// Live shapes and ordinary private paths share this ownership contract.
+  /// Unknown metadata, conditional owners and resource-local uses reject.
+  AiNativeAppearanceArtwork artworkFor({required AiNativeResourceUse use}) => _nativeAppearanceArtwork(this, use);
+
   /// Changes a shared definition and all qualified dependent printing groups.
   ///
-  /// Every named use must be a uniquely bound CC shape covered by printing.
+  /// Every named use must have one uniquely bound printing owner covered by
+  /// `artwork` or the live-shape `printing` shorthand.
   /// Unknown dependency owners, effects and unresolved following state reject.
   /// An unused qualified style needs no printing replacement. The host supplies
   /// matching expansions and the compatibility PDF when saving the document.
@@ -198,20 +205,22 @@ final class AiNativeAppearances {
     required AiNativeAppearance appearance,
     List<AiNativePaintChange> paints = const [],
     List<AiNativeAppearancePartChange> parts = const [],
-    required List<AiNativePrintingGroupReplacement> printing,
-  }) => _editNativeAppearance(this, appearance, paints, parts, printing, null);
+    List<AiNativePrintingGroupReplacement> printing = const [],
+    List<AiNativeAppearanceReplacement> artwork = const [],
+  }) => _editNativeAppearance(this, appearance, paints, parts, printing, artwork, null);
 
   /// Copies a style for selected CC users and attaches their host-composed groups.
   ///
   /// The fresh byte name must not capture an existing declaration or reference.
-  /// Only users identified by printing are rebound; the source definition and
+  /// Only users identified by `artwork` or `printing` are rebound; the source definition and
   /// other users remain unchanged. Each selected group must preserve outgoing
   /// printing state; unresolved changes consumed by following artwork reject.
   AiNativeAppearances updateSelected({
     required AiNativeAppearance appearance,
     List<AiNativePaintChange> paints = const [],
     List<AiNativeAppearancePartChange> parts = const [],
-    required List<AiNativePrintingGroupReplacement> printing,
+    List<AiNativePrintingGroupReplacement> printing = const [],
+    List<AiNativeAppearanceReplacement> artwork = const [],
     required List<int> nameBytes,
-  }) => _editNativeAppearance(this, appearance, paints, parts, printing, nameBytes);
+  }) => _editNativeAppearance(this, appearance, paints, parts, printing, artwork, nameBytes);
 }

@@ -13,7 +13,7 @@ typedef _NativeShapeReplacement = ({
 /// A complete qualified source interval with its replay and unresolved effects.
 typedef _NativeSourceReplacement = ({
   List<AiNativeInstruction> commands,
-  Map<int, _NativeShapeBundle> styles,
+  Map<int, Set<String>> styles,
   List<_NativeShapeReplay> prefix,
   List<_NativeShapeReplay> suffix,
   Set<String> unresolved,
@@ -24,7 +24,7 @@ typedef _NativeSourceReplacement = ({
 /// Shares one pair's dependency contract with whole-subtree replacements.
 _NativeSourceReplacement _shapeReplacementSource(_NativeShapeReplacement replacement) => (
   commands: replacement.bundle.commands,
-  styles: {replacement.bundle.shape.end: replacement.bundle},
+  styles: {replacement.bundle.shape.end: replacement.bundle.styleReads},
   prefix: replacement.prefix,
   suffix: replacement.suffix,
   unresolved: replacement.unresolved,
@@ -52,6 +52,7 @@ void _sourceFollowingDependencies(
   AiNativeDrawing drawing,
   Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements, {
   Map<int, _NativeSourceReplacement> insertions = const {},
+  List<AiNativeAppearanceArtwork> retainedArtwork = const [],
 }) {
   if (replacements.isEmpty && insertions.isEmpty) {
     return;
@@ -76,7 +77,7 @@ void _sourceFollowingDependencies(
   }
 
   /// Accounts for retained assignments before each path or group observes state.
-  void command(AiNativeInstruction item, {bool discard = false, _NativeShapeBundle? bundle, bool? private}) {
+  void command(AiNativeInstruction item, {bool discard = false, Set<String>? styleReads, bool? private}) {
     final bool nativeOnly = private ?? item.isPrivate;
     final String? key = _nativeArtworkStateKey(item);
     if (key != null) {
@@ -96,7 +97,10 @@ void _sourceFollowingDependencies(
     } else if (_marker(item, 6)) {
       read({'Xy'}, private: true);
     } else if (_marker(item, 1)) {
-      read(bundle!.styleReads, private: true);
+      if (styleReads == null) {
+        throw UnsupportedError('Following named artwork has no qualified style dependencies.');
+      }
+      read(styleReads, private: true);
       // Potential writes are not definite writes: hidden filter parts may not
       // execute. Keep unresolved keys until an explicit assignment replaces them.
     }
@@ -112,11 +116,11 @@ void _sourceFollowingDependencies(
       if (_nativeArtworkStateKey(item) == null) {
         throw UnsupportedError('Following private artwork requires a separate native state contract.');
       }
-      _layerInterval(layers, position, item.start, headers).forEach(command);
+      _layerInterval(layers, position, item.start, headers, appearanceArtwork: retainedArtwork).forEach(command);
       command(item);
       position = item.end;
     }
-    _layerInterval(layers, position, end, headers).forEach(command);
+    _layerInterval(layers, position, end, headers, appearanceArtwork: retainedArtwork).forEach(command);
   }
 
   /// Checks inserted or replacing artwork before publishing its remaining effects.
@@ -125,7 +129,7 @@ void _sourceFollowingDependencies(
       command(replay.value, private: replay.private);
     }
     for (final AiNativeInstruction item in replacement.commands) {
-      command(item, discard: replacement.discard, bundle: replacement.styles[item.end]);
+      command(item, discard: replacement.discard, styleReads: replacement.styles[item.end]);
     }
     for (final _NativeShapeReplay replay in replacement.suffix) {
       command(replay.value, private: replay.private);
@@ -159,7 +163,11 @@ void _sourceFollowingDependencies(
     for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.appearanceGroup != null && shape.path?.isPrivate == true && shape.end > position))
       if (!spans.any((span) => shape.start >= span.start && shape.end <= span.end)) (start: drawing._objects.forSource(shape.appearanceGroup!).expansion?.start ?? shape.start, end: shape.end): shape,
   };
-  final List<_NativeSubtreeSpan> owners = [...spans, ...retained.keys]..sort((first, second) => first.start.compareTo(second.start));
+  final Map<_NativeSubtreeSpan, AiNativeAppearanceArtwork> artwork = {
+    for (final AiNativeAppearanceArtwork item in retainedArtwork.where((item) => item.end > position && item.liveShape == null))
+      if (!spans.any((span) => item.start >= span.start && item.end <= span.end)) (start: item.start, end: item.end): item,
+  };
+  final List<_NativeSubtreeSpan> owners = [...spans, ...retained.keys, ...artwork.keys]..sort((first, second) => first.start.compareTo(second.start));
   for (final _NativeSubtreeSpan owner in owners) {
     if (owner.start < position) {
       throw const FormatException('A native replacement splits an owned source interval.');
@@ -168,9 +176,15 @@ void _sourceFollowingDependencies(
     if (replacements[owner] case final _NativeSourceReplacement replacement) {
       apply(replacement);
     } else if (unresolved.isNotEmpty || printingUnresolved.isNotEmpty) {
-      final _NativeShapeBundle bundle = _shapeBundle(drawing, retained[owner]!, layers.structure);
-      for (final AiNativeInstruction item in bundle.commands) {
-        command(item, bundle: bundle);
+      if (artwork[owner] case final AiNativeAppearanceArtwork item) {
+        for (final AiNativeInstruction instruction in item._commands) {
+          command(instruction, styleReads: item._styleReads);
+        }
+      } else {
+        final _NativeShapeBundle bundle = _shapeBundle(drawing, retained[owner]!, layers.structure, qualifyNeighbors: retainedArtwork.isEmpty);
+        for (final AiNativeInstruction item in bundle.commands) {
+          command(item, styleReads: bundle.styleReads);
+        }
       }
     }
     position = owner.end;
