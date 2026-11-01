@@ -733,6 +733,30 @@ dart run tool/check_native_clipping_lifecycle.dart
 python3 tool/verify_native_clipping_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+The contour movement suite adds eleven prescribed transactions: compound entry
+and extraction, reordering, direct anchors, mask assignment/removal, a 200-contour
+batch and four moves in the complete original Inkscape CC native programs.
+Synthetic inputs are checksum-pinned; the two producer PDFs retain their existing
+manifest provenance and independent native extraction checks. The unmodified
+reader binds each reported owner, group, count and metadata span to its own parse.
+Expected source indices, destination ancestry, paint inheritance and mask changes
+are prescribed independently of the Dart report. Every path's consumed attributes,
+group/final state and exact unselected bytes are compared, including both native
+and printing state. Replay instructions must use actual source assignments.
+
+All eleven transactions additionally execute the same pinned Adobe legacy prolog
+with Ghostscript, checking stroke attributes at contour consumption and every
+group/final boundary in both scalar projections (22 checks). Modern transparency
+and opaque metadata are checked as native data, without executing their content.
+This does not render the document, certify Adobe reopening or qualify arbitrary
+compound/clip owner lifecycle. Generated outputs and the downloaded prolog remain
+outside publication.
+
+```bash
+dart run tool/check_native_contour_movement.dart
+python3 tool/verify_native_contour_movement.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex

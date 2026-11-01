@@ -200,7 +200,7 @@ final class AiNativeDrawing {
   late final AiNativeObjects _objects = _nativeObjects(this);
 
   /// Shares retained-body qualification across contour inspections and batches.
-  late final ({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries}) _pathTopologyScope = _nativePathTopologyScope(this);
+  late final ({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries, Set<AiNativeContainer> retainedMetadata}) _pathTopologyScope = _nativePathTopologyScope(this);
 
   /// Builds a bounded structural view without evaluating arbitrary PostScript.
   factory AiNativeDrawing.decode({required AiNativeRecords records}) => _NativeDrawingReader(records: records).read();
@@ -361,6 +361,32 @@ final class AiNativeDrawing {
   /// siblings. Unknown required state and unresolved dependencies reject. Changed
   /// ancestor flags, depth or layers require explicit [inheritParentFlags].
   AiNativeDrawing movePathToGroup({required AiNativePath path, required AiNativeGroup group, bool inheritParentFlags = false}) => _moveNativePathToGroup(this, path, group, inheritParentFlags);
+
+  /// Moves ordinary contours between group, compound and clipping owners atomically.
+  ///
+  /// Paths follow the supplied order, after an optional direct child [after] or
+  /// at the end of [group]. Counts and identities travel with each contour;
+  /// source state assignments and unselected artwork remain in place. [mask]
+  /// optionally changes every selected mask role. A retained mask needs an
+  /// effective destination clip owner, and compounds cannot mix mask roles.
+  ///
+  /// Entering a different compound requires [inheritCompoundAppearance], adopting
+  /// its paint mode and shared appearance while retaining each contour's closure.
+  /// Leaving a compound preserves its shared appearance. Empty compound elements,
+  /// unknown required state and derived CC geometry reject. Changed ancestor
+  /// flags/depth or layers require [inheritParentFlags]. The host supplies affected
+  /// ink [bounds] and updated derived representations when saving. Imported affine
+  /// ancestors must remain the same; this operation does not rebase their matrices.
+  /// Each affected compound must be non-nested with one paint mode ignoring case.
+  AiNativeDrawing moveContours({
+    required List<AiNativePath> paths,
+    required AiNativeGroup group,
+    required AiBoundingBox bounds,
+    AiNativePath? after,
+    AiNativePathMask? mask,
+    bool inheritCompoundAppearance = false,
+    bool inheritParentFlags = false,
+  }) => _moveNativeContours(this, paths, group, bounds, after, mask, inheritCompoundAppearance, inheritParentFlags);
 
   /// Groups contiguous ordinary sibling paths without changing their source order.
   ///

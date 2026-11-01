@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies retained body dependencies once for each immutable drawing snapshot.
-({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries}) _nativePathTopologyScope(AiNativeDrawing drawing) {
+({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries, Set<AiNativeContainer> retainedMetadata}) _nativePathTopologyScope(AiNativeDrawing drawing) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final Set<AiNativeContainer> retainedMetadata = _nativeContourMetadata(layers);
   final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
@@ -27,7 +27,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       derived.add(path);
     }
   }
-  return (layers: layers, derived: Set.unmodifiable(derived), dictionaries: Set.unmodifiable(dictionaries));
+  return (layers: layers, derived: Set.unmodifiable(derived), dictionaries: Set.unmodifiable(dictionaries), retainedMetadata: Set.unmodifiable(retainedMetadata));
 }
 
 /// Requires host bounds representable by both Dart runtimes without rounding.
@@ -92,7 +92,7 @@ AiNativeDrawing _editNativePaths(AiNativeDrawing drawing, List<AiNativePathEdit>
 }
 
 /// Builds one atomic contour transaction, including explicitly added clip owners.
-List<AiSourceEdit> _nativePathEdits(AiNativeDrawing drawing, List<AiNativePathEdit> changes, {Set<AiNativePath> newClipPaths = const {}}) {
+List<AiSourceEdit> _nativePathEdits(AiNativeDrawing drawing, List<AiNativePathEdit> changes, {Set<AiNativePath> newClipPaths = const {}, Set<AiNativePath> relocating = const {}}) {
   if (changes.isEmpty || changes.map((change) => change.path).toSet().length != changes.length) {
     throw ArgumentError('Native path edits require distinct source contours.');
   }
@@ -106,7 +106,7 @@ List<AiSourceEdit> _nativePathEdits(AiNativeDrawing drawing, List<AiNativePathEd
   final Map<AiNativePath, AiNativePathTopology> topology = {for (final AiNativePathTopology owner in _nativePathTopologies(drawing, inspected.toList())) owner.path: owner};
   final Map<AiNativePath, AiNativePathMask> masks = {for (final AiNativePathEdit change in changes) change.path: change.mask ?? topology[change.path]!.mask};
   for (final AiNativeGroup compound in compounds) {
-    if (compound.paths.map((path) => (masks[path] ?? topology[path]!.mask) != .none).toSet().length != 1) {
+    if (compound.paths.where((path) => !relocating.contains(path)).map((path) => (masks[path] ?? topology[path]!.mask) != .none).toSet().length > 1) {
       throw UnsupportedError('A compound mask requires a consistent relationship for every contour in the same transaction.');
     }
   }

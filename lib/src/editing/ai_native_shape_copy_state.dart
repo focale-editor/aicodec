@@ -92,7 +92,13 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
 }
 
 /// Captures known source values separately for printing and private authoring.
-Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<int> boundaries, {bool clipping = false}) {
+Map<int, _NativeShapeInputs> _shapeCopyInputs(
+  AiNativeDrawing drawing,
+  Iterable<int> boundaries, {
+  bool clipping = false,
+  Set<AiNativeContainer> retainedMetadata = const {},
+  String? Function(AiNativeInstruction) stateKey = _nativeArtworkStateKey,
+}) {
   final List<int> positions = boundaries.toSet().toList()..sort();
   final Map<int, _NativeShapeInputs> result = {};
   final Map<String, AiNativeInstruction> printing = {};
@@ -178,7 +184,11 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
   for (final int position in positions) {
     while (index < drawing.items.length && drawing.items[index].end <= position) {
       final AiNativeItem item = drawing.items[index++];
-      if (headers[item.start]?.bindingIssue == null && headers.containsKey(item.start) || _ordinaryObjectAttachment(drawing, item) || metadata.contains(item) || versionComments.contains(item.start)) {
+      if (headers.containsKey(item.start) && (headers[item.start]!.bindingIssue == null || retainedMetadata.contains(headers[item.start]!.dictionary)) ||
+          _ordinaryObjectAttachment(drawing, item) ||
+          retainedMetadata.contains(drawing._objects._attachments[item.start]?.dictionary) ||
+          metadata.contains(item) ||
+          versionComments.contains(item.start)) {
         continue;
       }
       if (item is AiNativeInstruction) {
@@ -207,7 +217,7 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
         }
         final String? key;
         try {
-          key = _nativeArtworkStateKey(item);
+          key = stateKey(item);
         } on FormatException {
           barrier(item.start, private: item.isPrivate);
           continue;

@@ -944,6 +944,21 @@ groups and compound topology. There is no general modern object lifecycle API.
   Validation: 887 VM/886 Node tests and all 40 independent topology/compound/clip
   cases pass. Eight focused checks on each runtime also cover the final style and
   conditional-owner guards. Formatting, analysis, fixes and diff checks are clean.
+  **Contour relationships:** `moveContours` relocates or reorders atomic contour
+  batches across ordinary, compound and clip owners. Counts, identities and exact
+  metadata travel together; intervening source assignments stay in place. Both
+  scalar projections preserve consumed and outgoing attributes, including shared
+  compound paint at `*U`. Compound entry, parent flags and mask changes have
+  explicit policies. Imported affine ancestors remain identical; no coordinate
+  rebasing is inferred. Twelve regressions include derived insertion anchors,
+  empty branches, mixed paint modes, hidden layers and 200-contour mask batches.
+  Eleven independent transactions include four moves in complete original CC
+  programs and 22 Adobe-prolog attribute checks through Ghostscript. Full owner
+  movement and broader producer lifecycle remain outstanding; this task stays
+  open and Adobe reopening remains unqualified.
+  Validation: 899 VM/898 Node tests and all 51 independent topology, compound,
+  clipping and movement cases pass. Formatting, analysis, fix dry-run, Python
+  compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

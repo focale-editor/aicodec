@@ -1,13 +1,17 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies complete compound elements without interpreting their appearance.
-List<AiNativePathTopology> _nativeCompoundElements(AiNativeDrawing drawing, List<AiNativeItem> elements, {AiNativeGroup? compound}) {
+List<AiNativePathTopology> _nativeCompoundElements(AiNativeDrawing drawing, List<AiNativeItem> elements, {AiNativeGroup? compound, bool retainContourData = false}) {
   final List<AiNativeItem> pending = [...elements];
   final List<AiNativeGroup> groups = [];
   final List<AiNativePath> paths = [];
   while (pending.isNotEmpty) {
     final AiNativeItem item = pending.removeLast();
-    _ordinaryObject(drawing, item);
+    if (retainContourData) {
+      _nativeContourOwner(drawing, item);
+    } else {
+      _ordinaryObject(drawing, item);
+    }
     if (item is AiNativePath) {
       paths.add(item);
     } else if (item is AiNativeGroup && const {'u', 'q'}.contains(item.opening.operator) && item.children.isNotEmpty) {
@@ -25,7 +29,10 @@ List<AiNativePathTopology> _nativeCompoundElements(AiNativeDrawing drawing, List
   };
   for (final AiNativeGroup group in compound == null ? elements.whereType<AiNativeGroup>() : [compound]) {
     for (final AiNativeItem item in _pathInterval(drawing.items, group.start, group.end, (item) => item.start)) {
-      if (!commands.contains(item) && !_ordinaryObjectAttachment(drawing, item) && (item is! AiNativeInstruction || _nativeArtworkStateKey(item) == null)) {
+      if (!commands.contains(item) &&
+          !_ordinaryObjectAttachment(drawing, item) &&
+          !(retainContourData && drawing._pathTopologyScope.retainedMetadata.contains(drawing._objects._attachments[item.start]?.dictionary)) &&
+          (item is! AiNativeInstruction || (retainContourData ? _nativeContourStateKey(item) : _nativeArtworkStateKey(item)) == null)) {
         throw UnsupportedError('Compound subgroups cannot contain non-contour artwork or unresolved style applications.');
       }
     }

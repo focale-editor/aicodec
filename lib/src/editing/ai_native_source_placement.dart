@@ -12,6 +12,9 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   _NativeShapeInputs incoming,
   _NativeShapeInputs outgoing, {
   required int maxBytes,
+  List<_NativeSubtreeSpan>? sourceSpans,
+  List<AiSourceEdit> sourceEdits = const [],
+  String? Function(AiNativeInstruction) stateKey = _nativeArtworkStateKey,
 }) {
   final Map<String, AiNativeInstruction> printing = Map.of(incoming.printing);
   final Map<String, AiNativeInstruction> native = Map.of(incoming.native);
@@ -24,7 +27,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
   /// Applies a literal in both interpretations or only the private native stream.
   void assign(AiNativeInstruction value, {required bool private}) {
-    final String key = _nativeArtworkStateKey(value)!;
+    final String key = stateKey(value)!;
     native[key] = value;
     if (!private) {
       printing[key] = value;
@@ -103,7 +106,11 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   for (final _NativeShapeReplay replay in prefix) {
     append(latin1.encode(_shapeStateText(replay.value, private: replay.private)));
   }
-  append(Uint8List.sublistView(drawing.records.program.bytes, span.start, span.end));
+  append(
+    sourceSpans == null && sourceEdits.isEmpty
+        ? Uint8List.sublistView(drawing.records.program.bytes, span.start, span.end)
+        : _nativeSourceSpans(drawing.records.program, sourceSpans ?? [span], maxBytes - bytes.length, edits: sourceEdits),
+  );
   append([10]);
   for (final _NativeShapeReplay replay in suffix) {
     append(latin1.encode(_shapeStateText(replay.value, private: replay.private)));
