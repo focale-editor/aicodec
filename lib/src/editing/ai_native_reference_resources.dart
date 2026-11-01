@@ -14,12 +14,12 @@ void _referenceLiteralStyle(AiNativeDrawing drawing, AiNativeContainer style) {
 }
 
 /// Qualifies counted gradient declarations without treating resource names as art IDs.
-List<({int start, int end})> _referenceGradientRanges(AiNativeLayers model) {
+List<({int start, int end})> _referenceGradientRanges(AiNativeLayers model, {List<_NativeFontEncoding>? fontDeclarations}) {
   final AiNativeRecords records = model.drawing.records;
   final List<AiToken> tokens = records._projection.tokens;
   final AiNativeGradientResources resources = AiNativeGradientResources.decode(records: records);
   final List<({int start, int end})> ranges = [];
-  for (final _NativeGradientBank bank in _nativeGradientBanks(resources)) {
+  for (final _NativeGradientBank bank in _nativeGradientBanks(resources, fontDeclarations: fontDeclarations)) {
     final AiToken operator = tokens.skip(_pathOffset(tokens, bank.count.end, (token) => token.start)).firstWhere((token) => token.kind != .comment);
     if (operator.kind != .executableName || operator.lexeme != 'Bn' || model.structure.versions.memberships(start: bank.count.start, end: operator.end).isNotEmpty) {
       throw UnsupportedError('Reference qualification requires unconditional counted gradient banks.');

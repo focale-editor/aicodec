@@ -214,6 +214,18 @@ void main() {
     check(() => _isolate(dangling)).throws<ArgumentError>();
   });
 
+  test('counts ordinary gradient banks after mark-based font declarations', () {
+    const String fonts = '[39/quotesingle 96/grave TE\n%AI3_BeginEncoding: _Font Font\n[/_Font/Font 0 0 1 TZ\n%AI3_EndEncoding AdobeType\n';
+    final AiNativeDrawing before = _drawing(_shape(), setup: '${fonts}1 Bn\n${_definition()}');
+    final AiNativeDrawing after = _isolate(before);
+    check(AiNativeGradientResources.decode(records: after.records).definitions).length.equals(2);
+    check(latin1.decode(after.records.program.bytes)).contains('${fonts}2 Bn');
+    for (final String changed in ['[1 Bn\n${_definition()}] pop', '[39/quotesingle TE 1 Bn\n${_definition()}] pop']) {
+      final AiNativeDrawing nested = _drawing(_shape(), setup: '[$changed] pop');
+      check(() => _isolate(nested)).throws<UnsupportedError>();
+    }
+  });
+
   test('rejects missing, stale and ambiguous banks and preserves the source on size failure', () {
     check(() => _isolate(_drawing(_shape(), setup: _definition()))).throws<UnsupportedError>();
     check(() => _isolate(_drawing(_shape(), setup: '2 Bn\n${_definition()}'))).throws<FormatException>();

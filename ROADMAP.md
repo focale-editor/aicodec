@@ -714,9 +714,23 @@ groups and compound topology. There is no general modern object lifecycle API.
   tests and clean format, fix and analysis; the existing 48 lifecycle and 19
   state/rectangle/refusal transactions also pass. These carriers qualify retained
   text, not edits of the four full producer documents. Those now pass text/body
-  inspection but still reject their nested gradient banks before later complex
-  setup dependencies are checked. This broader resource isolation keeps the
-  artboard task open. No text recomposition, host integration or renderer was added.
+  inspection but initially rejected gradient banks before later complex setup
+  dependencies were checked. Investigation traced that refusal to font marks,
+  not genuinely nested resources: `TE`/`TZ` terminate their opening `[` without
+  a closing bracket. Literal font encoding runs, known flags, optional Multiple
+  Master weights, matching wrappers and plain font inventories now retain their
+  independent namespace. Gradient isolation recognizes the same mark grammar;
+  real nested arrays, executable/immediate names, malformed runs and opaque or
+  conditional font ownership still reject. Eight additional regressions pass.
+  The 24 independent retained-text transactions now also preserve exact producer
+  font setup and compare independently decoded encodings with each original and
+  outcome. All four full producer files pass gradient-bank qualification and next
+  reject gradient palette entries or localized registration colors; complex
+  setup-resource isolation therefore keeps this task open. Full validation:
+  777 VM/776 Node tests and clean format, fix and analysis. The five existing
+  real-source gradient-isolation/color/focus transactions were regenerated and
+  independently rechecked after the shared bank-scanner change. No text
+  recomposition, host integration or renderer was added.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

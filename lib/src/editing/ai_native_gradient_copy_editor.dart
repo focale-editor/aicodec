@@ -13,7 +13,7 @@ final class _NativeGradientBank {
 }
 
 /// Reads top-level setup counts without treating data or procedures as resources.
-List<_NativeGradientBank> _nativeGradientBanks(AiNativeGradientResources resources) {
+List<_NativeGradientBank> _nativeGradientBanks(AiNativeGradientResources resources, {List<_NativeFontEncoding>? fontDeclarations}) {
   final AiNativeRecords records = resources.records;
   final List<AiToken> counts = [];
   final List<AiToken> numbers = [];
@@ -23,7 +23,9 @@ List<_NativeGradientBank> _nativeGradientBanks(AiNativeGradientResources resourc
   int definition = 0;
   final List<AiTokenKind> literals = [];
   bool setup = false;
-  for (final AiToken token in records._projection.tokens) {
+  final List<AiToken> tokens = records._projection.tokens;
+  for (int index = 0; index < tokens.length; index++) {
+    final AiToken token = tokens[index];
     if (token.start >= records.program.bodyStart) {
       break;
     }
@@ -69,6 +71,15 @@ List<_NativeGradientBank> _nativeGradientBanks(AiNativeGradientResources resourc
     if (embedded != 0 || !setup) {
       numbers.clear();
       continue;
+    }
+    if (literals.isEmpty && token.kind == .arrayStart) {
+      final ({int endIndex, List<String> names})? font = _readNativeFontEncoding(records, index);
+      if (font != null) {
+        index = font.endIndex;
+        fontDeclarations?.add((start: token.start, end: tokens[index].end, names: font.names));
+        numbers.clear();
+        continue;
+      }
     }
     if (const {AiTokenKind.arrayStart, AiTokenKind.dictionaryStart}.contains(token.kind)) {
       literals.add(token.kind);

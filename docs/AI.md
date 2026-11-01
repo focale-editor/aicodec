@@ -1477,6 +1477,17 @@ painted or executable confinements remain unqualified here. Retaining populated
 text does not grant creation/deletion of stories, frame reflow or cache regeneration.
 Artwork identity deletion retains its separate, stricter reference qualification.
 
+Retained font setup recognizes the mark-based `TE`/`TZ` grammar from AI7
+section 3.3. A font mark ends at its operator, not at a `]`; it cannot make later
+counted gradient banks appear nested. Literal glyph runs have bounded byte-code
+indices, and font declarations retain their names, known direction/script flags,
+optional numeric Multiple Master weights and matching encoding wrappers. Plain
+font-name header inventories and `%AI55J_Tsume: None` are preserved. Immediate
+name lookups, opaque annotations, conditional ownership, malformed runs and
+unknown wrappers reject. Font names do not become artboard or artwork identities.
+The same mark recognition fixes gradient isolation after font declarations;
+actual nested arrays and dictionaries still cannot own copied gradient banks.
+
 The retained body may contain ordinary compound paths (`*u`/`*U`) and clipping
 groups (`q`/`Q`), including nested groups, direct metadata and hidden/locked layer
 owners. Path masks retain their exact `h`/`H`, `W` and paint sequence within an
@@ -1530,13 +1541,18 @@ Nine populated-text regressions cover both compact versions, point/area/path
 frames, linked references, independent undo-free namespaces, a mapped PDF save,
 malformed/opaque dependencies and original depth/node limits. Independent checks
 verify 24 native artboard edits in six checksum-pinned carriers. Four carriers
-copy the exact ATE snapshots, origins, drawing references, confinement geometry
+copy the exact font setup, ATE snapshots, origins, drawing references, confinement geometry
 and attached metadata from pinned CC files; two synthetic carriers exercise
 main/undo-free ownership. The independent parser compares all copied text with
 the original producers and all outcomes, including 16 frames across ten stories
-in `text_transforms.ai`. These isolate the retained-text contract: they do not
-qualify artboard edits of the full producer files, whose gradient banks and other
-complex setup dependencies still reject. Adobe reopening remains unqualified.
+in `text_transforms.ai`. Font encodings are independently compared with the
+producer and every outcome, and their complete source setup remains byte-exact.
+Eight additional regressions cover font marks, all four artboard operations,
+gradient isolation, malformed declarations and unchanged deletion guards. These
+checks isolate the retained text/font contract; they do not qualify artboard edits
+of the full producer files. Those now pass gradient-bank qualification and next
+reject gradient palette entries or a localized registration swatch. Other complex
+setup owners remain unqualified. Adobe reopening remains unqualified.
 
 ### Native print selections during artboard edits
 

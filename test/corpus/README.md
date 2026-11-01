@@ -734,10 +734,14 @@ point, area and path frames, including linked frames and retained glyph caches.
 The unmodified inkai reader independently decodes both binary snapshots and all
 body text references, compares the copied data against the original producer,
 resolves each drawing-to-story-to-frame selection and checks every result. Whole
-native byte comparisons permit only the declared Document/crop edits. These
-are explicitly synthetic artboard carriers with original producer text; they do
-not claim full-source artboard edit support for those four files. Their complex
-gradient banks and other setup resources remain outside the qualified scope.
+native byte comparisons permit only the declared Document/crop edits. The carriers
+also retain the producers' complete font setup and font-name headers. The
+independent reader compares encoding marks, declarations, names and flags with
+the original producers and all edited outcomes; source checks retain every font
+setup byte. These are explicitly synthetic artboard carriers with original
+producer text and fonts; they do not claim full-source artboard edit support for
+those four files. Their palettes and other complex setup resources remain
+outside the qualified scope.
 
 ```sh
 dart run tool/check_native_artboard_text.dart

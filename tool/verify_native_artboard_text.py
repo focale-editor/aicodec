@@ -16,10 +16,10 @@ from verify_native_page_saves import native_edit
 from verify_native_text import field, resources
 
 CARRIERS = {
-    'simple_cc_legacy.ai': '3f66cfbd9be03bd0ec1d62e625bf1bdc75110639809e997bf1a62ec938c5a958',
-    'simple_v2020.ai': '7e3f98a7636b4d3c9baae245985cfcc7f6b4736685b130701ab1d736a9f9604f',
-    'text_transforms.ai': '5f411edf62c5726d08a33991abf6f7fd709fa81066661b626c9f0ea3fe7da5b0',
-    'flowtext.ai': '8c8b232b484cc9f645237d77ae70c3255a75430d9731847d9ed666c5d4297d96',
+    'simple_cc_legacy.ai': 'f829f530322dba0db1cfda7dd6c49767256276fb1695df1aa2811e0747fbfe68',
+    'simple_v2020.ai': 'e1a4f5d023e5639e585e580e5e27ad18734726c8851c2f2bbdfe630b9872887d',
+    'text_transforms.ai': '581040cc1c974c944e6c71f4a647fd4de6ce10b75ea6fffeb8a8bcbab290593c',
+    'flowtext.ai': '5cc3e5a3c0dae935560effedb9d6c8e6986d2e3771885d08605a3411b1431351',
     'synthetic-main': '7e6a9ec87819bcd12fefd6d8e6bdddd4e626a4f9ba78a85c195720f5970f932c',
     'synthetic-undo': '1f810674463a07a2172a13f8ca24281db4c7bfff1cb49075e5564505b989d8df',
 }
@@ -67,6 +67,10 @@ def text_state(document, text_parser, stream):
         snapshots=snapshots,
         drawing=drawing,
         counts=[len(stories[0]), len(frames[0]), len(drawing)],
+        fonts=[normalized(child) for child in document.setup.children
+               if getattr(child, 'command', None) in ('[', 'TE')
+               or type(child).__name__ == 'Encoding'
+               or isinstance(child, tuple) and child[0] == 'AI55J_Tsume'],
     )
 
 
@@ -96,11 +100,14 @@ def main():
         states[name] = text_state(inkai.parse(str(original)), text_parser, stream)
         assert states[name]['counts'] == ([2, 3, 3] if name.startswith('synthetic-') else [10, 16, 16] if name == 'text_transforms.ai' else [1, 1, 1])
         if not name.startswith('synthetic-'):
+            assert states[name]['fonts'] and sum(value[0] == 'Encoding' for value in states[name]['fonts']) >= 1
             entry, fixture = manifest[name], Path('test/corpus/files', name)
             assert entry['revision'] == REVISION and fixture.stat().st_size == entry['size']
             assert hashlib.sha256(fixture.read_bytes()).hexdigest() == entry['sha256']
             producer = args.output / f'{name}.producer.ps'
             assert native_programs(fixture) == [producer.read_bytes()]
+            font_setup = producer.read_bytes().split(b'%%BeginSetup', 1)[1].split(b'%AI5_Begin_NonPrinting', 1)[0]
+            assert font_setup and font_setup in originals[name]
             assert text_state(inkai.parse(str(producer)), text_parser, stream) == states[name]
     checked = []
     for row in rows:

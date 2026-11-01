@@ -12,7 +12,9 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
     inspect: (model, start, end, headers) => _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: styles),
     qualifyShapeNeighbors: false,
   )..addAll(text.objects);
-  final List<({int start, int end})> independent = _referenceGradientRanges(layers);
+  final List<_NativeFontEncoding> fonts = [];
+  final List<({int start, int end})> independent = _referenceGradientRanges(layers, fontDeclarations: fonts);
+  independent.addAll(_artboardFontSetupRanges(layers, fonts));
   independent.addAll(_artboardSetupRanges(layers));
   independent.addAll(text.ranges);
   for (final AiNativeContainer record in model.records.roots.where((record) => !dictionaries.contains(record))) {

@@ -8,15 +8,17 @@ import '../test/ai_native_artboard_text_test.dart' show artboardTextDrawing, art
 import '../test/ai_native_artboards_test.dart' show artboardModel, artboardSource;
 import 'check_native_artboards.dart' show artboardInventory;
 
-/// Copies exact text snapshots and drawing owners into a declared test carrier.
+/// Copies exact font setup, text snapshots and drawing owners into a test carrier.
 String retainedTextCarrier(AiNativeSource source) {
   final String text = latin1.decode(source.bytes);
   final AiNativeRecords records = AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes));
   final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
   final int setupStart = text.indexOf('%AI11_BeginTextDocument');
   final int setupEnd = text.indexOf('%AI11_EndTextDocument', setupStart) + '%AI11_EndTextDocument'.length;
-  if (setupStart < 0 || setupEnd <= setupStart) {
-    throw StateError('The producer text setup must have explicit wrappers.');
+  final int fontStart = text.indexOf('%%BeginSetup') + '%%BeginSetup'.length;
+  final int fontEnd = text.indexOf('%AI5_Begin_NonPrinting', fontStart);
+  if (setupStart < 0 || setupEnd <= setupStart || fontStart < '%%BeginSetup'.length || fontEnd <= fontStart || fontEnd >= setupStart) {
+    throw StateError('The producer font and text setup must have explicit boundaries.');
   }
   final StringBuffer body = StringBuffer();
   for (final (int, AiNativeItem) item in drawing.items.indexed) {
@@ -32,7 +34,8 @@ String retainedTextCarrier(AiNativeSource source) {
       }
     }
   }
-  return artboardSource(extra: text.substring(setupStart, setupEnd), body: body.toString());
+  final String headers = RegExp(r'^%%Document(?:Needed)?Fonts:[^\r\n]*', multiLine: true).allMatches(text).map((match) => match[0]!).join('\n');
+  return artboardSource(extra: '${text.substring(fontStart, fontEnd)}${text.substring(setupStart, setupEnd)}', body: body.toString()).replaceFirst('%%EndComments', '$headers\n%%EndComments');
 }
 
 /// Emits native artboard transactions with unchanged producer text and caches.
