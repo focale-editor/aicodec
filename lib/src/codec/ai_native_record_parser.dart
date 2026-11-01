@@ -226,7 +226,7 @@ final class _NativeRecordReader {
   int? _binaryStart;
 
   /// Separates typed dictionary values from keys while preserving other syntax.
-  AiNativeEntry _entry({required String type, required List<AiNativeItem> items}) {
+  static AiNativeEntry _entry({required String type, required List<AiNativeItem> items}) {
     final List<AiNativeItem> values = [...items];
     String? key;
     String? dataType;

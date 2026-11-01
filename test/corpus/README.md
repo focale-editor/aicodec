@@ -776,13 +776,34 @@ blending flags, a resolved style and an XML artwork ID equal to an artboard UUID
 Whole-native comparisons permit only the declared Document/crop edits.
 
 These carriers qualify resource retention, not symbol-instance editing or full
-producer artboard edits. Symbols containing raster masks, blend owners or further
-appearance dependencies still require separate qualification, alongside brush
-and SVG-filter resources.
+producer artboard edits. The separate mask suite below qualifies retained mask
+payloads. Full symbol appearance graphs, blend owners, brush and SVG-filter
+resources still require further qualification.
 
 ```sh
 dart run tool/check_native_artboard_symbols.dart
 python3 tool/verify_native_artboard_symbols.py --inkai-source /tmp/extension-ai
+```
+
+The retained-mask suite adds twenty transactions in five pinned carriers. Three
+copy both complete `Film` mask dictionaries from `simple_cc_legacy.ai`,
+`simple_v2020.ai` and `text_transforms.ai` into an explicitly synthetic symbol
+owner. Each has a 32-by-32 and a 29-by-30 gray image, with 1,024 and 870 bytes of
+samples. The independent reader compares every mask flag, artwork command, image
+descriptor, sample byte and attached dictionary with the original producers and
+every edited result. Exact source-section checks retain the full copied mask
+owners; Document/crop edits are the only permitted native changes. The carriers
+also retain and independently compare the producers' text, fonts, gradients,
+patterns and palettes. Two synthetic sources cover raster and vector masks with
+separate symbol/artboard identities.
+
+This qualifies mask retention without claiming that all `Film` style dependencies
+or the complete producer document are accepted. Feather appearance descriptors,
+further styles, blend owners and other resource families remain separate work.
+
+```sh
+dart run tool/check_native_artboard_masks.dart
+python3 tool/verify_native_artboard_masks.py --inkai-source /tmp/extension-ai
 ```
 
 ## Native print selections

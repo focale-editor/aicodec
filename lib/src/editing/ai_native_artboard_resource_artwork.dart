@@ -40,7 +40,7 @@ void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Ma
     if (gradients.contains(item)) {
       continue;
     }
-    if (item is AiNativeContainer) {
+    if (item is AiNativeContainer || item is AiNativeRaster) {
       if (count != null) {
         throw const FormatException('A resource point count crosses artwork metadata.');
       }
@@ -58,6 +58,11 @@ void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Ma
         clipDepth++;
       } else if (command.operator == 'Q') {
         clipDepth--;
+      }
+    } else if (command.operator == 'N' && index > 0 && drawing.items[index - 1] is AiNativeRaster) {
+      final AiNativeRaster raster = drawing.items[index - 1] as AiNativeRaster;
+      if (command.operands.isNotEmpty || command.isPrivate != raster.instruction.isPrivate) {
+        throw const FormatException('Retained raster termination must belong to its source representation.');
       }
     } else if (command.operator == 'As') {
       if (count != null || command.numbers?.length != 1 || command.numbers!.single < 0 || command.numbers!.single % 1 != 0) {

@@ -777,6 +777,23 @@ groups and compound topology. There is no general modern object lifecycle API.
   Full validation: 801 VM/800 Node tests and clean format, fix and analysis. All
   102 independent transactions pass, including regeneration/rechecks of the
   previous 28 text/pattern and 54 lifecycle outcomes after sharing resource scope.
+  Retained symbol opacity masks now keep explicit linked/disabled/clipping/inverted
+  flags and complete bounded artwork. Empty, vector, nested and qualified raster
+  masks preserve geometry and source coordinates. Process-image framing,
+  placement, sample UUID ownership and known raster-observer metadata are checked
+  without decoding samples as commands or recompositing the mask. Unknown fields,
+  annotations, executable state, malformed frames and unsupported layouts reject
+  atomically. Eight regressions and twenty new independent transactions pass.
+  Three pinned carriers retain six complete producer masks, including 32-by-32
+  and 29-by-30 gray images with every sample byte checked; two synthetic carriers
+  cover raster/vector masks. Complete flags, commands, descriptors, source spans
+  and the retained producer text/font/pattern data are compared independently.
+  The full files now pass mask inspection before later style/dependency refusals;
+  their appearance graphs, blend owners, brushes and SVG filters still need
+  qualification. This artboard task remains open; no host renderer was added.
+  Full validation: 809 VM/808 Node tests, clean format/fix/analysis and all 122
+  independent transactions, including the previous 102 symbol/text/lifecycle
+  outcomes regenerated and checked against their original sources.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

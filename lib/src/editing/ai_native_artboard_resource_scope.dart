@@ -9,7 +9,7 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
   final List<AiToken> tokens = records._projection.tokens;
   final Set<String> patterns = {};
   final Set<String> symbols = {};
-  final List<AiNativeDrawing> drawings = [];
+  final _ArtboardResourceInspection scope = _ArtboardResourceInspection(layers: layers);
   final List<({int start, int end})> ranges = [];
   final Set<AiNativeContainer> objects = {};
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use};
@@ -53,9 +53,14 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
     }
     final List<AiToken> contents = [];
     final String ending = pattern ? '%AI3_EndPattern' : '%AI10_EndSymbol';
+    int nested = root;
     while (++index < tokens.length && tokens[index].start < records.program.bodyStart && !(tokens[index].kind == .comment && tokens[index].lexeme == ending)) {
       final AiToken token = tokens[index];
-      if (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%'))) {
+      while (nested < records.roots.length && records.roots[nested].end <= token.start) {
+        nested++;
+      }
+      final bool inRecord = nested < records.roots.length && token.start >= records.roots[nested].start && token.end <= records.roots[nested].end;
+      if (!inRecord && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')))) {
         throw UnsupportedError('Retained resources cannot hide conditional, embedded or opaque artwork.');
       }
       if (token.kind != .comment) {
@@ -102,7 +107,7 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
           if (pattern) {
             _artboardPatternMetadata(layers, metadata[owner]);
           } else {
-            _artboardSymbolMetadata(layers, metadata[owner]);
+            _artboardSymbolMetadata(scope, metadata[owner]);
           }
           items.add(metadata[owner]);
           objects.add(metadata[owner]);
@@ -115,10 +120,10 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
       }
     }
     reader.finish();
-    drawings.add(_NativeDrawingReader(records: records).readItems(items));
+    scope.drawings.add(_NativeDrawingReader(records: records).readItems(items));
     ranges.add((start: opening.start, end: closing.end));
   }
-  for (final AiNativeDrawing drawing in drawings) {
+  for (final AiNativeDrawing drawing in scope.drawings) {
     _artboardResourceArtwork(layers, drawing, references, patterns);
   }
   return (patterns: Set.unmodifiable(patterns), symbols: Set.unmodifiable(symbols), ranges: List.unmodifiable(ranges), objects: Set.unmodifiable(objects));
@@ -191,20 +196,48 @@ void _artboardResourceRotation(AiNativeContainer record) {
 }
 
 /// Retains symbol-local registration grids, identities and appearance metadata.
-void _artboardSymbolMetadata(AiNativeLayers layers, AiNativeContainer record) {
-  _artboardSetupRecord(layers, record);
+void _artboardSymbolMetadata(_ArtboardResourceInspection scope, AiNativeContainer record, {AiNativeRaster? raster}) {
   if (record.type != 'ArtDictionary' || record.hasBinary) {
     throw UnsupportedError('Retained symbols require qualified art metadata.');
   }
+  final List<({int start, int end})> checked = [];
   _referenceFields(
     record,
     {
-      'Bool': {'AI13PatternEnableGuides', 'AI15PixelPerfectSymbolEnablekey', 'PATH_IS_KAPPA_CURVE'},
+      'Bool': {'AI13PatternEnableGuides', 'AI15PixelPerfectSymbolEnablekey', 'PATH_IS_KAPPA_CURVE', if (raster != null) 'AI9 Fuzzy Mask'},
       'Int': {'AI13PatternExportType', 'AI13PatternRegistrationType', 'AI10 compound shape mode'},
       'RealMatrix': {'AI13Pattern9SliceScalingGridKey'},
-      'String': {'BBAccumRotation', 'AIArtName', 'Object name'},
+      'String': {
+        'BBAccumRotation',
+        'AIArtName',
+        'Object name',
+        if (raster != null) ...['AI24 ImageRawDataUUID', 'AI24 ImageAlphaRawDataUUID'],
+      },
+      if (raster != null) 'Real': {'Raster Art Original Scale'},
     },
     nested: {
+      'AI9_Mask': (entry) {
+        final AiNativeContainer mask = _referenceRecord(entry, 'Mask');
+        _artboardOpacityMask(scope, mask);
+        checked.add((start: mask.start, end: mask.end));
+      },
+      'Adobe_AI9_Observed_Key_Strings': (entry) {
+        final AiNativeContainer names = _referenceRecord(entry, 'Array');
+        if (names.hasBinary ||
+            names.entries.any(
+              (field) =>
+                  field.key != null ||
+                  field.type != null ||
+                  field.items.length != 2 ||
+                  field.items.first is! AiNativeToken ||
+                  field.items.last is! AiNativeToken ||
+                  !const {AiTokenKind.string, AiTokenKind.hexString}.contains((field.items.first as AiNativeToken).token.kind) ||
+                  (field.items.last as AiNativeToken).token.lexeme != '/String' ||
+                  latin1.decode(aiStringBytes((field.items.first as AiNativeToken).token)) != 'AI Auto Rasterize',
+            )) {
+          throw UnsupportedError('Retained symbol observers require known literal property names.');
+        }
+      },
       'Adobe_AI9_ArtStyle_Dictionary': (entry) => _referenceFields(_referenceRecord(entry, 'Dictionary'), {
         'RealMatrix': {'CAIGradientTformMatrix'},
       }, notRecorded: true),
@@ -220,5 +253,6 @@ void _artboardSymbolMetadata(AiNativeLayers layers, AiNativeContainer record) {
       },
     },
   );
+  _artboardSetupRecord(scope.layers, record, checked: checked);
   _artboardResourceRotation(record);
 }

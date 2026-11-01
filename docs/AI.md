@@ -1489,8 +1489,23 @@ compositing or evaluating the appearance. AI10/AI24 panel inventories require
 distinct ordinary literal names that resolve to qualified symbols; the observed
 AI10 opening comment with a terminal NUL is retained verbatim. Unlisted
 definitions may remain unused. Unknown metadata, nested resource declarations,
-mask artwork, opaque payloads and executable state still reject. Symbol instances
+unqualified payloads and executable state still reject. Symbol instances
 and definition lifecycle remain separate editing contracts.
+
+Symbol `AI9_Mask` dictionaries retain explicit `Linked`, `Disabled`, `Clipping`
+and `Inverted` Boolean fields together with a complete `X=`/`X+` artwork field.
+Empty, vector, nested and qualified raster masks preserve their source basis.
+Mask raster sections use the existing bounded `XI` decoder and require complete
+`XG`/`XN`/`Xh`/`XI`/`XH` process-image metadata with consistent placement. The
+opaque sample interval remains exact; raster and DSC boundaries must belong to
+that image and cannot hide unrelated annotations. An immediate empty `AI5_File`
+comment is retained without accessing a file. Sample UUIDs, original scale and
+the fuzzy-mask flag are accepted only on that raster's attached dictionary.
+The known `AI Auto Rasterize` property observer is retained as a literal name.
+Flags, nested artwork, binary sizes, geometry/counts and references are checked
+within the original program limits. Unknown mask fields, external execution,
+unsupported raster layouts or incomplete ownership reject atomically. This is
+retention during artboard edits; mask editing and recomposition remain separate.
 
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
 retained with compact ATE versions 7 and 9. Point, area and path frames use
@@ -1614,9 +1629,20 @@ synthetic symbol with a resolved style and an XML ID equal to an artboard UUID.
 The reader compares complete symbol commands and metadata, inventory order,
 resource references, producer text/fonts/patterns/gradients and all retained
 bytes. The first three real carriers have twelve symbols and 65 symbol paths
-each; `flowtext.ai` contributes three symbols and 167 paths. The full producers
-still require qualification of symbol mask/blend owners, additional appearance
-graphs and other setup resources, including brushes and SVG filters.
+each; `flowtext.ai` contributes three symbols and 167 paths.
+
+Eight mask regressions cover all four edits, all Boolean flag combinations,
+ordinary/private/empty/vector/nested masks, hostile sample bytes, malformed
+framing and original limits. A further twenty independent transactions use
+three carriers with both exact producer mask dictionaries plus two synthetic
+raster/vector carriers. Each real carrier retains 32-by-32 and 29-by-30 gray
+rasters: 1,024 and 870 exact sample bytes respectively. The reader compares every
+mask field, nested command, raster descriptor and sample with the producer and
+each result, alongside text/font/pattern data and whole-source preservation.
+These masks come from the `Film` symbol; its other appearance dependencies are
+not removed from, or claimed qualified in, the original document. Full producers
+still require further style references/appearance graphs, blend owners, brushes
+and SVG filters before artboard edits can be qualified end to end.
 Adobe reopening remains unqualified.
 
 ### Native print selections during artboard edits
