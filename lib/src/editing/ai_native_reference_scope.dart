@@ -293,6 +293,14 @@ void _referenceDocument(AiNativeLayers model, AiNativeContainer document) {
           'SVG_CropBoxHeight': (entry) => _referenceSvgCoordinates(entry, count: 1),
           'ArtboardArray': _referenceArtboards,
           'Constraint Data': (entry) => _referenceEmpty(entry, 'Array'),
+          'GenAIRecorded': (entry) => _referenceFields(
+            _referenceRecord(entry, 'Dictionary'),
+            const {},
+            nested: {
+              'MigratedArtList': (entry) => _referenceEmpty(entry, 'Array'),
+              'GenAIVariationsDictionary': (entry) => _referenceEmpty(entry, 'Dictionary'),
+            },
+          ),
           'DocumentDict/ExportableAssetsKey': (entry) => _referenceEmpty(entry, 'Dictionary'),
           'SelHatDocTableDict': (entry) => _referenceFields(
             _referenceRecord(entry, 'Dictionary'),

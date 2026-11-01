@@ -202,6 +202,13 @@ List<AiSourceEdit> _nativeAppearanceChanges(AiNativeAppearances model, AiNativeA
     if (change.evenOdd case final bool value) {
       flag(part.parameters?['UseEvenOdd'], part.evenOdd, value);
     }
+    if (change.adjustDashes case final bool value) {
+      final AiNativeStrokeSettings? settings = part.strokeSettings;
+      if (settings?.version != 1) {
+        throw UnsupportedError('Dash adjustment requires an existing version-one stroke settings owner.');
+      }
+      flag(settings!.record['BSDashAdj'], settings.adjustDashes, value);
+    }
     if (change.strokeAlignment case final AiNativeStrokeAlignment alignment) {
       if (part.kind != .strokeOffset || alignment == .center) {
         throw UnsupportedError('Alignment changes require an existing native inside/outside stroke descriptor.');

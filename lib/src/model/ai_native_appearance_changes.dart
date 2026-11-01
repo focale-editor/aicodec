@@ -44,6 +44,12 @@ final class AiNativeAppearancePartChange {
   /// Inside/outside replacement for an explicitly saved native offset stroke.
   final AiNativeStrokeAlignment? strokeAlignment;
 
+  /// Replacement for an explicitly saved version-one dash-adjustment flag.
+  ///
+  /// Dash expansion remains the host's responsibility. Absent fields are not
+  /// synthesized by scalar editing; new stroke definitions may supply the flag.
+  final bool? adjustDashes;
+
   /// Host-supplied label bytes when the offset stroke has a saved DisplayString.
   ///
   /// Preserve the original string encoding; the kit does not translate labels.
@@ -69,13 +75,14 @@ final class AiNativeAppearancePartChange {
     this.visible,
     this.evenOdd,
     this.strokeAlignment,
+    this.adjustDashes,
     List<int>? alignmentLabelBytes,
     List<AiNativeAppearancePart>? childOrder,
     List<AiNativeAppearanceChild>? children,
   }) : alignmentLabelBytes = alignmentLabelBytes == null ? null : List.unmodifiable(alignmentLabelBytes),
        childOrder = childOrder == null ? null : List.unmodifiable(childOrder),
        children = children == null ? null : List.unmodifiable(children) {
-    if (visible == null && evenOdd == null && strokeAlignment == null && childOrder == null && children == null) {
+    if (visible == null && evenOdd == null && strokeAlignment == null && adjustDashes == null && childOrder == null && children == null) {
       throw ArgumentError('An appearance part change requires a supplied setting.');
     }
     if (children != null && childOrder != null) {

@@ -9,7 +9,7 @@ import '../test/ai_native_appearance_order_test.dart' show appearanceOrderSource
 import 'check_native_appearances.dart' show appearanceInventory;
 
 /// Exercises all authored part kinds and process stroke spaces independently.
-AiNativeAppearancePartDefinition _typedParts() => AiNativeAppearancePartDefinition(
+AiNativeAppearancePartDefinition _typedParts({bool strokeSettings = false}) => AiNativeAppearancePartDefinition(
   kind: .chain,
   children: [
     AiNativeAppearanceChild.create(
@@ -35,6 +35,7 @@ AiNativeAppearancePartDefinition _typedParts() => AiNativeAppearancePartDefiniti
                 miterLimit: 8,
                 dash: [2.5, 1.5],
                 dashPhase: -1.5,
+                adjustDashes: strokeSettings ? entry.$3 != .outside : null,
                 strokeAlignment: entry.$3,
                 alignmentLabelBytes: entry.$3 == .center ? null : latin1.encode(entry.$3.name),
               ),
@@ -50,7 +51,7 @@ AiNativeAppearancePartDefinition _typedParts() => AiNativeAppearancePartDefiniti
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/appearance-graphs').create(recursive: true);
   final List<Map<String, Object?>> rows = [];
-  for (final String variant in ['create', 'remove', 'copy', 'move', 'shared', 'private', 'typed']) {
+  for (final String variant in ['create', 'remove', 'copy', 'move', 'shared', 'private', 'typed', 'typed-strokes']) {
     String text = appearanceOrderSource();
     if (variant == 'private') {
       final AiNativeContainer owner = appearanceEditingModel(source: text).styles.single.resource.definition.source as AiNativeContainer;
@@ -68,7 +69,7 @@ Future<void> main() async {
       ],
       _ => [
         ...retainAppearanceParts(style, [1, 6, 7]),
-        AiNativeAppearanceChild.create(definition: variant == 'typed' ? _typedParts() : newAppearanceFill()),
+        AiNativeAppearanceChild.create(definition: variant.startsWith('typed') ? _typedParts(strokeSettings: variant == 'typed-strokes') : newAppearanceFill()),
       ],
     };
     final List<AiNativeAppearancePartChange> parts = [

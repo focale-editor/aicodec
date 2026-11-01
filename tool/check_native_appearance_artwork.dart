@@ -67,37 +67,26 @@ Future<void> main() async {
       final AiNativeAppearanceArtwork artwork = model.artworkFor(use: selected.$2);
       final AiNativeAppearanceReplacement group = _printing(model, artwork, paint, offset: part.kind == .strokeOffset, bounds: source.asPostScript().boundingBox!);
       final AiNativeAppearances changed = model.updateSelected(appearance: style, paints: paints, artwork: [group], nameBytes: latin1.encode('Magenta stroke'));
-      AiNativeAppearances? shared;
-      String? sharedRejection;
-      try {
-        shared = model.updateShared(
-          appearance: style,
-          paints: paints,
-          artwork: [
-            for (final AiNativeResourceUse use in style.uses)
-              _printing(
-                model,
-                model.artworkFor(use: use),
-                paint,
-                offset: part.kind == .strokeOffset,
-                bounds: source.asPostScript().boundingBox!,
-              ),
-          ],
-        );
-      } on UnsupportedError catch (error) {
-        sharedRejection = error.message;
-      }
-      final String expectedRejection = name == 'stroke_styles.ai'
-          ? 'Native transformation requires a supported appearance style.'
-          : 'Reference qualification does not cover Dictionary/GenAIRecorded (null).';
-      if (shared != null || sharedRejection != expectedRejection || style.uses.length != 1) {
-        throw StateError('The pinned full-source shared boundary changed; inspect it before updating acceptance.');
+      final AiNativeAppearances shared = model.updateShared(
+        appearance: style,
+        paints: paints,
+        artwork: [
+          for (final AiNativeResourceUse use in style.uses)
+            _printing(
+              model,
+              model.artworkFor(use: use),
+              paint,
+              offset: part.kind == .strokeOffset,
+              bounds: source.asPostScript().boundingBox!,
+            ),
+        ],
+      );
+      if (style.uses.length != 1) {
+        throw StateError('Expected one original shared owner for each selected stroke.');
       }
       final String prefix = '$name.${selected.$1}';
       await File('${output.path}/$prefix.selected.ps').writeAsBytes(changed.structure.drawing.records.program.bytes);
-      if (shared != null) {
-        await File('${output.path}/$prefix.shared.ps').writeAsBytes(shared.structure.drawing.records.program.bytes);
-      }
+      await File('${output.path}/$prefix.shared.ps').writeAsBytes(shared.structure.drawing.records.program.bytes);
       rows.add({
         'file': name,
         'user': selected.$1,
@@ -106,10 +95,9 @@ Future<void> main() async {
         'part': part.index,
         'before': {'source': '$name.before', ...appearanceInventory(model)},
         'selected': {'source': '$prefix.selected', ...appearanceInventory(changed)},
-        'shared': shared == null ? null : {'source': '$prefix.shared', ...appearanceInventory(shared)},
-        'sharedRejection': sharedRejection,
+        'shared': {'source': '$prefix.shared', ...appearanceInventory(shared)},
       });
-      stdout.writeln('$prefix: selected edit; shared ${sharedRejection ?? 'passed'}, ${style.uses.length} shared owners');
+      stdout.writeln('$prefix: selected/shared ordinary stroke edits, ${style.uses.length} shared owners');
     }
   }
   await File('${output.path}/report.json').writeAsString('${const JsonEncoder.withIndent('  ').convert(rows)}\n');

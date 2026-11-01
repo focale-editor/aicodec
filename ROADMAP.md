@@ -1170,18 +1170,32 @@ isolation and relative placement. General appearance editing remains incomplete.
   Every RGBA pixel matches a separate original-SVG stroke recoloring, with
   identical alpha. Centered strokes change 1,786/1,800 pixels; inside strokes
   change 3,594/3,573 pixels in both counted and uncounted sources.
-  Full-source shared changes in these new producers still reject advanced dash
-  dictionaries or `GenAIRecorded`. The corpus checks require those rejections;
-  synthetic mixed/shared transactions pass. Resource/group/text users, broader
-  producer support and unresolved state consumed by following `AI11Text` owners
-  remain open.
-  Validation: 1021 VM/1020 Node tests and all 40 corpus container outcomes pass.
-  Six new complete-producer transactions pass independent byte/tree/pixel checks;
-  the sixteen existing synthetic appearance edits and twelve previous complete
-  producer transactions pass again. All 54 independent artboard lifecycle
-  transactions passed after the preceding palette-scope change. The earlier
-  98-style/834-part/135-use inventory and 37-source capability checks remain
-  inspection evidence, not editing acceptance for the new producers. Formatting,
+  Version-one advanced stroke dictionaries now expose `AiNativeStrokeSettings`
+  with explicit schema version and dash adjustment, separate from dash lengths
+  and phase. `AiNativeAppearancePartChange.adjustDashes` edits an existing flag;
+  new stroke definitions can author the complete settings dictionary. Missing,
+  mistyped, future or unknown options reject editing while their source remains
+  inspectable. Literal appearance state uses its own retained schema instead of
+  the geometry-transform checker; transform scope remains unchanged.
+  Shared scope now qualifies `GenAIRecorded` only with its observed empty
+  `MigratedArtList`/`GenAIVariationsDictionary` collections. Eight regressions
+  cover settings creation/editing, preservation and rejection. Three new synthetic
+  transactions independently verify flag/dash/phase changes in selected, shared
+  and private syntax; a fourth verifies authored advanced settings for all stroke
+  alignments with complete byte/tree checks. These synthetic groups qualify
+  serialization, not adjusted dash rendering.
+  Six additional complete-producer shared transactions now pass on the three
+  ordinary-user sources, retaining their advanced settings and empty generative
+  provenance. Every native tree and full-program byte delta is checked, and
+  every shared output RGBA pixel equals the corresponding selected recoloring.
+  Resource/group/text users, broader producer support and unresolved state
+  consumed by following `AI11Text` owners remain open.
+  Validation: 1029 VM/1028 Node tests pass, including eight new regressions on both
+  platforms after the synthetic qualifier-layout correction. Twenty synthetic
+  appearance transactions and twenty-four complete producer transactions pass
+  independent checks. The 98-style/834-part/135-use inspection is revalidated;
+  all 54 artboard lifecycle regressions pass their independent checks. The
+  40-source container check passed in the preceding increment. Formatting,
   analysis, fix dry-run, Python compilation and diff checks are clean.
 - [ ] Add native opacity, blend, isolation, knockout and opacity-mask records,
   including mask artwork, linked/disabled/inverted state and dependent references.

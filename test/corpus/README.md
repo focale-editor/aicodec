@@ -92,21 +92,39 @@ dart run tool/check_native_appearance_graphs.dart
 python3 tool/verify_native_appearance_graphs.py --inkai-source /tmp/extension-ai
 ```
 
-Seven transactions exercise explicit creation, removal, original snapshot copying,
+Eight transactions exercise explicit creation, removal, original snapshot copying,
 reparenting, shared updates with nested ordering, private source records and typed
-part creation. The last case creates a chain containing a stack, a dual process
+part creation. The two typed cases create a chain containing a stack, a dual process
 fill, gray/RGB/CMYK strokes and a conduit. The strokes cover center/inside/outside
 alignment, host labels, opacity, overprint, winding, cap/join/miter, width and
-dashes. These synthetic groups qualify native serialization/state contracts,
+dashes. The additional `typed-strokes` case writes version-one advanced settings
+with adjustment enabled for centered/inside strokes and disabled for outside
+strokes. These synthetic groups qualify native serialization/state contracts,
 not visual equivalence with a host composition.
 
-The unchanged pinned reader decodes all fourteen complete before/after trees.
+The unchanged pinned reader decodes all sixteen complete before/after trees.
 The independent checker pins the original source hash and the exact private-line
 projection, specifies each new descriptor and ownership change, and requires the
 complete expected byte delta. Copies must retain original bytes even when the
 retained source part is edited. Comments and source wrappers remain outside the
 removed child fields. Generated sources and reports stay ignored under
 `output/appearance-graphs`.
+
+### Saved advanced stroke settings
+
+```sh
+dart run tool/check_native_appearance_strokes.dart
+python3 tool/verify_native_appearance_strokes.py --inkai-source /tmp/extension-ai
+```
+
+Three transactions change the saved `BSDashAdj` flag together with dash lengths
+and phase: selected isolation, shared updates and private-line source syntax.
+The source hash and exact private projection are pinned. The independent reader
+compares every before/after style, part, setting and use, then the byte oracle
+requires precisely the scalar changes, optional style copy/rebind, supplied
+groups and bounds. Other source bytes remain exact. These synthetic groups check
+serialization and outgoing state; they are not visual acceptance for adjusted
+dash geometry. Generated files remain ignored under `output/appearance-strokes`.
 
 ### Complete producer appearance edits
 
@@ -215,14 +233,18 @@ Every output RGBA pixel must match that reference; alpha remains identical.
 At width 1200 the two centered strokes change 1,786 and 1,800 pixels; the two
 inside strokes change 3,594 and 3,573 pixels in each source convention.
 
-All six full-source shared attempts must still reject with the recorded reason:
-`stroke_styles.ai` retains advanced dash dictionaries outside the literal style
-state contract, and the fill/stroke files retain an unqualified `GenAIRecorded`
-owner. Unit tests separately cover successful ordinary/shared and mixed
-live-shape/ordinary transactions. Rejection is not counted as shared editing
-acceptance. Generated programs, SVG/PNG references and `verification.json` stay
-ignored under `output/appearance-artwork`. These checks establish the supplied
-expansions and preservation contract, not Adobe reopening or general rendering.
+Six additional transactions now update the original shared styles in place.
+Each has an independent complete-tree and exact byte check, and every RGBA pixel
+must equal its corresponding selected output. The checker independently confirms
+all three original advanced stroke dictionaries in `stroke_styles.ai` have
+version one and enabled `BSDashAdj`. All three original documents have a
+`GenAIRecorded` owner containing only empty `MigratedArtList` and
+`GenAIVariationsDictionary` collections. Their bytes remain unchanged; populated,
+unknown, repeated or mistyped dependencies are separately rejected by regressions.
+Unit tests also cover mixed live-shape/ordinary shared transactions. Generated
+programs, SVG/PNG references and `verification.json` stay ignored under
+`output/appearance-artwork`. These checks establish the supplied expansions and
+preservation contract, not Adobe reopening or general rendering.
 
 ## Independent reader
 

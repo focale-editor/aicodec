@@ -162,6 +162,7 @@ int _nativeAppearancePart(AiNativeRecords records, AiNativeContainer record, int
     parameters: dictionary,
     paints: paints,
     evenOdd: kind == .fill ? _nativeAppearanceBoolean(dictionary, 'UseEvenOdd') : null,
+    strokeSettings: const {AiNativeAppearancePartKind.stroke, AiNativeAppearancePartKind.strokeOffset}.contains(kind) ? _nativeAppearanceStrokeSettings(dictionary) : null,
     strokeAlignment: kind == .stroke && dictionary?['StrokeOffsetInside'] == null
         ? .center
         : inside == null

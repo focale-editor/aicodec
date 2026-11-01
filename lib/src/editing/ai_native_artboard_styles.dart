@@ -97,6 +97,7 @@ void _artboardStyleFilter(AiNativeLayers layers, AiNativeContainer filter, Map<i
     fields,
     notRecorded: true,
     nested: {
+      if (const {'Stroke Style Filter', 'Adobe Stroke Offset'}.contains(name)) 'kAIBeautifulStrokesParamsDictKey': _nativeAppearanceStrokeDictionary,
       if (name == 'Adobe Calligraphic Brush Tool') 'Brush': (field) => _artboardBrushReference(field, name, brushes),
       for (final MapEntry<String, String> paint in paints.entries)
         paint.key: (field) {

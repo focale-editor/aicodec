@@ -2,7 +2,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Proves uniform explicit scalar assignments unchanged by pure permutations.
 Set<String> _nativeAppearanceOrderState(AiNativeAppearance appearance, List<AiNativeAppearancePartChange> changes, Set<String> reads) {
-  if (changes.any((change) => change.childOrder == null || change.visible != null || change.evenOdd != null || change.strokeAlignment != null)) {
+  if (changes.any((change) => change.childOrder == null || change.visible != null || change.evenOdd != null || change.strokeAlignment != null || change.adjustDashes != null)) {
     return {};
   }
   return _nativeAppearanceScalarState(appearance, reads).keys.toSet();

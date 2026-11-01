@@ -14,18 +14,20 @@ from corpus_support import REVISION
 from verify_native_appearance_edits import GROUP, replace_once, string
 from verify_native_appearances import verify
 
-PARTS = {'create': 9, 'remove': 4, 'copy': 9, 'move': 8, 'shared': 9, 'private': 9, 'typed': 15}
+PARTS = {'create': 9, 'remove': 4, 'copy': 9, 'move': 8, 'shared': 9, 'private': 9, 'typed': 15, 'typed-strokes': 15}
 SOURCE = 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf'
 NEW_FILL = b'/BasicFilter : (Fill Style Filter) 0 0 /Filter , 1 /Visible , /Dictionary : /NotRecorded , 0 /Bool (UseEvenOdd) , /FillStyle : 0 O 1.0 0.0 0.0 0.0 0.0 1.0 1.0 Xa 0 1.0 0 0 0 Xy 0 XR 0 1 Xd /Def ; (FillStyle) , ; /Dict , ;'
 
 
-def typed_parts():
+def typed_parts(advanced=False):
     """Specify authored native descriptors independently of the Dart model/writer."""
     strokes = []
     for color, alignment in ((b'0.25 G', None), (b'0.2 0.4 0.6 XA', b'inside'), (b'0.1 0.2 0.3 0.4 K', b'outside')):
         header = b'(Adobe Stroke Offset) 1 0' if alignment else b'(Stroke Style Filter) 0 0'
         plugin = b'(StrokeOffset.aip) /PluginFileName , ' if alignment else b''
         parameters = string(alignment) + b' /String (DisplayString) , ' + (b'1' if alignment == b'inside' else b'0') + b' /Bool (StrokeOffsetInside) , ' if alignment else b''
+        if advanced:
+            parameters += b'/Dictionary : /NotRecorded , 1 /Int (BSAdvStrokeDictionaryVersion) , ' + (b'0' if alignment == b'outside' else b'1') + b' /Bool (BSDashAdj) , ; (kAIBeautifulStrokesParamsDictKey) , '
         strokes.append(b'/BasicFilter : ' + header + b' /Filter , 1 /Visible , ' + plugin + b'2 /FillOrStroke , /Dictionary : /NotRecorded , ' + parameters + b'/StrokeStyle : 1 R ' + color + b' 0 0.5 0 0 0 Xy 1 XR 1 J 2 j 3.5 w 8.0 M [2.5 1.5] -1.5 d 1 0 Xd /Def ; (StrokeStyle) , ; /Dict , ;')
     stack = b'/CompoundFilter : (Stack Style Filter) 0 0 /Filter , 1 /Visible , ' + b''.join(part + b' /Part ,\n' for part in (NEW_FILL, *strokes)) + b';'
     conduit = b'/BasicFilter : (Conduit Filter) 0 0 /Filter , 1 /Visible , ;'
@@ -55,7 +57,7 @@ def graph_style(data, style, variant):
         if index in children:
             values = []
             for child in children[index]:
-                values.append((typed_parts() if variant == 'typed' else NEW_FILL) if child == 'new' else data[slice(*parts[2]['record'])] if child == 'copy' else subtree(child))
+                values.append((typed_parts(advanced=variant == 'typed-strokes') if variant.startswith('typed') else NEW_FILL) if child == 'new' else data[slice(*parts[2]['record'])] if child == 'copy' else subtree(child))
             insertion = parts[part['children'][0]]['record'][0]
             edits.append((insertion - start, insertion - start, b''.join(value + b' /Part ,\n' + prefix for value in values)))
             for child in part['children']:

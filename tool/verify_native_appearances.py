@@ -93,6 +93,15 @@ def check_part(data, node, parent, children, row):
     inside = parameters.get('StrokeOffsetInside')
     alignment = 'center' if kind == 'stroke' else ('inside' if inside else 'outside') if kind == 'strokeOffset' and inside is not None else None
     assert row['strokeAlignment'] == alignment
+    settings = parameters.get('kAIBeautifulStrokesParamsDictKey') if kind in ('stroke', 'strokeOffset') else None
+    if settings is None:
+        assert row['strokeSettings'] is None
+    else:
+        reported = row['strokeSettings']
+        fragment, = parsed(data[slice(*reported['record'])])
+        assert normalized(fragment) == normalized(settings)
+        assert reported['version'] == settings.get('BSAdvStrokeDictionaryVersion')
+        assert reported['adjustDashes'] == settings.get('BSDashAdj')
     paints = [(key, value) for key, value in parameters.items() if type(value).__name__ in ('FillStyle', 'StrokeStyle', 'BlendStyle')]
     assert [key for key, _ in paints] == [paint['field'] for paint in row['paints']]
     for (_, paint), reported in zip(paints, row['paints'], strict=True):

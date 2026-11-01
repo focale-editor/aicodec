@@ -72,6 +72,23 @@ final class AiNativeAppearancePaint {
   const AiNativeAppearancePaint._({required this.field, required this.style});
 }
 
+/// Explicit advanced stroke data without computed dash lengths or defaults.
+final class AiNativeStrokeSettings {
+  /// Exact native dictionary, including unqualified future fields.
+  final AiNativeContainer record;
+
+  /// Saved schema version, or null when the producer omitted it.
+  final int? version;
+
+  /// Saved `BSDashAdj` flag, or null when no adjustment was specified.
+  ///
+  /// The application composes adjusted dashes; the kit retains the literal flag.
+  final bool? adjustDashes;
+
+  /// Captures source values without qualifying every future schema for editing.
+  const AiNativeStrokeSettings._({required this.record, required this.version, required this.adjustDashes});
+}
+
 /// One immutable part of an appearance tree, including hidden and unknown parts.
 final class AiNativeAppearancePart {
   /// Position in the owning appearance's preorder inventory.
@@ -110,6 +127,9 @@ final class AiNativeAppearancePart {
   /// Qualified stroke alignment, or null for unknown or incomplete descriptors.
   final AiNativeStrokeAlignment? strokeAlignment;
 
+  /// Advanced options of a stroke part, independent of its literal dash array.
+  final AiNativeStrokeSettings? strokeSettings;
+
   /// Freezes owned graph indices and paint payloads after bounded inspection.
   AiNativeAppearancePart._({
     required this.index,
@@ -124,6 +144,7 @@ final class AiNativeAppearancePart {
     required List<AiNativeAppearancePaint> paints,
     required this.evenOdd,
     required this.strokeAlignment,
+    required this.strokeSettings,
   }) : childIndices = List.unmodifiable(childIndices),
        paints = List.unmodifiable(paints);
 }

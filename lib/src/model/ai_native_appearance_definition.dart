@@ -62,6 +62,9 @@ final class AiNativeAppearancePartDefinition {
   /// Offset into the supplied dash sequence.
   final double dashPhase;
 
+  /// Optional explicit dash-adjustment flag in a version-one settings dictionary.
+  final bool? adjustDashes;
+
   /// Centered stroke or an explicit native inside/outside offset descriptor.
   final AiNativeStrokeAlignment strokeAlignment;
 
@@ -85,6 +88,7 @@ final class AiNativeAppearancePartDefinition {
     this.miterLimit = 4,
     List<double> dash = const [],
     this.dashPhase = 0,
+    this.adjustDashes,
     this.strokeAlignment = .center,
     List<int>? alignmentLabelBytes,
     List<AiNativeAppearanceChild> children = const [],
@@ -115,7 +119,7 @@ final class AiNativeAppearancePartDefinition {
     }
     if ((kind == .stroke && strokeAlignment != .center) != (alignmentLabelBytes != null) ||
         alignmentLabelBytes?.any((byte) => byte < 0 || byte > 255) == true ||
-        kind != .stroke && (strokeAlignment != .center || strokeWidth != 1 || lineCap != 0 || lineJoin != 0 || miterLimit != 4 || dash.isNotEmpty || dashPhase != 0) ||
+        kind != .stroke && (adjustDashes != null || strokeAlignment != .center || strokeWidth != 1 || lineCap != 0 || lineJoin != 0 || miterLimit != 4 || dash.isNotEmpty || dashPhase != 0) ||
         !paint && (overprint || opacity != 1 || evenOdd)) {
       throw ArgumentError('Appearance settings must belong to their selected part; offset strokes require host label bytes.');
     }

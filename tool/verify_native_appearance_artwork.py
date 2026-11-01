@@ -60,7 +60,7 @@ def printing_span(data, application):
     return start, end
 
 
-def expected(data, row):
+def expected(data, row, shared=False):
     """Prescribe every changed byte independently of writer-reported group spans."""
     style = row['before']['styles'][row['style']]
     assert style['uses'] == [row['use']] and row['part'] == 2
@@ -74,7 +74,8 @@ def expected(data, row):
     assert original_color.endswith(b' XA')
     updated_style = replace_once(data[start:end], original_color, MAGENTA + b' XA')
     name = bytes(style['name'])
-    updated_style = replace_once(updated_style, b'(' + name + b') /Name', string(b'Magenta stroke') + b' /Name')
+    if not shared:
+        updated_style = replace_once(updated_style, b'(' + name + b') /Name', string(b'Magenta stroke') + b' /Name')
     use = row['before']['uses'][row['use']]
     first, last = use['span']
     assert data[first:last] == b'1 (' + name + b') XW'
@@ -84,7 +85,8 @@ def expected(data, row):
     group = replace_once(group, printed_color, MAGENTA + printed_color[-3:])
     assert group.endswith(b'U')
     group = group[:-1] + printed_color + b'\nU'
-    output = patch(data, [(end, end, b'\n' + updated_style + b'\n'), (first, last, b'1 ' + string(b'Magenta stroke') + b' XW'), (group_start, group_end, group)])
+    edits = [(start, end, updated_style)] if shared else [(end, end, b'\n' + updated_style + b'\n'), (first, last, b'1 ' + string(b'Magenta stroke') + b' XW')]
+    output = patch(data, [*edits, (group_start, group_end, group)])
     # Existing numeric bounds are unchanged; only integer float spelling differs.
     output, count = re.subn(rb'%%HiResBoundingBox: ([^\r\n]+)', lambda match: b'%%HiResBoundingBox: ' + b' '.join(str(float(value)).encode() for value in match[1].split()), output)
     assert count == 1
@@ -109,7 +111,7 @@ def reference(original, output, name, user):
 
 
 def main():
-    """Require six complete transactions, byte oracles and matching supplied ink."""
+    """Require twelve complete transactions, byte oracles and matching supplied ink."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -123,7 +125,7 @@ def main():
     manifest = {item['file']: item for item in json.loads(Path('test/corpus/manifest.json').read_text())['files']}
     rows = json.loads((args.output / 'report.json').read_text())
     assert len(rows) == 6 and {(row['file'], row['user']) for row in rows} == {(name, index) for name in PRODUCERS for index in (0, 1)}
-    originals, results = {}, []
+    originals, inventories, results = {}, {}, []
     for row in rows:
         name, user = row['file'], row['user']
         entry = manifest[name]
@@ -141,20 +143,32 @@ def main():
         counts = PRODUCERS[name]
         if name not in originals:
             verify(inkai, args.output, row['before'], expected=counts)
+            document = inkai.parse(str(original))
+            owner, = [item for item in native_values([document.setup, document.trailer]) if type(item).__name__ == 'Document']
+            assert owner.Recorded['GenAIRecorded'] == {'_type': 'Dictionary', 'MigratedArtList': [], 'GenAIVariationsDictionary': {'_type': 'Dictionary'}}
+            options = [part['strokeSettings'] for style in row['before']['styles'] for part in style['parts'] if part['strokeSettings'] is not None]
+            assert len(options) == (3 if name == 'stroke_styles.ai' else 0)
+            assert all(item['version'] == 1 and item['adjustDashes'] is True for item in options)
+            inventories[name] = row['before']
             originals[name] = render(inkai, original, args.output)
+        else:
+            assert row['before'] == inventories[name]
         verify(inkai, args.output, row['selected'], expected=(counts[0] + 1, counts[1] + 6, counts[2]))
         assert changed.read_bytes() == expected(data, row), (name, user, 'complete byte delta')
-        assert row['shared'] is None
-        expected_rejection = 'Native transformation requires a supported appearance style.' if name == 'stroke_styles.ai' else 'Reference qualification does not cover Dictionary/GenAIRecorded (null).'
-        assert row['sharedRejection'] == expected_rejection
+        shared = args.output / f'{row["shared"]["source"]}.ps'
+        verify(inkai, args.output, row['shared'], expected=counts)
+        assert shared.read_bytes() == expected(data, row, shared=True)
         before, after = originals[name], render(inkai, changed, args.output)
+        common = render(inkai, shared, args.output)
+        assert common.size == after.size
+        assert all(ImageChops.difference(after.getchannel(channel), common.getchannel(channel)).getbbox() is None for channel in 'RGBA')
         oracle = reference(original, args.output, name, user)
         assert after.size == before.size == oracle.size
         assert all(ImageChops.difference(after.getchannel(channel), oracle.getchannel(channel)).getbbox() is None for channel in 'RGBA'), (name, user, 'supplied stroke pixels')
         assert ImageChops.difference(before.getchannel('A'), after.getchannel('A')).getbbox() is None
         changed_pixels = sum(first != second for first, second in zip(before.getdata(), after.getdata(), strict=True))
         assert changed_pixels > 1000, (name, user, 'empty stroke change')
-        results.append(dict(file=name, user=user, changedPixels=changed_pixels, byteDelta='exact', referencePixels='exact', shared='explicit rejection'))
+        results.append(dict(file=name, user=user, changedPixels=changed_pixels, byteDelta='exact', referencePixels='exact', shared='exact source and pixels'))
         print(name, user, changed_pixels, 'pixels; exact source delta and independent reference', flush=True)
     (args.output / 'verification.json').write_text(json.dumps(results, indent=2) + '\n')
 

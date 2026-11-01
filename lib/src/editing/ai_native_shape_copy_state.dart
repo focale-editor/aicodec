@@ -40,6 +40,9 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   'FillStyle' || 'StrokeStyle' || 'BlendStyle' => field.container?.type == field.key,
   'DisplayString' => const {'String', 'UnicodeString'}.contains(field.type) && field.stringBytes != null,
   'UseEvenOdd' || 'StrokeOffsetInside' => field.type == 'Bool' && field.boolean != null,
+  'kAIBeautifulStrokesParamsDictKey' => field.container?.type == 'Dictionary',
+  'BSAdvStrokeDictionaryVersion' => field.type == 'Int' && field.number == 1,
+  'BSDashAdj' => field.type == 'Bool' && const {0, 1}.contains(field.number),
   'NotRecorded' => field.isQualifier,
   _ => false,
 };
@@ -55,10 +58,15 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   if (style['Def']?.container case final AiNativeContainer definition when definition.type == 'SimpleStyle') {
     return _nativeSimpleStyleState(drawing, style, definition);
   }
-  _LiveShapeEditor(drawing: drawing, shapes: [])._checkStyle(style);
+  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  _artboardRetainedStyle(layers, style, {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use}, {}, {});
   final Set<String> writes = {};
   final Set<String> reads = {};
   for (final AiNativeContainer record in drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end)) {
+    if (const {'BasicFilter', 'CompoundFilter'}.contains(record.type) &&
+        const {AiNativeAppearancePartKind.effect, AiNativeAppearancePartKind.opaque}.contains(_nativeAppearanceKind(record, _nativeAppearanceFilter(record)))) {
+      throw UnsupportedError('Native appearance state requires qualified literal filter roles.');
+    }
     if (record.entries.any((field) => !_shapeCopyStyleField(record, field))) {
       throw UnsupportedError('Shape copies require literal, typed native filter fields.');
     }

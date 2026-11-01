@@ -51,6 +51,9 @@ Uint8List _createdNativeAppearancePart(
       append(_nativeLiteralString(definition.alignmentLabelBytes!, limits.maxDecodedBytes));
       text(' /String (DisplayString) , ${definition.strokeAlignment == .inside ? 1 : 0} /Bool (StrokeOffsetInside) , ');
     }
+    if (definition.adjustDashes case final bool adjust) {
+      text('/Dictionary : /NotRecorded , 1 /Int (BSAdvStrokeDictionaryVersion) , ${adjust ? 1 : 0} /Bool (BSDashAdj) , ; (kAIBeautifulStrokesParamsDictKey) , ');
+    }
     text('/${stroke ? 'StrokeStyle' : 'FillStyle'} : ${definition.overprint ? 1 : 0} ${stroke ? 'R' : 'O'} ');
     final String color = definition.colors.expand((color) => color.channels).join(' ');
     final String operator = definition.colors.length == 2

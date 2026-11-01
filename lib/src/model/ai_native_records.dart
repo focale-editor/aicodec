@@ -22,6 +22,7 @@ part '../codec/ai_native_drawing_parser.dart';
 part '../codec/ai_native_gradient_parser.dart';
 part '../codec/ai_native_gradient_resource_parser.dart';
 part '../codec/ai_native_appearance_parser.dart';
+part '../codec/ai_native_appearance_strokes.dart';
 part '../codec/ai_native_appearance_artwork.dart';
 part '../codec/ai_native_font_encoding.dart';
 part '../codec/ai_native_raster_parser.dart';

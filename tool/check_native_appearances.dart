@@ -52,6 +52,13 @@ Map<String, Object?> appearanceInventory(AiNativeAppearances model) => {
               'fillOrStroke': part.fillOrStroke,
               'evenOdd': part.evenOdd,
               'strokeAlignment': part.strokeAlignment?.name,
+              'strokeSettings': part.strokeSettings == null
+                  ? null
+                  : {
+                      'record': [part.strokeSettings!.record.start, part.strokeSettings!.record.end],
+                      'version': part.strokeSettings!.version,
+                      'adjustDashes': part.strokeSettings!.adjustDashes,
+                    },
               'paints': [
                 for (final AiNativeAppearancePaint paint in part.paints) {'field': paint.field.key, ..._paint(paint.style)},
               ],
