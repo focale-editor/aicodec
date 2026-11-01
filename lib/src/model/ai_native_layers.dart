@@ -84,6 +84,9 @@ final class AiNativeLayer extends AiNativeItem {
   /// Explains a header/owner that needs a separate lifecycle contract.
   final String? bindingIssue;
 
+  /// Structural errors independent of the retained dictionary's field schema.
+  final String? _ownershipIssue;
+
   /// Freezes source associations without converting opaque records into artwork.
   AiNativeLayer._({
     required super.start,
@@ -99,6 +102,7 @@ final class AiNativeLayer extends AiNativeItem {
     required this.identifier,
     required this.bodyStart,
     required this.bindingIssue,
+    required this._ownershipIssue,
   }) : childIndices = List.unmodifiable(childIndices);
 
   /// Original display-name bytes; no locale or XML-name conversion is guessed.

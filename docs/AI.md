@@ -1092,11 +1092,32 @@ Nine regressions exercise nested contours, all paint/closure combinations,
 immutable requests, hidden layers, complete CC neighbors, count normalization and
 400 contour edits in one transaction. Twelve independent synthetic transactions
 verify requested geometry, mask lifetime, native point counts and exact retained
-source; three pinned producer refusals retain the complete original programs.
-The shape fixture contains CC printing expansions, while the two Inkscape CC
-fixtures retain unqualified imported SVG metadata. Successful whole-producer
-compound/clip editing and Adobe reopening remain unqualified; this roadmap task
-is still in progress.
+source. The pinned `simple_shapes_cc.ai` refusal still protects derived CC
+printing expansions. Six successful transactions now edit the outer contour,
+inner contour or all five contours of the complete, unmodified native programs
+from `inkscape_minimized_ai_cc.ai` and `inkscape_minimized_ai_cc_current.ai`.
+Independent extraction, prescribed geometry and exact source patches verify
+that all other bytes, including setup resources and import metadata, remain intact.
+
+Contour editing can retain qualified imported SVG dictionaries attached to layers
+and groups. `SVG_ThisElement` may contain the observed document provenance/export
+attributes or a `sodipodi:namedview` with editor preferences; drawing nodes, unknown
+attributes and arbitrary XML extensions reject. Group import flags, the observed
+compound `SVG_ShapeType` value and complete literal `SVG_Dict`/`AdobeObjectMatrix`
+affine records remain exact. Matrices are not applied or recalculated. Contour
+coordinates remain in their saved native basis. Known five-operand `Xy` records
+also remain exact, including literal blend, opacity, isolation, knockout and
+alpha-as-shape values; this retention does not enable their replay or composition.
+
+Eight regressions cover imported ownership, atomic compound masks, retained
+references, malformed/unknown records, all sixteen literal blending modes, CC
+neighbors and original output limits. The metadata owners still report their
+lifecycle `bindingIssue`: retaining them does not authorize moving, copying or
+discarding them. Their dictionaries are not considered reference-independent;
+in particular a saved `inkscape:current-layer` reference cannot be silently
+ignored during identity deletion. SVG-tagged path caches remain unqualified.
+Broader full-producer compound/clip lifecycle, relationship movement and Adobe
+reopening remain outstanding.
 
 ### Ordinary group lifecycle
 
@@ -2426,7 +2447,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; qualified parent dissolution with explicit metadata disposal | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
-| Ordinary compound/clip contours | Qualified source ancestry, effective mask owners and point counts | Atomic geometry/mask edits; compound/clip creation and release with explicit parent/state policies | Selected CC expansions/live shapes, unknown dependencies and inconsistent masks reject. General reparenting and successful full-producer qualification remain incomplete. |
+| Ordinary compound/clip contours | Qualified source ancestry, effective mask owners and point counts | Atomic geometry/mask edits, including retained import metadata in two complete CC producer programs; compound/clip creation and release with explicit parent/state policies | Selected CC expansions/live shapes, unknown dependencies and inconsistent masks reject. General reparenting and broader producer lifecycle remain incomplete; imported metadata owners keep separate lifecycle/reference restrictions. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

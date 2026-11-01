@@ -8,6 +8,8 @@ void _artboardArtworkInterval(
   Map<int, AiNativeLayer> headers, {
   required Set<AiNativeContainer> textOwners,
   required Map<AiNativeInstruction, AiNativeResourceUse> styles,
+  Set<AiNativeContainer> retainedMetadata = const {},
+  bool retainTransparency = false,
 }) {
   final AiNativeDrawing drawing = layers.drawing;
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in _pathInterval(drawing.paths, start, end, (path) => path.start)) path.start: path};
@@ -34,12 +36,12 @@ void _artboardArtworkInterval(
       continue;
     }
     if (headers[item.start] case final AiNativeLayer layer) {
-      if (count != null || layer.bindingIssue != null) {
+      if (count != null || layer.bindingIssue != null && !retainedMetadata.contains(layer.dictionary)) {
         throw UnsupportedError('A retained layer has unresolved metadata or point-count ownership.');
       }
       continue;
     }
-    if (_ordinaryObjectAttachment(drawing, item) || textOwners.contains(item)) {
+    if (_ordinaryObjectAttachment(drawing, item) || textOwners.contains(item) || retainedMetadata.contains(item) || retainedMetadata.contains(drawing._objects._attachments[item.start]?.dictionary)) {
       if (count != null) {
         throw UnsupportedError('A retained point count crosses object metadata.');
       }
@@ -49,7 +51,9 @@ void _artboardArtworkInterval(
       throw UnsupportedError('Artboard dependencies include an unresolved artwork owner.');
     }
     if (groups[item.start] case final AiNativeGroup group) {
-      _ordinaryObject(drawing, group);
+      if (!retainedMetadata.contains(drawing._objects.forSource(group).dictionary)) {
+        _ordinaryObject(drawing, group);
+      }
       if (layers.structure.nodeFor(group).versions.isNotEmpty) {
         throw UnsupportedError('Retained group topology requires unconditional ownership.');
       }
@@ -69,6 +73,8 @@ void _artboardArtworkInterval(
       if (item.isPrivate || item.numbers?.length != 2 || item.numbers!.any((value) => value != 0 && value != 1)) {
         throw UnsupportedError('Retained fill/stroke flags require ordinary literal Booleans.');
       }
+    } else if (item.operator == 'Xy' && retainTransparency && !item.isPrivate) {
+      _artboardRetainedOpacity(item);
     } else if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Artboard dependency inspection does not cover ${item.operator}.');
     }

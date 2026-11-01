@@ -929,6 +929,21 @@ groups and compound topology. There is no general modern object lifecycle API.
   Validation: 879 VM/878 Node tests pass, alongside all 36 independent topology,
   compound and clipping transactions. Formatting, analysis, fix dry-run, Python
   compilation and diff checks are clean.
+  **Producer contour edits:** known imported SVG document/view metadata, group
+  import flags and paired literal affine records can now remain exact during
+  native contour edits. Literal non-neutral transparency assignments are retained
+  without replay or composition. Ownership errors remain distinct from metadata
+  schema limitations; metadata lifecycle and reference deletion are not implicitly
+  enabled. Eight regressions cover masks, reference retention, malformed records,
+  scalar modes, CC neighbors and limits. Six independent transactions now edit
+  outer, inner or all five contours in the complete original Inkscape CC programs,
+  including the current-version fixture. Their setup, identities, metadata,
+  matrices, transparency state and all unselected source bytes remain exact.
+  Broader producer lifecycle and general relationship movement remain outstanding;
+  this does not qualify Adobe reopening.
+  Validation: 887 VM/886 Node tests and all 40 independent topology/compound/clip
+  cases pass. Eight focused checks on each runtime also cover the final style and
+  conditional-owner guards. Formatting, analysis, fixes and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

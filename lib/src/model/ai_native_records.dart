@@ -36,6 +36,7 @@ part '../editing/ai_native_reference_resources.dart';
 part '../editing/ai_native_reference_fields.dart';
 part '../editing/ai_native_path_lifecycle.dart';
 part '../editing/ai_native_path_topology_editor.dart';
+part '../editing/ai_native_contour_metadata.dart';
 part '../editing/ai_native_compound_lifecycle.dart';
 part '../editing/ai_native_clipping_state.dart';
 part '../editing/ai_native_clipping_lifecycle.dart';

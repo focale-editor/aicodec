@@ -683,13 +683,17 @@ the Dart report. The reader binds each reported span to its own parse, compares
 complete path geometry/paint/owners/counts and permits only the requested source
 patches plus the explicit drawing-bound union.
 
-Three unchanged refusals use `manifest.json` provenance: `simple_shapes_cc.ai`
-contains derived CC compound expansions; `inkscape_minimized_ai_cc.ai` and
-`inkscape_minimized_ai_cc_current.ai` retain imported SVG metadata not yet
-qualified for native contour edits. Their independent extraction must equal the
-complete original bytes. These refusals are not successful producer edits; the
-current suite does not establish full-file compound/clip interoperability or
-Adobe reopening. No renderer or supplied source artwork is modified.
+Seven further cases use `manifest.json` provenance. `simple_shapes_cc.ai` still
+refuses edits to derived CC compound expansions. Three transactions each on
+`inkscape_minimized_ai_cc.ai` and `inkscape_minimized_ai_cc_current.ai` edit an
+outer contour, an inner contour or all five compound contours. Independent PDF
+extraction must equal the complete original program; setup and metadata are never
+substituted to enable editing. The reader prescribes the selected indices and
+replacement geometry, and verifies every remaining byte, including imported SVG
+metadata, native identities, transforms and transparency commands. All nineteen
+cases must run. These six producer edits establish contour-data preservation;
+they do not certify arbitrary compound/clip lifecycle or Adobe reopening. No
+renderer or supplied source artwork is modified.
 
 ```bash
 dart run tool/check_native_path_topology.dart

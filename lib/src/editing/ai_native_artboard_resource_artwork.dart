@@ -91,23 +91,28 @@ void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Ma
         throw const FormatException('Resource fill/stroke flags must be Boolean.');
       }
     } else if (command.operator == 'Xy') {
-      if (command.numbers?.length != 5) {
-        throw const FormatException('Retained resource blending requires five numeric operands.');
-      }
-      if (command.numbers!.first < 0 ||
-          command.numbers!.first > 15 ||
-          command.numbers!.first % 1 != 0 ||
-          !_gradientUnit(command.numbers![1]) ||
-          !const {0, 1}.contains(command.numbers![2]) ||
-          !const {0, 1, 2}.contains(command.numbers![3]) ||
-          !const {0, 1}.contains(command.numbers![4])) {
-        throw UnsupportedError('Retained resources require qualified local opacity state.');
-      }
+      _artboardRetainedOpacity(command);
     } else if (_nativeArtworkStateKey(command) == null) {
       throw UnsupportedError('Artboard resource isolation does not cover ${command.operator}.');
     }
   }
   if (count != null) {
     throw const FormatException('A retained resource point count has no path.');
+  }
+}
+
+/// Checks preserved literal blending without replaying or composing its state.
+void _artboardRetainedOpacity(AiNativeInstruction command) {
+  if (command.numbers?.length != 5) {
+    throw const FormatException('Retained blending requires five numeric operands.');
+  }
+  if (command.numbers!.first < 0 ||
+      command.numbers!.first > 15 ||
+      command.numbers!.first % 1 != 0 ||
+      !_gradientUnit(command.numbers![1]) ||
+      !const {0, 1}.contains(command.numbers![2]) ||
+      !const {0, 1, 2}.contains(command.numbers![3]) ||
+      !const {0, 1}.contains(command.numbers![4])) {
+    throw UnsupportedError('Retained artwork requires qualified local opacity state.');
   }
 }

@@ -40,6 +40,9 @@ final class AiNativeObject extends AiNativeItem {
   /// Explains metadata that cannot participate in ordinary object lifecycle edits.
   final String? bindingIssue;
 
+  /// Ownership errors that cannot be relaxed by retaining a known dictionary.
+  final String? _ownershipIssue;
+
   /// Freezes a source association without inventing names or object identities.
   AiNativeObject._({
     required super.start,
@@ -53,6 +56,7 @@ final class AiNativeObject extends AiNativeItem {
     required this.identifier,
     required List<AiNativeEntry> names,
     required this.bindingIssue,
+    required this._ownershipIssue,
   }) : names = List.unmodifiable(names);
 }
 

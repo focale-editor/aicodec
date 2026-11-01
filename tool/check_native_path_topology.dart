@@ -31,7 +31,7 @@ List<Map<String, Object?>> pathTopologyInventory(AiNativeDrawing drawing) {
   ];
 }
 
-/// Emits prescribed independent geometry/mask transactions and producer refusals.
+/// Emits prescribed contour transactions, including complete producer programs.
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/path-topology').create(recursive: true);
   final List<Map<String, Object?>> rows = [];
@@ -92,6 +92,23 @@ Future<void> main() async {
     final AiNativeDrawing drawing = AiNativeDrawing.decode(
       records: AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes)),
     );
+    if (name != 'simple_shapes_cc.ai') {
+      final String original = '$name.original.ps';
+      await File('${output.path}/$original').writeAsBytes(drawing.records.program.bytes);
+      final List<AiNativePath> paths = drawing.groups.singleWhere((group) => group.compound).paths.toList();
+      for (final String variant in ['geometry', 'inner', 'batch']) {
+        final List<AiNativePath> selected = variant == 'batch' ? paths : [paths[variant == 'geometry' ? 0 : 1]];
+        final AiNativeDrawing result = drawing.editPaths(
+          edits: [for (final AiNativePath path in selected) AiNativePathEdit(path: path, segments: topologyGeometry())],
+          bounds: topologyBounds,
+        );
+        final String target = '$name.$variant.ps';
+        await File('${output.path}/$target').writeAsBytes(result.records.program.bytes);
+        rows.add({'source': name, 'variant': variant, 'original': original, 'result': target, 'before': pathTopologyInventory(drawing), 'after': pathTopologyInventory(result), 'rejected': false});
+        stdout.writeln('$name/$variant passed');
+      }
+      continue;
+    }
     final AiNativePath path = drawing.groups.firstWhere((group) => group.compound).paths.first;
     String? issue;
     try {

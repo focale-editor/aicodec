@@ -29,6 +29,7 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
     final AiNativeItem? postfix = after < drawing.items.length ? drawing.items[after] : null;
     final AiNativeInstruction? style = source is AiNativeGroup && postfix is AiNativeInstruction && postfix.operator == 'XW' ? postfix : null;
     String? issue;
+    String? metadataIssue;
     if (shape != null) {
       issue = identical(shape.path, source) ? _directNativeShapeIssue(shape) : 'The live-shape dictionary belongs to a different path.';
     }
@@ -63,22 +64,22 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
               if (shape != null) ...['ai::LiveShape', 'PATH_IS_KAPPA_CURVE'],
             }.contains(field.key),
           )) {
-        issue ??= 'The object dictionary contains unqualified appearance or reference fields.';
+        metadataIssue = 'The object dictionary contains unqualified appearance or reference fields.';
       } else if (dictionary.entries.map((field) => field.key).toSet().length != dictionary.entries.length) {
-        issue ??= 'The object dictionary repeats a metadata field.';
+        metadataIssue ??= 'The object dictionary repeats a metadata field.';
       }
       for (final AiNativeEntry field in dictionary.entries) {
         if (field.key == 'PATH_IS_KAPPA_CURVE' && (field.type != 'Bool' || field.boolean == null)) {
-          issue ??= 'The object dictionary has an invalid cubic-curve metadata flag.';
+          metadataIssue ??= 'The object dictionary has an invalid cubic-curve metadata flag.';
         }
         if (const {'AIArtName', 'Object name', 'BBAccumRotation'}.contains(field.key) &&
             (!const {'String', 'UnicodeString'}.contains(field.type) || field.items.isNotEmpty && field.stringBytes == null)) {
-          issue ??= 'The object dictionary has an unqualified metadata value.';
+          metadataIssue ??= 'The object dictionary has an unqualified metadata value.';
         }
         if (field.key == 'BBAccumRotation') {
           final double? angle = field.stringBytes == null ? null : double.tryParse(latin1.decode(field.stringBytes!));
           if (field.type != 'String' || angle == null || !angle.isFinite || angle.abs() > 9007199254740991) {
-            issue ??= 'The object dictionary has an invalid accumulated rotation.';
+            metadataIssue ??= 'The object dictionary has an invalid accumulated rotation.';
           }
         }
       }
@@ -99,7 +100,8 @@ AiNativeObjects _nativeObjects(AiNativeDrawing drawing) {
         styleApplication: style,
         identifier: saved.length == 1 ? saved.single : null,
         names: dictionary?.entries.where((field) => const {'AIArtName', 'Object name'}.contains(field.key)).toList() ?? const [],
-        bindingIssue: issue,
+        bindingIssue: issue ?? metadataIssue,
+        ownershipIssue: issue,
       ),
     );
   }

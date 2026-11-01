@@ -21,7 +21,8 @@ SYNTHETIC = {
     'synthetic-open-mask': '860a4af7b4f49159cdfae784c7b4cfd5e1525db6ee4c90df77712357a7c27de2',
     'synthetic-cc-pairs': '3b7bb81d78afc9c6dbd3e651523322fea8c09eccedeac25c62aa9fccc7ab58ce',
 }
-REFUSED = ('simple_shapes_cc.ai', 'inkscape_minimized_ai_cc.ai', 'inkscape_minimized_ai_cc_current.ai')
+REFUSED = ('simple_shapes_cc.ai',)
+PRODUCER = ('inkscape_minimized_ai_cc.ai', 'inkscape_minimized_ai_cc_current.ai')
 GEOMETRY_INPUT = [('m', [5., 5.]), ('C', [8., 2., 16., 2., 18., 6.]), ('L', [15., 15.])]
 
 
@@ -41,6 +42,9 @@ def requests():
     result['synthetic-nested', 'combined'] = 'original', [0], [0, 1], 'closed'
     for name in REFUSED:
         result[name, 'rejected'] = 'original', [], [], None
+    for name in PRODUCER:
+        for variant, selected in [('geometry', [0]), ('inner', [1]), ('batch', list(range(5)))]:
+            result[name, variant] = 'original', selected, [], None
     return result
 
 
@@ -157,7 +161,7 @@ def verify(inkai, output, row, request):
 
 
 def main():
-    """Require all twelve edits and three unchanged real-source refusals."""
+    """Require twelve synthetic edits, six complete-producer edits and one refusal."""
     if not __debug__:
         raise RuntimeError('Run verification without assertion stripping')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -171,7 +175,7 @@ def main():
     manifest = {entry['file']: entry for entry in json.loads(Path('test/corpus/manifest.json').read_text())['files']}
     rows = json.loads((args.output / 'report.json').read_text())
     expected = requests()
-    assert len(rows) == len(expected) == 15 and {(row['source'], row['variant']) for row in rows} == expected.keys()
+    assert len(rows) == len(expected) == 19 and {(row['source'], row['variant']) for row in rows} == expected.keys()
     for name, checksum in SYNTHETIC.items():
         assert hashlib.sha256((args.output / f'{name}.original.ps').read_bytes()).hexdigest() == checksum
     checked = []
@@ -181,17 +185,19 @@ def main():
         assert row['original'] == f'{name}.{request[0]}.ps'
         assert row['rejected'] == (name in REFUSED)
         assert row['result'] == (row['original'] if row['rejected'] else f'{name}.{variant}.ps')
-        if row['rejected']:
+        if name in (*REFUSED, *PRODUCER):
             entry, fixture = manifest[name], Path('test/corpus/files', name)
             assert entry['revision'] == REVISION and fixture.stat().st_size == entry['size']
             assert hashlib.sha256(fixture.read_bytes()).hexdigest() == entry['sha256']
             programs = native_programs(fixture) if fixture.read_bytes().startswith(b'%PDF-') else [inkai.extract(str(fixture))]
-            assert programs == [(args.output / row['result']).read_bytes()] and row['issue']
+            assert programs == [(args.output / row['original']).read_bytes()]
+        if row['rejected']:
+            assert row['issue']
         else:
             verify(inkai, args.output, row, request)
         checked.append(f'{name}/{variant}')
         print(checked[-1], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, syntheticEdits=12, producerRefusals=3), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, syntheticEdits=12, producerEdits=6, producerRefusals=1), indent=2) + '\n')
 
 
 if __name__ == '__main__':

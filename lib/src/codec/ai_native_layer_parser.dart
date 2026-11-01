@@ -80,6 +80,7 @@ AiNativeLayers _nativeLayers(AiNativeDrawing drawing) {
     final AiNativeStructureNode? parent = structure.parentOf(node);
     final List<double> attributes = source.begin.numbers!;
     String? issue;
+    String? metadataIssue;
     if (node.versions.isNotEmpty || parent != null && parent.kind != .layer) {
       issue = 'The layer has conditional or non-layer ownership.';
     } else if (!const {10, 13, 14}.contains(attributes.length) || attributes.length == 14 && attributes.last != 0) {
@@ -130,7 +131,7 @@ AiNativeLayers _nativeLayers(AiNativeDrawing drawing) {
       dictionary = items[position++] as AiNativeContainer;
       bodyStart = dictionary.end;
       if (dictionary.notRecorded || dictionary.entries.any((field) => field.key != 'AI10_ArtUID') || dictionary.entries.length > 1) {
-        issue ??= 'The layer dictionary has additional appearance or reference fields.';
+        metadataIssue = 'The layer dictionary has additional appearance or reference fields.';
       }
     }
     if (bodyStart > source.end.start) {
@@ -158,7 +159,8 @@ AiNativeLayers _nativeLayers(AiNativeDrawing drawing) {
         dictionary: dictionary,
         identifier: identifiers[dictionary],
         bodyStart: bodyStart,
-        bindingIssue: issue,
+        bindingIssue: issue ?? metadataIssue,
+        ownershipIssue: issue,
       ),
     );
   }
