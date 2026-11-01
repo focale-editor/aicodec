@@ -821,6 +821,29 @@ dart run tool/check_native_contour_branch_movement.dart
 python3 tool/verify_native_contour_branch_movement.py --inkai-source /tmp/extension-ai
 ```
 
+The contour/gradient isolation suite adds seventeen outcomes from five pinned
+synthetic programs and two complete original producer files. Legacy and relative
+CC layouts, geometry preceding `Bb`, shared gradient names and artwork/resource
+name collisions undergo geometry edits, contour movement and complete-group
+movement. Thirteen transactions pass; two movements explicitly refuse
+unrestorable scalar state. The complete original `gradient_linear.ai` and
+`gradient_radial.ai` still refuse ATE 11 text isolation. The independent reader
+checks both main and undo-free versions and their empty frame/story inventories;
+their source programs remain exact. No producer setup is replaced to obtain a pass.
+
+The verifier reuses the contour geometry, movement and group contracts to bind
+every reported span and compare prescribed hierarchy, metadata, geometry, counts,
+consumed state and full source patches. Gradient instances, shared definitions,
+stops and fallback data are independently decoded and remain unchanged. Sixteen
+Adobe-prolog probes compare ordinary stroke and final state only; the probe does
+not execute gradient commands or qualify their rendered output. Existing manifest
+provenance, licensing, checksums and publication exclusions apply.
+
+```bash
+dart run tool/check_native_contour_gradient_scope.dart
+python3 tool/verify_native_contour_gradient_scope.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex

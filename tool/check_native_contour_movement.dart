@@ -10,7 +10,7 @@ import '../test/ai_native_path_topology_test.dart' show topologyBounds;
 import 'check_native_path_topology.dart' show pathTopologyInventory;
 
 /// Exposes independently bindable path metadata without interpreting it.
-List<Map<String, Object?>> _paths(AiNativeDrawing drawing) {
+List<Map<String, Object?>> contourMovementPaths(AiNativeDrawing drawing) {
   final AiNativeObjects objects = AiNativeObjects.decode(drawing: drawing);
   final List<Map<String, Object?>> paths = pathTopologyInventory(drawing).map(Map<String, Object?>.from).toList();
   for (final (int, AiNativePath) entry in drawing.paths.indexed) {
@@ -80,7 +80,14 @@ Future<void> main() async {
         bounds: topologyBounds,
       );
       await File('${output.path}/${source.key}.${request.key}.ps').writeAsBytes(result.records.program.bytes);
-      rows.add({'source': source.key, 'variant': request.key, 'before': _paths(before), 'after': _paths(result), 'beforeGroups': _groups(before), 'afterGroups': _groups(result)});
+      rows.add({
+        'source': source.key,
+        'variant': request.key,
+        'before': contourMovementPaths(before),
+        'after': contourMovementPaths(result),
+        'beforeGroups': _groups(before),
+        'afterGroups': _groups(result),
+      });
       stdout.writeln('${source.key}/${request.key} passed');
     }
   }

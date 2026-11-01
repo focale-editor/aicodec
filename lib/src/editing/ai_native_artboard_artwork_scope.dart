@@ -9,6 +9,7 @@ void _artboardArtworkInterval(
   required Set<AiNativeContainer> textOwners,
   required Map<AiNativeInstruction, AiNativeResourceUse> styles,
   Set<AiNativeContainer> retainedMetadata = const {},
+  Set<AiNativeInstruction> retainedGradients = const {},
   bool retainTransparency = false,
 }) {
   final AiNativeDrawing drawing = layers.drawing;
@@ -31,8 +32,14 @@ void _artboardArtworkInterval(
       while (index + 1 < items.length && items[index + 1].start < path.end) {
         index++;
       }
-      _artboardRetainedPath(layers, path, items.sublist(first, index + 1), count);
+      _artboardRetainedPath(layers, path, items.sublist(first, index + 1).where((command) => !retainedGradients.contains(command)).toList(), count);
       count = null;
+      continue;
+    }
+    if (retainedGradients.contains(item)) {
+      if (count != null && (item as AiNativeInstruction).operator == 'BB') {
+        throw const FormatException('A retained gradient cannot leave an unconsumed point count.');
+      }
       continue;
     }
     if (headers[item.start] case final AiNativeLayer layer) {

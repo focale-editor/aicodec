@@ -1015,6 +1015,28 @@ groups and compound topology. There is no general modern object lifecycle API.
   Python compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
+  **In progress — retained gradient neighbors:** bounded standalone `Bb/BB`
+  instances now remain exact beside ordinary contour edits and movement. Each
+  reference must resolve to one unconditional gradient definition in its own
+  resource namespace. Complete geometry/count ownership is checked independently
+  of legacy/CC gradient operands; paths spanning incomplete gradient consumption,
+  state/metadata/group crossings and conditional/ambiguous resources still reject.
+  Gradient contours remain derived, and complete native/printing shape pairs keep
+  their previous ownership contract. Gradient effects remain unknown scalar
+  barriers: geometry edits do not change state, while movement must prove its
+  inherited and outgoing attributes without defaults. Nine regressions cover these
+  rules, lifecycle neighbors, immutability, limits and 100 shared-resource instances.
+  Seventeen independent outcomes include thirteen successful synthetic edits and
+  four exact refusals. The complete original linear/radial CC fixtures still stop
+  at their ATE 11 snapshots; the independent reader confirms that version and empty
+  main/undo-free frame/story inventories. No setup substitution enables a success.
+  Full source patches, gradient definitions/instances, ordinary hierarchy and
+  scalar state pass, including sixteen Adobe-prolog projections for ordinary
+  attributes only. General isolation and ATE 11 retention remain open; this does
+  not qualify gradient rendering or Adobe reopening.
+  Validation: 943 VM/942 Node tests and all 104 independent contour outcomes pass
+  after regenerating the previous 87. Formatting, analysis, fix dry-run, Python
+  compilation and diff checks are clean.
 
 **Acceptance:** nested groups, shared resources, hidden/locked objects, multiple
 artboards and unselected opaque content retain identity and ordering after each

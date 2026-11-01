@@ -1022,6 +1022,29 @@ output/parser limits also reject. `pathTopology` capabilities remain
 `requiresValidation`; the older plain `pathGeometry` operation keeps its separate
 guard.
 
+Unselected standalone `Bb/BB` gradients no longer prevent isolated ordinary
+contour edits. Their references must resolve to one unconditional gradient
+definition; resource names remain separate from artwork identities. A retained
+instance can contain its complete ordinary contours and point counts, including
+geometry before `Bb`, but cannot cross unrelated paths, groups, state assignments
+or metadata. Literal legacy/CC geometry, highlights, imaging matrices, resource
+stops and fallback data remain exact. Gradient contours stay protected from
+ordinary path editing. Complete live-shape pairs retain their existing contract.
+
+The gradient's scalar effects remain an unknown-state boundary. Geometry-only
+edits preserve all state instructions; movement still proves inherited and
+outgoing attributes separately in both projections, refusing unknown output
+that could reach a retained consumer. No default paint values are inferred.
+Nine regressions and seventeen independent outcomes cover these boundaries:
+thirteen accepted synthetic transactions, two unrestorable-state refusals and
+two unchanged original CC refusals. The latter, `gradient_linear.ai` and
+`gradient_radial.ai`, still require qualification of their empty ATE 11 snapshots;
+the independent reader confirms that version and their absent frames/stories.
+The accepted cases retain shared resources, identities and exact unselected
+bytes. Sixteen Adobe-prolog projections check ordinary stroke/final attributes;
+they do not execute or validate gradient rendering. Broader whole-document
+isolation remains in progress.
+
 `compoundArtwork(paths:, groups:, bounds:)` wraps consecutive ordinary sibling
 contours and complete ordinary subgroups in an anonymous `*u`/`*U` owner. Input
 selection order does not reorder the source. Counts, coordinates, paint commands,

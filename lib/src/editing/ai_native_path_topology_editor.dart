@@ -4,12 +4,22 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 ({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries, Set<AiNativeContainer> retainedMetadata}) _nativePathTopologyScope(AiNativeDrawing drawing) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final Set<AiNativeContainer> retainedMetadata = _nativeContourMetadata(layers);
+  final Set<AiNativeInstruction> retainedGradients = _nativeContourGradientCommands(layers);
   final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
   final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
     layers,
     _layerHeaderItems(layers),
-    inspect: (model, start, end, headers) =>
-        _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: const {}, retainedMetadata: retainedMetadata, retainTransparency: true),
+    inspect: (model, start, end, headers) => _artboardArtworkInterval(
+      model,
+      start,
+      end,
+      headers,
+      textOwners: text.objects,
+      styles: const {},
+      retainedMetadata: retainedMetadata,
+      retainedGradients: retainedGradients,
+      retainTransparency: true,
+    ),
     qualifyShapeNeighbors: false,
   );
   final Set<AiNativePath> derived = {
