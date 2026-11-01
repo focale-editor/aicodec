@@ -104,18 +104,10 @@ AiNativeAppearances _editNativeAppearance(
       if (_nativeArtworkStateKey(change.assignment.instruction) case final String key) key else ...state.writes,
     if (parts.isNotEmpty) ...{...state.writes, 'XR'},
   };
-  final AiNativeDrawing result = AiNativeDrawing.decode(
-    records: AiNativeRecords.decode(
-      program: AiNativeEditor.apply(program: program, edits: edits),
-    ),
-  );
-  if (result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => drawing.liveShapes[entry.$1].isBound && !entry.$2.isBound)) {
-    throw const FormatException('Appearance changes disrupted native authoring or printing ownership.');
-  }
-  final AiNativeAppearances updated = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: result));
+  final AiNativeAppearances updated = _nativeAppearanceResult(model, edits, selected);
   if (parts.any((change) => change.children != null)) {
     final AiNativeAppearance changed = updated.styles.singleWhere((style) => _sameNativeBytes(style.resource.nameBytes, nameBytes ?? appearance.resource.nameBytes));
-    final ({Set<String> reads, Set<String> writes}) next = _nativeLiteralStyleState(result, changed.resource.definition.source as AiNativeContainer);
+    final ({Set<String> reads, Set<String> writes}) next = _nativeLiteralStyleState(updated.structure.drawing, changed.resource.definition.source as AiNativeContainer);
     changedState.addAll(next.writes);
     final Map<String, AiNativeInstruction> before = _nativeAppearanceScalarState(appearance, state.reads);
     final Map<String, AiNativeInstruction> after = _nativeAppearanceScalarState(changed, next.reads);
@@ -123,24 +115,56 @@ AiNativeAppearances _editNativeAppearance(
   } else if (paints.isEmpty) {
     changedState.removeAll(_nativeAppearanceOrderState(appearance, parts, state.reads));
   }
+
+  /// Checks retained consumers after optional literal native-only restoration.
+  void following(Map<String, AiNativeInstruction> restored) => _sourceFollowingDependencies(drawing, {
+    for (final AiNativeAppearanceReplacement replacement in replacements)
+      (start: replacement.artwork.start, end: replacement.artwork.end): (
+        commands: replacement.artwork._commands,
+        styles: {replacement.artwork.end: replacement.artwork._styleReads},
+        prefix: [],
+        suffix: [for (final AiNativeInstruction value in restored.values) (value: value, private: true)],
+        unresolved: changedState.difference(restored.keys.toSet()),
+        printingUnresolved: {},
+        discard: false,
+      ),
+  }, retainedArtwork: retained);
+
+  try {
+    following(const {});
+    return updated;
+  } on UnsupportedError {
+    final Map<String, AiNativeInstruction> restored = _nativeAppearanceScalarState(appearance, state.reads, colors: true)..removeWhere((key, _) => !changedState.contains(key));
+    if (restored.isEmpty) {
+      rethrow;
+    }
+    following(restored);
+    final List<int> suffix = latin1.encode('\n${restored.values.map((value) => _shapeStateText(value, private: true)).join()}');
+    return _nativeAppearanceResult(model, [
+      ...edits,
+      for (final AiNativeAppearanceReplacement replacement in replacements) AiSourceEdit(start: replacement.artwork.end, end: replacement.artwork.end, bytes: suffix),
+    ], selected);
+  }
+}
+
+/// Rebinds supplied owners after bounded serialization, including state replays.
+AiNativeAppearances _nativeAppearanceResult(AiNativeAppearances model, List<AiSourceEdit> edits, List<AiNativeResourceUse> selected) {
+  final AiNativeDrawing drawing = model.structure.drawing;
+  final AiNativeDrawing result = AiNativeDrawing.decode(
+    records: AiNativeRecords.decode(
+      program: AiNativeEditor.apply(program: drawing.records.program, edits: edits),
+    ),
+  );
+  if (result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => drawing.liveShapes[entry.$1].isBound && !entry.$2.isBound)) {
+    throw const FormatException('Appearance changes disrupted native authoring or printing ownership.');
+  }
+  final AiNativeAppearances updated = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: result));
   if (updated.uses.length != model.uses.length) {
     throw const FormatException('Appearance changes disrupted named source ownership.');
   }
   for (final AiNativeResourceUse use in selected) {
     updated.artworkFor(use: updated.uses[model.uses.indexOf(use)]);
   }
-  _sourceFollowingDependencies(drawing, {
-    for (final AiNativeAppearanceReplacement replacement in replacements)
-      (start: replacement.artwork.start, end: replacement.artwork.end): (
-        commands: replacement.artwork._commands,
-        styles: {replacement.artwork.end: replacement.artwork._styleReads},
-        prefix: [],
-        suffix: [],
-        unresolved: changedState,
-        printingUnresolved: {},
-        discard: false,
-      ),
-  }, retainedArtwork: retained);
   return updated;
 }
 

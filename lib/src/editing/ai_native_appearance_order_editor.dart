@@ -8,25 +8,40 @@ Set<String> _nativeAppearanceOrderState(AiNativeAppearance appearance, List<AiNa
   return _nativeAppearanceScalarState(appearance, reads).keys.toSet();
 }
 
-/// Returns uniform explicit noncolor outputs of an entirely visible appearance.
-Map<String, AiNativeInstruction> _nativeAppearanceScalarState(AiNativeAppearance appearance, Set<String> reads) {
+/// Returns uniform explicit outputs of an entirely visible literal appearance.
+///
+/// Color restoration copies saved process alternatives without converting them.
+/// Permutation proofs keep their separate noncolor boundary by default.
+Map<String, AiNativeInstruction> _nativeAppearanceScalarState(AiNativeAppearance appearance, Set<String> reads, {bool colors = false}) {
   if (appearance.parts.any((part) => part.visible != true)) {
     return {};
   }
   final Map<String, List<AiNativeInstruction>> assignments = {};
+  final Set<String> missingColors = {};
   for (final AiNativeAppearancePart part in appearance.parts) {
     for (final AiNativeAppearancePaint paint in part.paints) {
+      final Set<String> local = {};
       for (final AiNativeInstruction command in paint.style.instructions) {
         final String? key = _nativeArtworkStateKey(command);
-        if (key != null && key != 'fill' && key != 'stroke' && !reads.contains(key)) {
+        if (key != null && (colors || key != 'fill' && key != 'stroke') && !reads.contains(key)) {
+          local.add(key);
           (assignments[key] ??= []).add(command);
         }
+      }
+      final String? required = switch (paint.style.record.type) {
+        'FillStyle' => 'fill',
+        'StrokeStyle' => 'stroke',
+        _ => null,
+      };
+      if (required != null && !local.contains(required)) {
+        missingColors.add(required);
       }
     }
   }
   return {
     for (final MapEntry<String, List<AiNativeInstruction>> entry in assignments.entries)
-      if (entry.value.every((command) => _sameNativeArtworkState(command, entry.value.first)) &&
+      if (!missingColors.contains(entry.key) &&
+          entry.value.every((command) => _sameNativeArtworkState(command, entry.value.first)) &&
           (entry.key != 'XR' || appearance.parts.where((part) => part.kind == .fill).every((part) => part.evenOdd == (entry.value.first.numbers!.single == 1))))
         entry.key: entry.value.first,
   };

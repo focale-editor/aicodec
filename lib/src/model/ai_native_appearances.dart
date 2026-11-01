@@ -220,6 +220,8 @@ final class AiNativeAppearances {
   /// Every named use must have one uniquely bound printing owner covered by
   /// `artwork` or the live-shape `printing` shorthand.
   /// Unknown dependency owners, effects and unresolved following state reject.
+  /// Explicit uniform original state may be restored after each supplied user
+  /// as private scalar commands; this does not relax shared reference coverage.
   /// An unused qualified style needs no printing replacement. The host supplies
   /// matching expansions and the compatibility PDF when saving the document.
   AiNativeAppearances updateShared({
@@ -235,7 +237,9 @@ final class AiNativeAppearances {
   /// The fresh byte name must not capture an existing declaration or reference.
   /// Only users identified by `artwork` or `printing` are rebound; the source definition and
   /// other users remain unchanged. Each selected group must preserve outgoing
-  /// printing state; unresolved changes consumed by following artwork reject.
+  /// printing state. When following artwork needs the original native state,
+  /// uniform explicit assignments of an entirely visible original style can
+  /// be restored with private scalar commands. Unknown values still reject.
   AiNativeAppearances updateSelected({
     required AiNativeAppearance appearance,
     List<AiNativePaintChange> paints = const [],

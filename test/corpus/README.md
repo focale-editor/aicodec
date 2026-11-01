@@ -126,6 +126,28 @@ groups and bounds. Other source bytes remain exact. These synthetic groups check
 serialization and outgoing state; they are not visual acceptance for adjusted
 dash geometry. Generated files remain ignored under `output/appearance-strokes`.
 
+### Appearance state before retained consumers
+
+```sh
+dart run tool/check_native_appearance_state.dart
+python3 tool/verify_native_appearance_state.py --inkai-source /tmp/extension-ai
+```
+
+Four transactions cover two synthetic ordinary/live pairs and the complete
+`simple_cc_legacy.ai`/`simple_v2020.ai` producers. The byte oracle prescribes only
+the copied/rebound style, supplied group, bounds spelling and private restoration
+of the original literal fill. Every before/after style, part and use is decoded
+independently. The synthetic opaque tail is retained as exact raw bytes; it is
+not interpreted by the external reader.
+
+In both producer files, the restored native-only command immediately precedes
+the original `AI11Text`. Main/undo-free text payloads, independently decoded
+stories/frames/drawing references, fonts and resources remain exact. The supplied
+cyan printing fill matches every RGBA pixel of a separately recolored original
+SVG rectangle: 100,947 changed pixels with identical alpha. These checks do not
+establish Adobe text rendering or text-style editing. Sources, images and reports
+remain ignored under `output/appearance-state`.
+
 ### Complete producer appearance edits
 
 ```sh

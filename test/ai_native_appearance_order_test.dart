@@ -233,16 +233,16 @@ void main() {
       ).throws<UnsupportedError>();
       check(latin1.decode(unproven.structure.drawing.records.program.bytes)).equals(variant);
     }
-    check(
-      () => source.updateSelected(
-        appearance: source.styles.single,
-        parts: [
-          reverseAppearanceChildren(source.styles.single, 0),
-          AiNativeAppearancePartChange(part: source.styles.single.parts[1], visible: false),
-        ],
-        printing: [appearancePrinting(source, 1)],
-        nameBytes: [65],
-      ),
-    ).throws<UnsupportedError>();
+    final AiNativeAppearances hidden = source.updateSelected(
+      appearance: source.styles.single,
+      parts: [
+        reverseAppearanceChildren(source.styles.single, 0),
+        AiNativeAppearancePartChange(part: source.styles.single.parts[1], visible: false),
+      ],
+      printing: [appearancePrinting(source, 1)],
+      nameBytes: [65],
+    );
+    check(hidden.styles.last.parts.last.visible).equals(false);
+    check(latin1.decode(hidden.structure.drawing.records.program.bytes)).contains('%_0 1 0 0 0 Xy\n%_0 XR\n');
   });
 }
