@@ -2222,7 +2222,8 @@ active unsupported auxiliary features and unknown model/view dependencies reject
 
 `setCharacterFeatures` accepts `AiNativeCharacterChanges` for a selected range:
 font, size, leading, scale, tracking, baseline, rotation, kerning mode and explicit
-OpenType switches/sets. Point size and `RefFontSize` change together; unresolved
+OpenType switches/sets, plus the qualified text paints and strokes described below.
+Point size and `RefFontSize` change together; unresolved
 non-point reference modes and alternate-glyph dependencies reject relevant edits.
 `setParagraphFeatures` accepts `AiNativeParagraphChanges` for whole paragraphs
 touched by an end-exclusive selection, including their forced-break spans.
@@ -2243,6 +2244,61 @@ references, styles, resources, other stories and the undo-free payload; unknown
 view fields and stale story handles reject. Repeating it on an already cleared
 view returns the same snapshot. This intermediate state still requires host
 composition before a synchronized save. See the [derived-payload policy](HOST.md#derived-representations).
+
+### Text paints and strokes
+
+`AiNativeCharacterStyle.fillPaint`, `strokePaint` and `backgroundPaint` expose
+immutable `AiNativeTextPaint` payloads after resolving the existing style hierarchy.
+Each retains its complete source `record` and saved `tag`. Its `color` is a typed
+`AiNativeTextProcessColor` only for a qualified `SimplePaint` with literal process
+components and the observed fixed leading value of one. Unknown tags, fields,
+color models and other leading values retain their source and return null for
+`color`; malformed known tuples and ambiguous compact/named aliases reject.
+
+The component models are gray, RGB and CMYK in zero-to-one coordinates, and Lab
+with L in zero to 100 and a/b in -128 to 127. Components describe the saved model;
+they do not infer document profiles, convert between spaces or supply alternate
+color values. Compact color dictionaries use `/0` for `Type` and `/1` for
+`Values`, as observed in the complete producers. The independent reader's
+descriptive table lists a different Type key; verification uses its unchanged
+raw ATE parser and the actual source dictionaries rather than that table.
+
+`AiNativeCharacterChanges` accepts `fillColor`, `strokeColor` and `backgroundColor`
+as explicit process tuples. It also accepts the independent enabled/visible
+flags, fill-before-stroke order, overprint, line cap/join, width, miter limit,
+dash offset/array and background enablement. Missing settings stay null when
+reading; assigning a color does not enable or reveal its paint. Width is
+nonnegative, cap/join use native values zero through two, and miter limit is at
+least one. Dash offset may be negative. Dash lengths are nonnegative, an empty
+array denotes a solid stroke, and a nonempty all-zero cycle rejects. Numeric
+stroke inputs must be finite and portable between the Dart VM and JavaScript.
+
+These edits split only the selected UTF-16 runs, retain named parents and local
+extensions, preserve each existing field spelling, and allocate fresh local style
+identities when necessary. `inherit` removes selected local paint/stroke overrides
+without changing independent flags or named resources. Equal local paints and
+dash arrays preserve the original snapshot, including exact numeric lexemes and
+layout caches. A changed paint invalidates the selected story's composition through
+the same feature-edit contract; other stories, frame resources, drawing records
+and the undo-free snapshot stay exact. Recomposition remains the host's task.
+
+Color replacement or inheritance requires qualified process paint in every
+selected resolved range. Named colors, patterns, gradients and future paint
+descriptors remain inspectable; this API does not silently replace an unsupported
+paint payload. Text blending records and general shared text-style lifecycle have
+separate contracts. These ATE edits do not relax `AiNativeAppearances` reference
+checks or qualify global pattern-resource changes through opaque text paints.
+
+Ten regressions cover both field spellings, UTF-16 selections, inheritance,
+unknown/malformed paints, immutable inputs, no-ops, source aliases and output
+limits. The unchanged pinned ATE reader verifies 40 paint/inheritance transactions
+across all 20 stories in eleven complete producer files, plus six independently
+authored compact/named transactions including Lab. Every complete decoded tree
+must match the prescribed run edits and cache removal; every native byte outside
+the selected binary payload remains identical. Original producer paint samples
+cover RGB and CMYK; synthetic cases additionally qualify gray/Lab tuples and
+numeric boundaries. This is native data and serialization evidence, not an Adobe
+reopening or text-composition result.
 
 ### Fonts, frames and supplied layouts
 
@@ -3164,7 +3220,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Setup artwork resources | Pattern/symbol/brush names, namespaces, source spans, tile bounds, local geometry, metadata, images and known style/gradient applications | Source-owned inspection, shared retention validation and qualified appearance transactions | Host supplies every affected pattern-style expansion, including transitive resource owners. Qualified unreferenced symbols/brushes can be edited. Duplicate/conditional definitions, connected brush descriptors, direct pattern consumers without printing owners and unknown instance links reject. Local geometry and bounds remain separate from body-edit handles and document coordinates; general instance editing remains incomplete. |
 | Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus literal process-paint SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Private-contour and qualified private ordinary/compound-group users share the supplied-group contract; group edits have synthetic serialization/state acceptance. Selected and shared stroke edits pass in three additional complete producers, retaining version-one dash adjustment and empty generative provenance. Qualified nested literal styles support explicit child selection and shared coverage through one complete enclosing printing group, with per-use dependency checks and native-only restoration before sibling consumers. Private clipping groups expose exact contour/mask ownership and preserve scoped contour state; complete supplied printing groups accept qualified masks. Ordinary enclosing clipping parents retain their masks and saved contour state across selected/shared edits, with independent synthetic data/state acceptance. Qualified resource users require complete transitive pattern-style expansions; text users, opacity-mask resources, unresolved instance dependencies, broader producer coverage and unprovable following state remain incomplete; uniform explicit state restoration qualifies isolated fills before retained text in two further complete producers. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
-| ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
+| ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset, including explicit process paints and stroke settings; supplied layouts | Range edits preserve inheritance and invalidate selected-story layout. Unknown paint resources and shared style lifecycle remain unqualified; shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |
 | Cartesian mesh version 2 | Yes | Vertex color, tint and opacity | Geometry/topology edits incomplete; rendering belongs to the host. |
 | Embedded raster samples | Qualified binary layouts | Pixels and affine placement | Explicit host pixels; unresolved caches reject edits. |

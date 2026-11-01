@@ -7,6 +7,7 @@ import 'package:aikit/src/model/ai_program.dart';
 import 'package:pscore/pscore.dart';
 
 part 'ai_native_text_styles.dart';
+part 'ai_native_text_paints.dart';
 part 'ai_native_text_layout.dart';
 part 'ai_native_text_edit.dart';
 part 'ai_native_text_feature_edit.dart';

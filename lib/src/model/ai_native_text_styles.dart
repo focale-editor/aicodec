@@ -43,6 +43,57 @@ final class AiNativeCharacterStyle extends AiNativeTextFeatures {
     required this._fonts,
   }) : super._();
 
+  /// Saved fill paint, independent of its enabled and visible flags.
+  AiNativeTextPaint? get fillPaint => _textPaint(value(compactKey: '53', namedKey: 'FillColor'));
+
+  /// Saved stroke paint, independent of its enabled and visible flags.
+  AiNativeTextPaint? get strokePaint => _textPaint(value(compactKey: '54', namedKey: 'StrokeColor'));
+
+  /// Whether the native fill is enabled.
+  bool? get fillEnabled => boolean(compactKey: '56', namedKey: 'FillFlag');
+
+  /// Whether the native stroke is enabled.
+  bool? get strokeEnabled => boolean(compactKey: '57', namedKey: 'StrokeFlag');
+
+  /// Whether fill precedes stroke in the saved paint order.
+  bool? get fillFirst => boolean(compactKey: '58', namedKey: 'FillFirst');
+
+  /// Explicit fill overprint selection.
+  bool? get fillOverprint => boolean(compactKey: '59', namedKey: 'FillOverPrint');
+
+  /// Explicit stroke overprint selection.
+  bool? get strokeOverprint => boolean(compactKey: '60', namedKey: 'StrokeOverPrint');
+
+  /// Native cap enumeration: butt, round or square.
+  int? get lineCap => _optionalIndex(value(compactKey: '61', namedKey: 'LineCap'));
+
+  /// Native join enumeration: miter, round or bevel.
+  int? get lineJoin => _optionalIndex(value(compactKey: '62', namedKey: 'LineJoin'));
+
+  /// Explicit native stroke width, without a synthesized default.
+  double? get lineWidth => number(compactKey: '63', namedKey: 'LineWidth');
+
+  /// Saved native miter ratio, without a synthesized default.
+  double? get miterLimit => number(compactKey: '64', namedKey: 'MiterLimit');
+
+  /// Signed native dash offset.
+  double? get dashOffset => number(compactKey: '65', namedKey: 'LineDashOffset');
+
+  /// Explicit dash lengths; an empty array denotes a solid stroke.
+  List<double>? get dashArray => _textDashes(value(compactKey: '66', namedKey: 'LineDashArray'));
+
+  /// Saved fill visibility, separate from fill enablement.
+  bool? get fillVisible => boolean(compactKey: '77', namedKey: 'FillVisibleFlag');
+
+  /// Saved stroke visibility, separate from stroke enablement.
+  bool? get strokeVisible => boolean(compactKey: '78', namedKey: 'StrokeVisibleFlag');
+
+  /// Saved background paint without inferring enablement.
+  AiNativeTextPaint? get backgroundPaint => _textPaint(value(compactKey: '79', namedKey: 'FillBackgroundColor'));
+
+  /// Whether the saved text background paint is enabled.
+  bool? get backgroundEnabled => boolean(compactKey: '80', namedKey: 'FillBackgroundFlag');
+
   /// Font resource index, or null when the native model supplies no font.
   int? get fontIndex => _optionalIndex(value(compactKey: '0', namedKey: 'Font'));
 

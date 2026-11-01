@@ -12,6 +12,8 @@ extension AiNativeTextFeatureEditing on AiNativeTextDocument {
   /// reject active non-point reference modes that require font-metric conversion.
   /// The affected story's saved layout is removed; recomposition and synchronized
   /// printable/PDF output are required exactly as for [replaceText].
+  /// Color replacement or inheritance requires qualified process paints in each
+  /// selected resolved range; unsupported paint descriptors retain their data.
   AiNativeTextDocument setCharacterFeatures({required AiNativeTextStory story, required int start, required int end, required AiNativeCharacterChanges changes}) {
     _featureRange(story, start, end);
     final AiNativeTextFont? font = changes.font;
@@ -26,6 +28,17 @@ extension AiNativeTextFeatureEditing on AiNativeTextDocument {
     }
     if (start == end) {
       return this;
+    }
+    final Set<AiNativeCharacterFeature> paints = {...changes.inherit, ...changes._values.keys}.where((feature) => _textPaintFeature(feature._compact)).toSet();
+    if (paints.isNotEmpty) {
+      for (final AiNativeStyledTextRange range in styledRanges(story: story).where((range) => range.start < end && range.end > start)) {
+        for (final AiNativeCharacterFeature feature in paints) {
+          final AiNativeTextPaint? paint = _textPaint(range.characterStyle.value(compactKey: feature._compact, namedKey: feature._named));
+          if (paint != null && paint.color == null) {
+            throw UnsupportedError('Text paint edits require qualified process colors in every selected style range.');
+          }
+        }
+      }
     }
     final Map<(String, String), PsEngineValue?> patch = {
       for (final AiNativeCharacterFeature feature in changes.inherit) (feature._compact, feature._named): null,
@@ -188,10 +201,12 @@ PsEngineDictionary _patchTextRun(PsEngineDictionary record, AiNativeTextStyleKin
     final (String compact, String name) = entry.key;
     final String key = _featureKey(features, compact, name, named);
     final PsEngineValue? previous = features[key];
-    final PsEngineValue? next = entry.value;
+    final PsEngineValue? next = kind == .character && _textPaintFeature(compact) && entry.value is PsEngineDictionary
+        ? _textPaintReplacement(previous, entry.value! as PsEngineDictionary, named)
+        : entry.value;
     if (next == null) {
       changed |= values.remove(key) != null;
-    } else if (!_sameTextScalar(previous, next)) {
+    } else if (!_sameTextFeature(previous, next)) {
       values[key] = next;
       changed = true;
     }
@@ -252,10 +267,14 @@ final class _TextIdentifiers {
   }
 }
 
-/// Compares supported scalar feature values without re-encoding source lexemes.
-bool _sameTextScalar(PsEngineValue? first, PsEngineValue second) => switch ((first, second)) {
+/// Retains exact source lexemes for equal supported scalar, paint and dash values.
+bool _sameTextFeature(PsEngineValue? first, PsEngineValue second) => switch ((first, second)) {
   (PsEngineNumber(value: final first), PsEngineNumber(value: final second)) => first == second,
   (PsEngineBoolean(value: final first), PsEngineBoolean(value: final second)) => first == second,
+  (PsEngineName(value: final first), PsEngineName(value: final second)) => first == second,
+  (PsEngineArray(values: final first), PsEngineArray(values: final second)) => first.length == second.length && first.indexed.every((entry) => _sameTextFeature(entry.$2, second[entry.$1])),
+  (PsEngineDictionary(values: final first), PsEngineDictionary(values: final second)) =>
+    first.length == second.length && second.entries.every((entry) => _sameTextFeature(first[entry.key], entry.value)),
   _ => false,
 };
 

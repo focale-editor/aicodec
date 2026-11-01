@@ -66,7 +66,58 @@ enum AiNativeCharacterFeature {
   slashedZero(compact: '84', named: 'SlashedZero'),
 
   /// The complete mask of twenty OpenType stylistic sets.
-  stylisticSets(compact: '85', named: 'StylisticSets');
+  stylisticSets(compact: '85', named: 'StylisticSets'),
+
+  /// Fill process paint, independent of its enabled and visible flags.
+  fillColor(compact: '53', named: 'FillColor'),
+
+  /// Stroke process paint, independent of its enabled and visible flags.
+  strokeColor(compact: '54', named: 'StrokeColor'),
+
+  /// Whether the native fill is enabled.
+  fillEnabled(compact: '56', named: 'FillFlag'),
+
+  /// Whether the native stroke is enabled.
+  strokeEnabled(compact: '57', named: 'StrokeFlag'),
+
+  /// Whether fill precedes stroke in the saved paint order.
+  fillFirst(compact: '58', named: 'FillFirst'),
+
+  /// Explicit fill overprint selection.
+  fillOverprint(compact: '59', named: 'FillOverPrint'),
+
+  /// Explicit stroke overprint selection.
+  strokeOverprint(compact: '60', named: 'StrokeOverPrint'),
+
+  /// Native cap enumeration: butt, round or square.
+  lineCap(compact: '61', named: 'LineCap'),
+
+  /// Native join enumeration: miter, round or bevel.
+  lineJoin(compact: '62', named: 'LineJoin'),
+
+  /// Nonnegative native stroke width.
+  lineWidth(compact: '63', named: 'LineWidth'),
+
+  /// Native miter ratio, at least one.
+  miterLimit(compact: '64', named: 'MiterLimit'),
+
+  /// Signed native dash offset.
+  dashOffset(compact: '65', named: 'LineDashOffset'),
+
+  /// Explicit dash lengths; an empty array denotes a solid stroke.
+  dashArray(compact: '66', named: 'LineDashArray'),
+
+  /// Saved fill visibility, separate from fill enablement.
+  fillVisible(compact: '77', named: 'FillVisibleFlag'),
+
+  /// Saved stroke visibility, separate from stroke enablement.
+  strokeVisible(compact: '78', named: 'StrokeVisibleFlag'),
+
+  /// Background process paint without inferring enablement.
+  backgroundColor(compact: '79', named: 'FillBackgroundColor'),
+
+  /// Whether the saved text background paint is enabled.
+  backgroundEnabled(compact: '80', named: 'FillBackgroundFlag');
 
   /// Compact CC field name.
   final String _compact;
@@ -140,15 +191,19 @@ final class AiNativeCharacterChanges {
   /// Features explicitly returned to their inherited value.
   final Set<AiNativeCharacterFeature> inherit;
 
-  /// Validated scalar overrides, independent of the destination key spelling.
+  /// Validated feature overrides, independent of the destination key spelling.
   final Map<AiNativeCharacterFeature, PsEngineValue> _values;
 
-  /// Creates point-size, spacing, scale and OpenType feature changes.
+  /// Creates typography and native paint overrides for an explicit text range.
   ///
   /// [leading] also disables automatic leading unless explicitly enabled by
   /// [automaticLeading]. [stylisticSets] is a twenty-bit mask, with bit zero
   /// representing ss01. [kerning] retains the native mode 0–3; this API does
   /// not emulate optical kerning or produce shaped glyphs.
+  /// Process colors require explicit components; assigning a paint leaves its
+  /// enabled/visible flags unchanged. Dash arrays may be empty for solid strokes,
+  /// while nonempty cycles need a nonzero length. Changed features invalidate the
+  /// selected story's layout for host recomposition, including paint-only edits.
   AiNativeCharacterChanges({
     this.font,
     double? fontSize,
@@ -172,6 +227,23 @@ final class AiNativeCharacterChanges {
     bool? ornaments,
     bool? slashedZero,
     int? stylisticSets,
+    AiNativeTextProcessColor? fillColor,
+    AiNativeTextProcessColor? strokeColor,
+    bool? fillEnabled,
+    bool? strokeEnabled,
+    bool? fillFirst,
+    bool? fillOverprint,
+    bool? strokeOverprint,
+    int? lineCap,
+    int? lineJoin,
+    double? lineWidth,
+    double? miterLimit,
+    double? dashOffset,
+    List<double>? dashArray,
+    bool? fillVisible,
+    bool? strokeVisible,
+    AiNativeTextProcessColor? backgroundColor,
+    bool? backgroundEnabled,
     Set<AiNativeCharacterFeature> inherit = const {},
   }) : inherit = Set.unmodifiable(inherit),
        _values = Map.unmodifiable({
@@ -196,7 +268,27 @@ final class AiNativeCharacterChanges {
          if (ornaments != null) AiNativeCharacterFeature.ornaments: PsEngineBoolean(value: ornaments),
          if (slashedZero != null) AiNativeCharacterFeature.slashedZero: PsEngineBoolean(value: slashedZero),
          if (stylisticSets != null) AiNativeCharacterFeature.stylisticSets: _featureIndex(stylisticSets, (1 << 20) - 1),
+         if (fillColor != null) AiNativeCharacterFeature.fillColor: fillColor._paint(),
+         if (strokeColor != null) AiNativeCharacterFeature.strokeColor: strokeColor._paint(),
+         if (fillEnabled != null) AiNativeCharacterFeature.fillEnabled: PsEngineBoolean(value: fillEnabled),
+         if (strokeEnabled != null) AiNativeCharacterFeature.strokeEnabled: PsEngineBoolean(value: strokeEnabled),
+         if (fillFirst != null) AiNativeCharacterFeature.fillFirst: PsEngineBoolean(value: fillFirst),
+         if (fillOverprint != null) AiNativeCharacterFeature.fillOverprint: PsEngineBoolean(value: fillOverprint),
+         if (strokeOverprint != null) AiNativeCharacterFeature.strokeOverprint: PsEngineBoolean(value: strokeOverprint),
+         if (lineCap != null) AiNativeCharacterFeature.lineCap: _featureIndex(lineCap, 2),
+         if (lineJoin != null) AiNativeCharacterFeature.lineJoin: _featureIndex(lineJoin, 2),
+         if (lineWidth != null) AiNativeCharacterFeature.lineWidth: _featureNumber(lineWidth, nonnegative: true),
+         if (miterLimit != null) AiNativeCharacterFeature.miterLimit: _featureNumber(miterLimit),
+         if (dashOffset != null) AiNativeCharacterFeature.dashOffset: _featureNumber(dashOffset),
+         if (dashArray != null) AiNativeCharacterFeature.dashArray: _textDashArray(dashArray),
+         if (fillVisible != null) AiNativeCharacterFeature.fillVisible: PsEngineBoolean(value: fillVisible),
+         if (strokeVisible != null) AiNativeCharacterFeature.strokeVisible: PsEngineBoolean(value: strokeVisible),
+         if (backgroundColor != null) AiNativeCharacterFeature.backgroundColor: backgroundColor._paint(),
+         if (backgroundEnabled != null) AiNativeCharacterFeature.backgroundEnabled: PsEngineBoolean(value: backgroundEnabled),
        }) {
+    if (miterLimit != null && miterLimit < 1 || [lineWidth, miterLimit, dashOffset].whereType<double>().any((value) => value.abs() > 9007199254740991)) {
+      throw ArgumentError('Native text stroke settings require portable values and a miter ratio of at least one.');
+    }
     if (inherit.any(_values.containsKey) || font != null && inherit.contains(AiNativeCharacterFeature.font)) {
       throw ArgumentError('A character feature cannot be assigned and inherited in the same edit.');
     }
