@@ -33,11 +33,11 @@ def shared(variant):
     return variant.endswith('shared') or variant == 'mixed'
 
 
-def expected(before, original, variant):
+def expected(before, original, variant, name_bytes=b'Selected group'):
     """Prescribe the complete file delta without accepting reported edit masks."""
     start, end = original['styles'][0]['record']
     style = replace_once(before[start:end], b'0.2 0.3 0.4 Xa', b'0.7 0.6 0.5 Xa')
-    name = string(b'Selected group')
+    name = string(name_bytes)
     edits = [(start, end, style)] if shared(variant) else [
         (end, end, b'\n' + replace_once(style, b'(Shared) /Name', name + b' /Name') + b'\n')]
     groups = list(re.finditer(rb'(?m)^u\n\n0 0 0 1 k\n.*?\nU(?=\n\n0 J)', before, re.DOTALL))
@@ -87,7 +87,7 @@ def subtree(items, private):
 def owners(inkai, output, data, row, variant):
     """Bind each authoring tree, printing group and dictionary to the full parse."""
     body = list(walk_body(inkai.parse(str(output / f'{row["source"]}.ps')).trailer))
-    applications = [index for index, item in enumerate(body) if command(item)[0] == 'XW' and item.tokens[0] == b'1']
+    applications = [index for index, item in enumerate(body) if command(item)[0] == 'XW' and item.tokens[0] == b'1' and not command(item)[2]]
     assert len(applications) == len(row['artwork']) == 2
     previous = 0
     result = []
@@ -97,6 +97,9 @@ def owners(inkai, output, data, row, variant):
         authoring, printing = subtree(items, True), subtree(items, False)
         assert normalized(fragment(data, report['authoring'], True)) == normalized(authoring)
         assert normalized(fragment(data, report['printing'])) == normalized(printing)
+        nested = [item for item in authoring if command(item)[0] == 'XW']
+        assert [(int(item.tokens[0]), item.tokens[1]) for item in nested] == [
+            (row['uses'][use]['mode'], bytes(row['uses'][use]['name'])) for use in report.get('nestedUses', [])]
         grouped = variant != 'mixed' or index == 0
         compound = variant.startswith('compound')
         assert report['group'] == grouped and report['compound'] == (compound if grouped else None)

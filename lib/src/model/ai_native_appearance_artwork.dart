@@ -38,6 +38,12 @@ final class AiNativeAppearanceArtwork {
   /// Retained outer and nested object dictionaries, in source order.
   final List<AiNativeContainer> metadata;
 
+  /// Qualified named applications retained inside the authoritative group.
+  ///
+  /// These uses remain unchanged when editing this outer owner. They do not
+  /// receive independent printing ownership from this handle.
+  final List<AiNativeResourceUse> nestedUses;
+
   /// Live-shape parameters when present; ordinary artwork does not invent a handler.
   final AiLiveShape? liveShape;
 
@@ -47,8 +53,8 @@ final class AiNativeAppearanceArtwork {
   /// Qualified commands whose unchanged assignments delimit state dependencies.
   final List<AiNativeInstruction> _commands;
 
-  /// State the saved style may inherit before assigning its own values.
-  final Set<String> _styleReads;
+  /// State each outer or nested application may inherit at its source endpoint.
+  final Map<int, Set<String>> _styleReads;
 
   /// Freezes a validated source association without copying native geometry.
   AiNativeAppearanceArtwork._({
@@ -61,11 +67,13 @@ final class AiNativeAppearanceArtwork {
     required this.liveShape,
     required this.start,
     List<AiNativeContainer> metadata = const [],
+    List<AiNativeResourceUse> nestedUses = const [],
     required List<AiNativeInstruction> commands,
-    required Set<String> styleReads,
+    required Map<int, Set<String>> styleReads,
   }) : metadata = List.unmodifiable({?dictionary, ?printingDictionary, ...metadata}.toList()..sort((first, second) => first.start.compareTo(second.start))),
+       nestedUses = List.unmodifiable(nestedUses),
        _commands = List.unmodifiable(commands),
-       _styleReads = Set.unmodifiable(styleReads);
+       _styleReads = Map.unmodifiable(styleReads.map((position, reads) => MapEntry(position, Set<String>.unmodifiable(reads))));
 
   /// Exclusive end of the complete source pair.
   int get end => use.instruction.end;

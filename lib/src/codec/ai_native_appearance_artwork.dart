@@ -29,7 +29,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
       start: bundle.start,
       metadata: shape.alternativeDictionaries,
       commands: bundle.commands,
-      styleReads: bundle.styleReads,
+      styleReads: {shape.end: bundle.styleReads},
     );
   }
   final List<AiNativeItem> items = drawing.items;
@@ -38,12 +38,15 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   final AiNativePath? path = index < 0 ? null : drawing.paths.where((path) => identical(path.paint, items[index])).singleOrNull;
   final AiNativeGroup? authoringGroup = index < 0 || path != null ? null : drawing.groups.where((group) => identical(group.closing, items[index])).singleOrNull;
   final List<AiNativeContainer> metadata = [];
+  final List<AiNativeResourceUse> nestedUses = [];
   if (path != null) {
     if (!path.isPrivate || !const {'n', 'N'}.contains(path.paint.operator) || path.geometry.skip(1).any((command) => command.operator == 'm')) {
       throw UnsupportedError('Appearance artwork requires one authoritative private contour before its style use.');
     }
   } else if (authoringGroup != null) {
-    metadata.addAll(_nativeAppearanceGroup(model, authoringGroup));
+    final ({List<AiNativeContainer> metadata, List<AiNativeResourceUse> uses}) retained = _nativeAppearanceGroup(model, authoringGroup);
+    metadata.addAll(retained.metadata);
+    nestedUses.addAll(retained.uses);
   } else {
     throw UnsupportedError('Appearance artwork requires an authoritative private contour or group before its style use.');
   }
@@ -132,8 +135,12 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     liveShape: null,
     start: start,
     metadata: metadata,
+    nestedUses: nestedUses,
     commands: commands,
-    styleReads: state.reads,
+    styleReads: {
+      use.instruction.end: state.reads,
+      for (final AiNativeResourceUse nested in nestedUses) nested.instruction.end: _nativeLiteralStyleState(drawing, model.resolve(use: nested)!.resource.definition.source as AiNativeContainer).reads,
+    },
   );
 }
 

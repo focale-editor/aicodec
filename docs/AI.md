@@ -2475,9 +2475,24 @@ geometry and one paint command. `metadata` exposes an immutable source-ordered
 list of all qualified outer and nested object dictionaries. Nested dictionaries
 must immediately follow their owning path or group. Their original labels,
 identities and rotation values remain exact through selected/shared edits.
-Clipping/mask groups, internal named-style applications, unknown inner commands
-or metadata, mixed private/printing boundaries and split version owners reject.
+Clipping/mask groups, unknown inner commands or metadata, mixed private/printing
+boundaries and split version owners reject.
 This group contract does not move or regenerate native geometry.
+
+`nestedUses` exposes source-ordered private mode-zero/one named applications
+inside a group. Each must directly follow a path or group, optionally after its
+owned dictionary, and resolve to one unconditional qualified literal style.
+Active and process-only simple styles retain their complete definitions and
+references when editing the outer appearance. The dependency pass checks each
+inner application's inherited state at its own source position. Unchanged style
+writes are not assumed to overwrite a preceding unresolved value; explicit
+assignments can establish that boundary. Unknown effects, ambiguous/missing or
+conditional styles, unnamed applications and detached uses reject.
+
+Retaining an inner use does not supply its own printing replacement. Direct
+child-style edits still need a separate enclosing-expansion contract. A shared
+outer-style edit must cover every use, including any private child using the same
+definition; these retained child references cannot silently count as covered.
 
 Pass `AiNativeAppearanceReplacement(artwork:, bytes:, bounds:)` through `artwork`
 for ordinary path/group or live-shape users. Existing `AiNativePrintingGroupReplacement`
@@ -2632,6 +2647,11 @@ group owners, counted/uncounted contours and mixed group/single-contour shared
 users. Complete before/after native trees, object dictionaries and exact file
 deltas pass independent checks. These cases qualify group serialization and
 state preservation, not an untouched producer group edit or visual composition.
+Six further transactions retain named styles on child contours and nested groups
+while editing their outer appearance. Active/simple nested definitions, private
+mode-zero/one applications, full native trees, dictionaries and exact complete
+file deltas pass independent checks. Nested styles receive no fabricated printing
+owner and are not executed by AiKit.
 Shared edits now also retain fully inspected pattern, symbol and brush resources
 and complete conditional palette cells. Known resource-local style applications
 join the full use inventory; a user without a supplied qualified printing owner
@@ -2935,7 +2955,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Private-contour and qualified private ordinary/compound-group users share the supplied-group contract; group edits have synthetic serialization/state acceptance. Selected and shared stroke edits pass in three additional complete producers, retaining version-one dash adjustment and empty generative provenance. Resource/text users, groups with nested styles or masks, broader producer coverage and unprovable following state remain incomplete; uniform explicit state restoration qualifies isolated fills before retained text in two further complete producers. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Private-contour and qualified private ordinary/compound-group users share the supplied-group contract; group edits have synthetic serialization/state acceptance. Selected and shared stroke edits pass in three additional complete producers, retaining version-one dash adjustment and empty generative provenance. Qualified nested literal styles remain exact during outer edits, with per-use dependency checks. Resource/text users, direct nested-style edits, groups with masks, broader producer coverage and unprovable following state remain incomplete; uniform explicit state restoration qualifies isolated fills before retained text in two further complete producers. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

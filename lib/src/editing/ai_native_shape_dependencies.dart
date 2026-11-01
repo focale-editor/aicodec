@@ -96,7 +96,7 @@ void _sourceFollowingDependencies(
       read({'A', 'Xw'}, private: nativeOnly);
     } else if (_marker(item, 6)) {
       read({'Xy'}, private: true);
-    } else if (_marker(item, 1)) {
+    } else if (_marker(item, 0) || _marker(item, 1)) {
       if (styleReads == null) {
         throw UnsupportedError('Following named artwork has no qualified style dependencies.');
       }
@@ -178,7 +178,7 @@ void _sourceFollowingDependencies(
     } else if (unresolved.isNotEmpty || printingUnresolved.isNotEmpty) {
       if (artwork[owner] case final AiNativeAppearanceArtwork item) {
         for (final AiNativeInstruction instruction in item._commands) {
-          command(instruction, styleReads: item._styleReads);
+          command(instruction, styleReads: item._styleReads[instruction.end]);
         }
       } else {
         final _NativeShapeBundle bundle = _shapeBundle(drawing, retained[owner]!, layers.structure, qualifyNeighbors: retainedArtwork.isEmpty);

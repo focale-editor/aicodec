@@ -121,7 +121,7 @@ AiNativeAppearances _editNativeAppearance(
     for (final AiNativeAppearanceReplacement replacement in replacements)
       (start: replacement.artwork.start, end: replacement.artwork.end): (
         commands: replacement.artwork._commands,
-        styles: {replacement.artwork.end: replacement.artwork._styleReads},
+        styles: replacement.artwork._styleReads,
         prefix: [],
         suffix: [for (final AiNativeInstruction value in restored.values) (value: value, private: true)],
         unresolved: changedState.difference(restored.keys.toSet()),

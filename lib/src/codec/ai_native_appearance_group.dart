@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies an immutable private group tree without expanding its appearance.
-List<AiNativeContainer> _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
+({List<AiNativeContainer> metadata, List<AiNativeResourceUse> uses}) _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
   if (!group.opening.isPrivate || !const {'u', '*u'}.contains(group.opening.operator) || group.paths.isEmpty) {
     throw UnsupportedError('Grouped appearances require a nonempty private ordinary or compound group.');
   }
@@ -13,6 +13,9 @@ List<AiNativeContainer> _nativeAppearanceGroup(AiNativeAppearances model, AiNati
     for (final AiNativeGroup child in drawing.groups.where((child) => child.start >= group.start && child.end <= group.end)) child.end: child,
   };
   final List<AiNativeContainer> metadata = [];
+  final Map<AiNativeContainer, AiNativeItem> metadataOwners = {};
+  final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.uses) use.instruction.start: use};
+  final List<AiNativeResourceUse> uses = [];
   AiNativeInstruction? count;
   bool panel = false;
   for (int index = 0; index < items.length; index++) {
@@ -24,6 +27,7 @@ List<AiNativeContainer> _nativeAppearanceGroup(AiNativeAppearances model, AiNati
       }
       _nativeAppearanceDictionary(item);
       metadata.add(item);
+      metadataOwners[item] = owner;
       continue;
     }
     if (item is! AiNativeInstruction || !item.isPrivate) {
@@ -68,6 +72,21 @@ List<AiNativeContainer> _nativeAppearanceGroup(AiNativeAppearances model, AiNati
       if (item.numbers?.length != 2 || item.numbers!.any((value) => value != 0 && value != 1)) {
         throw UnsupportedError('Private paint flags require two Boolean values.');
       }
+    } else if (operator == 'XW') {
+      final AiNativeItem? previous = index == 0 ? null : items[index - 1];
+      final AiNativeItem? owner = previous == null ? null : endings[previous.end] ?? metadataOwners[previous];
+      final AiNativeResourceUse? reference = references[item.start];
+      final AiNativeAppearance? style = reference == null ? null : model.resolve(use: reference);
+      if (count != null ||
+          owner == null ||
+          reference == null ||
+          style == null ||
+          reference.versions.isNotEmpty ||
+          style.resource.versions.isNotEmpty ||
+          !_sameNativeObjectOwner(model.structure.nodeFor(owner), model.structure.nodeFor(item))) {
+        throw UnsupportedError('Nested appearances require one unconditional named style and a direct private artwork owner.');
+      }
+      uses.add(reference);
     } else if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Grouped appearances have no qualified local contract for $operator.');
     }
@@ -75,7 +94,7 @@ List<AiNativeContainer> _nativeAppearanceGroup(AiNativeAppearances model, AiNati
   if (count != null || panel) {
     throw UnsupportedError('Grouped appearances cannot leave unfinished counts or panel flags.');
   }
-  return metadata;
+  return (metadata: metadata, uses: uses);
 }
 
 /// Requires the saved point count and closure to describe exactly one contour.
