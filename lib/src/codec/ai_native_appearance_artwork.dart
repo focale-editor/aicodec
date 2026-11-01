@@ -23,7 +23,15 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   }
   final AiLiveShape? shape = drawing.liveShapes.where((shape) => shape.end == use.instruction.end).singleOrNull;
   if (shape != null) {
-    final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, structure, qualifyNeighbors: false, clipping: true, document: model.structure.drawing);
+    final _NativeShapeBundle bundle = _shapeBundle(
+      drawing,
+      shape,
+      structure,
+      qualifyNeighbors: false,
+      clipping: true,
+      document: model.structure.drawing,
+      patterns: _nativeAppearancePatterns(model, style),
+    );
     _nativeAppearanceParents(structure, bundle.start, shape.end, shape.appearanceGroup!, resource: resource);
     return AiNativeAppearanceArtwork._(
       owner: model,
@@ -134,7 +142,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     }
     commands.add(item);
   }
-  final ({Set<String> reads, Set<String> writes}) state = _nativeLiteralStyleState(model.structure.drawing, style.resource.definition.source as AiNativeContainer);
+  final ({Set<String> reads, Set<String> writes}) state = _nativeAppearanceStyleState(model, style);
   return AiNativeAppearanceArtwork._(
     owner: model,
     use: use,
@@ -151,8 +159,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     commands: commands,
     styleReads: {
       use.instruction.end: state.reads,
-      for (final AiNativeResourceUse nested in nestedOwners.keys)
-        nested.instruction.end: _nativeLiteralStyleState(model.structure.drawing, model.resolve(use: nested)!.resource.definition.source as AiNativeContainer).reads,
+      for (final AiNativeResourceUse nested in nestedOwners.keys) nested.instruction.end: _nativeAppearanceStyleState(model, model.resolve(use: nested)!).reads,
     },
   );
 }

@@ -134,20 +134,20 @@ void main() {
     check(model.artworkFor(use: model.uses.last).resource).isNull();
   });
 
-  test('requires a separate instance-coverage contract before resource mutation', () {
+  test('qualifies resource changes separately from body isolation and outgoing state', () {
     final String source = resourceAppearanceSource();
     final AiNativeAppearances model = appearanceEditingModel(source: source);
     final List<AiNativePaintChange> paints = [
       AiNativePaintChange(assignment: appearanceAssignment(model.styles.first, 2, .fillColor), values: [0.7, 0.6, 0.5]),
     ];
-    check(
-      () => model.updateSelected(
-        appearance: model.styles.first,
-        paints: paints,
-        artwork: [resourceAppearanceReplacement(model.artworkFor(use: model.uses.first))],
-        nameBytes: latin1.encode('Selected'),
-      ),
-    ).throws<UnsupportedError>();
+    final AiNativeAppearances resourceChanged = model.updateSelected(
+      appearance: model.styles.first,
+      paints: paints,
+      artwork: [resourceAppearanceReplacement(model.artworkFor(use: model.uses.first))],
+      nameBytes: latin1.encode('Selected'),
+    );
+    check(latin1.decode(resourceChanged.uses.first.nameBytes)).equals('Selected');
+    check(resourceChanged.uses.skip(1).map((use) => latin1.decode(use.nameBytes))).deepEquals(['Shared', 'Shared', 'Shared']);
     check(
       () => model.updateShared(
         appearance: model.styles.first,

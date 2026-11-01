@@ -198,9 +198,12 @@ final class AiNativeAppearances {
 
   /// Setup patterns, symbols and brush artwork containing known style applications.
   ///
-  /// These definitions expose local source data. Body-pair editing still requires
-  /// its own complete printing owner and does not authorize resource mutations.
+  /// Resource edits require complete printing owners, dependent representations
+  /// and qualified whole-source references in addition to this local inventory.
   late final AiNativeArtworkResources artworkResources = AiNativeArtworkResources.decode(structure: structure);
+
+  /// Unique unconditional pattern names, indexed once when a paint needs them.
+  late final Set<String> _patternNames = _nativeAppearancePatternNames(this);
 
   /// Freezes the complete source inventory.
   AiNativeAppearances._({required this.structure, required List<AiNativeAppearance> styles, required List<AiNativeResourceUse> uses})
@@ -221,9 +224,8 @@ final class AiNativeAppearances {
   /// Access private child uses through the enclosing owner's `nestedUses`; they
   /// share its printing group rather than accepting an independent binding here.
   /// Setup artwork exposes its enclosing `resource`, with local geometry and
-  /// original global style handles. This association does not qualify resource
-  /// mutations or dependent instances. Unknown metadata and conditional owners
-  /// reject.
+  /// original global style handles. Binding alone does not qualify mutations or
+  /// dependent instances. Unknown metadata and conditional owners reject.
   AiNativeAppearanceArtwork artworkFor({required AiNativeResourceUse use}) => _nativeAppearanceArtwork(this, use);
 
   /// Changes a shared definition and all qualified dependent printing groups.
@@ -237,13 +239,19 @@ final class AiNativeAppearances {
   /// as private scalar commands; this does not relax shared reference coverage.
   /// An unused qualified style needs no printing replacement. The host supplies
   /// matching expansions and the compatibility PDF when saving the document.
+  /// Resource edits also require `dependents` for affected pattern-style users
+  /// not already covered by a primary complete owner, including transitive
+  /// resource owners. Their native styles remain unchanged. Resource boundaries
+  /// must retain their outgoing native state.
+  /// Unknown instance links, recursive resources and incomplete coverage reject.
   AiNativeAppearances updateShared({
     required AiNativeAppearance appearance,
     List<AiNativePaintChange> paints = const [],
     List<AiNativeAppearancePartChange> parts = const [],
     List<AiNativePrintingGroupReplacement> printing = const [],
     List<AiNativeAppearanceReplacement> artwork = const [],
-  }) => _editNativeAppearance(this, appearance, paints, parts, printing, artwork, null);
+    List<AiNativeAppearanceReplacement> dependents = const [],
+  }) => _editNativeAppearance(this, appearance, paints, parts, printing, artwork, dependents, null);
 
   /// Copies a style for selected CC users and attaches their host-composed groups.
   ///
@@ -255,12 +263,20 @@ final class AiNativeAppearances {
   /// printing state. When following artwork needs the original native state,
   /// uniform explicit assignments of an entirely visible original style can
   /// be restored with private scalar commands. Unknown values still reject.
+  /// For resource-local edits, `dependents` supplies the complete derived groups
+  /// of affected pattern-style users without rebinding their native references.
+  /// Include each affected use in its replacement's `uses`, and each complete
+  /// printing group only once across both lists. A selected complete owner also
+  /// covers dependent child uses inside that same printing group.
+  /// Resource selections require qualified whole-source references. All instances
+  /// of that resource remain dependent on its edited artwork.
   AiNativeAppearances updateSelected({
     required AiNativeAppearance appearance,
     List<AiNativePaintChange> paints = const [],
     List<AiNativeAppearancePartChange> parts = const [],
     List<AiNativePrintingGroupReplacement> printing = const [],
     List<AiNativeAppearanceReplacement> artwork = const [],
+    List<AiNativeAppearanceReplacement> dependents = const [],
     required List<int> nameBytes,
-  }) => _editNativeAppearance(this, appearance, paints, parts, printing, artwork, nameBytes);
+  }) => _editNativeAppearance(this, appearance, paints, parts, printing, artwork, dependents, nameBytes);
 }

@@ -1,13 +1,14 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualified plug-in/name identities and complete retained declaration spans.
-typedef _ArtboardBrushScope = ({Set<(String, String)> names, List<({int start, int end})> ranges});
+typedef _ArtboardBrushScope = ({Set<(String, String)> names, Set<String> artwork, List<({int start, int end})> ranges});
 
 /// Retains known brush descriptors and resolves their independent artwork owners.
 _ArtboardBrushScope _artboardBrushScope(AiNativeLayers layers, Set<String> artwork) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiToken> tokens = records._projection.tokens;
   final Set<(String, String)> names = {};
+  final Set<String> references = {};
   final List<({int start, int end})> ranges = [];
   List<(String, String)>? inventory;
   bool setup = false;
@@ -68,18 +69,18 @@ _ArtboardBrushScope _artboardBrushScope(AiNativeLayers layers, Set<String> artwo
       if (!names.add((plugin, name))) {
         throw UnsupportedError('Retained brush descriptors require unique plug-in/name pairs.');
       }
-      _artboardBrushPayload(plugin, data, artwork);
+      references.addAll(_artboardBrushPayload(plugin, data, artwork));
     }
     ranges.add((start: opening.start, end: closing.end));
   }
   if (inventory != null && (inventory.toSet().length != inventory.length || inventory.any((name) => !names.contains(name)))) {
     throw UnsupportedError('Retained brush panel entries require distinct qualified definitions.');
   }
-  return (names: Set.unmodifiable(names), ranges: List.unmodifiable(ranges));
+  return (names: Set.unmodifiable(names), artwork: Set.unmodifiable(references), ranges: List.unmodifiable(ranges));
 }
 
 /// Checks observed descriptor layouts without executing a brush or generating art.
-void _artboardBrushPayload(String plugin, String data, Set<String> artwork) {
+Set<String> _artboardBrushPayload(String plugin, String data, Set<String> artwork) {
   switch (plugin) {
     case 'Adobe Calligraphic Brush Tool':
       final List<double> values = _artboardBrushNumbers(data, count: 11);
@@ -100,6 +101,7 @@ void _artboardBrushPayload(String plugin, String data, Set<String> artwork) {
         throw UnsupportedError('Retained brush colors require the observed gray or RGB scalar layout.');
       }
       _artboardBrushNumbers(parts[8], count: 15);
+      return parts.skip(1).take(5).where((name) => name.isNotEmpty).toSet();
     case 'Adobe dBrush Brush Tool':
       final List<String> parts = RegExp(r'\S+').allMatches(data).take(11).map((part) => part[0]!).toList();
       if (parts.length != 10 || parts[8] != 'AI_BristleBrushLibary_CS5' || !RegExp(r'^\d{2}_(Flat|Round)_[A-Za-z]+$').hasMatch(parts[9])) {
@@ -111,6 +113,7 @@ void _artboardBrushPayload(String plugin, String data, Set<String> artwork) {
     default:
       throw UnsupportedError('Artboard dependency qualification does not cover the $plugin brush descriptor.');
   }
+  return {};
 }
 
 /// Reads bounded literal numeric fields, excluding executable or reference syntax.

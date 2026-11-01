@@ -59,13 +59,16 @@ void _sourceFollowingDependencies(
   bool clipping = false,
   Map<int, Set<String>> styleChanges = const {},
   Map<int, Map<String, AiNativeInstruction>> styleRestorations = const {},
+  AiNativeLayers? document,
+  AiNativeArtworkResource? resource,
+  Set<String> patterns = const {},
 }) {
   if (replacements.isEmpty && insertions.isEmpty) {
     return;
   }
   final Set<String> unresolved = {};
   final Set<String> printingUnresolved = {};
-  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  final AiNativeLayers layers = document ?? AiNativeLayers.decode(drawing: drawing);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, AiNativeGroup> endings = {for (final AiNativeGroup group in drawing.groups) group.closing.start: group};
@@ -150,7 +153,7 @@ void _sourceFollowingDependencies(
     if (clipping) {
       final bool changed = unresolved.isNotEmpty || printingUnresolved.isNotEmpty || clips.any((saved) => saved != null && (saved.native.isNotEmpty || saved.printing.isNotEmpty));
       if (changed) {
-        _nativeAppearanceInterval(layers, start, end, headers).forEach(command);
+        (resource == null ? _nativeAppearanceInterval(layers, start, end, headers) : _nativeResourceAppearanceInterval(drawing, start, end)).forEach(command);
       } else {
         // Even equal local state can precede a later edit inside this scope.
         // Keep its entry snapshot so Q cannot inherit that edit's differences.
@@ -244,9 +247,11 @@ void _sourceFollowingDependencies(
         final _NativeShapeBundle bundle = _shapeBundle(
           drawing,
           retained[owner]!,
-          layers.structure,
+          resource?._structure ?? layers.structure,
           qualifyNeighbors: !clipping && retainedArtwork.isEmpty,
           clipping: clipping || retainedArtwork.isNotEmpty,
+          document: layers.drawing,
+          patterns: patterns,
         );
         for (final AiNativeInstruction item in bundle.commands) {
           command(item, styleReads: bundle.styleReads);
@@ -255,11 +260,14 @@ void _sourceFollowingDependencies(
     }
     position = owner.end;
   }
-  interval(position, drawing.records.program.bodyEnd);
+  interval(position, resource?.artworkEnd ?? drawing.records.program.bodyEnd);
   if (inserted != positions.length) {
     throw const FormatException('A shape insertion has no owned native body boundary.');
   }
   if (clipping && (clips.isNotEmpty || compoundDepth != 0)) {
     throw const FormatException('Appearance state inspection left an unfinished native group.');
+  }
+  if (resource != null && (unresolved.isNotEmpty || printingUnresolved.isNotEmpty)) {
+    throw UnsupportedError('Resource appearance changes must preserve outgoing state at the declaration boundary.');
   }
 }

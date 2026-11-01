@@ -66,6 +66,7 @@ _NativeShapeBundle _shapeBundle(
   bool qualifyNeighbors = true,
   bool clipping = false,
   AiNativeDrawing? document,
+  Set<String> patterns = const {},
 }) {
   final AiNativeGroup group = _printingShapeGroup(drawing, shape, clipping: clipping);
   if (!_shapeParameters.containsKey(shape.handler)) {
@@ -196,7 +197,7 @@ _NativeShapeBundle _shapeBundle(
   if (markers != 2) {
     throw UnsupportedError('A copied shape requires exactly one printing/authoring style pair.');
   }
-  final ({Set<String> reads, Set<String> writes}) style = _shapeCopyStyleState(document ?? drawing, shape);
+  final ({Set<String> reads, Set<String> writes}) style = _nativeLiteralStyleState(document ?? drawing, shape.style!, patterns: patterns);
   for (final AiNativeResourceUse use in structure.resourceUses.where(
     (use) => use.instruction.start >= start && use.instruction.end <= shape.end || use.instruction.start >= shape.style!.start && use.instruction.end <= shape.style!.end,
   )) {

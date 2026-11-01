@@ -133,7 +133,8 @@ List<AiNativeInstruction> _printingCommands(AiNativeDrawing drawing, AiNativeGro
 Map<AiNativePath, AiNativeInstruction> _printingPointCounts(AiNativeDrawing drawing, AiNativeGroup group) {
   final Map<int, AiNativePath> starts = {for (final AiNativePath path in group.paths) path.start: path};
   final Map<AiNativePath, AiNativeInstruction> counts = {};
-  final int previous = drawing.paths.where((path) => path.end < group.start).fold(drawing.records.program.bodyStart, (end, path) => max(end, path.end));
+  final int first = min(drawing.records.program.bodyStart, drawing.items.firstOrNull?.start ?? drawing.records.program.bodyStart);
+  final int previous = drawing.paths.where((path) => path.end < group.start).fold(first, (end, path) => max(end, path.end));
   AiNativeInstruction? pending;
   AiNativePath? current;
   for (final AiNativeInstruction item in drawing.items.whereType<AiNativeInstruction>().where((item) => item.start >= previous && item.end <= group.end)) {

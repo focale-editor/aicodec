@@ -16,7 +16,7 @@ final class AiNativeAppearanceArtwork {
   /// Enclosing setup declaration, or null for document-body artwork.
   ///
   /// Resource coordinates and printing ownership stay local to this declaration.
-  /// Binding does not establish instance dependencies or authorize resource edits.
+  /// Binding alone does not establish instance dependencies or qualify edits.
   final AiNativeArtworkResource? resource;
 
   /// Authoritative private path or group, separate from its printing expansion.
@@ -116,16 +116,20 @@ final class AiNativeAppearanceReplacement {
   /// Current source association obtained from the appearance snapshot to edit.
   final AiNativeAppearanceArtwork artwork;
 
-  /// Explicit outer or nested uses edited through this complete printing owner.
+  /// Explicit outer or nested uses covered by this complete printing owner.
   ///
   /// Defaults to the outer [AiNativeAppearanceArtwork.use]. Supply every selected
   /// child use here instead of repeating the same printing group in a batch.
+  /// In `dependents`, these references retain their original styles and names.
   final List<AiNativeResourceUse> uses;
 
   /// Owned group bytes without document boundaries or private metadata.
   final Uint8List _bytes;
 
-  /// Complete ink bounds in y-up native document coordinates.
+  /// Complete ink bounds in the owning document or resource coordinate system.
+  ///
+  /// Resource-local bounds do not enlarge document bounds or change pattern tile
+  /// rectangles. Dependent body replacements supply their own document ink bounds.
   final AiBoundingBox bounds;
 
   /// Copies host bytes before validating them against the owning source limits.

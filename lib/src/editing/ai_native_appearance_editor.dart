@@ -8,6 +8,7 @@ AiNativeAppearances _editNativeAppearance(
   List<AiNativeAppearancePartChange> parts,
   List<AiNativePrintingGroupReplacement> printing,
   List<AiNativeAppearanceReplacement> artwork,
+  List<AiNativeAppearanceReplacement> dependents,
   List<int>? nameBytes,
 ) {
   if (!model.styles.contains(appearance) || paints.isEmpty && parts.isEmpty) {
@@ -22,8 +23,8 @@ AiNativeAppearances _editNativeAppearance(
     throw UnsupportedError('Appearance editing requires a unique unconditional definition with qualified parts.');
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
-  _artboardRetainedStyle(layers, declaration, {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use}, {}, {});
-  final ({Set<String> reads, Set<String> writes}) state = _nativeLiteralStyleState(drawing, declaration);
+  _artboardRetainedStyle(layers, declaration, {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use}, _nativeAppearancePatterns(model, appearance), {});
+  final ({Set<String> reads, Set<String> writes}) state = _nativeAppearanceStyleState(model, appearance);
   final List<AiSourceEdit> styleEdits = _nativeAppearanceChanges(model, appearance, paints, parts);
   final List<AiNativeAppearanceReplacement> replacements = [...artwork];
   for (final AiNativePrintingGroupReplacement replacement in printing) {
@@ -43,38 +44,48 @@ AiNativeAppearances _editNativeAppearance(
     );
   }
   final List<AiNativeResourceUse> selected = replacements.expand((replacement) => replacement.uses).toList();
-  if (selected.toSet().length != selected.length || replacements.any((replacement) => !identical(replacement.artwork._owner, model))) {
+  final List<AiNativeAppearanceReplacement> all = [...replacements, ...dependents];
+  if (selected.toSet().length != selected.length ||
+      all.any((replacement) => !identical(replacement.artwork._owner, model)) ||
+      all.map((replacement) => replacement.artwork.printingGroup).toSet().length != all.length ||
+      dependents.expand((replacement) => replacement.uses).toSet().length != dependents.fold(0, (count, replacement) => count + replacement.uses.length)) {
     throw ArgumentError('Appearance expansions require distinct current artwork handles.');
-  }
-  if (replacements.any((replacement) => replacement.artwork.resource != null)) {
-    throw UnsupportedError('Resource appearance edits require dependent-instance representation coverage.');
   }
   if (selected.any((use) => !appearance.uses.contains(use) || !identical(model.resolve(use: use), appearance))) {
     throw UnsupportedError('Each supplied expansion must belong to a uniquely bound user of the selected style.');
   }
   final List<AiNativeAppearanceArtwork> retained = _nativeRetainedAppearanceArtwork(model);
-  final List<AiNativeResourceUse> owners = replacements.map((replacement) => replacement.artwork.use).toList();
-  final List<AiSourceEdit> edits = [
-    if (replacements.isNotEmpty)
-      ..._nativePrintingSourceEdits(drawing, [
-        for (final AiNativeAppearanceReplacement replacement in replacements) (group: replacement.artwork.printingGroup, bytes: replacement.bytes, bounds: replacement.bounds),
-      ]),
-  ];
-  if (nameBytes == null) {
-    if (appearance.uses.length != selected.length || appearance.uses.any((use) => !selected.contains(use))) {
-      throw UnsupportedError('A shared appearance change must cover every source use and its printing owner.');
-    }
-    // The known-use inventory cannot establish that opaque owners have no links.
+  final List<AiNativeResourceUse> owners = all.map((replacement) => replacement.artwork.use).toList();
+  final bool resourceEdit = replacements.any((replacement) => replacement.artwork.resource != null);
+  if (!resourceEdit && dependents.isNotEmpty) {
+    throw ArgumentError('Dependent expansions require a selected resource appearance.');
+  }
+  final Set<String> patterns = resourceEdit || nameBytes == null
+      ? model.styles.any((style) => _nativeAppearancePatternPaints(style).isNotEmpty)
+            ? model._patternNames
+            : const {}
+      : _nativeAppearancePatterns(model, appearance);
+  final Map<AiNativeResourceUse, Set<String>> affected;
+  if (nameBytes == null || resourceEdit) {
     final _ArtboardResourceScope resources = _artboardResourceScope(layers);
     final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.brushes);
     final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
     _nativeReferenceScope(
       layers,
       headers,
-      bodyDictionaries: _nativeReferenceBody(layers, headers, inspect: _nativeAppearanceInterval, qualifyShapeNeighbors: false, clipping: true, appearanceArtwork: retained),
+      bodyDictionaries: _nativeReferenceBody(layers, headers, inspect: _nativeAppearanceInterval, qualifyShapeNeighbors: false, clipping: true, appearanceArtwork: retained, patterns: patterns),
       retainedResources: resources,
       retainedBrushes: brushes,
     );
+    affected = resourceEdit ? _nativeAppearanceDependents(model, replacements, dependents, brushes) : {};
+  } else {
+    affected = {};
+  }
+  final List<AiSourceEdit> edits = _nativeAppearancePrintingEdits(model, all);
+  if (nameBytes == null) {
+    if (appearance.uses.length != selected.length || appearance.uses.any((use) => !selected.contains(use))) {
+      throw UnsupportedError('A shared appearance change must cover every source use and its printing owner.');
+    }
     edits.addAll(styleEdits);
   } else {
     if (replacements.isEmpty ||
@@ -117,7 +128,7 @@ AiNativeAppearances _editNativeAppearance(
   };
   final AiNativeAppearances updated = _nativeAppearanceResult(model, edits, owners);
   final AiNativeAppearance changed = updated.styles.singleWhere((style) => _sameNativeBytes(style.resource.nameBytes, nameBytes ?? appearance.resource.nameBytes));
-  final ({Set<String> reads, Set<String> writes}) next = _nativeLiteralStyleState(updated.structure.drawing, changed.resource.definition.source as AiNativeContainer);
+  final ({Set<String> reads, Set<String> writes}) next = _nativeAppearanceStyleState(updated, changed);
   if (parts.any((change) => change.children != null)) {
     changedState.addAll(next.writes);
     final Map<String, AiNativeInstruction> before = _nativeAppearanceScalarState(appearance, state.reads);
@@ -127,29 +138,44 @@ AiNativeAppearances _editNativeAppearance(
     changedState.removeAll(_nativeAppearanceOrderState(appearance, parts, state.reads));
   }
 
-  /// Checks retained consumers after optional literal native-only restoration.
-  void following(Map<String, AiNativeInstruction> restored) => _sourceFollowingDependencies(
-    drawing,
-    {
-      for (final AiNativeAppearanceReplacement replacement in replacements)
-        (start: replacement.artwork.start, end: replacement.artwork.end): (
-          commands: replacement.artwork._commands,
-          styles: {
-            ...replacement.artwork._styleReads,
-            for (final AiNativeResourceUse use in replacement.uses) use.instruction.end: {...state.reads, ...next.reads},
-          },
-          prefix: [],
-          suffix: [],
-          unresolved: {},
-          printingUnresolved: {},
-          discard: false,
-        ),
-    },
-    retainedArtwork: retained,
-    clipping: true,
-    styleChanges: {for (final AiNativeResourceUse use in selected) use.instruction.end: changedState},
-    styleRestorations: {for (final AiNativeResourceUse use in selected) use.instruction.end: restored},
-  );
+  final Map<AiNativeArtworkResource?, List<AiNativeAppearanceReplacement>> contexts = {};
+  for (final AiNativeAppearanceReplacement replacement in all) {
+    (contexts[replacement.artwork.resource] ??= []).add(replacement);
+  }
+
+  /// Checks each local execution interval and restores resource boundary state.
+  void following(Map<String, AiNativeInstruction> restored) {
+    for (final MapEntry<AiNativeArtworkResource?, List<AiNativeAppearanceReplacement>> context in contexts.entries) {
+      final AiNativeArtworkResource? resource = context.key;
+      _sourceFollowingDependencies(
+        resource?._drawing ?? drawing,
+        {
+          for (final AiNativeAppearanceReplacement replacement in context.value)
+            (start: replacement.artwork.start, end: replacement.artwork.end): (
+              commands: replacement.artwork._commands,
+              styles: {
+                ...replacement.artwork._styleReads,
+                for (final AiNativeResourceUse use in replacement.uses.where(selected.contains)) use.instruction.end: {...state.reads, ...next.reads},
+              },
+              prefix: [],
+              suffix: [],
+              unresolved: {},
+              printingUnresolved: {},
+              discard: false,
+            ),
+        },
+        retainedArtwork: resource == null ? retained : _nativeRetainedAppearanceArtwork(model, resource: resource),
+        clipping: true,
+        styleChanges: {
+          for (final AiNativeResourceUse use in {...selected, ...affected.keys}) use.instruction.end: {...?affected[use], if (selected.contains(use)) ...changedState},
+        },
+        styleRestorations: {for (final AiNativeResourceUse use in selected) use.instruction.end: restored},
+        document: layers,
+        resource: resource,
+        patterns: patterns,
+      );
+    }
+  }
 
   try {
     following(const {});
@@ -194,12 +220,15 @@ AiNativeAppearances _nativeAppearanceResult(AiNativeAppearances model, List<AiSo
 /// Unqualified owners remain in the intervening source: dependency inspection
 /// rejects them if unresolved state reaches them, and shared scope always checks
 /// them. They are never silently counted as covered or safe to edit.
-List<AiNativeAppearanceArtwork> _nativeRetainedAppearanceArtwork(AiNativeAppearances model) {
-  final AiNativeDrawing drawing = model.structure.drawing;
+List<AiNativeAppearanceArtwork> _nativeRetainedAppearanceArtwork(AiNativeAppearances model, {AiNativeArtworkResource? resource}) {
+  final AiNativeDrawing drawing = resource?._drawing ?? model.structure.drawing;
   final Set<int> shapes = drawing.liveShapes.map((shape) => shape.end).toSet();
   final List<AiNativeAppearanceArtwork> result = [];
   for (final AiNativeResourceUse use in model.uses.where(
-    (use) => use.instruction.start >= drawing.records.program.bodyStart && use.instruction.end <= drawing.records.program.bodyEnd && !shapes.contains(use.instruction.end),
+    (use) =>
+        use.instruction.start >= (resource?.artworkStart ?? drawing.records.program.bodyStart) &&
+        use.instruction.end <= (resource?.artworkEnd ?? drawing.records.program.bodyEnd) &&
+        !shapes.contains(use.instruction.end),
   )) {
     try {
       result.add(model.artworkFor(use: use));

@@ -51,15 +51,15 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
 ({Set<String> reads, Set<String> writes}) _shapeCopyStyleState(AiNativeDrawing drawing, AiLiveShape shape) => _nativeLiteralStyleState(drawing, shape.style!);
 
 /// Qualifies a literal style independently of any particular referencing shape.
-({Set<String> reads, Set<String> writes}) _nativeLiteralStyleState(AiNativeDrawing drawing, AiNativeContainer style) {
+({Set<String> reads, Set<String> writes}) _nativeLiteralStyleState(AiNativeDrawing drawing, AiNativeContainer style, {Set<String> patterns = const {}}) {
   if (drawing._objects.structure.versions.blocks.any((block) => block.start < style.end && block.end > style.start)) {
     throw UnsupportedError('Shape copies require unconditional native filter execution.');
   }
   if (style['Def']?.container case final AiNativeContainer definition when definition.type == 'SimpleStyle') {
-    return _nativeSimpleStyleState(drawing, style, definition);
+    return _nativeSimpleStyleState(drawing, style, definition, patterns: patterns);
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
-  _artboardRetainedStyle(layers, style, {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use}, {}, {});
+  _artboardRetainedStyle(layers, style, {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use}, patterns, {});
   final Set<String> writes = {};
   final Set<String> reads = {};
   for (final AiNativeContainer record in drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end)) {
@@ -84,6 +84,9 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
         final String? key = _nativeArtworkStateKey(command);
         if (key != null) {
           local.add(key);
+        } else if (const {'p', 'P'}.contains(command.operator)) {
+          _artboardPatternUse(command, patterns);
+          local.add(command.operator == 'p' ? 'fill' : 'stroke');
         } else if (command.operator == 'Xd' && command.numbers?.length == 2 && command.numbers!.every((value) => value == 0 || value == 1)) {
           // Each retained paint part carries its explicit fill/stroke flags.
         } else if (!_gradientCommands.contains(command.operator)) {
@@ -102,8 +105,8 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   return (reads: reads, writes: writes);
 }
 
-/// Qualifies process-only SimpleStyle commands without assuming disabled paints.
-({Set<String> reads, Set<String> writes}) _nativeSimpleStyleState(AiNativeDrawing drawing, AiNativeContainer style, AiNativeContainer definition) {
+/// Qualifies literal paints and explicitly allowed patterns without paint defaults.
+({Set<String> reads, Set<String> writes}) _nativeSimpleStyleState(AiNativeDrawing drawing, AiNativeContainer style, AiNativeContainer definition, {Set<String> patterns = const {}}) {
   _artboardSetupRecord(AiNativeLayers.decode(drawing: drawing), style);
   _artboardStyleFields(style, {'Name', 'Def'});
   _artboardStyleFields(definition, {'Paint'});
@@ -112,6 +115,11 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   }
   final Set<String> writes = {};
   for (final AiNativeInstruction command in AiNativePaintStyle.decode(records: drawing.records, record: definition).instructions) {
+    if (const {'p', 'P'}.contains(command.operator)) {
+      _artboardPatternUse(command, patterns);
+      writes.add(command.operator == 'p' ? 'fill' : 'stroke');
+      continue;
+    }
     if (!_solidStyleCommands.contains(command.operator)) {
       throw UnsupportedError('Simple appearance state requires qualified literal process paint.');
     }

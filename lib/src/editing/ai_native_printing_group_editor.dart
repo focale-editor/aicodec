@@ -25,7 +25,7 @@ List<AiSourceEdit> _nativePrintingGroupEdits(AiNativeDrawing drawing, List<AiNat
 }
 
 /// Shares expansion validation across live-shape and ordinary appearance users.
-List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({AiNativeGroup group, List<int> bytes, AiBoundingBox bounds})> replacements) {
+List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({AiNativeGroup group, List<int> bytes, AiBoundingBox bounds})> replacements, {bool documentBounds = true}) {
   if (replacements.isEmpty || replacements.map((replacement) => replacement.group).toSet().length != replacements.length) {
     throw ArgumentError('Printing replacement requires distinct owned groups.');
   }
@@ -68,17 +68,19 @@ List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({Ai
     edits.add(AiSourceEdit(start: source.start, end: source.end, bytes: replacement.bytes));
     bounds.add(replacement.bounds);
   }
-  edits.addAll(
-    AiNativeEditor.includeBoundsEdits(
-      program: program,
-      bounds: AiBoundingBox(
-        left: bounds.map((bound) => bound.left).reduce(min),
-        bottom: bounds.map((bound) => bound.bottom).reduce(min),
-        right: bounds.map((bound) => bound.right).reduce(max),
-        top: bounds.map((bound) => bound.top).reduce(max),
+  if (documentBounds) {
+    edits.addAll(
+      AiNativeEditor.includeBoundsEdits(
+        program: program,
+        bounds: AiBoundingBox(
+          left: bounds.map((bound) => bound.left).reduce(min),
+          bottom: bounds.map((bound) => bound.bottom).reduce(min),
+          right: bounds.map((bound) => bound.right).reduce(max),
+          top: bounds.map((bound) => bound.top).reduce(max),
+        ),
       ),
-    ),
-  );
+    );
+  }
   return edits;
 }
 
