@@ -47,13 +47,13 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {requir
       index += 3;
       continue;
     }
-    final String section = token.lexeme == '%AI10_BeginSymbolList\u0000' ? '%AI10_BeginSymbolList' : token.lexeme;
+    final String section = _artboardSetupName(token.lexeme);
     final String? closing = sections[section];
     if (closing == null) {
       continue;
     }
     final int first = index + 1;
-    while (++index < tokens.length && tokens[index].start < records.program.bodyStart && !(tokens[index].kind == .comment && tokens[index].lexeme == closing)) {}
+    while (++index < tokens.length && tokens[index].start < records.program.bodyStart && !(tokens[index].kind == .comment && _artboardSetupName(tokens[index].lexeme) == closing)) {}
     if (index == tokens.length || tokens[index].start >= records.program.bodyStart) {
       throw const FormatException('Unterminated artboard setup inventory.');
     }
@@ -111,3 +111,10 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {requir
   }
   return ranges;
 }
+
+/// Recognizes observed legacy panel boundaries without changing their bytes.
+String _artboardSetupName(String name) => switch (name) {
+  '%AI10_BeginSymbolList\u0000' => '%AI10_BeginSymbolList',
+  '%AI10_EndSymbolList\u0000' => '%AI10_EndSymbolList',
+  _ => name,
+};

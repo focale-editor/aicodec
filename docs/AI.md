@@ -1501,7 +1501,7 @@ exact. The retained scalar domains follow the Adobe SDK's
 [blend-style definitions](https://ai-sdk-2020.84.nz/html/_a_i_mask_8h), without
 compositing or evaluating the appearance. AI10/AI24 panel inventories require
 distinct ordinary literal names that resolve to qualified symbols; the observed
-AI10 opening comment with a terminal NUL is retained verbatim. Unlisted
+AI10 opening and closing comments with a terminal NUL are retained verbatim. Unlisted
 definitions may remain unused. Unknown metadata, nested resource declarations,
 unqualified payloads and executable state still reject. Symbol instances
 and definition lifecycle remain separate editing contracts.

@@ -35,7 +35,15 @@ String _carrier(AiNativeSource source) {
   if (names.length != 5 && names.length != 15) {
     throw StateError('The pinned appearance carrier has an unexpected symbol set.');
   }
-  symbols.writeln('%AI24_BeginSymbolList\n${names.join('\n')}\n%AI24_EndSymbolList');
+  if (names.length == 15) {
+    final RegExpMatch? inventory = RegExp(r'%AI(10|24)_BeginSymbolList\x00?[\s\S]*?%AI\1_EndSymbolList\x00?').firstMatch(text);
+    if (inventory == null) {
+      throw StateError('The complete producer symbols require their original panel inventory.');
+    }
+    symbols.writeln(inventory[0]);
+  } else {
+    symbols.writeln('%AI24_BeginSymbolList\n${names.join('\n')}\n%AI24_EndSymbolList');
+  }
   return retainedTextCarrier(source).replaceFirst('%%EndSetup', '$styles\n$symbols\n%%EndSetup');
 }
 

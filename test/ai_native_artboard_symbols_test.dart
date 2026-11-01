@@ -61,10 +61,23 @@ void main() {
 
   test('retains ordinary and empty symbols and legacy NUL-terminated panel wrappers', () {
     for (final String symbol in [artboardSymbol.replaceAll('%_', ''), '%AI14_BeginSymbol\n(board-0)\n%AI10_EndSymbol\n']) {
-      for (final String inventory in ['', artboardSymbolList, artboardSymbolList.replaceAll('AI24', 'AI10').replaceFirst('BeginSymbolList', 'BeginSymbolList\u0000')]) {
+      for (final String inventory in [
+        '',
+        artboardSymbolList,
+        artboardSymbolList.replaceAll('AI24', 'AI10').replaceFirst('BeginSymbolList', 'BeginSymbolList\u0000'),
+        artboardSymbolList.replaceAll('AI24', 'AI10').replaceFirst('EndSymbolList', 'EndSymbolList\u0000'),
+        artboardSymbolList.replaceAll('AI24', 'AI10').replaceAll('SymbolList', 'SymbolList\u0000'),
+      ]) {
         final AiNativeArtboards before = artboardModel(symbolArtboardSource(symbol: symbol, inventory: inventory));
         _retained(before, before.reorder(artboards: before.artboards.reversed.toList(), cropBounds: null));
       }
+    }
+  });
+
+  test('does not normalize arbitrary NUL bytes in panel markers', () {
+    for (final String marker in ['EndSymbol\u0000List', 'EndSymbolList\u0000\u0000']) {
+      final AiNativeArtboards before = artboardModel(symbolArtboardSource(inventory: artboardSymbolList.replaceAll('AI24', 'AI10').replaceFirst('EndSymbolList', marker)));
+      check(() => before.reorder(artboards: before.artboards.reversed.toList(), cropBounds: null)).throws<FormatException>();
     }
   });
 

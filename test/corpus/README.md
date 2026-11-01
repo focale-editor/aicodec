@@ -813,6 +813,10 @@ all fifteen symbols of each of the first three producers and five from
 references a calligraphic brush, are explicitly excluded pending their dependency
 contracts. No part of a retained symbol or style is stripped. Source provenance,
 these exact selections and constructed-carrier hashes are independently checked.
+The first three carriers also retain the producer's complete panel inventory in
+its original order, independently of definition order. This includes both
+NUL-terminated AI10 boundary comments from `simple_cc_legacy.ai`; the oracle
+compares the original panel syntax tree and exact source section.
 
 The external reader compares all ordered style parts, descriptor fields, paint
 commands, masks and raster samples against the original producers and every

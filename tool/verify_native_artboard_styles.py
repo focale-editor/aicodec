@@ -18,9 +18,9 @@ from verify_native_artboard_text import normalized, text_state
 from verify_native_page_saves import native_edit
 
 CARRIERS = {
-    'simple_cc_legacy.ai': '326c86b6920d46de35d3023d1d5bd24f2f822b3a9c76229f9e56066bef62d025',
-    'simple_v2020.ai': '3c3c80b13047eaff1e6d999d8cdf42add1fd0aef5920aa9c11b7c410d54d3f93',
-    'text_transforms.ai': 'af48b911bf228311be6be2c9a1257a2dbfb539452884829a51ed0db353c53cd8',
+    'simple_cc_legacy.ai': 'a1d38b514f84b3418654a9b79b08054c29cad365417b17abaaa4ca772a7ede80',
+    'simple_v2020.ai': '6281183a9c06b1dc3edf777038ba809774f02648962f772144b2e44df4089901',
+    'text_transforms.ai': '07c57119e4ff0d059af00c8e5136b93c73e6100a32dcf84aef7353bcf26fc90d',
     'flowtext.ai': 'ea6f2ea6203e6799ddb1cdbd9bf923071c42b15f2779f2cd4a05df02a5d1962e',
     'synthetic-style': '2a83927df19c8f2ee4aeae7dfbea79c360fb5bea21f8f303b049d423b2fe5c42',
 }
@@ -34,12 +34,22 @@ def styles(document):
     return result
 
 
+def panel(document):
+    """Locate one source inventory, including the actual legacy NUL wrapper."""
+    sections = [
+        section for kind in (b'%AI10_BeginSymbolList', b'%AI10_BeginSymbolList\0', b'%AI24_BeginSymbolList')
+        for section in document.setup.all_subsections_of_type_recursive(kind)
+    ]
+    assert len(sections) == 1
+    return sections[0]
+
+
 def appearance_state(document):
     """Check named uses, independent inventories and complete retained graphs."""
     definitions, appearances = symbols(document), styles(document)
-    inventory = document.setup.first_subsection_of_type(b'%AI24_BeginSymbolList')
-    assert inventory is not None and not inventory.children
-    assert tuple(inventory.arguments) == tuple(definitions)
+    inventory = panel(document)
+    assert not inventory.children
+    assert len(inventory.arguments) == len(definitions) and set(inventory.arguments) == set(definitions)
     for symbol in definitions.values():
         for item in walk_body(symbol.children):
             if getattr(item, 'command', None) == 'XW' and item.tokens[0] in (b'0', b'1') and item.tokens[1]:
@@ -94,6 +104,10 @@ def main():
         copied = re.findall(rb'%AI14_BeginSymbol[\s\S]*?%AI10_EndSymbol', originals[name])
         assert len(copied) == len(states[name]['symbols']) and all(section in producer.read_bytes() for section in copied)
         assert mask_state(document) == states[name]['masks']
+        if name != 'flowtext.ai':
+            assert normalized(panel(document)) == states[name]['inventory']
+            copied_panel = re.search(rb'%AI(10|24)_BeginSymbolList\x00?[\s\S]*?%AI\1_EndSymbolList\x00?', originals[name])
+            assert copied_panel is not None and copied_panel.group() in producer.read_bytes()
         texts[name] = text_state(document, text_parser, stream)
         assert text_state(inkai.parse(str(original)), text_parser, stream) == texts[name]
     checked = []

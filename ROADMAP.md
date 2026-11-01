@@ -810,6 +810,13 @@ groups and compound topology. There is no general modern object lifecycle API.
   independent transactions. The previous 122 symbol/text/lifecycle/mask outcomes
   were regenerated and rechecked; all 20 appearance outcomes compare exact
   producer graphs and retained native bytes.
+  The original CC legacy symbol panel now retains both NUL-terminated boundary
+  comments. The appearance carriers keep all three complete producer panel lists
+  in their own saved order, with independent source-tree and byte comparisons.
+  Arbitrary embedded/repeated NULs remain rejected; 22 focused VM/Node cases and
+  clean format/fix/analysis validate this boundary correction. All twenty
+  appearance transactions pass with the exact producer inventories; the three
+  full sources now pass panel inspection before the remaining brush owners.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
