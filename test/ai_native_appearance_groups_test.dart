@@ -130,10 +130,9 @@ void main() {
     check(() => appearanceEditingModel(source: source.replaceFirst('%_0 0 m 10 0 L', '%_0 0 m 9007199254740992 0 L'))).throws<FormatException>();
   });
 
-  test('rejects clips mixed boundaries conditional owners and detached metadata', () {
+  test('rejects mixed boundaries conditional owners and detached metadata', () {
     final String source = appearanceGroupsSource();
     for (final String text in [
-      source.replaceFirst('%_1 Ae\n%_u', '%_1 Ae\n%_q').replaceFirst('%_U\n%_/ArtDictionary : (Nested group)', '%_Q\n%_/ArtDictionary : (Nested group)'),
       source.replaceFirst('%_3 As', '%_/ArtDictionary : (detached) /String (AIArtName) , ;\n%_3 As'),
       source.replaceFirst('%_3 As', '%AI17_Begin_Content_if_version_gt:24 4\n%_3 As').replaceFirst('%_U', '%AI17_End_Versioned_Content\n%_U'),
     ]) {

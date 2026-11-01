@@ -19,7 +19,8 @@ List<AiSourceEdit> _nativePrintingGroupEdits(AiNativeDrawing drawing, List<AiNat
     throw ArgumentError('Printing replacement requires a nonempty distinct shape selection.');
   }
   return _nativePrintingSourceEdits(drawing, [
-    for (final AiNativePrintingGroupReplacement replacement in replacements) (group: _printingShapeGroup(drawing, replacement.shape), bytes: replacement.bytes, bounds: replacement.bounds),
+    for (final AiNativePrintingGroupReplacement replacement in replacements)
+      (group: _printingShapeGroup(drawing, replacement.shape, clipping: true), bytes: replacement.bytes, bounds: replacement.bounds),
   ]);
 }
 
@@ -41,8 +42,8 @@ List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({Ai
     }
     final AiNativeDrawing supplied = _printingFragment(replacement.bytes, program.limits);
     final AiNativeGroup group = supplied.groups.last;
-    final Map<String, String> before = _printingState(drawing, source);
-    final Map<String, String> after = _printingState(supplied, group);
+    final Map<String, String> before = _printingState(drawing, source, clipping: true);
+    final Map<String, String> after = _printingState(supplied, group, clipping: true);
     if (before.length != after.length || before.entries.any((entry) => after[entry.key] != entry.value)) {
       throw UnsupportedError('Supplied printing artwork changes the outgoing paint state; preserve the source group boundary.');
     }

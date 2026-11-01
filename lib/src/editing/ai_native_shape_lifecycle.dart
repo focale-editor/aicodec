@@ -57,12 +57,12 @@ void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeCo
 /// Qualifies a complete source bundle rather than its individual private paths.
 ///
 /// Callers opting out must qualify affected neighbors and enclosing effects separately.
-_NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure, {bool qualifyNeighbors = true}) {
-  final AiNativeGroup group = _printingShapeGroup(drawing, shape);
+_NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure, {bool qualifyNeighbors = true, bool clipping = false}) {
+  final AiNativeGroup group = _printingShapeGroup(drawing, shape, clipping: clipping);
   if (!_shapeParameters.containsKey(shape.handler)) {
     throw UnsupportedError('Shape copies require a known native shape handler.');
   }
-  _printingState(drawing, group);
+  _printingState(drawing, group, clipping: clipping);
   _printingPointCounts(drawing, group);
   final AiNativeObject object = drawing._objects.forSource(group);
   final AiNativeInstruction? panel = object.expansion;

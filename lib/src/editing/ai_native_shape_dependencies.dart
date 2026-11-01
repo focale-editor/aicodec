@@ -64,6 +64,9 @@ void _sourceFollowingDependencies(
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
+  final Map<int, AiNativeGroup> endings = {for (final AiNativeGroup group in drawing.groups) group.closing.start: group};
+  final List<({Set<String> native, Set<String> printing})?> clips = [];
+  int compoundDepth = 0;
   final List<int> positions = insertions.keys.toList()..sort();
   int inserted = 0;
 
@@ -93,8 +96,8 @@ void _sourceFollowingDependencies(
       return;
     }
     if (paths[item.start] case final AiNativePath path) {
-      read(_shapeCopyReads(drawing, path), private: nativeOnly);
-    } else if (const {'u', '*u'}.contains(item.operator)) {
+      read(compoundDepth == 0 ? _shapeCopyReads(drawing, path) : _nativeContourFlags, private: nativeOnly);
+    } else if (const {'u', '*u', 'q'}.contains(item.operator)) {
       read({'A', 'Xw'}, private: nativeOnly);
     } else if (_marker(item, 6)) {
       read({'Xy'}, private: true);
@@ -109,6 +112,29 @@ void _sourceFollowingDependencies(
       for (final AiNativeInstruction value in styleRestorations[item.end]?.values ?? const []) {
         command(value, private: true);
       }
+    }
+    switch (item.operator) {
+      case '*u':
+        compoundDepth++;
+      case '*U':
+        final AiNativeGroup group = endings[item.start]!;
+        if (group.paths.isNotEmpty) {
+          read(_shapeCopyReads(drawing, group.paths.last)..removeAll(_nativeContourFlags), private: nativeOnly);
+        }
+        compoundDepth--;
+      case 'q':
+        clips.add(compoundDepth == 0 ? (native: unresolved.intersection(_nativeClipStateKeys), printing: printingUnresolved.intersection(_nativeClipStateKeys)) : null);
+      case 'Q':
+        if (clips.removeLast() case final ({Set<String> native, Set<String> printing}) saved) {
+          unresolved
+            ..removeAll(_nativeClipStateKeys)
+            ..addAll(saved.native);
+          if (!nativeOnly) {
+            printingUnresolved
+              ..removeAll(_nativeClipStateKeys)
+              ..addAll(saved.printing);
+          }
+        }
     }
   }
 
@@ -187,7 +213,7 @@ void _sourceFollowingDependencies(
           command(instruction, styleReads: item._styleReads[instruction.end]);
         }
       } else {
-        final _NativeShapeBundle bundle = _shapeBundle(drawing, retained[owner]!, layers.structure, qualifyNeighbors: retainedArtwork.isEmpty);
+        final _NativeShapeBundle bundle = _shapeBundle(drawing, retained[owner]!, layers.structure, qualifyNeighbors: retainedArtwork.isEmpty, clipping: retainedArtwork.isNotEmpty);
         for (final AiNativeInstruction item in bundle.commands) {
           command(item, styleReads: bundle.styleReads);
         }

@@ -570,13 +570,14 @@ final class AiNativeDrawing {
 
   /// Replaces complete host-composed CC groups while retaining native ownership.
   ///
-  /// Paths, compound nesting and process/gradient paints may change. The supplied
+  /// Paths, compound nesting, clipping and process/gradient paints may change. The supplied
   /// group must preserve its outgoing paint state and reference existing unique
   /// gradient resources. Private authoring records, styles and unselected bytes
   /// remain unchanged. The host supplies matching authoring/PDF representations
   /// and ink bounds; this operation does not render or prove visual equivalence.
-  /// Unknown local state, clipping, embedded data and unsupported paint layouts
-  /// reject atomically. Source point-count conventions must remain coherent.
+  /// Clipping retains qualified `q/Q` scopes and `h/H W` contours, including
+  /// consistent compound masks. Unknown local state, embedded data and unsupported
+  /// paint layouts reject atomically. Source point-count conventions remain coherent.
   AiNativeDrawing withPrintingGroups({required List<AiNativePrintingGroupReplacement> replacements}) => _replaceNativePrintingGroups(this, replacements);
 
   /// Moves native shapes and their supported painted expansions atomically.

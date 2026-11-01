@@ -146,7 +146,6 @@ U''';
       _group.replaceFirst('u\n', 'u\n%%BeginData: 1 ASCII Lines\nopaque\n%%EndData\n'),
       _group.replaceFirst('u\n', 'u\n17 FuturePaint\n'),
       _group.replaceFirst('u\n', 'u\n0 0 Xd\n'),
-      _group.replaceFirst('u\n', 'u\nq Q\n'),
       _group.replaceFirst('u\n', 'u\n0 Ae\n1 w\n'),
       _group.replaceFirst('10 0 L', '10 0 L\n0 g'),
     ]) {

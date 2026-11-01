@@ -222,6 +222,30 @@ cover stale/foreign selections, immutable inputs, duplicate group replacements,
 incomplete shared coverage, unprovable sibling state and aggregate byte limits.
 Generated sources and reports stay ignored under `output/appearance-nested-editing`.
 
+### Appearance clipping and supplied mask groups
+
+```sh
+dart run tool/check_native_appearance_clipping.dart
+python3 tool/verify_native_appearance_clipping.py --inkai-source /tmp/extension-ai
+```
+
+Thirteen pinned synthetic transactions cover selected/shared closed and open
+masks, compound masks, grouped compound leaves, nested scopes, counted printing
+and a child stroke-width change inside `q/Q`. The unchanged independent reader
+binds every path/control/count/group span to the complete program and checks each
+reported effective clipping owner. Native mask geometry and metadata stay exact.
+Every style, part and use is checked; a complete byte oracle permits only the
+prescribed style, reference, supplied group and bounds changes.
+
+Thirty-eight contour-state comparisons execute the supplied printing projection
+through the unchanged Adobe prolog pinned in `inkscape_minimized_ai7.ai`, using
+Ghostscript and two incoming cap/join/width/miter/dash states. Color assignments
+are omitted from that specific probe because CC RGB layouts differ from the AI7
+prolog; their exact bytes remain checked independently. The probe verifies scoped
+contour state, not color rendering, native-style execution or visual equivalence.
+Complete-producer mask interoperability and Adobe reopening remain unqualified.
+Sources and reports stay ignored under `output/appearance-clipping`.
+
 ### Complete producer appearance edits
 
 ```sh

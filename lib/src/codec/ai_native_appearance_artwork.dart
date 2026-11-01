@@ -16,7 +16,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   }
   final AiLiveShape? shape = drawing.liveShapes.where((shape) => shape.end == use.instruction.end).singleOrNull;
   if (shape != null) {
-    final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, model.structure, qualifyNeighbors: false);
+    final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, model.structure, qualifyNeighbors: false, clipping: true);
     _nativeAppearanceParents(model.structure, bundle.start, shape.end, shape.appearanceGroup!);
     return AiNativeAppearanceArtwork._(
       owner: model,
@@ -39,14 +39,16 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   final AiNativeGroup? authoringGroup = index < 0 || path != null ? null : drawing.groups.where((group) => identical(group.closing, items[index])).singleOrNull;
   final List<AiNativeContainer> metadata = [];
   final Map<AiNativeResourceUse, AiNativeItem> nestedOwners = {};
+  final List<AiNativePathTopology> contours = [];
   if (path != null) {
     if (!path.isPrivate || !const {'n', 'N'}.contains(path.paint.operator) || path.geometry.skip(1).any((command) => command.operator == 'm')) {
       throw UnsupportedError('Appearance artwork requires one authoritative private contour before its style use.');
     }
   } else if (authoringGroup != null) {
-    final ({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners}) retained = _nativeAppearanceGroup(model, authoringGroup);
+    final ({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners, List<AiNativePathTopology> contours}) retained = _nativeAppearanceGroup(model, authoringGroup);
     metadata.addAll(retained.metadata);
     nestedOwners.addAll(retained.owners);
+    contours.addAll(retained.contours);
   } else {
     throw UnsupportedError('Appearance artwork requires an authoritative private contour or group before its style use.');
   }
@@ -92,7 +94,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   if (group == null || group.opening.isPrivate || group.compound || drawing.liveShapes.any((shape) => shape.start < use.instruction.end && shape.end > group.start)) {
     throw UnsupportedError('Appearance artwork requires a distinct ordinary printing group.');
   }
-  _printingState(drawing, group);
+  _printingState(drawing, group, clipping: true);
   _printingPointCounts(drawing, group);
   final AiNativeStructureNode owner = model.structure.nodeFor(group);
   for (final AiNativeItem item in [authoring, use.instruction, ?dictionary, ?printingDictionary]) {
@@ -136,6 +138,7 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     start: start,
     metadata: metadata,
     nestedOwners: nestedOwners,
+    groupContours: contours,
     commands: commands,
     styleReads: {
       use.instruction.end: state.reads,

@@ -44,6 +44,12 @@ final class AiNativeAppearanceArtwork {
   /// editing a child style. They share this owner's complete printing group.
   final List<AiNativeResourceUse> nestedUses;
 
+  /// Authoritative group contours with local compound and clipping ownership.
+  ///
+  /// Empty for single-path and live-shape owners. These snapshots expose masks
+  /// for host composition; ordinary path-edit APIs still reject private paths.
+  final List<AiNativePathTopology> groupContours;
+
   /// Exact private child paths or groups bound to the retained named uses.
   final Map<AiNativeResourceUse, AiNativeItem> _nestedOwners;
 
@@ -71,10 +77,12 @@ final class AiNativeAppearanceArtwork {
     required this.start,
     List<AiNativeContainer> metadata = const [],
     Map<AiNativeResourceUse, AiNativeItem> nestedOwners = const {},
+    List<AiNativePathTopology> groupContours = const [],
     required List<AiNativeInstruction> commands,
     required Map<int, Set<String>> styleReads,
   }) : metadata = List.unmodifiable({?dictionary, ?printingDictionary, ...metadata}.toList()..sort((first, second) => first.start.compareTo(second.start))),
        nestedUses = List.unmodifiable(nestedOwners.keys),
+       groupContours = List.unmodifiable(groupContours),
        _nestedOwners = Map.unmodifiable(nestedOwners),
        _commands = List.unmodifiable(commands),
        _styleReads = Map.unmodifiable(styleReads.map((position, reads) => MapEntry(position, Set<String>.unmodifiable(reads))));

@@ -12,7 +12,10 @@ enum AiNativePathMask {
   closed,
 }
 
-/// Qualified ordinary path ownership, including compound contours and masks.
+/// Qualified path ownership, including compound contours and masks.
+///
+/// Appearance owners expose private contours for inspection and host composition;
+/// their presence here does not authorize independent ordinary path edits.
 final class AiNativePathTopology {
   /// Exact path handle in the inspected drawing snapshot.
   final AiNativePath path;

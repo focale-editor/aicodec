@@ -97,7 +97,7 @@ AiNativeDrawing _replaceNativePrintingContours(AiNativeDrawing drawing, List<AiN
 }
 
 /// Resolves an isolated derived group without replacing private authoring data.
-AiNativeGroup _printingShapeGroup(AiNativeDrawing drawing, AiLiveShape shape) {
+AiNativeGroup _printingShapeGroup(AiNativeDrawing drawing, AiLiveShape shape, {bool clipping = false}) {
   if (!drawing.liveShapes.contains(shape)) {
     throw ArgumentError('Printing replacement has a stale or foreign native shape.');
   }
@@ -108,12 +108,12 @@ AiNativeGroup _printingShapeGroup(AiNativeDrawing drawing, AiLiveShape shape) {
   if (drawing.liveShapes.any((other) => !identical(other, shape) && other.start < group.end && other.end > group.start)) {
     throw UnsupportedError('The printing group overlaps another authoring object.');
   }
-  _printingCommands(drawing, group);
+  _printingCommands(drawing, group, clipping: clipping);
   return group;
 }
 
 /// Rejects hidden payloads and returns the exact local declarative commands.
-List<AiNativeInstruction> _printingCommands(AiNativeDrawing drawing, AiNativeGroup group) {
+List<AiNativeInstruction> _printingCommands(AiNativeDrawing drawing, AiNativeGroup group, {bool clipping = false}) {
   if (drawing.records._projection.tokens.any(
     (token) => token.start < group.end && token.end > group.start && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%BeginDocument') || token.lexeme.startsWith('%AI'))),
   )) {
@@ -121,7 +121,7 @@ List<AiNativeInstruction> _printingCommands(AiNativeDrawing drawing, AiNativeGro
   }
   final List<AiNativeInstruction> result = [];
   for (final AiNativeItem item in drawing.items.where((item) => item.start >= group.start && item.end <= group.end)) {
-    if (item is! AiNativeInstruction || item.isPrivate || !_printingGeometryControls.contains(item.operator)) {
+    if (item is! AiNativeInstruction || item.isPrivate || !(_printingGeometryControls.contains(item.operator) || clipping && const {'h', 'H', 'W'}.contains(item.operator))) {
       throw UnsupportedError('Printing replacement requires resolved local commands and no nested authoring metadata.');
     }
     result.add(item);
@@ -149,11 +149,13 @@ Map<AiNativePath, AiNativeInstruction> _printingPointCounts(AiNativeDrawing draw
         final List<AiPathSegment> segments = path.segments;
         final List<double> first = segments.first.coordinates;
         final List<double> last = segments.last.coordinates;
+        final bool closed =
+            path.closed || _pathInterval(drawing.items, path.geometry.last.end, path.paint.start, (item) => item.start).whereType<AiNativeInstruction>().any((item) => item.operator == 'h');
         if (numbers == null ||
             numbers.length != 1 ||
-            numbers.single != segments.length - (path.closed ? 1 : 0) ||
+            numbers.single != segments.length - (closed ? 1 : 0) ||
             segments.skip(1).any((segment) => segment.operator == 'm') ||
-            path.closed && (segments.length == 1 || last[last.length - 2] != first[0] || last.last != first[1])) {
+            closed && (segments.length == 1 || last[last.length - 2] != first[0] || last.last != first[1])) {
           throw UnsupportedError('The native printing point count or closed-path layout is inconsistent.');
         }
         counts[path] = count;

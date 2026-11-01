@@ -1,11 +1,13 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies an immutable private group tree without expanding its appearance.
-({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners}) _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
-  if (!group.opening.isPrivate || !const {'u', '*u'}.contains(group.opening.operator) || group.paths.isEmpty) {
-    throw UnsupportedError('Grouped appearances require a nonempty private ordinary or compound group.');
+({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners, List<AiNativePathTopology> contours}) _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
+  if (!group.opening.isPrivate || !const {'u', '*u', 'q'}.contains(group.opening.operator) || group.paths.isEmpty) {
+    throw UnsupportedError('Grouped appearances require a nonempty private ordinary, compound or clipping group.');
   }
   final AiNativeDrawing drawing = model.structure.drawing;
+  final List<AiNativePathTopology> contours = _nativeGroupContours(drawing, group);
+  final Map<AiNativePath, AiNativePathTopology> topology = {for (final AiNativePathTopology contour in contours) contour.path: contour};
   final List<AiNativeItem> items = _pathInterval(drawing.items, group.start, group.end, (item) => item.start).toList();
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in group.paths) path.start: path};
   final Map<int, AiNativeItem> endings = {
@@ -34,16 +36,16 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       throw UnsupportedError('Grouped authoring artwork cannot mix private and printing commands.');
     }
     final String operator = item.operator;
-    if (panel && !const {'u', '*u'}.contains(operator)) {
+    if (panel && !const {'u', '*u', 'q'}.contains(operator)) {
       throw UnsupportedError('A private group panel flag must immediately precede its group.');
     }
-    if (const {'u', 'U', '*u', '*U'}.contains(operator)) {
+    if (const {'u', 'U', '*u', '*U', 'q', 'Q'}.contains(operator)) {
       if (item.operands.isNotEmpty || count != null) {
         throw UnsupportedError('Private group boundaries cannot consume operands or point counts.');
       }
       panel = false;
     } else if (paths[item.start] case final AiNativePath path) {
-      final Set<AiNativeInstruction> geometry = {...path.geometry, path.paint};
+      final Set<AiNativeInstruction> geometry = {...path.geometry, ...topology[path]!.maskControls, path.paint};
       final int first = index;
       while (index + 1 < items.length && items[index + 1].start < path.end) {
         index++;
@@ -55,7 +57,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
         throw UnsupportedError('Private group paths require contiguous portable geometry.');
       }
       if (count != null) {
-        _nativeAppearanceCount(path, count);
+        _nativeAppearanceCount(path, count, closed: path.closed || topology[path]!.mask == .closed);
       }
       count = null;
     } else if (operator == 'As') {
@@ -94,14 +96,15 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   if (count != null || panel) {
     throw UnsupportedError('Grouped appearances cannot leave unfinished counts or panel flags.');
   }
-  return (metadata: metadata, owners: owners);
+  return (metadata: metadata, owners: owners, contours: contours);
 }
 
 /// Requires the saved point count and closure to describe exactly one contour.
-void _nativeAppearanceCount(AiNativePath path, AiNativeInstruction count) {
+void _nativeAppearanceCount(AiNativePath path, AiNativeInstruction count, {bool? closed}) {
+  final bool closure = closed ?? path.closed;
   final List<double> first = path.geometry.first.numbers!;
   final List<double> last = path.geometry.last.numbers!;
-  if (count.numbers?.length != 1 || count.numbers!.single != path.geometry.length - (path.closed ? 1 : 0) || path.closed && (first[0] != last[last.length - 2] || first[1] != last.last)) {
+  if (count.numbers?.length != 1 || count.numbers!.single != path.geometry.length - (closure ? 1 : 0) || closure && (first[0] != last[last.length - 2] || first[1] != last.last)) {
     throw UnsupportedError('The authoring point count disagrees with its contour.');
   }
 }

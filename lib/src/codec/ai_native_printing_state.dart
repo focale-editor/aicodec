@@ -5,14 +5,14 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Missing keys represent unknown inherited values, not assumed defaults. A
 /// replacement may only leave the same assignments. Complete gradient fills
 /// restore their path-rendering procedures at BB and retain external resources.
-Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group) {
+Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group, {bool clipping = false}) {
   if (group.opening.operator != 'u' || group.paths.isEmpty) {
     throw UnsupportedError('Printing replacement requires a nonempty ordinary outer group.');
   }
   if (group.paths.any((path) => path.geometry.skip(1).any((item) => item.operator == 'm'))) {
     throw const FormatException('Each native printing path requires exactly one initial moveto.');
   }
-  final List<AiNativeInstruction> commands = _printingCommands(drawing, group);
+  final List<AiNativeInstruction> commands = _printingCommands(drawing, group, clipping: clipping);
   final List<AiNativeGradient> gradients = drawing.gradients.where((gradient) => gradient.start >= group.start && gradient.end <= group.end).toList();
   final Set<AiNativeInstruction> gradientCommands = {};
   for (final AiNativeGradient gradient in gradients) {
@@ -35,22 +35,46 @@ Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group)
   }
   final Set<AiNativeInstruction> pathCommands = {
     for (final AiNativePath path in group.paths) ...[...path.geometry, path.paint],
+    if (clipping)
+      for (final AiNativePathTopology path in _nativeGroupContours(drawing, group, retainedCommands: gradientCommands)) ...path.maskControls,
   };
   final Map<String, String> state = {};
+  final List<Map<String, String>?> clips = [];
+  int compoundDepth = 0;
   bool expanded = false;
   for (final AiNativeInstruction item in commands) {
     final String operator = item.operator;
     if (item.operands.any((operand) => operand.number != null && operand.number!.abs() > 9007199254740991)) {
       throw const FormatException('Printing coordinates and state exceed portable numeric limits.');
     }
-    if (expanded && !const {'u', '*u'}.contains(operator)) {
+    if (expanded && !(const {'u', '*u'}.contains(operator) || clipping && operator == 'q')) {
       throw UnsupportedError('A group-expansion flag must immediately precede its owned group.');
     }
-    if (const {'u', 'U', '*u', '*U'}.contains(operator)) {
+    if (const {'u', 'U', '*u', '*U'}.contains(operator) || clipping && const {'q', 'Q'}.contains(operator)) {
       if (item.operands.isNotEmpty) {
         throw const FormatException('Native printing group boundaries cannot have operands.');
       }
       expanded = false;
+      if (operator == '*u') {
+        compoundDepth++;
+      } else if (operator == '*U') {
+        compoundDepth--;
+      } else if (operator == 'q') {
+        clips.add(
+          compoundDepth == 0
+              ? {
+                  for (final String key in _nativeClipStateKeys)
+                    if (state[key] case final String value) key: value,
+                }
+              : null,
+        );
+      } else if (operator == 'Q') {
+        if (clips.removeLast() case final Map<String, String> saved) {
+          state
+            ..removeWhere((key, _) => _nativeClipStateKeys.contains(key))
+            ..addAll(saved);
+        }
+      }
       continue;
     }
     if (pathCommands.contains(item) || gradientCommands.contains(item) || operator == 'As') {
