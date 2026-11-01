@@ -19,7 +19,10 @@ from verify_native_structure import parsed
 from verify_live_shapes import walk_body
 from verify_native_group_lifecycle import command
 
-SYNTHETIC = dict(BASE_SYNTHETIC, **{'synthetic-topology': '118973911f47666aa8c542d09c1eb7103626cf2b0252724ab7cb6ef76b06647e'})
+SYNTHETIC = dict(BASE_SYNTHETIC, **{
+    'synthetic-topology': '118973911f47666aa8c542d09c1eb7103626cf2b0252724ab7cb6ef76b06647e',
+    'synthetic-palette': 'acfee23b790636aa7d4af131bf0e059972bc60e8013132f54394251ddee1f98b',
+})
 
 
 def requests(names):
@@ -109,6 +112,21 @@ def verify(inkai, source, target, row):
         assert operators.count('q') == operators.count('Q') == 2
         assert operators.count('W') == 3 and operators.count('h') == 2 and operators.count('H') == 1
         assert operators.count('m') == operators.count('As') == 5
+    elif row['source'] == 'synthetic-palette':
+        original_setup, changed_setup = inkai.parse(str(source)).setup, inkai.parse(str(target)).setup
+        original_palette = [command(item) for item in original_setup.first_subsection_of_type(b'%AI5_BeginPalette').children]
+        changed_palette = [command(item) for item in changed_setup.first_subsection_of_type(b'%AI5_BeginPalette').children]
+        assert original_palette == changed_palette
+        operators = [item[0] for item in original_palette]
+        assert operators.count('Pg') == operators.count('Xz') == 2
+        assert operators.count('Pc') == 6 and operators.count('Xs') == operators.count('Pn') == 1
+        assert ('Pg', (b'1', b'board-0', b'0'), False) in original_palette
+        assert ('Xz', (b'0', b'0', b'0', b'1', b'0', b'0', b'0', b'[Passermarken]', b'0', b'1'), False) in original_palette
+        assert set(original_setup.gradients) == set(changed_setup.gradients) == {'board-0'}
+        for original, changed in zip(original_setup.gradients.values(), changed_setup.gradients.values()):
+            assert [command(item) for item in original.children] == [command(item) for item in changed.children]
+        gradient_names = [item[1][1].decode() for item in original_palette if item[0] == 'Bg']
+        assert gradient_names == ['board-0']
     if row['variant'] == 'resize':
         verify_resize(inkai, source, target, dict(row, selected=0, crop=False, origin=False, rejected=False), {})
         return
@@ -158,7 +176,7 @@ def main():
     manifest.update({entry['file']: entry for entry in json.loads(Path('test/corpus/manifest.json').read_text())['files'] if entry['file'] in ('rgb_rectangle.ai', 'cmyk_rectangle.ai')})
     expected = requests(manifest)
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(manifest) == 5 and len(rows) == len(expected) == 48
+    assert len(manifest) == 5 and len(rows) == len(expected) == 54
     assert {(row['source'], row['variant']) for row in rows} == expected.keys()
     for name in (*manifest, *SYNTHETIC):
         original = (args.output / f'{name}.original.ps').read_bytes()
@@ -177,7 +195,7 @@ def main():
         verify(inkai, args.output / row['original'], args.output / row['result'], row)
         checked.append(f'{name}/{variant}')
         print(checked[-1], 'passed', flush=True)
-    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, realTransactions=30, syntheticTransactions=18), indent=2) + '\n')
+    (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, transactions=checked, realTransactions=30, syntheticTransactions=24), indent=2) + '\n')
 
 
 if __name__ == '__main__':

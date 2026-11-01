@@ -157,7 +157,6 @@ void main() {
       source.replaceFirst('%AI8_PluginGroupInfo', '%AI17_Begin_Content_if_version_gt:24 4\n%AI8_PluginGroupInfo').replaceFirst('(Example.aip)', '(Example.aip)\n%AI17_End_Versioned_Content'),
       source.replaceFirst('0.1 0.2 0.3 Xa', '(board-0) load'),
       source.replaceFirst('0.1 0.2 0.3 Xa', '%AI24_Future: board-0\n0.1 0.2 0.3 Xa'),
-      source.replaceFirst('([Registration]) 0 1 Xz', '(Custom) 0 1 Xz'),
     ]) {
       final AiNativeArtboards model = artboardModel(changed);
       check(() => model.reorder(artboards: model.artboards.reversed.toList(), cropBounds: null)).throws<UnsupportedError>();

@@ -696,9 +696,9 @@ dart run tool/check_native_artboards.dart
 python3 tool/verify_native_artboards.py --inkai-source /tmp/extension-ai
 ```
 
-The lifecycle suite checks forty-eight transactions: thirty resizes, creations,
+The lifecycle suite checks fifty-four transactions: thirty resizes, creations,
 reorderings and removals across the three pinned CC unit/origin examples and the
-RGB/CMYK rectangle fixtures already pinned in `manifest.json`, plus eighteen
+RGB/CMYK rectangle fixtures already pinned in `manifest.json`, plus twenty-four
 checksum-pinned synthetic transactions with independent active/selection/crop
 state and mixed CC/resource owners. The unmodified reader checks complete
 Document values, exact retained board records and separator trivia, and all bytes
@@ -717,6 +717,14 @@ independently parsed operators and operands as well as complete external bytes.
 The fixture's SHA-256 is pinned in the verifier. These synthetic masks follow the
 AI file-format `h/H W` path-mask contract; no new real producer clipping fixture
 or Adobe reopen result is implied by their acceptance.
+
+The `synthetic-palette` source adds six cells, including localized registration,
+named CMYK/RGB alternatives, none paint and a shared gradient, plus two palette
+groups. All six edit variants retain the independently parsed palette commands,
+names, flags, coordinates and referenced gradient definition. A shared spelling
+with a removed artboard UUID remains in the distinct paint namespace. Its
+checksum and complete transaction set are pinned in the verifier; this synthetic
+source does not qualify producer pattern resources.
 
 ```sh
 dart run tool/check_native_artboard_lifecycle.dart

@@ -1449,9 +1449,20 @@ atomically.
 Artboard edits have a separate retained-dependency scope. Qualified ordinary
 artwork, complete CC pairs and shared literal resources remain exact. This scope
 also accepts literal `SimpleStyle` process paints, plug-in name inventories,
-existing style-name lists, empty symbol lists and process palettes with standard
-RGB/CMYK registration colors. These are preserved declarations, not permission to
+existing style-name lists, empty symbol lists and qualified process/named-color
+and gradient palettes. These are preserved declarations, not permission to
 execute plug-ins, edit symbol instances or synthesize artwork.
+
+Palette indices, cell order, optional names, none paints (`Pn`) and group names
+with their two Boolean flags (`Pg`) remain exact. `Xs` CMYK and `Xz` RGB/CMYK
+alternatives retain literal byte names and unit tints; names are not interpreted
+as artboard identities or restricted to an English registration label. Palette
+gradients require a complete fill `Bb`/`BB` instance, flag-two geometry and one
+unconditionally resolved setup definition. Their palette-local coordinates and
+printing matrices remain unchanged. Missing/ambiguous resources, malformed or
+overlapping cells, private operands, opaque annotations, executable paints and
+pattern dependencies reject. This retention contract does not grant swatch,
+gradient or pattern lifecycle edits.
 
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
 retained with compact ATE versions 7 and 9. Point, area and path frames use
@@ -1530,12 +1541,21 @@ array/scalar/crop edits.
 
 Eight further regressions cover retained compound/clip topology, complete CC
 pairs on either side, exact metadata, malformed masks/counts, unchanged child-edit
-refusals and a 250-compound batch. The lifecycle suite now checks 48 transactions:
+refusals and a 250-compound batch. The lifecycle suite initially checked 48 transactions:
 30 in the same five real sources and 18 synthetic edits. The added topology
 fixture is synthetic and checksum-pinned; all six outcomes also retain the exact
 independently parsed drawing commands, including one compound, two clipping
 groups, three mask paths and five point counts. These checks do not qualify a
 real Adobe-produced clipped document or editable compound/clip topology.
+
+Eight palette regressions cover all four artboard operations, legacy unnamed
+cells, localized and byte-valued names, groups, resolved gradients, malformed
+ownership and unchanged artwork-deletion refusals. Six further independently
+verified transactions bring the lifecycle suite to 54 (30 real, 24 synthetic).
+The new checksum-pinned synthetic palette retains six cells, two groups, named
+colors and a gradient whose name coincides with a removed artboard UUID. The
+external reader checks every palette command/operand and the referenced gradient
+definition alongside complete Document values and exact unselected native bytes.
 
 Nine populated-text regressions cover both compact versions, point/area/path
 frames, linked references, independent undo-free namespaces, a mapped PDF save,
@@ -1550,9 +1570,10 @@ producer and every outcome, and their complete source setup remains byte-exact.
 Eight additional regressions cover font marks, all four artboard operations,
 gradient isolation, malformed declarations and unchanged deletion guards. These
 checks isolate the retained text/font contract; they do not qualify artboard edits
-of the full producer files. Those now pass gradient-bank qualification and next
-reject gradient palette entries or a localized registration swatch. Other complex
-setup owners remain unqualified. Adobe reopening remains unqualified.
+of the full producer files. Those now pass gradient-bank, named-color and gradient
+palette qualification before rejecting their pattern palette cells. Pattern
+artwork and other complex setup owners remain unqualified for artboard retention.
+Adobe reopening remains unqualified.
 
 ### Native print selections during artboard edits
 

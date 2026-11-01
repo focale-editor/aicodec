@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:aikit/aikit.dart';
 
 import '../test/ai_native_artboard_lifecycle_test.dart' show newArtboard;
+import '../test/ai_native_artboard_palette_test.dart' show paletteArtboardSource;
 import '../test/ai_native_artboard_topology_test.dart' show artboardTopologySource;
 import '../test/ai_native_artboards_test.dart' show artboardModel, artboardSource, mixedArtboardSource;
 import 'check_native_artboards.dart' show artboardInventory;
@@ -37,10 +38,11 @@ Future<void> main() async {
     await record(name, 'create-active', '$name.original.ps', model, end);
     await record(name, 'remove-original', '$name.create-active.ps', end, end.remove(artboards: [end.artboards.first], activeArtboard: null, cropBounds: null));
   }
-  for (final String name in ['synthetic', 'synthetic-mixed', 'synthetic-topology']) {
+  for (final String name in ['synthetic', 'synthetic-mixed', 'synthetic-topology', 'synthetic-palette']) {
     final AiNativeArtboards model = artboardModel(switch (name) {
       'synthetic' => artboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f'),
       'synthetic-topology' => artboardTopologySource(),
+      'synthetic-palette' => paletteArtboardSource(),
       _ => mixedArtboardSource(),
     });
     await record(name, 'resize', '$name.original.ps', model, model.resize(artboard: model.artboards.first, bounds: AiBoundingBox(left: -25, bottom: -950, right: 2000, top: 40), cropBounds: null));

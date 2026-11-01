@@ -9,6 +9,7 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers) {
     for (final AiNativeContainer style in styles)
       if (style['Name']?.stringBytes != null) latin1.decode(style['Name']!.stringBytes!),
   };
+  final Map<int, AiNativeResourceUse> gradientUses = {for (final AiNativeResourceUse use in layers.structure.resourceUses.where((use) => use.kind == .gradient)) use.instruction.start: use};
   const Map<String, String> sections = {
     '%AI9_BeginArtStyles': '%AI9_EndArtStyles',
     '%AI9_BeginArtStyleList': '%AI9_EndArtStyleList',
@@ -82,7 +83,10 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers) {
       }
       final List<AiToken> values = contents.where((value) => value.kind != .comment).toList();
       if (token.lexeme == '%AI5_BeginPalette') {
-        _artboardProcessPalette(values, records.program.limits);
+        if (values.any((value) => records._projection.isPrivate(value.start))) {
+          throw UnsupportedError('Retained palettes require ordinary operands and commands.');
+        }
+        _artboardPalette(values, records.program.limits, gradientUses);
       } else if (token.lexeme == '%AI9_BeginArtStyleList') {
         if (values.any((value) => !const {AiTokenKind.string, AiTokenKind.hexString}.contains(value.kind) || !styleNames.contains(latin1.decode(aiStringBytes(value))))) {
           throw UnsupportedError('Retained style lists require existing literal style names.');
@@ -94,59 +98,4 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers) {
     ranges.add((start: token.start, end: end.end));
   }
   return ranges;
-}
-
-/// Checks process-color palette cells and the standard registration swatch.
-void _artboardProcessPalette(List<AiToken> tokens, AiNativeLimits limits) {
-  final _NativeCommandReader reader = _NativeCommandReader(maxDepth: limits.maxDepth);
-  bool opened = false;
-  bool closed = false;
-  bool paint = false;
-  for (final AiToken token in tokens) {
-    final AiNativeInstruction? command = reader.add(token, isPrivate: false);
-    if (command == null) {
-      continue;
-    }
-    if (!opened) {
-      if (command.operator != 'Pb' || command.numbers?.length != 2 || command.numbers!.any((value) => value != 0)) {
-        throw UnsupportedError('Artboard isolation requires an ordinary process palette.');
-      }
-      opened = true;
-    } else if (closed) {
-      throw const FormatException('Unexpected data after a native palette.');
-    } else if (command.operator == 'PB') {
-      if (command.operands.isNotEmpty || paint) {
-        throw const FormatException('Native palette has an unfinished color cell.');
-      }
-      closed = true;
-    } else if (command.operator == 'Pc') {
-      if (!paint || command.operands.length != 1 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(command.operands.single.kind)) {
-        throw const FormatException('Native palette cells require a color and a literal name.');
-      }
-      paint = false;
-    } else {
-      if (paint) {
-        throw const FormatException('Native palette has multiple paints for one cell.');
-      }
-      final List<AiToken> operands = command.operands;
-      if (command.operator == 'Xz' || command.operator == 'Xs') {
-        final int components = command.operator == 'Xz' ? 7 : 4;
-        if (operands.length != (command.operator == 'Xz' ? 10 : 6) ||
-            operands.take(components).any((operand) => operand.number == null || !_gradientUnit(operand.number!.toDouble())) ||
-            !const {AiTokenKind.string, AiTokenKind.hexString}.contains(operands[components].kind) ||
-            latin1.decode(aiStringBytes(operands[components])) != '[Registration]' ||
-            operands[components + 1].number != 0 ||
-            command.operator == 'Xz' && operands[9].number != 1) {
-          throw UnsupportedError('Artboard palette isolation requires a standard registration color.');
-        }
-      } else if (!const {'fill', 'stroke'}.contains(_nativeArtworkStateKey(command))) {
-        throw UnsupportedError('Artboard palette isolation does not cover ${command.operator}.');
-      }
-      paint = true;
-    }
-  }
-  reader.finish();
-  if (!opened || !closed) {
-    throw const FormatException('Native process palette requires both boundaries.');
-  }
 }

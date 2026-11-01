@@ -731,6 +731,19 @@ groups and compound topology. There is no general modern object lifecycle API.
   real-source gradient-isolation/color/focus transactions were regenerated and
   independently rechecked after the shared bank-scanner change. No text
   recomposition, host integration or renderer was added.
+  Palette retention now covers explicit cell indices, none paints, optional
+  legacy/CC cell names, named CMYK/RGB alternatives and their tints, localized
+  registration labels, Boolean group flags and resolved gradient instances.
+  Palette coordinates, matrices and independent name namespaces remain exact.
+  Unknown/conditional/ambiguous resources, malformed cells, opaque/private
+  annotations, executable paints and pattern dependencies reject atomically.
+  Eight regressions pass. The independent lifecycle suite now checks 54 native
+  transactions (30 real, 24 synthetic), including six new palette outcomes with
+  complete command/operand and gradient-definition comparisons. The four full
+  producer files now reach their pattern palette cells; their pattern artwork
+  and later complex setup owners still require qualification, so this task
+  remains open. Full validation: 785 VM/784 Node tests and clean format, fix and
+  analysis.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
