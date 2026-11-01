@@ -959,6 +959,22 @@ groups and compound topology. There is no general modern object lifecycle API.
   Validation: 899 VM/898 Node tests and all 51 independent topology, compound,
   clipping and movement cases pass. Formatting, analysis, fix dry-run, Python
   compilation and diff checks are clean.
+  **Complete contour trees:** `moveContourGroups` moves disjoint ordinary,
+  compound and clip owners to a group, layer or document root, with exact owned
+  bytes and identities. Scoped attributes and deferred compound paint have
+  separate read/write analysis. Unknown output is accepted only after proving
+  it cannot reach a retained consumer, including across saved clipping scopes;
+  unknown final values still reject. Thirteen regressions cover metadata,
+  inheritance, count ownership, immutable failures and 100 masked-tree batches.
+  Twelve independent transactions include four complete-producer moves into the
+  named-view group and back to the original layer, plus 24 Adobe-prolog state
+  projections. No source setup is replaced. Broader producer creation/dissolution
+  and partial compound-branch movement remain open; Adobe reopening remains
+  unqualified.
+  Validation: 912 VM/911 Node tests pass, followed by ten focused capability
+  checks on each runtime. All 63 independent topology/compound/clip/movement cases
+  pass after regenerating the previous 51. Formatting, analysis, fix dry-run,
+  Python compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

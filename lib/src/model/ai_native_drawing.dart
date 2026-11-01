@@ -388,6 +388,29 @@ final class AiNativeDrawing {
     bool inheritParentFlags = false,
   }) => _moveNativeContours(this, paths, group, bounds, after, mask, inheritCompoundAppearance, inheritParentFlags);
 
+  /// Moves complete contour groups with their identities and saved mask trees.
+  ///
+  /// Distinct, disjoint [groups] follow caller order at the end of [parent] or
+  /// [layer], or after its unselected direct child [after]. Omitting both parents
+  /// places the groups at the document root. Ordinary, compound and clipping
+  /// descendants retain their exact bytes, with source-derived state replay at
+  /// both edited positions. Empty groups and ordinary contours are supported;
+  /// private/derived geometry, text and unresolved dependencies reject.
+  ///
+  /// Source and destination parents cannot be inside a compound; move its whole
+  /// owner instead. Retained masks require an effective clipping owner after the
+  /// move. Imported transform ancestors stay identical. Changed ancestor flags,
+  /// depth or layers require [inheritParentFlags]. The host supplies ink [bounds]
+  /// and any changed derived representations when saving.
+  AiNativeDrawing moveContourGroups({
+    required List<AiNativeGroup> groups,
+    required AiBoundingBox bounds,
+    AiNativeGroup? parent,
+    AiLayer? layer,
+    AiNativeGroup? after,
+    bool inheritParentFlags = false,
+  }) => _moveNativeContourGroups(this, groups, parent, layer, bounds, after, inheritParentFlags);
+
   /// Groups contiguous ordinary sibling paths without changing their source order.
   ///
   /// Optional point counts and intervening qualified state stay with the paths.

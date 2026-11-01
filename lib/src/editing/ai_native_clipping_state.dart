@@ -4,7 +4,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 const Set<String> _nativeClipStateKeys = {'J', 'j', 'w', 'M', 'd'};
 
 /// Replays exact source values after changing a qualified clipping boundary.
-List<int> _nativeClipStateReplay(AiNativeDrawing drawing, _NativeShapeInputs current, _NativeShapeInputs target, {int? maxBytes}) {
+List<int> _nativeClipStateReplay(AiNativeDrawing drawing, _NativeShapeInputs current, _NativeShapeInputs target, {int? maxBytes, Set<String> keys = _nativeClipStateKeys}) {
   final Map<String, AiNativeInstruction> printing = Map.of(current.printing);
   final Map<String, AiNativeInstruction> native = Map.of(current.native);
   final BytesBuilder result = BytesBuilder(copy: false);
@@ -25,14 +25,14 @@ List<int> _nativeClipStateReplay(AiNativeDrawing drawing, _NativeShapeInputs cur
     result.add(bytes);
   }
 
-  for (final String key in _nativeClipStateKeys) {
+  for (final String key in keys) {
     if (!_sameShapeAttribute(printing, current.printingOrigins, target.printing, target.printingOrigins, key)) {
       append(target.printing[key], private: false);
       printing[key] = target.printing[key]!;
       native[key] = target.printing[key]!;
     }
   }
-  for (final String key in _nativeClipStateKeys) {
+  for (final String key in keys) {
     if (!_sameShapeAttribute(native, current.nativeOrigins, target.native, target.nativeOrigins, key)) {
       append(target.native[key], private: true);
     }

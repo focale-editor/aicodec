@@ -40,6 +40,52 @@ void _nativeContourParents(AiNativeDrawing drawing, Iterable<AiNativeStructureNo
   }
 }
 
+/// Keeps imported coordinate bases identical across source and destination parents.
+void _nativeContourTransforms(AiNativeDrawing drawing, Iterable<List<AiNativeStructureNode>> parents, List<AiNativeStructureNode> targetParents) {
+  final List<AiNativeGroup> targetGroups = targetParents.map((node) => node.source).whereType<AiNativeGroup>().toList();
+  final List<AiNativeGroup> targetTransforms = targetGroups.where((owner) => drawing._objects.forSource(owner).dictionary?['AdobeObjectMatrix'] != null).toList();
+  for (final List<AiNativeStructureNode> sourceParents in parents) {
+    final List<AiNativeGroup> sourceTransforms = sourceParents
+        .map((node) => node.source)
+        .whereType<AiNativeGroup>()
+        .where((owner) => drawing._objects.forSource(owner).dictionary?['AdobeObjectMatrix'] != null)
+        .toList();
+    if (sourceTransforms.length != targetTransforms.length || sourceTransforms.indexed.any((entry) => !identical(entry.$2, targetTransforms[entry.$1]))) {
+      throw UnsupportedError('Changing imported transform ancestry requires a separate coordinate and metadata rebasing contract.');
+    }
+  }
+}
+
+/// Requires explicit acceptance of changed inherited flags, depth or layers.
+void _nativeContourInheritance(
+  Iterable<List<AiNativeStructureNode>> parents,
+  List<AiNativeStructureNode> targetParents,
+  Map<int, _NativeShapeInputs> states,
+  bool inheritParentFlags,
+) {
+  final List<AiNativeGroup> targetGroups = targetParents.map((node) => node.source).whereType<AiNativeGroup>().toList();
+  if (!inheritParentFlags) {
+    final AiNativeStructureNode? targetLayer = targetParents.where((node) => node.kind == .layer).firstOrNull;
+    for (final List<AiNativeStructureNode> sourceParents in parents) {
+      final AiNativeStructureNode? sourceLayer = sourceParents.where((node) => node.kind == .layer).firstOrNull;
+      final List<AiNativeGroup> sourceGroups = sourceParents.map((node) => node.source).whereType<AiNativeGroup>().toList();
+      if (!identical(sourceLayer, targetLayer) ||
+          sourceGroups.length != targetGroups.length ||
+          sourceGroups.indexed.any((entry) {
+            final _NativeShapeInputs source = states[entry.$2.start]!;
+            final _NativeShapeInputs destination = states[targetGroups[entry.$1].start]!;
+            return const {'A', 'Xw'}.any(
+              (key) =>
+                  !_sameShapeAttribute(source.printing, source.printingOrigins, destination.printing, destination.printingOrigins, key) ||
+                  !_sameShapeAttribute(source.native, source.nativeOrigins, destination.native, destination.nativeOrigins, key),
+            );
+          })) {
+        throw UnsupportedError('Changing contour ancestor flags, depth or layers requires explicit inheritParentFlags.');
+      }
+    }
+  }
+}
+
 /// Per-contour flags remain independent of a compound's shared paint state.
 const Set<String> _nativeContourFlags = {'A', 'Xw', 'Ap', 'D'};
 
@@ -88,17 +134,7 @@ AiNativeDrawing _moveNativeContours(
   }
   final int position = after == null ? group.closing.start : _ordinaryObject(drawing, after).end;
   final List<AiNativeGroup> targetGroups = targetParents.map((node) => node.source).whereType<AiNativeGroup>().toList();
-  final List<AiNativeGroup> targetTransforms = targetGroups.where((owner) => drawing._objects.forSource(owner).dictionary?['AdobeObjectMatrix'] != null).toList();
-  for (final List<AiNativeStructureNode> sourceParents in parents.values) {
-    final List<AiNativeGroup> sourceTransforms = sourceParents
-        .map((node) => node.source)
-        .whereType<AiNativeGroup>()
-        .where((owner) => drawing._objects.forSource(owner).dictionary?['AdobeObjectMatrix'] != null)
-        .toList();
-    if (sourceTransforms.length != targetTransforms.length || sourceTransforms.indexed.any((entry) => !identical(entry.$2, targetTransforms[entry.$1]))) {
-      throw UnsupportedError('Changing imported transform ancestry requires a separate coordinate and metadata rebasing contract.');
-    }
-  }
+  _nativeContourTransforms(drawing, parents.values, targetParents);
   final AiNativeGroup? compound = targetGroups.where((owner) => owner.compound).firstOrNull;
   final AiNativeGroup? clip = targetGroups.reversed.takeWhile((owner) => !owner.compound).where((owner) => owner.opening.operator == 'q').lastOrNull;
   if (targetGroups.where((owner) => owner.compound).length > 1 || topology.any((owner) => owner.groups.where((group) => group.compound).length > 1)) {
@@ -133,26 +169,7 @@ AiNativeDrawing _moveNativeContours(
     retainedMetadata: drawing._pathTopologyScope.retainedMetadata,
     stateKey: _nativeContourStateKey,
   );
-  if (!inheritParentFlags) {
-    final AiNativeStructureNode? targetLayer = targetParents.where((node) => node.kind == .layer).firstOrNull;
-    for (final List<AiNativeStructureNode> sourceParents in parents.values) {
-      final AiNativeStructureNode? sourceLayer = sourceParents.where((node) => node.kind == .layer).firstOrNull;
-      final List<AiNativeGroup> sourceGroups = sourceParents.map((node) => node.source).whereType<AiNativeGroup>().toList();
-      if (!identical(sourceLayer, targetLayer) ||
-          sourceGroups.length != targetGroups.length ||
-          sourceGroups.indexed.any((entry) {
-            final _NativeShapeInputs source = states[entry.$2.start]!;
-            final _NativeShapeInputs destination = states[targetGroups[entry.$1].start]!;
-            return const {'A', 'Xw'}.any(
-              (key) =>
-                  !_sameShapeAttribute(source.printing, source.printingOrigins, destination.printing, destination.printingOrigins, key) ||
-                  !_sameShapeAttribute(source.native, source.nativeOrigins, destination.native, destination.nativeOrigins, key),
-            );
-          })) {
-        throw UnsupportedError('Changing contour ancestor flags, depth or layers requires explicit inheritParentFlags.');
-      }
-    }
-  }
+  _nativeContourInheritance(parents.values, targetParents, states, inheritParentFlags);
   final List<AiSourceEdit> replacements = _nativePathEdits(
     drawing,
     [for (final AiNativePathTopology owner in topology) AiNativePathEdit(path: owner.path, mask: mask ?? owner.mask)],

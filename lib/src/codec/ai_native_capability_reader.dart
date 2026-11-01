@@ -257,6 +257,7 @@ final class _NativeCapabilityReader {
           ...conditional([
             if (group.opening.operator == 'q') .clippingDissolution else .clippingCreation,
           ], issue: group.opening.isPrivate ? 'Clipping lifecycle requires ordinary native ownership.' : null),
+          ...conditional([.contourGroupMovement], issue: group.opening.isPrivate ? 'Contour group movement requires ordinary native ownership.' : null),
         ],
       );
     }

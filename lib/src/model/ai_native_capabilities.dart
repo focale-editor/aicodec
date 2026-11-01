@@ -156,6 +156,9 @@ enum AiNativeEditOperation {
   /// Move ordinary groups with retained state and explicit destination inheritance.
   groupReparenting,
 
+  /// Move complete contour trees through qualified compound and clipping scopes.
+  contourGroupMovement,
+
   /// Change live-shape translation and dependent native geometry.
   liveShapeTranslation,
 

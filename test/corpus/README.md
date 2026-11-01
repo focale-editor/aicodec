@@ -757,6 +757,30 @@ dart run tool/check_native_contour_movement.dart
 python3 tool/verify_native_contour_movement.py --inkai-source /tmp/extension-ai
 ```
 
+The complete contour-group movement suite adds twelve prescribed transactions.
+Three checksum-pinned synthetic sources cover compound/clip trees, ordering,
+anchors, document-root destinations and unresolved state across saved/enclosing
+clips. The two original Inkscape CC programs each undergo a move of the complete
+imported artwork group into the named-view group, followed by its return to the
+original layer. The verifier requires those exact predecessors and selections;
+no setup or producer body is substituted.
+
+The independent reader compares complete object hierarchy, identities, metadata,
+geometry/count/mask data, consumed state in both interpretations and final state.
+All copied tree bytes and unselected bytes remain exact; inserted and retained
+scalar replay must use existing assignments. Dash arrays are compared as numbers,
+accounting for the reader's lexical distinction between `[]0` and `[] 0` without
+relaxing other source-byte constraints. All twelve transactions also check
+consumed stroke attributes and final state through the pinned Adobe prolog in
+Ghostscript (24 scalar projections). This remains format-data validation without
+Adobe UI reopening or interactive rendering. Existing provenance, licensing and
+publication exclusions apply.
+
+```bash
+dart run tool/check_native_contour_group_movement.dart
+python3 tool/verify_native_contour_group_movement.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex
