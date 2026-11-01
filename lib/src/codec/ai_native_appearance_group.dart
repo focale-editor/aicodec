@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies an immutable private group tree without expanding its appearance.
-({List<AiNativeContainer> metadata, List<AiNativeResourceUse> uses}) _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
+({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners}) _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
   if (!group.opening.isPrivate || !const {'u', '*u'}.contains(group.opening.operator) || group.paths.isEmpty) {
     throw UnsupportedError('Grouped appearances require a nonempty private ordinary or compound group.');
   }
@@ -15,7 +15,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   final List<AiNativeContainer> metadata = [];
   final Map<AiNativeContainer, AiNativeItem> metadataOwners = {};
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.uses) use.instruction.start: use};
-  final List<AiNativeResourceUse> uses = [];
+  final Map<AiNativeResourceUse, AiNativeItem> owners = {};
   AiNativeInstruction? count;
   bool panel = false;
   for (int index = 0; index < items.length; index++) {
@@ -86,7 +86,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
           !_sameNativeObjectOwner(model.structure.nodeFor(owner), model.structure.nodeFor(item))) {
         throw UnsupportedError('Nested appearances require one unconditional named style and a direct private artwork owner.');
       }
-      uses.add(reference);
+      owners[reference] = owner;
     } else if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Grouped appearances have no qualified local contract for $operator.');
     }
@@ -94,7 +94,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   if (count != null || panel) {
     throw UnsupportedError('Grouped appearances cannot leave unfinished counts or panel flags.');
   }
-  return (metadata: metadata, uses: uses);
+  return (metadata: metadata, owners: owners);
 }
 
 /// Requires the saved point count and closure to describe exactly one contour.

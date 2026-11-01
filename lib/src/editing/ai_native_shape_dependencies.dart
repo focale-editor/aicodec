@@ -53,6 +53,8 @@ void _sourceFollowingDependencies(
   Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements, {
   Map<int, _NativeSourceReplacement> insertions = const {},
   List<AiNativeAppearanceArtwork> retainedArtwork = const [],
+  Map<int, Set<String>> styleChanges = const {},
+  Map<int, Map<String, AiNativeInstruction>> styleRestorations = const {},
 }) {
   if (replacements.isEmpty && insertions.isEmpty) {
     return;
@@ -103,6 +105,10 @@ void _sourceFollowingDependencies(
       read(styleReads, private: true);
       // Potential writes are not definite writes: hidden filter parts may not
       // execute. Keep unresolved keys until an explicit assignment replaces them.
+      unresolved.addAll(styleChanges[item.end] ?? const {});
+      for (final AiNativeInstruction value in styleRestorations[item.end]?.values ?? const []) {
+        command(value, private: true);
+      }
     }
   }
 

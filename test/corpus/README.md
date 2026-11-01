@@ -197,6 +197,31 @@ application, rejecting unresolved values rather than assuming that a saved style
 overwrites them. Sources and reports remain ignored under
 `output/appearance-nested-styles`.
 
+### Editing nested appearance styles
+
+```sh
+dart run tool/check_native_appearance_nested_editing.dart
+python3 tool/verify_native_appearance_nested_editing.py --inkai-source /tmp/extension-ai
+```
+
+Twelve synthetic transactions cover isolated mode-zero paths and mode-one groups,
+several selected children sharing one supplied printing group, shared active/simple
+styles, compound owners, private state restoration before an unchanged sibling,
+shared outer/child users and new fill creation. The input checksums are pinned.
+The unchanged independent reader verifies all style trees and references, resolves
+each private application backwards to its exact path/group and compares its
+geometry before and after editing. Outer/nested dictionaries stay exact. A complete
+byte oracle prescribes style edits/copies, explicit selected references, supplied
+printing groups, bounds and local native-only restorations. No reported edit mask
+is used to exempt arbitrary output changes.
+
+These cases establish serialization/state behavior for explicitly selected
+children sharing an enclosing printing owner. They do not claim producer group
+interoperability, visual composition or Adobe reopening. Unit regressions also
+cover stale/foreign selections, immutable inputs, duplicate group replacements,
+incomplete shared coverage, unprovable sibling state and aggregate byte limits.
+Generated sources and reports stay ignored under `output/appearance-nested-editing`.
+
 ### Complete producer appearance edits
 
 ```sh

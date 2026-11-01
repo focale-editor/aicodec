@@ -212,6 +212,8 @@ final class AiNativeAppearances {
   /// Binds a named body use to its native artwork and separate printing group.
   ///
   /// Live shapes, private paths and private groups share this ownership contract.
+  /// Access private child uses through the enclosing owner's `nestedUses`; they
+  /// share its printing group rather than accepting an independent binding here.
   /// Unknown metadata, conditional owners and resource-local uses reject.
   AiNativeAppearanceArtwork artworkFor({required AiNativeResourceUse use}) => _nativeAppearanceArtwork(this, use);
 
@@ -219,8 +221,10 @@ final class AiNativeAppearances {
   ///
   /// Every named use must have one uniquely bound printing owner covered by
   /// `artwork` or the live-shape `printing` shorthand.
+  /// Select nested uses explicitly in `AiNativeAppearanceReplacement.uses`,
+  /// supplying each complete enclosing printing group only once.
   /// Unknown dependency owners, effects and unresolved following state reject.
-  /// Explicit uniform original state may be restored after each supplied user
+  /// Explicit uniform original state may be restored after each selected use
   /// as private scalar commands; this does not relax shared reference coverage.
   /// An unused qualified style needs no printing replacement. The host supplies
   /// matching expansions and the compatibility PDF when saving the document.
@@ -236,7 +240,9 @@ final class AiNativeAppearances {
   ///
   /// The fresh byte name must not capture an existing declaration or reference.
   /// Only users identified by `artwork` or `printing` are rebound; the source definition and
-  /// other users remain unchanged. Each selected group must preserve outgoing
+  /// other users remain unchanged. `AiNativeAppearanceReplacement.uses` can select
+  /// several nested applications with one complete enclosing printing group.
+  /// Each supplied group must preserve outgoing
   /// printing state. When following artwork needs the original native state,
   /// uniform explicit assignments of an entirely visible original style can
   /// be restored with private scalar commands. Unknown values still reject.

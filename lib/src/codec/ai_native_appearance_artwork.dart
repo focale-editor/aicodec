@@ -38,15 +38,15 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   final AiNativePath? path = index < 0 ? null : drawing.paths.where((path) => identical(path.paint, items[index])).singleOrNull;
   final AiNativeGroup? authoringGroup = index < 0 || path != null ? null : drawing.groups.where((group) => identical(group.closing, items[index])).singleOrNull;
   final List<AiNativeContainer> metadata = [];
-  final List<AiNativeResourceUse> nestedUses = [];
+  final Map<AiNativeResourceUse, AiNativeItem> nestedOwners = {};
   if (path != null) {
     if (!path.isPrivate || !const {'n', 'N'}.contains(path.paint.operator) || path.geometry.skip(1).any((command) => command.operator == 'm')) {
       throw UnsupportedError('Appearance artwork requires one authoritative private contour before its style use.');
     }
   } else if (authoringGroup != null) {
-    final ({List<AiNativeContainer> metadata, List<AiNativeResourceUse> uses}) retained = _nativeAppearanceGroup(model, authoringGroup);
+    final ({List<AiNativeContainer> metadata, Map<AiNativeResourceUse, AiNativeItem> owners}) retained = _nativeAppearanceGroup(model, authoringGroup);
     metadata.addAll(retained.metadata);
-    nestedUses.addAll(retained.uses);
+    nestedOwners.addAll(retained.owners);
   } else {
     throw UnsupportedError('Appearance artwork requires an authoritative private contour or group before its style use.');
   }
@@ -135,11 +135,12 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     liveShape: null,
     start: start,
     metadata: metadata,
-    nestedUses: nestedUses,
+    nestedOwners: nestedOwners,
     commands: commands,
     styleReads: {
       use.instruction.end: state.reads,
-      for (final AiNativeResourceUse nested in nestedUses) nested.instruction.end: _nativeLiteralStyleState(drawing, model.resolve(use: nested)!.resource.definition.source as AiNativeContainer).reads,
+      for (final AiNativeResourceUse nested in nestedOwners.keys)
+        nested.instruction.end: _nativeLiteralStyleState(drawing, model.resolve(use: nested)!.resource.definition.source as AiNativeContainer).reads,
     },
   );
 }
