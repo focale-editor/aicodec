@@ -975,6 +975,24 @@ groups and compound topology. There is no general modern object lifecycle API.
   checks on each runtime. All 63 independent topology/compound/clip/movement cases
   pass after regenerating the previous 51. Formatting, analysis, fix dry-run,
   Python compilation and diff checks are clean.
+  **Complete-producer lifecycle:** imported compound creation/dissolution and
+  clipping creation/release now retain qualified child metadata and literal
+  transparency. Explicit parent disposal checks surviving named-view targets;
+  missing/ambiguous/deleted references and discarded affine bases reject.
+  Reference qualification retains known fonts, gradients, styles, palettes, local
+  SVG filters, empty main/undo-free text engines and document provenance in their
+  separate namespaces. Unknown/populated reference owners retain their guards.
+  Released scopes can leave an unknown intermediate attribute only after proving
+  it is overwritten before consumption in both interpretations, accounting for
+  every released boundary and surviving saved scope. Ten new regressions and
+  eight independent transactions exercise the two complete original Inkscape CC
+  programs. Exact surviving bytes, contours/counts/masks and both scalar streams
+  pass; sixteen Adobe-prolog projections check contour and final attributes.
+  Partial compound-branch movement remains open; Adobe reopening is unqualified.
+  Validation: 922 VM/921 Node tests pass, followed by 21 focused checks on each
+  runtime for the final provenance-fragment guard. All 71 independent contour transactions
+  and 32 reference-scope/resource cases pass after regeneration. Formatting,
+  analysis, fix dry-run, Python compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

@@ -9,6 +9,15 @@ String? _nativeContourStateKey(AiNativeInstruction command) {
   return _nativeArtworkStateKey(command);
 }
 
+/// Captures contour inputs while retaining qualified import and transparency data.
+Map<int, _NativeShapeInputs> _nativeContourInputs(AiNativeDrawing drawing, Iterable<int> boundaries) => _shapeCopyInputs(
+  drawing,
+  boundaries,
+  clipping: true,
+  retainedMetadata: drawing._pathTopologyScope.retainedMetadata,
+  stateKey: _nativeContourStateKey,
+);
+
 /// Retains qualified import dictionaries without authorizing their disposal.
 AiNativeObject _nativeContourOwner(AiNativeDrawing drawing, AiNativeItem source) {
   final AiNativeObject object = drawing._objects.forSource(source);

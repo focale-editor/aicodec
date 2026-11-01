@@ -178,8 +178,8 @@ void main() {
     ).throws<ArgumentError>();
   });
 
-  test('rejects unqualified opacity and unknown outgoing contour restoration atomically', () {
-    for (final String state in ['0 0.5 0 0 0 Xy', '7 w']) {
+  test('rejects malformed opacity and unknown outgoing contour restoration atomically', () {
+    for (final String state in ['16 0.5 0 0 0 Xy', '7 w']) {
       final String source = objectSource('q $state 4 As $topologyRectangle h W n Q').replaceFirst(movementState, '0 A 0 Xw');
       final AiNativeDrawing drawing = groupCreationDrawing(source);
       check(() => drawing.releaseClippingGroups(groups: drawing.groups, bounds: topologyBounds)).throws<UnsupportedError>();

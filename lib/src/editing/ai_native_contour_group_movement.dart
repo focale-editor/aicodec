@@ -148,7 +148,7 @@ AiNativeDrawing _moveNativeContourGroups(
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final (int, AiNativeObject) entry in owners.indexed) {
     final AiNativeObject owner = entry.$2;
-    final List<int> retained = _nativeClipStateReplay(drawing, states[owner.start]!, states[owner.end]!, maxBytes: remaining, keys: _nativeArtworkStateKeys);
+    final List<int> retained = _nativeClipStateReplay(drawing, states[owner.start]!, states[owner.end]!, maxBytes: remaining, keys: _nativeArtworkStateKeys).bytes;
     remaining -= retained.length;
     final _NativeShapeAccess access = _nativeContourGroupAccess(drawing, commands[entry.$1]);
     final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(

@@ -98,12 +98,23 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
 /// Qualifies references, optionally reusing an already checked immutable body.
 void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers, {Set<AiNativeContainer>? bodyDictionaries}) {
   final Set<AiNativeContainer> dictionaries = bodyDictionaries ?? _nativeReferenceBody(model, headers);
-  final List<({int start, int end})> independent = _referenceGradientRanges(model);
+  final List<_NativeFontEncoding> fonts = [];
+  final List<({int start, int end})> independent = _referenceGradientRanges(model, fontDeclarations: fonts)
+    ..addAll(_artboardFontSetupRanges(model, fonts))
+    ..addAll(_artboardSvgFilterRanges(model))
+    ..addAll(_artboardSetupRanges(model, patternNames: {}, symbolNames: {}))
+    ..addAll(_artboardTextScope(model, requireEmpty: true).ranges);
+  final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use};
   for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
     if (record.type == 'KnownStyle') {
-      _referenceLiteralStyle(model.drawing, record);
+      _artboardRetainedStyle(model, record, references, {}, {});
     } else if (record.type == 'Document') {
       _referenceDocument(model, record);
+    } else if (record.type == 'SVGFilter') {
+      // Complete filter declarations contain only filter-local dependencies.
+      continue;
+    } else if (const {'AI11TextDocument', 'AI11UndoFreeTextDocument'}.contains(record.type)) {
+      // Both snapshots were checked above; neither owns stories or frames.
     } else {
       throw UnsupportedError('Native structural edits require qualification of document, resource and opaque reference owners.');
     }

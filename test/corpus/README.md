@@ -781,6 +781,24 @@ dart run tool/check_native_contour_group_movement.dart
 python3 tool/verify_native_contour_group_movement.py --inkai-source /tmp/extension-ai
 ```
 
+The imported lifecycle suite adds eight transactions on the complete native
+programs of the two pinned Inkscape CC files: compound release, recreation from
+that result, clipping creation, then release of the created clipping owner.
+No producer setup, typography snapshot or metadata is substituted. The independent
+reader binds all source owners before comparing the prescribed hierarchy,
+geometry, mask controls, point counts, scalar consumption and final attributes.
+Exact byte patches limit changes to selected boundaries/masks, explicitly
+discarded parent metadata, host bounds and source-derived state replay. All
+remaining resources, identities, import transforms and provenance stay exact.
+Sixteen additional Ghostscript projections use the unchanged pinned Adobe prolog
+to check every contour's attributes and final state. They do not certify
+rendering or Adobe reopening.
+
+```bash
+dart run tool/check_native_imported_contour_lifecycle.dart
+python3 tool/verify_native_imported_contour_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex

@@ -1,18 +1,5 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Requires literal setup-owned paint graphs with no opaque reference annotations.
-void _referenceLiteralStyle(AiNativeDrawing drawing, AiNativeContainer style) {
-  if (style.end > drawing.records.program.bodyStart) {
-    throw UnsupportedError('Reference qualification requires setup-owned style declarations.');
-  }
-  _nativeLiteralStyleState(drawing, style);
-  if (_pathInterval(drawing.records._projection.tokens, style.start, style.end, (token) => token.start).any(
-    (token) => token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')),
-  )) {
-    throw UnsupportedError('Reference qualification cannot ignore opaque style annotations.');
-  }
-}
-
 /// Qualifies counted gradient declarations without treating resource names as art IDs.
 List<({int start, int end})> _referenceGradientRanges(AiNativeLayers model, {List<_NativeFontEncoding>? fontDeclarations}) {
   final AiNativeRecords records = model.drawing.records;

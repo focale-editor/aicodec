@@ -226,7 +226,11 @@ def main():
             if row['rejected']:
                 assert row['issue'] and source.read_bytes() == target.read_bytes() and row['before'] == row['after']
                 if row['source'] in FILES:
-                    assert 'opaque reference owners' in row['issue']
+                    assert row['issue'] == 'Artboard setup inventories require unconditional ownership.'
+                    # The wider setup inspection now finds the conditional palette
+                    # declaration before reaching the opaque root-owner guard.
+                    palette = source.read_bytes().split(b'%AI5_BeginPalette', 1)[1].split(b'%AI5_EndPalette', 1)[0]
+                    assert b'%AI17_Begin_Content_if_version_gt:' in palette and b'%AI17_End_Versioned_Content' in palette
             else:
                 assert row['issue'] is None
                 verify(inkai, source, target, row)

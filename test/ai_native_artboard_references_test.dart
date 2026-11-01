@@ -177,11 +177,22 @@ void main() {
     }
   });
 
-  test('does not grant artwork identity deletion the artboard-only text contract', () {
+  test('qualifies unused text namespaces independently when deleting artwork identities', () {
     final AiNativeArtboards model = artboardModel(artboardReferenceSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'path_target')}'));
     final AiNativeDrawing drawing = AiNativeDrawing.decode(records: model.records);
     _retained(model, model.reorder(artboards: model.artboards.reversed.toList(), cropBounds: null));
-    check(() => drawing.removePaths(paths: drawing.paths)).throws<UnsupportedError>();
+    final AiNativeDrawing removed = drawing.removePaths(paths: drawing.paths);
+    check(removed.paths).isEmpty();
+    check(removed.records.program.bytes.take(removed.records.program.bodyStart)).deepEquals(drawing.records.program.bytes.take(drawing.records.program.bodyStart));
+    final AiNativeDrawing unknown = AiNativeDrawing.decode(
+      records: artboardModel(
+        artboardReferenceSource(
+          main: emptyArtboardTextEngine(extra: {'99': PsEngineString.fromText(text: 'path_target')}),
+          body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'path_target')}',
+        ),
+      ).records,
+    );
+    check(() => unknown.removePaths(paths: unknown.paths)).throws<UnsupportedError>();
   });
 
   test('rejects unknown simple-style fields and executable or reference-bearing paints', () {

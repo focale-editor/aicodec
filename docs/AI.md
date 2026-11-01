@@ -1053,7 +1053,7 @@ compact text, preserved CC pairs, invalid selections and 200-compound batches.
 Ten independent synthetic transactions check prescribed ownership and permit
 only exact boundary insertions/removals and explicit parent metadata disposal.
 Contour and complete-owner movement, including full-producer edits, are described
-below. Broader producer lifecycle remains outstanding.
+below. Complete-producer compound/clip lifecycle is qualified below.
 
 `clipArtwork(paths:, groups:, masks:, bounds:)` creates an anonymous `q/Q` owner
 around consecutive ordinary siblings and installs explicit `AiNativePathEdit`
@@ -1074,9 +1074,13 @@ These operations preserve the saved line cap, join, width, miter and dash state
 overprint, fill rules and object flags remain persistent declarative assignments.
 The source contracts distinguish ordinary and private assignments; restoration
 uses existing values in the corresponding projections and never guessed defaults.
-State replay is bounded in aggregate. Selected opacity/blend assignments, derived
-CC artwork, text, unresolved style applications, unknown restoration values and
-mixed/empty compound-mask branches requiring regrouping reject atomically.
+State replay is bounded in aggregate. Qualified literal opacity/blend assignments
+remain intact. After releasing scopes, an unknown restored value is accepted only
+when a bounded source walk proves it is overwritten before consumption in both
+interpretations. The proof accounts for every scope removed in the batch and for
+saved state in surviving nested scopes. Unknown final state still rejects.
+Derived CC artwork, text, unresolved style applications and mixed/empty
+compound-mask branches requiring regrouping reject atomically.
 Capabilities report clipping creation/dissolution as `requiresValidation`.
 
 Eleven clipping regressions and eleven independent transactions cover lifecycle,
@@ -1109,7 +1113,8 @@ affine records remain exact. Matrices are not applied or recalculated. Contour
 coordinates remain in their saved native basis. Known five-operand `Xy` records
 also remain exact, including literal blend, opacity, isolation, knockout and
 alpha-as-shape values. Contour replacement does not replay or compose them;
-movement can replay qualified literal assignments as described below.
+movement can replay qualified literal assignments as described below. Compound
+and clipping lifecycle also retain these child dictionaries and assignments.
 
 Eight regressions cover imported ownership, atomic compound masks, retained
 references, malformed/unknown records, all sixteen literal blending modes, CC
@@ -1119,8 +1124,36 @@ The complete-owner movement contract below retains these dictionaries; copying
 and disposal still need their separate policies. They are not reference-independent;
 in particular a saved `inkscape:current-layer` reference cannot be silently
 ignored during identity deletion. SVG-tagged path caches remain unqualified.
-Broader full-producer compound/clip lifecycle and Adobe reopening remain
-outstanding.
+Compound/clipping parent disposal now explicitly checks every surviving named
+view: its `inkscape:current-layer` must resolve to exactly one retained native
+identity. Removing that target, a missing/ambiguous reference, or disposing an
+`AdobeObjectMatrix` owner without rebasing its coordinates rejects atomically.
+Removing an imported compound's metadata still requires `discardMetadata: true`.
+
+Identity deletion can retain qualified font/gradient declarations, literal
+appearance styles, local SVG filters, setup inventories, and compact text engines
+whose main and undo-free snapshots contain neither stories nor frames. Their
+resource names remain separate from artwork identities. Populated text references,
+unknown resources, variable/data-set/slice bindings and arbitrary XML extensions
+keep their separate guards. Imported SVG canvas fields require finite literal
+coordinates and positive crop dimensions; SVG export preferences remain typed.
+Document XML may retain the observed Dublin Core/Creative Commons provenance
+tree, including literal text and repeated license permissions. `rdf:about`
+fragments and local `rdf:resource` references reject; the qualified rights/type
+resources require absolute HTTP(S) URIs; only the Creative Commons vocabulary
+may use fragment identifiers. This follows the distinction between
+document fragments in [RDF/XML](https://www.w3.org/TR/REC-rdf-syntax/) and rights
+properties in [CC REL](https://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf).
+
+Ten additional regressions cover imported lifecycle, surviving identities and
+matrices, setup/provenance references, malformed fields, original limits and
+unknown state across batched and nested clipping boundaries. Eight independent
+transactions dissolve/recreate the compound and create/release its clip in both
+complete original Inkscape CC programs. The unchanged pinned reader checks exact
+surviving metadata, setup and unselected bytes, geometry/count/mask ownership and
+both scalar interpretations. Sixteen Adobe-prolog projections additionally check
+contour and final attributes. These are native-data contracts, not visual
+equivalence or Adobe reopening. Partial compound-branch movement remains open.
 
 `moveContours(paths:, group:, bounds:, after:, mask:,
 inheritCompoundAppearance:, inheritParentFlags:)` relocates a distinct batch of
@@ -1197,8 +1230,9 @@ consumed scalar state, final state and exact unselected bytes. Four transactions
 move the imported artwork group into the named-view group and back into its layer
 in the two original Inkscape CC programs. All twelve also check consumed stroke
 attributes and final state with the unchanged Adobe prolog in Ghostscript, in
-both scalar projections. These checks do not certify Adobe UI reopening; broader
-producer creation/dissolution and partial compound-branch movement remain open.
+both scalar projections. These checks do not certify Adobe UI reopening;
+partial compound-branch movement remains open. Complete-producer creation and
+dissolution are qualified above.
 
 ### Ordinary group lifecycle
 
@@ -2528,7 +2562,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; qualified parent dissolution with explicit metadata disposal | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
-| Ordinary compound/clip contours | Qualified source ancestry, effective mask owners and point counts | Atomic geometry/mask edits, batch contour and complete-owner movement, including two complete CC producer programs; compound/clip creation and release with explicit parent/state policies | Selected CC expansions/live shapes, unknown dependencies and inconsistent masks reject. Broader producer lifecycle and partial compound-branch movement remain incomplete; imported metadata owners keep separate copy/disposal/reference restrictions. |
+| Ordinary compound/clip contours | Qualified source ancestry, effective mask owners and point counts | Atomic geometry/mask edits, batch contour and complete-owner movement, including two complete CC producer programs; compound/clip creation and release with explicit parent/state policies | Selected CC expansions/live shapes, unknown dependencies and inconsistent masks reject. Partial compound-branch movement remains incomplete; imported metadata owners keep explicit copy/disposal/reference restrictions, including current-layer references and affine bases. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

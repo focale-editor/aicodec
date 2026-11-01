@@ -5,7 +5,7 @@ void _nativeGroupingFlags(AiNativeDrawing drawing, Iterable<int> boundaries, boo
   if (inheritParentFlags) {
     return;
   }
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, boundaries, clipping: clipping);
+  final Map<int, _NativeShapeInputs> states = clipping ? _nativeContourInputs(drawing, boundaries) : _shapeCopyInputs(drawing, boundaries);
   for (final _NativeShapeInputs state in states.values) {
     if ([state.printing, state.native].any((values) => const {'A', 'Xw'}.any((key) => values[key]?.numbers?.single != 0))) {
       throw UnsupportedError('Changing a non-neutral or unknown group ancestor requires explicit inheritParentFlags.');

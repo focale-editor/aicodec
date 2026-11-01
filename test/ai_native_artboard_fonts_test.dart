@@ -117,10 +117,15 @@ void main() {
     }
   });
 
-  test('keeps artwork deletion guards separate from retained font ownership', () {
-    final AiNativeArtboards before = artboardModel(artboardFontSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'target')}'));
+  test('keeps font and gradient names separate from deleted artwork identities', () {
+    final String source = artboardFontSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'board-0')}');
+    final AiNativeArtboards before = artboardModel(source);
     _retained(before, before.reorder(artboards: before.artboards.reversed.toList(), cropBounds: null));
     final AiNativeDrawing drawing = AiNativeDrawing.decode(records: before.records);
-    check(() => drawing.removePaths(paths: drawing.paths)).throws<UnsupportedError>();
+    final AiNativeDrawing removed = drawing.removePaths(paths: drawing.paths);
+    check(removed.paths).isEmpty();
+    check(removed.records.program.bytes.take(removed.records.program.bodyStart)).deepEquals(drawing.records.program.bytes.take(drawing.records.program.bodyStart));
+    final AiNativeDrawing unknown = AiNativeDrawing.decode(records: artboardModel(source.replaceFirst('96/grave', '96/grave\n%AI99_Reference: board-0\n')).records);
+    check(() => unknown.removePaths(paths: unknown.paths)).throws<UnsupportedError>();
   });
 }

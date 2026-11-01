@@ -6,7 +6,7 @@ typedef _NativeContourDifferences = ({Set<String> printing, Set<String> native})
 /// Requires original input values whenever a retained owner consumes an attribute.
 void _nativeContourRead(_NativeContourDifferences changed, Set<String> printing, Set<String> native) {
   if (changed.printing.intersection(printing).isNotEmpty || changed.native.intersection(native).isNotEmpty) {
-    throw UnsupportedError('Following contour artwork consumes an unresolved moved-group attribute.');
+    throw UnsupportedError('Following contour artwork consumes an unresolved source attribute.');
   }
 }
 
@@ -40,12 +40,14 @@ void _nativeContourFollowing(
   List<AiNativeStructureNode> parents,
   List<AiNativeObject> removed,
   Map<int, _NativeShapeInputs> states,
-  _NativeContourDifferences changed,
-) {
+  _NativeContourDifferences changed, {
+  Map<int, _NativeClipReplay> releasedClips = const {},
+}) {
   final Map<int, AiNativeObject> removals = {for (final AiNativeObject owner in removed) owner.start: owner};
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(drawing._pathTopologyScope.layers);
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, AiNativeGroup> endings = {for (final AiNativeGroup group in drawing.groups) group.closing.start: group};
+  final Set<int> releasedOpenings = {for (final int end in releasedClips.keys) endings[end]!.opening.start};
   final List<_NativeContourDifferences?> clips = [
     for (final AiNativeStructureNode parent in parents.reversed)
       if (parent.kind == .clip) (printing: {}, native: {}),
@@ -77,7 +79,7 @@ void _nativeContourFollowing(
       continue;
     }
     if (item is! AiNativeInstruction) {
-      throw UnsupportedError('Unresolved group output cannot cross an opaque native owner.');
+      throw UnsupportedError('Unresolved contour state cannot cross an opaque native owner.');
     }
     final String? key = _nativeContourStateKey(item);
     if (key != null) {
@@ -85,7 +87,7 @@ void _nativeContourFollowing(
       continue;
     }
     if (item.isPrivate || drawing._pathTopologyScope.derived.contains(paths[item.start])) {
-      throw UnsupportedError('Unresolved group output cannot cross derived or private artwork.');
+      throw UnsupportedError('Unresolved contour state cannot cross derived or private artwork.');
     }
     if (paths[item.start] case final AiNativePath path) {
       final Set<String> reads = compoundDepth == 0 ? _shapeCopyReads(drawing, path) : _nativeContourFlags;
@@ -97,20 +99,29 @@ void _nativeContourFollowing(
     switch (item.operator) {
       case '*u':
         if (compoundDepth != 0) {
-          throw UnsupportedError('Unresolved group output cannot cross nested compound owners.');
+          throw UnsupportedError('Unresolved contour state cannot cross nested compound owners.');
         }
         compoundDepth++;
       case '*U':
         if (endings[item.start]!.paths.isEmpty) {
-          throw UnsupportedError('Unresolved group output cannot cross an empty compound owner.');
+          throw UnsupportedError('Unresolved contour state cannot cross an empty compound owner.');
         }
         final Set<String> reads = _shapeCopyReads(drawing, endings[item.start]!.paths.last)..removeAll(_nativeContourFlags);
         _nativeContourRead(changed, reads, reads);
         compoundDepth--;
       case 'q':
-        clips.add(compoundDepth == 0 ? (printing: changed.printing.intersection(_nativeClipStateKeys), native: changed.native.intersection(_nativeClipStateKeys)) : null);
+        if (!releasedOpenings.contains(item.start)) {
+          clips.add(compoundDepth == 0 ? (printing: changed.printing.intersection(_nativeClipStateKeys), native: changed.native.intersection(_nativeClipStateKeys)) : null);
+        }
       case 'Q':
-        if (clips.removeLast() case final _NativeContourDifferences saved) {
+        if (releasedClips[item.start] case final _NativeClipReplay replay) {
+          changed.printing
+            ..removeAll(replay.assigned.printing)
+            ..addAll(replay.unresolved.printing);
+          changed.native
+            ..removeAll(replay.assigned.native)
+            ..addAll(replay.unresolved.native);
+        } else if (clips.removeLast() case final _NativeContourDifferences saved) {
           changed.printing
             ..removeAll(_nativeClipStateKeys)
             ..addAll(saved.printing.intersection(_nativeClipStateKeys));
@@ -120,11 +131,11 @@ void _nativeContourFollowing(
         }
       default:
         if (!_nativeGeometry.contains(item.operator) && !_nativePaint.contains(item.operator) && !const {'u', 'U', 'As', 'h', 'H', 'W'}.contains(item.operator)) {
-          throw UnsupportedError('Unresolved group output crosses an unqualified state consumer.');
+          throw UnsupportedError('Unresolved contour state crosses an unqualified state consumer.');
         }
     }
   }
   if (changed.printing.isNotEmpty || changed.native.isNotEmpty) {
-    throw UnsupportedError('Contour group movement cannot restore unknown final attributes.');
+    throw UnsupportedError('Contour edits cannot restore unknown final attributes.');
   }
 }

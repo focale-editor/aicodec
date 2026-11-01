@@ -42,7 +42,7 @@ List<AiNativePathTopology> _nativeClippingElements(AiNativeDrawing drawing, List
   final List<AiNativePath> paths = [];
   while (pending.isNotEmpty) {
     final AiNativeItem item = pending.removeLast();
-    _ordinaryObject(drawing, item);
+    _nativeContourOwner(drawing, item);
     if (item is AiNativePath) {
       paths.add(item);
     } else if (item is AiNativeGroup) {
@@ -57,10 +57,10 @@ List<AiNativePathTopology> _nativeClippingElements(AiNativeDrawing drawing, List
   };
   for (final AiNativeGroup group in elements.whereType<AiNativeGroup>()) {
     for (final AiNativeItem item in _pathInterval(drawing.items, group.start, group.end, (item) => item.start)) {
-      if (commands.contains(item) || _ordinaryObjectAttachment(drawing, item)) {
+      if (commands.contains(item) || _ordinaryObjectAttachment(drawing, item) || drawing._pathTopologyScope.retainedMetadata.contains(drawing._objects._attachments[item.start]?.dictionary)) {
         continue;
       }
-      if (item is! AiNativeInstruction || item.operator == 'Xy' || _nativeArtworkStateKey(item) == null) {
+      if (item is! AiNativeInstruction || _nativeContourStateKey(item) == null) {
         throw UnsupportedError('Clipping lifecycle requires ordinary contour state and complete non-derived artwork.');
       }
     }
@@ -92,14 +92,14 @@ AiNativeDrawing _clipNativeArtwork(
   final Map<AiNativePath, AiNativePathTopology> contours = {for (final AiNativePathTopology owner in topology) owner.path: owner};
   final List<_NativeSubtreeSpan> spans = [
     for (final AiNativeItem item in selected)
-      (start: item is AiNativePath ? contours[item]!.pointCount?.start ?? item.start : _ordinaryObject(drawing, item).start, end: _ordinaryObject(drawing, item).end),
+      (start: item is AiNativePath ? contours[item]!.pointCount?.start ?? item.start : _nativeContourOwner(drawing, item).start, end: _nativeContourOwner(drawing, item).end),
   ]..sort((first, second) => first.start.compareTo(second.start));
   for (int index = 1; index < spans.length; index++) {
     if (spans[index - 1].end > spans[index].start) {
       throw ArgumentError('Clipping requires disjoint source owners.');
     }
     for (final AiNativeItem item in _pathInterval(drawing.items, spans[index - 1].end, spans[index].start, (item) => item.start)) {
-      if (item is! AiNativeInstruction || item.operator == 'Xy' || _nativeArtworkStateKey(item) == null) {
+      if (item is! AiNativeInstruction || _nativeContourStateKey(item) == null) {
         throw UnsupportedError('Clipping cannot absorb unselected artwork or unresolved appearance state.');
       }
     }
@@ -111,8 +111,8 @@ AiNativeDrawing _clipNativeArtwork(
     }
   }
   _nativeGroupingFlags(drawing, [spans.first.start], inheritParentFlags, clipping: true);
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, [spans.first.start, spans.last.end], clipping: true);
-  final List<int> replay = _nativeClipStateReplay(drawing, states[spans.first.start]!, states[spans.last.end]!);
+  final Map<int, _NativeShapeInputs> states = _nativeContourInputs(drawing, [spans.first.start, spans.last.end]);
+  final List<int> replay = _nativeClipStateReplay(drawing, states[spans.first.start]!, states[spans.last.end]!).bytes;
   return _nativeCompoundResult(
     drawing,
     [
@@ -132,7 +132,7 @@ AiNativeDrawing _releaseNativeClipping(AiNativeDrawing drawing, List<AiNativeGro
   if (groups.isEmpty || groups.toSet().length != groups.length) {
     throw ArgumentError('Releasing clipping groups requires distinct current owners.');
   }
-  final List<AiNativeObject> owners = groups.map((group) => _ordinaryObject(drawing, group)).toList();
+  final List<AiNativeObject> owners = groups.map((group) => _nativeContourOwner(drawing, group)).toList();
   final List<AiNativeGroup> ordered = [...groups]..sort((first, second) => first.start.compareTo(second.start));
   if (ordered.indexed.any((entry) => entry.$1 > 0 && ordered[entry.$1 - 1].end > entry.$2.start)) {
     throw ArgumentError('Releasing clipping groups requires disjoint selections.');
@@ -152,20 +152,37 @@ AiNativeDrawing _releaseNativeClipping(AiNativeDrawing drawing, List<AiNativeGro
     throw UnsupportedError('Releasing clipping groups requires explicit parent metadata disposal.');
   }
   _nativeGroupingFlags(drawing, groups.map((group) => group.start), inheritParentFlags, clipping: true);
-  final AiNativeLayers layers = drawing._pathTopologyScope.layers;
-  _nativeRemovalReferences(layers, [for (final AiNativeObject owner in owners) ?owner.identifier], _layerHeaderItems(layers), bodyDictionaries: drawing._pathTopologyScope.dictionaries);
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, [
+  _nativeContourRemovalReferences(drawing, owners);
+  final Map<int, _NativeShapeInputs> states = _nativeContourInputs(drawing, [
     for (final AiNativeGroup group in groups) ...[group.closing.start, group.closing.end],
-  ], clipping: true);
+  ]);
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   final List<AiSourceEdit> boundaries = [];
+  final Map<int, _NativeClipReplay> replays = {};
   for (final (int, AiNativeGroup) entry in groups.indexed) {
-    final List<int> replay = _nativeClipStateReplay(drawing, states[entry.$2.closing.start]!, states[entry.$2.closing.end]!, maxBytes: remaining);
-    remaining -= replay.length;
+    final _NativeClipReplay replay = _nativeClipStateReplay(drawing, states[entry.$2.closing.start]!, states[entry.$2.closing.end]!, maxBytes: remaining, allowUnknown: true);
+    replays[entry.$2.closing.start] = replay;
+    remaining -= replay.bytes.length;
     boundaries.addAll([
       AiSourceEdit(start: owners[entry.$1].start, end: entry.$2.opening.end, bytes: [32]),
-      AiSourceEdit(start: entry.$2.closing.start, end: owners[entry.$1].end, bytes: [32, ...replay]),
+      AiSourceEdit(start: entry.$2.closing.start, end: owners[entry.$1].end, bytes: [32, ...replay.bytes]),
     ]);
+  }
+  final AiNativeStructure structure = drawing._objects.structure;
+  for (final AiNativeGroup group in groups) {
+    final _NativeContourDifferences unresolved = replays[group.closing.start]!.unresolved;
+    if (unresolved.printing.isEmpty && unresolved.native.isEmpty) {
+      continue;
+    }
+    _nativeContourFollowing(
+      drawing,
+      _nativeContourOwner(drawing, group).end,
+      _artworkParents(structure, structure.parentOf(structure.nodeFor(group))),
+      const [],
+      const {},
+      (printing: Set.of(unresolved.printing), native: Set.of(unresolved.native)),
+      releasedClips: replays,
+    );
   }
   return _nativeCompoundResult(
     drawing,

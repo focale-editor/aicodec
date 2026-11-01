@@ -89,8 +89,10 @@ void main() {
 
   test('keeps metadata lifecycle and removed-reference qualification separate', () {
     final AiNativeDrawing drawing = groupCreationDrawing(contourMetadataSource());
-    check(() => drawing.releaseCompounds(groups: [drawing.groups.firstWhere((group) => group.compound)], bounds: topologyBounds, discardMetadata: true, inheritParentFlags: true))
-        .throws<UnsupportedError>();
+    check(() => drawing.releaseCompounds(groups: [drawing.groups.firstWhere((group) => group.compound)], bounds: topologyBounds, inheritParentFlags: true)).throws<UnsupportedError>();
+    final AiNativeDrawing released = drawing.releaseCompounds(groups: [drawing.groups.firstWhere((group) => group.compound)], bounds: topologyBounds, discardMetadata: true);
+    check(released.groups.any((group) => group.compound)).isFalse();
+    check(released.paths.length).equals(drawing.paths.length);
     final String source = contourMetadataSource()
         .replaceFirst('%%Trailer', '*u $topologyRectangle f *U\n${objectDictionary(identifier: 'Removable')}\n%%Trailer')
         .replaceFirst('(Current) /String (xmlnode-nodevalue)', '(Removable) /String (xmlnode-nodevalue)');

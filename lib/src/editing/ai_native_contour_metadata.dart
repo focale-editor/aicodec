@@ -71,6 +71,43 @@ Set<AiNativeContainer> _nativeContourMetadata(AiNativeLayers layers) {
   return retained;
 }
 
+/// Qualifies imported references before explicitly discarding contour parents.
+void _nativeContourRemovalReferences(AiNativeDrawing drawing, List<AiNativeObject> owners) {
+  if (owners.any((owner) => owner.dictionary?['AdobeObjectMatrix'] != null)) {
+    throw UnsupportedError('Dissolving an imported transform owner requires explicit coordinate rebasing.');
+  }
+  final List<AiNativeObjectIdentifier> identifiers = [for (final AiNativeObject owner in owners) ?owner.identifier];
+  if (identifiers.isEmpty) {
+    return;
+  }
+  final Set<String> removed = identifiers.map((identifier) => latin1.decode(identifier.bytes)).toSet();
+  final Map<String, int> identities = {};
+  for (final AiNativeObjectIdentifier identifier in drawing._objects.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
+    identities.update(latin1.decode(identifier.bytes), (count) => count + 1, ifAbsent: () => 1);
+  }
+  final Set<AiNativeContainer> discarded = owners.map((owner) => owner.dictionary).whereType<AiNativeContainer>().toSet();
+  final Set<AiNativeContainer> metadata = drawing._pathTopologyScope.retainedMetadata;
+  for (final AiNativeContainer dictionary in metadata.difference(discarded)) {
+    final AiNativeContainer? node = dictionary['SVG_ThisElement']?.container;
+    if (node == null) {
+      continue;
+    }
+    for (final AiNativeEntry child in node['xmlnode-children']!.container!.entries) {
+      final AiNativeContainer attributes = child.container!['xmlnode-attributes']!.container!;
+      final AiNativeContainer? reference = attributes['inkscape:current-layer']?.container;
+      if (reference == null) {
+        continue;
+      }
+      final String name = reference['xmlnode-nodevalue']!.text()!;
+      if (identities[name] != 1 || removed.contains(name)) {
+        throw UnsupportedError('Dissolution requires an unambiguous retained imported current-layer target.');
+      }
+    }
+  }
+  final AiNativeLayers layers = drawing._pathTopologyScope.layers;
+  _nativeRemovalReferences(layers, identifiers, _layerHeaderItems(layers), bodyDictionaries: {...drawing._pathTopologyScope.dictionaries, ...metadata});
+}
+
 /// Checks complete import dictionaries while preserving source-owned transforms.
 void _nativeSvgMetadata(AiNativeContainer dictionary, {required AiNativeGroup? group}) {
   _referenceFields(

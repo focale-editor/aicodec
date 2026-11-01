@@ -61,10 +61,26 @@ void _referenceArtboards(AiNativeEntry entry) {
   }
 }
 
-/// Describes empty document XML structures with no variables, data sets or slices.
+/// Describes provenance and empty variable, data-set and slice document owners.
 const Map<String, ({int kind, Set<String> children, Map<String, String> attributes})> _referenceXmlNodes = {
   '#document': (kind: 9, children: {'metadata'}, attributes: {}),
-  'metadata': (kind: 1, children: {'variableSets', 'sfw'}, attributes: {}),
+  'metadata': (kind: 1, children: {'rdf:RDF', 'variableSets', 'sfw'}, attributes: {'id': 'String'}),
+  'rdf:RDF': (kind: 1, children: {'cc:Work', 'cc:License'}, attributes: {}),
+  'cc:Work': (kind: 1, children: {'dc:format', 'dc:type', 'dc:creator', 'dc:rights', 'dc:publisher', 'dc:identifier', 'dc:date', 'cc:license', 'dc:title'}, attributes: {'rdf:about': 'String'}),
+  'cc:License': (kind: 1, children: {'cc:permits', 'cc:requires'}, attributes: {'rdf:about': 'String'}),
+  'cc:Agent': (kind: 1, children: {'dc:title'}, attributes: {}),
+  'dc:creator': (kind: 1, children: {'cc:Agent'}, attributes: {}),
+  'dc:rights': (kind: 1, children: {'cc:Agent'}, attributes: {}),
+  'dc:publisher': (kind: 1, children: {'cc:Agent'}, attributes: {}),
+  'dc:format': (kind: 1, children: {'#text'}, attributes: {}),
+  'dc:identifier': (kind: 1, children: {'#text'}, attributes: {}),
+  'dc:date': (kind: 1, children: {'#text'}, attributes: {}),
+  'dc:title': (kind: 1, children: {'#text'}, attributes: {}),
+  'dc:type': (kind: 1, children: {}, attributes: {'rdf:resource': 'String'}),
+  'cc:license': (kind: 1, children: {}, attributes: {'rdf:resource': 'String'}),
+  'cc:permits': (kind: 1, children: {}, attributes: {'rdf:resource': 'String'}),
+  'cc:requires': (kind: 1, children: {}, attributes: {'rdf:resource': 'String'}),
+  '#text': (kind: 3, children: {}, attributes: {}),
   'variableSets': (kind: 1, children: {'variableSet'}, attributes: {'xmlns': 'String'}),
   'variableSet': (kind: 1, children: {'variables', 'v:sampleDataSets'}, attributes: {'locked': 'String', 'varSetName': 'String'}),
   'variables': (kind: 1, children: {}, attributes: {}),
@@ -91,7 +107,7 @@ void _referenceXml(AiNativeEntry entry, String name, {String? attributeType}) {
         for (final AiNativeEntry child in _referenceRecord(field, 'Array').entries) {
           final AiNativeContainer record = _referenceRecord(child, 'XMLNode');
           final String? childName = record['xmlnode-nodename']?.text();
-          if (child.key != null || childName == null || !schema.children.contains(childName) || !seen.add(childName)) {
+          if (child.key != null || childName == null || !schema.children.contains(childName) || !seen.add(childName) && name != 'cc:License') {
             throw UnsupportedError('Document XML $name has unqualified children or artwork bindings.');
           }
           _referenceXml(child, childName);
@@ -108,8 +124,17 @@ void _referenceXml(AiNativeEntry entry, String name, {String? attributeType}) {
   if (node['xmlnode-nodetype']?.number != schema.kind ||
       node['xmlnode-nodename']?.text() != name ||
       node['xmlnode-nodevalue'] == null ||
-      attributeType == null && node['xmlnode-nodevalue']!.stringBytes?.isEmpty != true) {
+      attributeType == null && schema.kind != 3 && node['xmlnode-nodevalue']!.stringBytes?.isEmpty != true) {
     throw UnsupportedError('Document XML $name has an unqualified value or node kind.');
+  }
+  if (attributeType != null && const {'rdf:about', 'rdf:resource'}.contains(name)) {
+    final Uri? resource = Uri.tryParse(node['xmlnode-nodevalue']!.text()!);
+    final bool vocabulary = resource?.host == 'creativecommons.org' && resource?.path == '/ns' && resource?.hasQuery == false;
+    if (resource == null ||
+        name == 'rdf:about' && resource.hasFragment ||
+        name == 'rdf:resource' && (!const {'http', 'https'}.contains(resource.scheme) || resource.host.isEmpty || resource.hasFragment && !vocabulary)) {
+      throw UnsupportedError('Retained document provenance cannot refer to local artwork fragments.');
+    }
   }
 }
 
@@ -238,6 +263,16 @@ void _referenceProgram(AiNativeLayers model, List<({int start, int end})> indepe
   }
 }
 
+/// Qualifies saved SVG canvas coordinates without accepting textual references.
+void _referenceSvgCoordinates(AiNativeEntry entry, {required int count}) {
+  final List<String>? values = entry.type == 'String' ? entry.text()?.trim().split(RegExp(r'\s+')) : null;
+  if (values == null ||
+      values.length != count ||
+      values.any((value) => double.tryParse(value)?.isFinite != true || double.parse(value).abs() > 9007199254740991 || count == 1 && double.parse(value) <= 0)) {
+    throw UnsupportedError('Imported SVG document geometry requires literal portable coordinates and positive dimensions.');
+  }
+}
+
 /// Proves that a known document record has no artwork-reference-bearing payload.
 void _referenceDocument(AiNativeLayers model, AiNativeContainer document) {
   final AiNativeRecords records = model.drawing.records;
@@ -253,6 +288,9 @@ void _referenceDocument(AiNativeLayers model, AiNativeContainer document) {
         _referenceRecord(entry, 'Dictionary'),
         _referenceDocumentRecorded,
         nested: {
+          'SVG_ViewBoxXY': (entry) => _referenceSvgCoordinates(entry, count: 2),
+          'SVG_CropBoxWidth': (entry) => _referenceSvgCoordinates(entry, count: 1),
+          'SVG_CropBoxHeight': (entry) => _referenceSvgCoordinates(entry, count: 1),
           'ArtboardArray': _referenceArtboards,
           'DocumentDict/ExportableAssetsKey': (entry) => _referenceEmpty(entry, 'Dictionary'),
           'SelHatDocTableDict': (entry) => _referenceFields(

@@ -71,17 +71,17 @@ AiNativeDrawing _compoundNativeArtwork(AiNativeDrawing drawing, List<AiNativePat
     throw ArgumentError('Compounding requires disjoint sibling artwork.');
   }
   _nativeCompoundParents(drawing, selected.first);
-  final List<AiNativePathTopology> topology = _nativeCompoundElements(drawing, selected);
+  final List<AiNativePathTopology> topology = _nativeCompoundElements(drawing, selected, retainContourData: true);
   final Map<AiNativePath, AiNativeInstruction?> counts = {for (final AiNativePathTopology owner in topology) owner.path: owner.pointCount};
   final List<_NativeSubtreeSpan> spans = [
-    for (final AiNativeItem item in selected) (start: item is AiNativePath ? counts[item]?.start ?? item.start : _ordinaryObject(drawing, item).start, end: _ordinaryObject(drawing, item).end),
+    for (final AiNativeItem item in selected) (start: item is AiNativePath ? counts[item]?.start ?? item.start : _nativeContourOwner(drawing, item).start, end: _nativeContourOwner(drawing, item).end),
   ]..sort((first, second) => first.start.compareTo(second.start));
   for (int index = 1; index < spans.length; index++) {
     if (spans[index - 1].end > spans[index].start) {
       throw ArgumentError('Compounding requires nonoverlapping complete owners.');
     }
     for (final AiNativeItem item in _pathInterval(drawing.items, spans[index - 1].end, spans[index].start, (item) => item.start)) {
-      if (item is! AiNativeInstruction || _nativeArtworkStateKey(item) == null) {
+      if (item is! AiNativeInstruction || _nativeContourStateKey(item) == null) {
         throw ArgumentError('Compounding cannot absorb unselected artwork, counts or metadata.');
       }
     }
@@ -109,7 +109,7 @@ AiNativeDrawing _releaseNativeCompounds(AiNativeDrawing drawing, List<AiNativeGr
   if (groups.isEmpty || groups.toSet().length != groups.length) {
     throw ArgumentError('Releasing compounds requires distinct source groups.');
   }
-  final List<AiNativeObject> owners = groups.map((group) => _ordinaryObject(drawing, group)).toList();
+  final List<AiNativeObject> owners = groups.map((group) => _nativeContourOwner(drawing, group)).toList();
   final List<AiNativeGroup> ordered = [...groups]..sort((first, second) => first.start.compareTo(second.start));
   if (ordered.indexed.any((entry) => entry.$1 > 0 && ordered[entry.$1 - 1].end > entry.$2.start)) {
     throw ArgumentError('Releasing compounds requires disjoint owners.');
@@ -119,14 +119,13 @@ AiNativeDrawing _releaseNativeCompounds(AiNativeDrawing drawing, List<AiNativeGr
       throw ArgumentError('Releasing compounds requires native compound groups.');
     }
     _nativeCompoundParents(drawing, group);
-    _nativeCompoundElements(drawing, group.children, compound: group);
+    _nativeCompoundElements(drawing, group.children, compound: group, retainContourData: true);
   }
   if (!discardMetadata && owners.any((owner) => owner.dictionary?.entries.isNotEmpty ?? false)) {
     throw UnsupportedError('Releasing a compound requires explicit disposal of its parent metadata.');
   }
   _nativeGroupingFlags(drawing, groups.map((group) => group.start), inheritParentFlags, clipping: true);
-  final AiNativeLayers layers = drawing._pathTopologyScope.layers;
-  _nativeRemovalReferences(layers, [for (final AiNativeObject owner in owners) ?owner.identifier], _layerHeaderItems(layers), bodyDictionaries: drawing._pathTopologyScope.dictionaries);
+  _nativeContourRemovalReferences(drawing, owners);
   final List<AiNativeGroup> clipping = drawing.groups.where((child) => child.opening.operator == 'q' && groups.any((group) => child.start > group.start && child.end < group.end)).toList();
   return _nativeCompoundResult(
     drawing,

@@ -136,10 +136,15 @@ PB
     }
   });
 
-  test('keeps ordinary artwork deletion separate from retained palette ownership', () {
-    final AiNativeArtboards before = artboardModel(paletteArtboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'target')}'));
+  test('keeps palette names separate from removed artwork identities', () {
+    final String source = paletteArtboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'board-0')}');
+    final AiNativeArtboards before = artboardModel(source);
     _retained(before, before.remove(artboards: [before.artboards.first], activeArtboard: null, cropBounds: null));
     final AiNativeDrawing drawing = AiNativeDrawing.decode(records: before.records);
-    check(() => drawing.removePaths(paths: drawing.paths)).throws<UnsupportedError>();
+    final AiNativeDrawing removed = drawing.removePaths(paths: drawing.paths);
+    check(removed.paths).isEmpty();
+    check(removed.records.program.bytes.take(removed.records.program.bodyStart)).deepEquals(drawing.records.program.bytes.take(drawing.records.program.bodyStart));
+    final AiNativeDrawing unknown = AiNativeDrawing.decode(records: artboardModel(source.replaceFirst('PB\n', '(board-0) load PB\n')).records);
+    check(() => unknown.removePaths(paths: unknown.paths)).throws<UnsupportedError>();
   });
 }

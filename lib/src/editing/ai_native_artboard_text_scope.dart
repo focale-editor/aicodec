@@ -4,7 +4,9 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 ///
 /// Frames retain canvas coordinates and an explicit global ruler origin. Native
 /// artboard changes do not rewrite stories, typography or cached composition.
-({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) _artboardTextScope(AiNativeLayers layers) {
+/// Artwork identity deletion additionally requires empty frame/story namespaces;
+/// retaining populated text beside board edits does not qualify its hyperlinks.
+({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) _artboardTextScope(AiNativeLayers layers, {bool requireEmpty = false}) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiNativeContainer> main = records.roots.where((record) => record.type == 'AI11TextDocument').toList();
   final List<AiNativeContainer> undo = records.roots.where((record) => record.type == 'AI11UndoFreeTextDocument').toList();
@@ -37,7 +39,11 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       bytes: bytes,
       limits: PsEngineLimits(maxBytes: bytesRemaining, maxNodes: nodesRemaining, maxDepth: records.program.limits.maxDepth, maxStringBytes: bytesRemaining),
     );
-    snapshots.add(_artboardTextEngine(engine));
+    final _ArtboardTextSnapshot snapshot = _artboardTextEngine(engine);
+    if (requireEmpty && (snapshot.frames.isNotEmpty || snapshot.stories.isNotEmpty)) {
+      throw UnsupportedError('Artwork identity deletion requires separate qualification of populated text references.');
+    }
+    snapshots.add(snapshot);
     bytesRemaining -= bytes.length;
     nodesRemaining -= engine.values.length;
   }

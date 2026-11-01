@@ -448,6 +448,8 @@ final class AiNativeDrawing {
   /// undergo whole-source reference qualification. Non-neutral or unknown flags
   /// require [inheritParentFlags], as with [ungroup]. Nested ordinary groups,
   /// clipping scopes, child metadata and scalar state remain unchanged.
+  /// Qualified imported provenance is retained; a referenced parent or imported
+  /// matrix owner cannot be discarded without resolving its separate contract.
   AiNativeDrawing releaseCompounds({required List<AiNativeGroup> groups, required AiBoundingBox bounds, bool discardMetadata = false, bool inheritParentFlags = false}) =>
       _releaseNativeCompounds(this, groups, bounds, discardMetadata, inheritParentFlags);
 
@@ -474,6 +476,9 @@ final class AiNativeDrawing {
   /// together, with point counts synchronized. Parent metadata and flag policies
   /// match [releaseCompounds]. Saved contour attributes restore following artwork;
   /// unknown required values and unresolved appearance dependencies reject.
+  /// An unknown restored value is allowed only when a bounded source check proves
+  /// it is overwritten before consumption in both interpretations, across every
+  /// boundary removed by this transaction. Literal transparency stays intact.
   AiNativeDrawing releaseClippingGroups({required List<AiNativeGroup> groups, required AiBoundingBox bounds, bool discardMetadata = false, bool inheritParentFlags = false}) =>
       _releaseNativeClipping(this, groups, bounds, discardMetadata, inheritParentFlags);
 
