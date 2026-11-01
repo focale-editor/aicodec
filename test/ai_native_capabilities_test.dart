@@ -75,6 +75,7 @@ void main() {
     check(path.edits.singleWhere((edit) => edit.operation == .pathGeometry).support).equals(AiNativeEditSupport.requiresValidation);
     check(path.edits.singleWhere((edit) => edit.operation == .pathGeometry).reason).contains('point-count');
     check(path.edits.where((edit) => edit.operation != .pathGeometry).map((edit) => edit.operation)).deepEquals([
+      AiNativeEditOperation.pathTopology,
       AiNativeEditOperation.pathInsertion,
       AiNativeEditOperation.pathDuplication,
       AiNativeEditOperation.pathRemoval,

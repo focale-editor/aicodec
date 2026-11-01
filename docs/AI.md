@@ -983,6 +983,51 @@ incorrectly clears persistent fill after a stroke-only path, so its following
 fill cannot serve as an appearance oracle. Synthetic native version branches and
 Adobe reopening remain unqualified; no reader or host rendering code is changed.
 
+### Ordinary contour geometry and masks
+
+`AiNativeDrawing.pathTopology(path:)` qualifies an ordinary source contour and
+exposes its outer-to-inner `groups`, innermost `compound`, owning `clippingGroup`,
+optional `pointCount` and explicit `maskControls`. `AiNativePathMask` distinguishes
+`none`, `open` (`H W`) and `closed` (`h W`) independently of the paint operator's
+closure. The format's compound and mask ownership rules are documented in AI7
+sections 5.3.5 and 5.6; no clipping geometry is evaluated by the kit.
+
+`editPaths(edits:, bounds:)` applies immutable `AiNativePathEdit` requests in one
+transaction. Each request supplies a current `path` and optional `segments` and/or
+`mask`. Geometry uses one initial moveto with native line/cubic corner and smooth
+operators. Null fields preserve the corresponding source data. Counted contours
+receive an explicit closing endpoint when effective paint/mask closure requires
+it; the consumed `As` value is synchronized. The paint operator, process state,
+object identities, attached metadata, enclosing groups and all unselected bytes
+remain unchanged.
+
+Changing clipping requires an existing `q`/`Q` owner. A compound mask must change
+all affected contours consistently in the same transaction. Removing a mask
+removes its `h/H W` controls while retaining its geometry, paint and graphics-state
+group. Nested masks still intersect in saved source order. `bounds` is the host's
+affected ink extent, including artwork exposed by relaxing a mask. It only expands
+the existing drawing bounds; it does not infer artboards or render compatibility
+pages. The host must supply matching derived representations before saving.
+
+Current qualification checks the ordinary body and complete neighboring CC pairs,
+with the retained compact ATE text contracts. Selected private paths, direct live
+shapes, printing expansions, gradients, conditional owners, unresolved body
+commands and unknown attached metadata reject atomically. Missing mask owners,
+inconsistent compound masks, stale/foreign handles, malformed counts and original
+output/parser limits also reject. `pathTopology` capabilities remain
+`requiresValidation`; the older plain `pathGeometry` operation keeps its separate
+guard. This API does not yet create, dissolve or reparent compound/clip owners.
+
+Nine regressions exercise nested contours, all paint/closure combinations,
+immutable requests, hidden layers, complete CC neighbors, count normalization and
+400 contour edits in one transaction. Twelve independent synthetic transactions
+verify requested geometry, mask lifetime, native point counts and exact retained
+source; three pinned producer refusals retain the complete original programs.
+The shape fixture contains CC printing expansions, while the two Inkscape CC
+fixtures retain unqualified imported SVG metadata. Successful whole-producer
+compound/clip editing and Adobe reopening remain unqualified; this roadmap task
+is still in progress.
+
 ### Ordinary group lifecycle
 
 `AiNativeDrawing` also supports qualified ordinary `u`/`U` owners. A selected
@@ -2311,6 +2356,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; qualified parent dissolution with explicit metadata disposal | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
+| Ordinary compound/clip contours | Qualified source ancestry, mask controls and point counts | Atomic geometry replacement and local mask changes in existing owners | Selected CC expansions/live shapes, unknown body/metadata and inconsistent compound masks reject. Owner lifecycle and successful full-producer qualification remain incomplete. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

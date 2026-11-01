@@ -108,6 +108,9 @@ enum AiNativeEditOperation {
   /// Replace ordinary path coordinates with qualified geometry.
   pathGeometry,
 
+  /// Edit ordinary compound/clip contours and their local mask controls.
+  pathTopology,
+
   /// Insert ordinary geometry using an existing path's paint and object flags.
   pathInsertion,
 

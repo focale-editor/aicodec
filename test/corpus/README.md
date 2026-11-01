@@ -671,6 +671,31 @@ dart run tool/check_native_path_creation.dart
 python3 tool/verify_native_path_creation.py --inkai-source /tmp/extension-ai
 ```
 
+## Ordinary contour geometry and masks
+
+The topology suite prescribes twelve edits over three checksum-pinned synthetic
+native programs: nested compound contours with identities, an initially open
+path inside a clipping group, and complete CC pairs beside an ordinary compound.
+Geometry replacement, consistent compound mask assignment, open/closed masks,
+mask removal and combined edits retain every unselected owner. Predecessor files,
+selected contour indices and replacement coordinates are fixed independently of
+the Dart report. The reader binds each reported span to its own parse, compares
+complete path geometry/paint/owners/counts and permits only the requested source
+patches plus the explicit drawing-bound union.
+
+Three unchanged refusals use `manifest.json` provenance: `simple_shapes_cc.ai`
+contains derived CC compound expansions; `inkscape_minimized_ai_cc.ai` and
+`inkscape_minimized_ai_cc_current.ai` retain imported SVG metadata not yet
+qualified for native contour edits. Their independent extraction must equal the
+complete original bytes. These refusals are not successful producer edits; the
+current suite does not establish full-file compound/clip interoperability or
+Adobe reopening. No renderer or supplied source artwork is modified.
+
+```bash
+dart run tool/check_native_path_topology.dart
+python3 tool/verify_native_path_topology.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex

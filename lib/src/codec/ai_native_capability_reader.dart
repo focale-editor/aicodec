@@ -133,6 +133,7 @@ final class _NativeCapabilityReader {
                   : (counted ? 'Native point-count ownership and closed endpoints require validation.' : 'Plain source geometry is isolated under the current editor contract.'),
             ),
             for (final AiNativeEditOperation operation in [
+              AiNativeEditOperation.pathTopology,
               AiNativeEditOperation.pathInsertion,
               AiNativeEditOperation.pathDuplication,
               AiNativeEditOperation.pathRemoval,

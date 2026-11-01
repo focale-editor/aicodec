@@ -887,6 +887,23 @@ groups and compound topology. There is no general modern object lifecycle API.
   narrowing other whole-source refusals remain the next separate tasks.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
+  **In progress:** `pathTopology` exposes ordinary compound/clip ancestry, mask
+  controls and owned point counts. Atomic `editPaths` requests replace contours
+  and local mask behavior while retaining paint, identities, metadata and group
+  order. Counts follow effective paint/mask closure, and compound mask changes
+  require every affected contour together. Host-supplied ink bounds remain
+  independent of boards. Selected private/direct-shape/printing paths reject;
+  complete CC neighbors remain exact. Nine regressions cover native controls,
+  immutable batches, malformed ownership, original limits and 400-contour edits.
+  Twelve independent synthetic edits and three checksum-pinned producer refusals
+  pass. The producer shape compounds are derived; the Inkscape CC compounds still
+  require imported SVG metadata qualification. Successful full-producer edits,
+  compound/clip owner creation/dissolution/reparenting and broader relationship
+  qualification remain outstanding; Adobe reopening remains unqualified.
+  Validation: 858 VM/857 Node tests pass, followed by 19 focused VM/Node checks
+  after caching retained-body inspection per immutable snapshot and adding the
+  operation-specific capability entry. All fifteen independent cases pass again;
+  formatting, fixes and analysis are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

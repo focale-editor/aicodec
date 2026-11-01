@@ -199,6 +199,9 @@ final class AiNativeDrawing {
   /// Lazily shares immutable object metadata across bounded lifecycle operations.
   late final AiNativeObjects _objects = _nativeObjects(this);
 
+  /// Shares retained-body qualification across contour inspections and batches.
+  late final ({AiNativeLayers layers, Set<AiNativePath> derived}) _pathTopologyScope = _nativePathTopologyScope(this);
+
   /// Builds a bounded structural view without evaluating arbitrary PostScript.
   factory AiNativeDrawing.decode({required AiNativeRecords records}) => _NativeDrawingReader(records: records).read();
 
@@ -215,6 +218,21 @@ final class AiNativeDrawing {
        groups = List.unmodifiable(groups),
        gradients = List.unmodifiable(gradients),
        liveShapes = List.unmodifiable(liveShapes);
+
+  /// Inspects an ordinary contour's compound, clip and point-count ownership.
+  ///
+  /// Private authoring, printable CC expansions and unresolved body dependencies
+  /// reject instead of becoming independently editable paths.
+  AiNativePathTopology pathTopology({required AiNativePath path}) => _nativePathTopologies(this, [path]).single;
+
+  /// Replaces ordinary contour geometry and clipping relationships atomically.
+  ///
+  /// Counts follow effective closure, including `h W` masks. Compound masks must
+  /// change all affected contours together; enabling clipping requires an existing
+  /// `q`/`Q` owner. Paint, metadata, identities, groups and unselected source remain
+  /// unchanged. [bounds] supplies the host-computed affected ink extent, including
+  /// any newly exposed artwork; it expands drawing bounds independently of boards.
+  AiNativeDrawing editPaths({required List<AiNativePathEdit> edits, required AiBoundingBox bounds}) => _editNativePaths(this, edits, bounds);
 
   /// Duplicates ordinary paths immediately after their original source objects.
   ///
