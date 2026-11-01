@@ -141,6 +141,7 @@ final class _NativeCapabilityReader {
               AiNativeEditOperation.pathReparenting,
               AiNativeEditOperation.groupCreation,
               AiNativeEditOperation.compoundCreation,
+              AiNativeEditOperation.clippingCreation,
             ])
               AiNativeEditCapability._(
                 operation: operation,
@@ -253,6 +254,9 @@ final class _NativeCapabilityReader {
             issue: group.opening.operator != 'u' || group.opening.isPrivate ? 'Group lifecycle requires non-private ordinary topology.' : null,
           ),
           ...conditional([if (group.compound) .compoundDissolution else .compoundCreation], issue: group.opening.isPrivate ? 'Compound lifecycle requires ordinary native ownership.' : null),
+          ...conditional([
+            if (group.opening.operator == 'q') .clippingDissolution else .clippingCreation,
+          ], issue: group.opening.isPrivate ? 'Clipping lifecycle requires ordinary native ownership.' : null),
         ],
       );
     }

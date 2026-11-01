@@ -42,8 +42,13 @@ AiBoundingBox get topologyBounds => AiBoundingBox(left: 0, bottom: 0, right: 20,
 String _source(AiNativeDrawing drawing) => latin1.decode(drawing.records.program.bytes);
 
 /// Requires exact paint, object identities, metadata and nested group ordering.
-void _retained(AiNativeDrawing before, AiNativeDrawing after, Set<int> changed) {
-  check(after.groups.map((group) => group.opening.operator)).deepEquals(before.groups.map((group) => group.opening.operator));
+void _retained(AiNativeDrawing before, AiNativeDrawing after, Set<int> changed, {Set<int> changedGroups = const {}}) {
+  check(after.groups.length).equals(before.groups.length);
+  for (final (int, AiNativeGroup) entry in before.groups.indexed) {
+    if (!changedGroups.contains(entry.$1)) {
+      check(after.groups[entry.$1].opening.operator).equals(entry.$2.opening.operator);
+    }
+  }
   check(after.paths.map((path) => path.paint.operator)).deepEquals(before.paths.map((path) => path.paint.operator));
   final AiNativeObjects original = AiNativeObjects.decode(drawing: before);
   final AiNativeObjects result = AiNativeObjects.decode(drawing: after);
@@ -141,7 +146,8 @@ void main() {
       edits: [for (final AiNativePath path in drawing.groups[1].paths) AiNativePathEdit(path: path, mask: .closed)],
       bounds: topologyBounds,
     );
-    _retained(drawing, result, {0, 1});
+    _retained(drawing, result, {0, 1}, changedGroups: {0});
+    check(result.groups.first.opening.operator).equals('q');
     check(result.paths.take(2).map((path) => result.pathTopology(path: path).mask)).deepEquals([AiNativePathMask.closed, AiNativePathMask.closed]);
     check(
       () => result.editPaths(

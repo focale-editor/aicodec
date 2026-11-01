@@ -83,13 +83,13 @@ ${objectDictionary(identifier: 'Parent', name: 'Compound')}
   test('retains clipping scopes and all mask controls when combining and releasing masks', () {
     for (final String body in [
       'q 4 As $topologyRectangle h W n 4 As $topologyRectangle h W n Q',
-      'u q 4 As $topologyRectangle h W n Q q 4 As $topologyRectangle h W n Q U',
+      'q u q 4 As $topologyRectangle h W n Q q 4 As $topologyRectangle h W n Q U Q',
     ]) {
       final AiNativeDrawing drawing = groupCreationDrawing(objectSource(body));
-      final bool direct = body.startsWith('q');
+      final bool direct = body.startsWith('q 4');
       final AiNativeDrawing result = drawing.compoundArtwork(
         paths: direct ? drawing.paths : [],
-        groups: direct ? [] : [drawing.groups.last],
+        groups: direct ? [] : [drawing.groups.firstWhere((group) => group.opening.operator == 'u')],
         bounds: topologyBounds,
         inheritParentFlags: true,
       );

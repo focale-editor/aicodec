@@ -135,6 +135,12 @@ enum AiNativeEditOperation {
   /// Release a compound's parent while retaining complete child artwork.
   compoundDissolution,
 
+  /// Create a clipping scope and masks with preserved outgoing contour state.
+  clippingCreation,
+
+  /// Release a clipping scope and its owned masks, retaining nested scopes.
+  clippingDissolution,
+
   /// Remove ordinary boundaries while retaining child artwork and state.
   groupDissolution,
 

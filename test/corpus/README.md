@@ -711,6 +711,24 @@ dart run tool/check_native_compound_lifecycle.dart
 python3 tool/verify_native_compound_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+The clipping lifecycle suite adds eleven prescribed transactions over seven
+checksum-pinned synthetic sources. The independent reader checks geometry, mask
+counts, effective group ancestry, normalized compound leaves and all retained
+bytes. Restoration instructions must come from actual source assignments. Nine
+transactions additionally use Ghostscript's interpreter with the unchanged Adobe
+prolog from `manifest.json`'s `inkscape_minimized_ai7.ai` (CC 27.3.1 exporting the
+legacy format). Every contour and the final boundary retain cap/join/width/miter/
+dash values, in printing and exposed-private-scalar projections. The two cases
+with complete CC pairs use native-data checks; the legacy prolog does not execute
+their opaque authoring records. This does not certify Adobe's UI or render the
+document. The prolog's existing provenance, licensing and checksum apply; no
+downloaded implementation or artwork is copied into package source.
+
+```bash
+dart run tool/check_native_clipping_lifecycle.dart
+python3 tool/verify_native_clipping_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex

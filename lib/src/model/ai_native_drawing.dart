@@ -229,9 +229,10 @@ final class AiNativeDrawing {
   ///
   /// Counts follow effective closure, including `h W` masks. Compound masks must
   /// change all affected contours together; enabling clipping requires an existing
-  /// `q`/`Q` owner. Paint, metadata, identities, groups and unselected source remain
-  /// unchanged. [bounds] supplies the host-computed affected ink extent, including
-  /// any newly exposed artwork; it expands drawing bounds independently of boards.
+  /// effective `q`/`Q` owner outside the compound. Mask role changes synchronize
+  /// compound leaf group kinds; paint, metadata, identities, ordering and
+  /// unselected source remain unchanged. [bounds] supplies the host-computed ink
+  /// extent, including exposed artwork, independently of artboard rectangles.
   AiNativeDrawing editPaths({required List<AiNativePathEdit> edits, required AiBoundingBox bounds}) => _editNativePaths(this, edits, bounds);
 
   /// Duplicates ordinary paths immediately after their original source objects.
@@ -400,6 +401,32 @@ final class AiNativeDrawing {
   /// clipping scopes, child metadata and scalar state remain unchanged.
   AiNativeDrawing releaseCompounds({required List<AiNativeGroup> groups, required AiBoundingBox bounds, bool discardMetadata = false, bool inheritParentFlags = false}) =>
       _releaseNativeCompounds(this, groups, bounds, discardMetadata, inheritParentFlags);
+
+  /// Wraps consecutive ordinary siblings in a new mask group atomically.
+  ///
+  /// [masks] supplies owned contour edits with explicit open/closed mask behavior,
+  /// optionally replacing their geometry. Select complete compound owners through
+  /// [groups] and every contour when making a compound mask. Existing nested mask
+  /// groups remain intact; a requested mask must belong to the new outer scope.
+  /// The host supplies affected ink [bounds] and derived representations. Saved
+  /// contour attributes are replayed after the new `Q` without inventing defaults.
+  /// Non-neutral/unknown group flags require explicit [inheritParentFlags].
+  AiNativeDrawing clipArtwork({
+    required List<AiNativePathEdit> masks,
+    required AiBoundingBox bounds,
+    List<AiNativePath> paths = const [],
+    List<AiNativeGroup> groups = const [],
+    bool inheritParentFlags = false,
+  }) => _clipNativeArtwork(this, paths, groups, masks, bounds, inheritParentFlags);
+
+  /// Releases disjoint mask groups and only the masks they directly own.
+  ///
+  /// Nested clipping scopes retain their masks. Compound masks lose their controls
+  /// together, with point counts synchronized. Parent metadata and flag policies
+  /// match [releaseCompounds]. Saved contour attributes restore following artwork;
+  /// unknown required values and unresolved appearance dependencies reject.
+  AiNativeDrawing releaseClippingGroups({required List<AiNativeGroup> groups, required AiBoundingBox bounds, bool discardMetadata = false, bool inheritParentFlags = false}) =>
+      _releaseNativeClipping(this, groups, bounds, discardMetadata, inheritParentFlags);
 
   /// Dissolves ordinary parents while retaining complete children and local state.
   ///

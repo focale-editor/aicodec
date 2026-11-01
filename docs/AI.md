@@ -998,8 +998,9 @@ transaction. Each request supplies a current `path` and optional `segments` and/
 operators. Null fields preserve the corresponding source data. Counted contours
 receive an explicit closing endpoint when effective paint/mask closure requires
 it; the consumed `As` value is synchronized. The paint operator, process state,
-object identities, attached metadata, enclosing groups and all unselected bytes
-remain unchanged.
+object identities, attached metadata, group ordering and all unselected bytes
+remain unchanged. Mask role changes synchronize compound leaf delimiters between
+ordinary `u/U` and mask-leaf `q/Q` without replacing their identities or metadata.
 
 Changing clipping requires an existing `q`/`Q` owner. A compound mask must change
 all affected contours consistently in the same transaction. Removing a mask
@@ -1008,6 +1009,9 @@ group. Nested masks still intersect in saved source order. `bounds` is the host'
 affected ink extent, including artwork exposed by relaxing a mask. It only expands
 the existing drawing bounds; it does not infer artboards or render compatibility
 pages. The host must supply matching derived representations before saving.
+`clippingGroup` denotes an effective owner outside the outer compound. A `q/Q`
+leaf inside `*u/*U` does not independently bound the resulting compound mask.
+Unbounded compound masks reject before editing.
 
 Current qualification checks the ordinary body and complete neighboring CC pairs,
 with the retained compact ATE text contracts. Selected private paths, direct live
@@ -1027,8 +1031,10 @@ compound cannot absorb an existing compound, a live shape, a printable expansion
 text, unselected artwork or a partial owner. Ordinary compound elements may be
 paths or nested ordinary groups. All contours must either be masks or not be
 masks. Compound mask branches use ordinary groups of subgroups, with clipping
-leaves containing paths, as described in AI7 section 5.6. Existing clipping scopes
-and `h/H W` controls are retained.
+leaves containing paths, as described in AI7 section 5.6. A new compound mask
+requires a shared clipping owner outside the selection. Existing `h/H W` controls
+are retained. When compound boundaries activate or suppress existing `q/Q`
+leaves, source-derived contour attributes are replayed at their boundaries.
 
 `releaseCompounds(groups:, bounds:)` removes disjoint compound parents while
 retaining their complete children. Released mask contours become independent
@@ -1046,8 +1052,41 @@ and grouped masks, removed-parent metadata and references, hidden layers, nearby
 compact text, preserved CC pairs, invalid selections and 200-compound batches.
 Ten independent synthetic transactions check prescribed ownership and permit
 only exact boundary insertions/removals and explicit parent metadata disposal.
-Clip-owner lifecycle, general reparenting and successful full-producer compound
-edits remain outstanding.
+General reparenting and successful full-producer compound edits remain outstanding.
+
+`clipArtwork(paths:, groups:, masks:, bounds:)` creates an anonymous `q/Q` owner
+around consecutive ordinary siblings and installs explicit `AiNativePathEdit`
+mask requests in the same transaction. Requests may also replace the mask's
+geometry. Existing compound owners are selected through `groups`; every affected
+contour must agree on mask behavior. A mask inside an independently nested clip
+cannot be reassigned implicitly to the new scope. Compound leaf group kinds and
+point counts follow their new mask role.
+
+`releaseClippingGroups(groups:, bounds:)` dissolves disjoint outer scopes and
+clears only their effective owned masks. Nested independent clipping scopes stay
+intact. Compound masks are cleared together; their now ordinary leaves use `u/U`.
+Metadata disposal, deleted-identity checks, parent-flag inheritance and explicit
+host bounds follow `releaseCompounds`. Empty qualified scopes can also be released.
+
+These operations preserve the saved line cap, join, width, miter and dash state
+(`J`, `j`, `w`, `M`, `d`) restored by effective `q/Q` boundaries. Fill/stroke colors,
+overprint, fill rules and object flags remain persistent declarative assignments.
+The source contracts distinguish ordinary and private assignments; restoration
+uses existing values in the corresponding projections and never guessed defaults.
+State replay is bounded in aggregate. Selected opacity/blend assignments, derived
+CC artwork, text, unresolved style applications, unknown restoration values and
+mixed/empty compound-mask branches requiring regrouping reject atomically.
+Capabilities report clipping creation/dissolution as `requiresValidation`.
+
+Eleven clipping regressions and eleven independent transactions cover lifecycle,
+compound leaf normalization, metadata, private state, hidden layers, CC neighbors,
+nested masks and 200-scope batches. Nine transactions also compare every path's
+contour attributes and the final outgoing state by executing the unchanged Adobe
+prolog from the checksum-pinned `inkscape_minimized_ai7.ai` fixture in Ghostscript.
+Both the printing stream and a probe exposing private scalar assignments are
+checked. That projection validates declarative state, not Adobe's native UI
+reader. The two CC-pair transactions receive exact-data checks. The kit has no
+renderer dependency; this optional interpreter check belongs to corpus tooling.
 
 Nine regressions exercise nested contours, all paint/closure combinations,
 immutable requests, hidden layers, complete CC neighbors, count normalization and
@@ -2387,7 +2426,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; qualified parent dissolution with explicit metadata disposal | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
-| Ordinary compound/clip contours | Qualified source ancestry, mask controls and point counts | Atomic geometry/local mask edits; compound creation and release with explicit parent policies | Selected CC expansions/live shapes, unknown body/metadata and inconsistent compound masks reject. Clip-owner lifecycle, reparenting and successful full-producer qualification remain incomplete. |
+| Ordinary compound/clip contours | Qualified source ancestry, effective mask owners and point counts | Atomic geometry/mask edits; compound/clip creation and release with explicit parent/state policies | Selected CC expansions/live shapes, unknown dependencies and inconsistent masks reject. General reparenting and successful full-producer qualification remain incomplete. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

@@ -19,7 +19,7 @@ from verify_native_path_topology import inventory
 SOURCES = {
     'nested': 'e80440cf4c7428c6be6e4b5f40961c16b18ea9ddf56db52dfb246933f5b89655',
     'mask': 'ed53ff1a1a7fdbb950494640d0ff0a354d058cafa9af7f49ddd90339d8d6d644',
-    'mask-tree': 'b979c30b82c7d204a303d786dfe48b3128ec5f1b8634913627bb0cb19155c7e6',
+    'mask-tree': '0ae47beead3e074e3c5e02fc8ab62e2d0b3ac244f6997e100bff0fe5cf3ddde1',
     'cc-pairs': 'e5a59c009610e265af2b1b88af187fe783f0c1be386fe5925e3292f58860c913',
     'metadata': '292e1c04dae1ccdfd74d0d4eb8b40c208f908f0de80716287ad3d10231fc508d',
     'batch': '273540c410d07e412cef4f59c04974566b9a8cc981469f3f8494cb9fba53cadc',
@@ -39,7 +39,7 @@ def selection(data, name):
     if name == 'mask':
         return data.index(b'4 As'), data.index(b'n Q') + 1, range(2), 1
     if name == 'mask-tree':
-        return data.index(b'\nu q') + 1, data.index(b' U\n%%Trailer') + 2, range(2), 0
+        return data.index(b' u q') + 1, data.index(b' U Q\n%%Trailer') + 2, range(2), 1
     assert name == 'cc-pairs'
     start = data.rindex(b'0 A 0 Xw 4 As') + len(b'0 A 0 Xw ')
     return start, data.rindex(b'f\n%%Trailer') + 1, range(9, 11), 0

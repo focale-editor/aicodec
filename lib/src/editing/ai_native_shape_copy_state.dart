@@ -92,7 +92,7 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
 }
 
 /// Captures known source values separately for printing and private authoring.
-Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<int> boundaries) {
+Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<int> boundaries, {bool clipping = false}) {
   final List<int> positions = boundaries.toSet().toList()..sort();
   final Map<int, _NativeShapeInputs> result = {};
   final Map<String, AiNativeInstruction> printing = {};
@@ -105,6 +105,27 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
   final Set<int> printingStyles = {};
   final Set<int> scopedGradients = {};
   final Set<int> versionComments = {};
+  final List<_NativeShapeInputs?> clips = [];
+  int compoundDepth = 0;
+
+  /// Freezes source assignments and unknown-value provenance at one boundary.
+  _NativeShapeInputs snapshot() => (printing: Map.of(printing), native: Map.of(native), printingOrigins: Map.of(printingOrigins), nativeOrigins: Map.of(nativeOrigins));
+
+  /// Restores only actual contour attributes saved by ordinary clipping groups.
+  void restore(_NativeShapeInputs saved) {
+    for (final String key in _nativeClipStateKeys) {
+      printing.remove(key);
+      native.remove(key);
+      if (saved.printing[key] case final AiNativeInstruction value) {
+        printing[key] = value;
+      }
+      if (saved.native[key] case final AiNativeInstruction value) {
+        native[key] = value;
+      }
+      printingOrigins[key] = saved.printingOrigins[key]!;
+      nativeOrigins[key] = saved.nativeOrigins[key]!;
+    }
+  }
 
   /// Distinguishes unknown values across opaque or conditional source boundaries.
   void barrier(int start, {required bool private}) {
@@ -161,6 +182,29 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
         continue;
       }
       if (item is AiNativeInstruction) {
+        if (clipping && !item.isPrivate && item.operands.isEmpty) {
+          switch (item.operator) {
+            case '*u':
+              compoundDepth++;
+              continue;
+            case '*U':
+              compoundDepth--;
+              continue;
+            case 'q':
+              clips.add(compoundDepth == 0 ? snapshot() : null);
+              continue;
+            case 'Q':
+              if (clips.isEmpty) {
+                throw const FormatException('Clipping state requires matched group boundaries.');
+              }
+              if (clips.removeLast() case final _NativeShapeInputs saved) {
+                restore(saved);
+              }
+              continue;
+            case 'h' || 'H' || 'W':
+              continue;
+          }
+        }
         final String? key;
         try {
           key = _nativeArtworkStateKey(item);
@@ -209,7 +253,7 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(AiNativeDrawing drawing, Iterable<
       }
       barrier(item.start, private: drawing.records._projection.isPrivate(item.start));
     }
-    result[position] = (printing: Map.of(printing), native: Map.of(native), printingOrigins: Map.of(printingOrigins), nativeOrigins: Map.of(nativeOrigins));
+    result[position] = snapshot();
   }
   return result;
 }

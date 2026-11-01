@@ -15,7 +15,7 @@ Future<void> main() async {
   final Map<String, String> sources = {
     'nested': compoundLifecycleSource(),
     'mask': objectSource('q 4 As $topologyRectangle h W n 4 As $topologyRectangle h W n Q'),
-    'mask-tree': objectSource('u q 4 As $topologyRectangle h W n Q q 4 As $topologyRectangle h W n Q U'),
+    'mask-tree': objectSource('q u q 4 As $topologyRectangle h W n Q q 4 As $topologyRectangle h W n Q U Q'),
     'cc-pairs': mixedArtboardSource().replaceFirst('%%Trailer', '0 A 0 Xw 4 As $topologyRectangle f 4 As $topologyRectangle f\n%%Trailer'),
     'metadata': objectSource('''1 Ae *u
 4 As $topologyRectangle f
@@ -40,7 +40,7 @@ ${objectDictionary(identifier: 'Parent', name: 'Compound')}
           'cc-pairs' => drawing.paths.skip(drawing.paths.length - 2).toList(),
           _ => [],
         },
-        groups: const {'nested', 'mask-tree'}.contains(source.key) ? [drawing.groups.last] : [],
+        groups: const {'nested', 'mask-tree'}.contains(source.key) ? [drawing.groups.lastWhere((group) => group.opening.operator == 'u')] : [],
         bounds: topologyBounds,
         inheritParentFlags: true,
       );

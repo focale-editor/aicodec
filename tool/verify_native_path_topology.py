@@ -110,6 +110,8 @@ def verify(inkai, output, row, request):
         bind(before, old, path)
         bind(after, new, actual[index])
         expected = deepcopy(path)
+        if row['source'] == 'synthetic-nested' and mask is not None:
+            expected['owners'] = [(('u' if mask == 'none' else 'q') if ordinal == 2 else kind, ordinal) for kind, ordinal in expected['owners']]
         if index in geometry_indices:
             expected['geometry'] = deepcopy(GEOMETRY_INPUT)
         if index in mask_indices:
@@ -139,6 +141,12 @@ def verify(inkai, output, row, request):
                 else:
                     edits.append((*old['controls'][0], expected['controls'][0].encode()))
         assert actual[index] == expected, (row['source'], row['variant'], index)
+    if row['source'] == 'synthetic-nested' and mask is not None:
+        old_kind = b'q' if request[0] != 'original' else b'u'
+        new_kind = b'u' if mask == 'none' else b'q'
+        opening = before.index(b'\n' + old_kind + b' 4 As') + 1
+        closing = before.index(b'\n' + old_kind.upper() + b'\n*U') + 1
+        edits.extend([(opening, opening + 1, new_kind), (closing, closing + 1, new_kind.upper())])
     pattern = rb'%%(?:HiResBoundingBox|BoundingBox|PageBoundingBox):[^\r\n]*'
     for old, new in zip(re.finditer(pattern, before), re.finditer(pattern, after), strict=True):
         bounds = list(map(float, old[0].split(b':', 1)[1].split()))

@@ -898,8 +898,8 @@ groups and compound topology. There is no general modern object lifecycle API.
   Twelve independent synthetic edits and three checksum-pinned producer refusals
   pass. The producer shape compounds are derived; the Inkscape CC compounds still
   require imported SVG metadata qualification. Successful full-producer edits,
-  clip owner creation/dissolution, general reparenting and broader relationship
-  qualification remain outstanding; Adobe reopening remains unqualified.
+  general reparenting and broader relationship qualification remain outstanding;
+  Adobe reopening remains unqualified.
   Validation: 858 VM/857 Node tests pass, followed by 19 focused VM/Node checks
   after caching retained-body inspection per immutable snapshot and adding the
   operation-specific capability entry. All fifteen independent cases pass again;
@@ -916,6 +916,19 @@ groups and compound topology. There is no general modern object lifecycle API.
   cover the final refusal of text inside a released compound. All ten new and
   fifteen existing independent topology cases pass. Formatting, analysis, fix
   dry-run, Python compilation and diff checks are clean.
+  Clipping creation/release now applies complete mask transactions, preserves
+  independent nested scopes, synchronizes compound leaf kinds and restores saved
+  contour attributes. Compound lifecycle also accounts for the `q/Q` scopes that
+  become effective or ineffective across compound boundaries. Effective masks
+  require an outer clip owner; unknown state and unsupported appearance changes
+  reject. Eleven regressions and eleven independent transactions cover the new
+  behavior. Nine transactions additionally preserve every contour and final state
+  through the unchanged pinned Adobe prolog in Ghostscript, in printing and
+  private-scalar projections. This remains format-data validation, not Adobe UI
+  certification. Full-producer edits and general relationship movement remain open.
+  Validation: 879 VM/878 Node tests pass, alongside all 36 independent topology,
+  compound and clipping transactions. Formatting, analysis, fix dry-run, Python
+  compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

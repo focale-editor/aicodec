@@ -1,11 +1,11 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Requires explicit inheritance when changing a non-neutral or unknown parent.
-void _nativeGroupingFlags(AiNativeDrawing drawing, Iterable<int> boundaries, bool inheritParentFlags) {
+void _nativeGroupingFlags(AiNativeDrawing drawing, Iterable<int> boundaries, bool inheritParentFlags, {bool clipping = false}) {
   if (inheritParentFlags) {
     return;
   }
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, boundaries);
+  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, boundaries, clipping: clipping);
   for (final _NativeShapeInputs state in states.values) {
     if ([state.printing, state.native].any((values) => const {'A', 'Xw'}.any((key) => values[key]?.numbers?.single != 0))) {
       throw UnsupportedError('Changing a non-neutral or unknown group ancestor requires explicit inheritParentFlags.');

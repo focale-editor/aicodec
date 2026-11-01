@@ -42,7 +42,10 @@ final class AiNativePathTopology {
   AiNativeGroup? get compound => groups.where((group) => group.compound).lastOrNull;
 
   /// Matching graphics-state owner that bounds this path's clipping changes.
-  AiNativeGroup? get clippingGroup => groups.where((group) => group.opening.operator == 'q').lastOrNull;
+  ///
+  /// Clipping leaves inside a compound do not save/restore graphics state; the
+  /// mask takes effect when the outer compound is consumed.
+  AiNativeGroup? get clippingGroup => groups.takeWhile((group) => !group.compound).where((group) => group.opening.operator == 'q').lastOrNull;
 }
 
 /// An immutable geometry or mask change to one authoritative ordinary path.

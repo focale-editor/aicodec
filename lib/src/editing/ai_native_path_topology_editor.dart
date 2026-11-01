@@ -66,7 +66,11 @@ List<AiNativePathTopology> _nativePathTopologies(AiNativeDrawing drawing, List<A
       throw const FormatException('A native contour cannot own multiple point counts.');
     }
     final List<AiNativeInstruction> controls = _pathInterval(drawing.items, path.geometry.last.end, path.paint.start, (item) => item.start).cast<AiNativeInstruction>().toList();
-    result.add(AiNativePathTopology._(path: path, groups: groups, pointCount: counts.singleOrNull, maskControls: controls));
+    final AiNativePathTopology topology = AiNativePathTopology._(path: path, groups: groups, pointCount: counts.singleOrNull, maskControls: controls);
+    if (topology.mask != .none && topology.clippingGroup == null) {
+      throw UnsupportedError('A compound mask requires an effective clipping owner outside its compound.');
+    }
+    result.add(topology);
   }
   return result;
 }
@@ -74,6 +78,19 @@ List<AiNativePathTopology> _nativePathTopologies(AiNativeDrawing drawing, List<A
 /// Changes complete contour requests while retaining all other native source.
 AiNativeDrawing _editNativePaths(AiNativeDrawing drawing, List<AiNativePathEdit> changes, AiBoundingBox bounds) {
   _nativeTopologyBounds(bounds);
+  final List<AiSourceEdit> edits = _nativePathEdits(drawing, changes);
+  edits.addAll(_nativeClippingCompoundGroups(drawing, changes.where((change) => change.mask != null && change.mask != .none).toList(), masked: true));
+  edits.addAll(_nativeClippingCompoundGroups(drawing, changes.where((change) => change.mask == .none).toList(), masked: false));
+  edits.addAll(AiNativeEditor.includeBoundsEdits(program: drawing.records.program, bounds: bounds));
+  edits.removeWhere((edit) => _sameNativeBytes(Uint8List.sublistView(drawing.records.program.bytes, edit.start, edit.end), edit.bytes));
+  if (edits.isEmpty) {
+    return drawing;
+  }
+  return _groupLifecycleResult(drawing, edits, paths: drawing.paths.length, groups: drawing.groups.length, liveShapes: drawing.liveShapes.length);
+}
+
+/// Builds one atomic contour transaction, including explicitly added clip owners.
+List<AiSourceEdit> _nativePathEdits(AiNativeDrawing drawing, List<AiNativePathEdit> changes, {Set<AiNativePath> newClipPaths = const {}}) {
   if (changes.isEmpty || changes.map((change) => change.path).toSet().length != changes.length) {
     throw ArgumentError('Native path edits require distinct source contours.');
   }
@@ -97,7 +114,7 @@ AiNativeDrawing _editNativePaths(AiNativeDrawing drawing, List<AiNativePathEdit>
     final AiNativePathTopology owner = topology[change.path]!;
     final AiNativePath path = owner.path;
     final AiNativePathMask mask = masks[path]!;
-    if (mask != .none && owner.clippingGroup == null) {
+    if (mask != .none && owner.clippingGroup == null && !newClipPaths.contains(path)) {
       throw UnsupportedError('A native mask requires an existing owning clipping group.');
     }
     final bool closed = path.closed || mask == .closed;
@@ -139,10 +156,5 @@ AiNativeDrawing _editNativePaths(AiNativeDrawing drawing, List<AiNativePathEdit>
       }
     }
   }
-  edits.addAll(AiNativeEditor.includeBoundsEdits(program: drawing.records.program, bounds: bounds));
-  edits.removeWhere((edit) => _sameNativeBytes(Uint8List.sublistView(drawing.records.program.bytes, edit.start, edit.end), edit.bytes));
-  if (edits.isEmpty) {
-    return drawing;
-  }
-  return _groupLifecycleResult(drawing, edits, paths: drawing.paths.length, groups: drawing.groups.length, liveShapes: drawing.liveShapes.length);
+  return edits;
 }

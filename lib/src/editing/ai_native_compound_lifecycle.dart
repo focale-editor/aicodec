@@ -79,12 +79,17 @@ AiNativeDrawing _compoundNativeArtwork(AiNativeDrawing drawing, List<AiNativePat
       }
     }
   }
-  _nativeGroupingFlags(drawing, [spans.first.start], inheritParentFlags);
+  _nativeGroupingFlags(drawing, [spans.first.start], inheritParentFlags, clipping: true);
+  if (topology.first.mask != .none && !topology.first.groups.any((group) => group.opening.operator == 'q' && group.start < spans.first.start && group.end > spans.last.end)) {
+    throw UnsupportedError('A new compound mask requires a shared clipping owner outside the selected elements.');
+  }
+  final List<AiNativeGroup> clipping = drawing.groups.where((group) => group.opening.operator == 'q' && group.start >= spans.first.start && group.end <= spans.last.end).toList();
   return _nativeCompoundResult(
     drawing,
     [
       AiSourceEdit(start: spans.first.start, end: spans.first.start, bytes: latin1.encode('\n*u\n')),
       AiSourceEdit(start: spans.last.end, end: spans.last.end, bytes: latin1.encode('\n*U\n')),
+      ..._nativeCompoundClipState(drawing, clipping, activate: false),
     ],
     bounds,
     drawing.groups.length + 1,
@@ -112,9 +117,10 @@ AiNativeDrawing _releaseNativeCompounds(AiNativeDrawing drawing, List<AiNativeGr
   if (!discardMetadata && owners.any((owner) => owner.dictionary?.entries.isNotEmpty ?? false)) {
     throw UnsupportedError('Releasing a compound requires explicit disposal of its parent metadata.');
   }
-  _nativeGroupingFlags(drawing, groups.map((group) => group.start), inheritParentFlags);
+  _nativeGroupingFlags(drawing, groups.map((group) => group.start), inheritParentFlags, clipping: true);
   final AiNativeLayers layers = drawing._pathTopologyScope.layers;
   _nativeRemovalReferences(layers, [for (final AiNativeObject owner in owners) ?owner.identifier], _layerHeaderItems(layers), bodyDictionaries: drawing._pathTopologyScope.dictionaries);
+  final List<AiNativeGroup> clipping = drawing.groups.where((child) => child.opening.operator == 'q' && groups.any((group) => child.start > group.start && child.end < group.end)).toList();
   return _nativeCompoundResult(
     drawing,
     [
@@ -122,6 +128,7 @@ AiNativeDrawing _releaseNativeCompounds(AiNativeDrawing drawing, List<AiNativeGr
         AiSourceEdit(start: owners[entry.$1].start, end: entry.$2.opening.end, bytes: [32]),
         AiSourceEdit(start: entry.$2.closing.start, end: owners[entry.$1].end, bytes: [32]),
       ],
+      ..._nativeCompoundClipState(drawing, clipping, activate: true),
     ],
     bounds,
     drawing.groups.length - groups.length,

@@ -83,6 +83,7 @@ void main() {
       AiNativeEditOperation.pathReparenting,
       AiNativeEditOperation.groupCreation,
       AiNativeEditOperation.compoundCreation,
+      AiNativeEditOperation.clippingCreation,
     ]);
     check(path.edits.map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.requiresValidation));
   });
@@ -98,11 +99,14 @@ void main() {
       AiNativeEditOperation.groupReordering,
       AiNativeEditOperation.groupReparenting,
       AiNativeEditOperation.compoundCreation,
+      AiNativeEditOperation.clippingCreation,
     ]);
     check(groups.first.edits.map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.requiresValidation));
     check(groups.skip(1).expand((group) => group.edits.take(5)).map((edit) => edit.support)).every((value) => value.equals(AiNativeEditSupport.unsupported));
-    check(groups[1].edits.last.operation).equals(AiNativeEditOperation.compoundDissolution);
-    check(groups[2].edits.last.operation).equals(AiNativeEditOperation.compoundCreation);
+    check(groups[1].edits[5].operation).equals(AiNativeEditOperation.compoundDissolution);
+    check(groups[2].edits[5].operation).equals(AiNativeEditOperation.compoundCreation);
+    check(groups[1].edits.last.operation).equals(AiNativeEditOperation.clippingCreation);
+    check(groups[2].edits.last.operation).equals(AiNativeEditOperation.clippingDissolution);
     check(groups.skip(1).map((group) => group.edits.last.support)).every((value) => value.equals(AiNativeEditSupport.requiresValidation));
     check(groups.map((group) => group.editable)).every((value) => value.isFalse());
   });

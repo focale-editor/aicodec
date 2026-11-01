@@ -9,7 +9,7 @@ import '../test/ai_native_objects_test.dart' show objectSource;
 import '../test/ai_native_path_topology_test.dart' show topologyBounds, topologyGeometry, topologyRectangle, topologySource;
 
 /// Locates source commands independently of whether their paths are editable.
-List<Map<String, Object?>> _inventory(AiNativeDrawing drawing) {
+List<Map<String, Object?>> pathTopologyInventory(AiNativeDrawing drawing) {
   int previous = drawing.records.program.bodyStart;
   return [
     for (final AiNativePath path in drawing.paths)
@@ -75,7 +75,15 @@ Future<void> main() async {
       final String target = '${source.key}.${request.key}.ps';
       await File('${output.path}/$input').writeAsBytes(original.records.program.bytes);
       await File('${output.path}/$target').writeAsBytes(result.records.program.bytes);
-      rows.add({'source': source.key, 'variant': request.key, 'original': input, 'result': target, 'before': _inventory(original), 'after': _inventory(result), 'rejected': false});
+      rows.add({
+        'source': source.key,
+        'variant': request.key,
+        'original': input,
+        'result': target,
+        'before': pathTopologyInventory(original),
+        'after': pathTopologyInventory(result),
+        'rejected': false,
+      });
       stdout.writeln('${source.key}/${request.key} passed');
     }
   }
