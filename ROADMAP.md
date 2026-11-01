@@ -817,6 +817,22 @@ groups and compound topology. There is no general modern object lifecycle API.
   clean format/fix/analysis validate this boundary correction. All twenty
   appearance transactions pass with the exact producer inventories; the three
   full sources now pass panel inspection before the remaining brush owners.
+  Direct brush artwork now shares the retained resource parser and image-owner
+  checks. Separate brush names, counted compound/clip paths, source metadata and
+  named paint/style dependencies remain exact. Direct pattern/symbol images use
+  the same bounded process-raster contract, including separate color/alpha planes
+  and measured producer count variants. Eight regressions cover all four board
+  operations, process colors, private/ordinary samples, hostile binary delimiters,
+  resource namespaces, missing/ambiguous uses, malformed ownership and limits.
+  Twenty independent transactions compare all 17 producer brush definitions and
+  20 RGB/CMYK images. A geometry-bounded raw-plane check complements the pinned
+  reader's known loss of one leading RGB byte, so all original pixels are checked.
+  The carriers also retain the previous complete appearance/text/resource data.
+  Full original CC sources now pass brush inspection before SVG-filter owners;
+  calligraphic assignment descriptors and blend dependencies also remain open.
+  Full validation: 826 VM/825 Node tests, clean format/fix/analysis and 162
+  independent transactions, including regeneration and comparison of all 142
+  previous resource/text/lifecycle outcomes. This artboard task remains open.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

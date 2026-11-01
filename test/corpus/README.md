@@ -833,6 +833,29 @@ dart run tool/check_native_artboard_styles.dart
 python3 tool/verify_native_artboard_styles.py --inkai-source /tmp/extension-ai
 ```
 
+The retained-brush suite adds twenty transactions over four real carriers and
+one synthetic source. It copies all seventeen complete brush-artwork definitions
+from the four producers, including twenty raster images: fifteen 168-by-62 CMYK
+images and five 201-by-106 RGB images, each with a separate alpha plane. The
+carriers also keep the qualified complete styles, symbols, masks, text, fonts,
+gradients, patterns and palettes from the appearance suite. Source provenance,
+carrier checksums, exact copied sections and full independent syntax trees are
+compared before and after every native edit.
+
+The pinned reader omits a leading ASCII-space byte from the RGB color plane in
+`flowtext.ai`. A supplementary independent check therefore reads both planes
+from the original bytes using the decoded dimensions and exact `XI` framing.
+It checks the computed end boundary and compares every color/alpha byte, including
+that leading byte, without searching samples for `EndData`. Whole-native
+checks still permit only the prescribed Document/crop changes. This qualifies
+brush artwork retention; calligraphic/other assignment descriptors, SVG-filter
+and blend owners still need separate qualification for complete-producer edits.
+
+```sh
+dart run tool/check_native_artboard_brushes.dart
+python3 tool/verify_native_artboard_brushes.py --inkai-source /tmp/extension-ai
+```
+
 ## Native print selections
 
 The print-job suite reuses the three CC unit/origin fixtures pinned in

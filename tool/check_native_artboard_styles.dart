@@ -11,7 +11,7 @@ import 'check_native_artboard_text.dart' show retainedTextCarrier;
 import 'check_native_artboards.dart' show artboardInventory;
 
 /// Copies complete supported style owners and all symbols except the blend source.
-String _carrier(AiNativeSource source) {
+String retainedAppearanceCarrier(AiNativeSource source) {
   final String text = latin1.decode(source.bytes);
   final AiNativeRecords records = AiNativeRecords.decode(program: AiProgram.decode(bytes: source.bytes));
   final StringBuffer styles = StringBuffer('%AI9_BeginArtStyles\n');
@@ -54,7 +54,7 @@ Future<void> main() async {
   for (final String name in ['simple_cc_legacy.ai', 'simple_v2020.ai', 'text_transforms.ai', 'flowtext.ai']) {
     final AiNativeSource source = AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single;
     await File('${output.path}/$name.producer.ps').writeAsBytes(source.bytes);
-    carriers[name] = _carrier(source);
+    carriers[name] = retainedAppearanceCarrier(source);
   }
   carriers['synthetic-style'] = symbolArtboardSource(style: artboardActiveStyle());
   final List<Map<String, Object?>> rows = [];

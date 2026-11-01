@@ -1521,6 +1521,24 @@ within the original program limits. Unknown mask fields, external execution,
 unsupported raster layouts or incomplete ownership reject atomically. This is
 retention during artboard edits; mask editing and recomposition remain separate.
 
+Direct `%AI8_BeginBrushPattern` artwork uses the same retained-resource contract.
+Brush names have their own namespace, with literal unique declarations and
+unconditional complete boundaries. Empty/vector resources, counted compound and
+clipping paths, local metadata and resolved style/gradient/pattern references
+remain exact. Direct process images also qualify inside pattern and symbol
+definitions. Gray, RGB and CMYK samples retain their existing separate alpha
+plane, source placement, sample UUIDs and original scale. An image dictionary
+must be attached to that image; matching string values do not create artboard
+dependencies.
+
+All raster sections use the bounded source decoder. Geometry determines color
+and alpha sizes even for producers whose `BeginData` count covers only color;
+sample bytes cannot supply resource, record or DSC delimiters. Unknown image
+layouts, opaque annotations, executable values, unrelated data and crossing
+owners reject before any edit. These rules qualify resource preservation during
+artboard changes. Brush assignment descriptors, calligraphic `GObjRef` ownership,
+brush-instance editing and synthesized stroke geometry remain separate contracts.
+
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
 retained with compact ATE versions 7 and 9. Point, area and path frames use
 explicit canvas geometry; story frame lists and cached frame references resolve
@@ -1749,7 +1767,7 @@ contribute version delimiters. No target Illustrator version is selected.
 
 Named resource links currently cover `KnownStyle`/mode-zero/one `XW` and global
 `Bd`/complete `Bg` instances. The index includes qualified uses inside native
-`Art`, paint styles and setup pattern/symbol artwork; inspecting those references
+`Art`, paint styles and setup pattern/symbol/brush artwork; inspecting those references
 does not implement pattern/symbol editing. References outside indexed structural
 nodes keep a null lexical owner and exact instruction offsets. Declaration
 memberships follow the source name, including conditions inside its record.

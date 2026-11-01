@@ -9,6 +9,7 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
   final List<AiToken> tokens = records._projection.tokens;
   final Set<String> patterns = {};
   final Set<String> symbols = {};
+  final Set<String> brushes = {};
   final _ArtboardResourceInspection scope = _ArtboardResourceInspection(layers: layers);
   final List<({int start, int end})> ranges = [];
   final Set<AiNativeContainer> objects = {};
@@ -48,21 +49,18 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
     }
     final bool pattern = opening.lexeme.startsWith('%AI3_BeginPattern:');
     final bool symbol = opening.lexeme == '%AI14_BeginSymbol';
-    if (!setup || !pattern && !symbol) {
+    final bool brush = opening.lexeme == '%AI8_BeginBrushPattern';
+    if (!setup || !pattern && !symbol && !brush) {
       continue;
     }
     final List<AiToken> contents = [];
-    final String ending = pattern ? '%AI3_EndPattern' : '%AI10_EndSymbol';
-    int nested = root;
+    final String ending = pattern
+        ? '%AI3_EndPattern'
+        : brush
+        ? '%AI8_EndBrushPattern'
+        : '%AI10_EndSymbol';
     while (++index < tokens.length && tokens[index].start < records.program.bodyStart && !(tokens[index].kind == .comment && tokens[index].lexeme == ending)) {
       final AiToken token = tokens[index];
-      while (nested < records.roots.length && records.roots[nested].end <= token.start) {
-        nested++;
-      }
-      final bool inRecord = nested < records.roots.length && token.start >= records.roots[nested].start && token.end <= records.roots[nested].end;
-      if (!inRecord && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')))) {
-        throw UnsupportedError('Retained resources cannot hide conditional, embedded or opaque artwork.');
-      }
       if (token.kind != .comment) {
         contents.add(token);
       }
@@ -85,15 +83,34 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
     if (pattern) {
       _artboardPatternHeader(records, opening, contents);
     }
-    if (!(pattern ? patterns : symbols).add(latin1.decode(aiStringBytes(contents.first)))) {
+    if (!(pattern
+            ? patterns
+            : brush
+            ? brushes
+            : symbols)
+        .add(latin1.decode(aiStringBytes(contents.first)))) {
       throw UnsupportedError('Retained resource names must identify a unique definition in their namespace.');
     }
     final int start = contents[pattern ? 4 : 0].end;
     final int end = pattern ? contents.last.start : closing.start;
     final List<AiNativeContainer> metadata = _pathInterval(records.roots, start, end, (record) => record.start).toList();
+    final List<AiNativeRaster> rasters = contents.any((token) => token.kind == .data) ? _pathInterval(scope.rasters, start, end, (image) => image.start).toList() : [];
+    final Map<AiNativeContainer, AiNativeRaster> rasterOwners = {};
+    for (final AiNativeRaster image in rasters) {
+      if (image.end > end) {
+        throw const FormatException('A retained image crosses its resource boundary.');
+      }
+      _artboardResourceRaster(records, image);
+      if (image.dictionary != null) {
+        rasterOwners[image.dictionary!] = image;
+      }
+    }
+    _artboardResourceAnnotations(scope, opening.end, closing.start, rasters, metadata: metadata);
     final List<AiNativeItem> items = [];
     final _NativeCommandReader reader = _NativeCommandReader(maxDepth: records.program.limits.maxDepth);
     int owner = 0;
+    int rasterIndex = 0;
+    AiNativeRaster? active;
     for (final AiToken token in contents.skip(pattern ? 5 : 1).take(contents.length - (pattern ? 6 : 1))) {
       while (owner < metadata.length && metadata[owner].end <= token.start) {
         owner++;
@@ -104,18 +121,36 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
           if (metadata[owner].end > end) {
             throw const FormatException('Resource metadata crosses its declaration boundary.');
           }
-          if (pattern) {
+          if (pattern && !rasterOwners.containsKey(metadata[owner])) {
             _artboardPatternMetadata(layers, metadata[owner]);
           } else {
-            _artboardSymbolMetadata(scope, metadata[owner]);
+            _artboardSymbolMetadata(scope, metadata[owner], raster: rasterOwners[metadata[owner]]);
           }
           items.add(metadata[owner]);
           objects.add(metadata[owner]);
         }
         continue;
       }
+      while (rasterIndex < rasters.length && rasters[rasterIndex].end <= token.start) {
+        rasterIndex++;
+      }
+      if (rasterIndex < rasters.length && token.start >= rasters[rasterIndex].start) {
+        final AiNativeRaster image = rasters[rasterIndex];
+        if (token.end > image.end) {
+          throw const FormatException('Retained image tokens cross their owned section.');
+        }
+        if (!identical(active, image)) {
+          reader.finish();
+          items.add(image);
+          active = image;
+        }
+        continue;
+      }
       final AiNativeInstruction? instruction = reader.add(token, isPrivate: records._projection.isPrivate(token.start));
       if (instruction != null) {
+        if (instruction.operator == 'N' && instruction.operands.isNotEmpty) {
+          throw const FormatException('A retained raster terminator cannot consume operands.');
+        }
         items.add(instruction);
       }
     }

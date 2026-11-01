@@ -225,10 +225,10 @@ Iterable<AiNativeInstruction> _structureCommands(AiNativeDrawing drawing) sync* 
   }
 }
 
-/// Reads declarative setup artwork without interpreting symbol/pattern semantics.
+/// Reads declarative setup artwork without instantiating its resources.
 Iterable<AiNativeInstruction> _structureSetupArtwork(AiNativeRecords records) sync* {
-  final RegExp beginning = RegExp(r'^%AI\d+_Begin(Pattern|Symbol)(?::|$)');
-  final RegExp ending = RegExp(r'^%AI\d+_End(Pattern|Symbol)$');
+  final RegExp beginning = RegExp(r'^%AI\d+_Begin(Pattern|Symbol|BrushPattern)(?::|$)');
+  final RegExp ending = RegExp(r'^%AI\d+_End(Pattern|Symbol|BrushPattern)$');
   final List<AiToken> operands = [];
   final List<String> sections = [];
   int rootIndex = 0;
