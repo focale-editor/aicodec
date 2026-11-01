@@ -885,7 +885,7 @@ groups and compound topology. There is no general modern object lifecycle API.
   families belongs to later milestones; general Adobe reopening and the Reuters
   drawing body remain unqualified. Ordinary compound/clip semantic editing and
   narrowing other whole-source refusals remain the next separate tasks.
-- [ ] Support editing ordinary native compound paths and clipping relationships
+- [x] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
   **In progress:** `pathTopology` exposes ordinary compound/clip ancestry, mask
   controls and owned point counts. Atomic `editPaths` requests replace contours
@@ -993,6 +993,26 @@ groups and compound topology. There is no general modern object lifecycle API.
   runtime for the final provenance-fragment guard. All 71 independent contour transactions
   and 32 reference-scope/resource cases pass after regeneration. Formatting,
   analysis, fix dry-run, Python compilation and diff checks are clean.
+  **Final branch qualification:** ordinary branches now move within, out of or
+  into qualified compounds. Exiting materializes deferred common paint; entering
+  another compound explicitly adopts its appearance and paint mode while retaining
+  contour closure. Literal source assignments remain exact, with additional replay
+  accounting for clipping scopes that become active or inactive. Both scalar
+  projections retain group flags, consumed paint and outgoing state; unknown-value
+  proofs use the actual enclosing compound/clip scopes. Empty identified branches,
+  nested compounds, mixed mask roles and incompatible compound grammar reject
+  atomically. Twelve regressions include multi-leaf mask branches, unknown deferred
+  consumption, source immutability, original limits and 100-branch batches.
+  Sixteen independent transactions verify complete hierarchy, identities, geometry,
+  counts, masks, scalar state and exact source patches, with 32 Adobe-prolog state
+  projections through Ghostscript. Four moves use complete CC producer programs
+  prepared only by adding two ordinary group delimiters around an existing contour;
+  the independent verifier proves those preparations byte for byte. The qualified
+  ordinary compound/clip editing task is complete; Adobe UI reopening remains
+  unqualified, and narrowing unrelated whole-source refusals is the next task.
+  Validation: 934 VM/933 Node tests pass. All 87 independent contour transactions
+  pass after regenerating the preceding 71. Formatting, analysis, fix dry-run,
+  Python compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

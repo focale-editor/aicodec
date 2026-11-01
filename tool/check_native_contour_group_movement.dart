@@ -11,7 +11,7 @@ import '../test/ai_native_path_topology_test.dart' show topologyBounds;
 import 'check_native_path_topology.dart' show pathTopologyInventory;
 
 /// Exposes complete native owners for independent structural and byte binding.
-Map<String, Object?> _inventory(AiNativeDrawing drawing) {
+Map<String, Object?> contourGroupInventory(AiNativeDrawing drawing) {
   final AiNativeObjects objects = AiNativeObjects.decode(drawing: drawing);
   return {
     'paths': pathTopologyInventory(drawing),
@@ -72,7 +72,7 @@ Future<void> main() async {
         inheritParentFlags: true,
       );
       await File('${output.path}/${entry.key}.${request.key}.ps').writeAsBytes(result.records.program.bytes);
-      rows.add({'source': entry.key, 'variant': request.key, 'before': _inventory(before), 'after': _inventory(result)});
+      rows.add({'source': entry.key, 'variant': request.key, 'before': contourGroupInventory(before), 'after': contourGroupInventory(result)});
       stdout.writeln('${entry.key}/${request.key} passed');
       if (entry.key.endsWith('.ai')) {
         final AiNativeDrawing restored = result.moveContourGroups(
@@ -83,7 +83,7 @@ Future<void> main() async {
           inheritParentFlags: true,
         );
         await File('${output.path}/${entry.key}.restore.ps').writeAsBytes(restored.records.program.bytes);
-        rows.add({'source': entry.key, 'variant': 'restore', 'before': _inventory(result), 'after': _inventory(restored)});
+        rows.add({'source': entry.key, 'variant': 'restore', 'before': contourGroupInventory(result), 'after': contourGroupInventory(restored)});
         stdout.writeln('${entry.key}/restore passed');
       }
     }

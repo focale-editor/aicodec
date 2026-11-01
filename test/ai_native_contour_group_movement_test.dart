@@ -42,7 +42,7 @@ ${contourMovementPath(60)}
 ''', setup: '');
 
 /// Reads consumed stroke widths, including deferred compound paint and clipping.
-Map<double, List<double?>> _widths(AiNativeDrawing drawing) {
+Map<double, List<double?>> contourGroupWidths(AiNativeDrawing drawing) {
   final Map<double, List<double?>> values = {};
   final List<List<double?>?> clips = [];
   final List<double> compound = [];
@@ -88,7 +88,7 @@ void _retained(AiNativeDrawing before, AiNativeDrawing after, List<String> group
     final AiNativeObject last = result.forSource(contourMovementGroup(after, name));
     check(after.records.program.bytes.sublist(last.start, last.end)).deepEquals(before.records.program.bytes.sublist(first.start, first.end));
   }
-  check(_widths(after)).deepEquals(_widths(before));
+  check(contourGroupWidths(after)).deepEquals(contourGroupWidths(before));
   check(result.structure.identifiers.map((identifier) => latin1.decode(identifier.bytes)).toList()..sort()).deepEquals(
     original.structure.identifiers.map((identifier) => latin1.decode(identifier.bytes)).toList()..sort(),
   );
@@ -158,14 +158,14 @@ void main() {
     final String clipped = objectSource('u q 8 w\n%_9 w\n${contourMovementPath(10)}Q\n${contourMovementPath(20)}U\n6 w\nu U', setup: '');
     final AiNativeDrawing drawing = groupCreationDrawing(clipped);
     final AiNativeDrawing moved = drawing.moveContourGroups(groups: [drawing.groups[1]], parent: drawing.groups.last, bounds: topologyBounds, inheritParentFlags: true);
-    check(_widths(moved)).deepEquals({
+    check(contourGroupWidths(moved)).deepEquals({
       10: [8, 9],
       20: [2, 2],
     });
     final String deferred = objectSource('*u ${contourMovementPath(10)}8 w ${contourMovementPath(20)}*U\n6 w u U', setup: '').replaceFirst('2 w', '');
     final AiNativeDrawing compound = groupCreationDrawing(deferred);
     final AiNativeDrawing result = compound.moveContourGroups(groups: [compound.groups.first], parent: compound.groups.last, bounds: topologyBounds, inheritParentFlags: true);
-    check(_widths(result)).deepEquals({
+    check(contourGroupWidths(result)).deepEquals({
       10: [8, 8],
       20: [8, 8],
     });
@@ -193,7 +193,7 @@ void main() {
       final String source = objectSource('u U\nu $assignment ${contourMovementPath(10)}U', setup: '').replaceFirst('2 w', '');
       final AiNativeDrawing drawing = groupCreationDrawing(source);
       final AiNativeDrawing moved = drawing.moveContourGroups(groups: [drawing.groups.last], parent: drawing.groups.first, bounds: topologyBounds, inheritParentFlags: true);
-      check(_widths(moved)).deepEquals(_widths(drawing));
+      check(contourGroupWidths(moved)).deepEquals(contourGroupWidths(drawing));
       final String consumed = source.replaceFirst('u U', 'u U\n${contourMovementPath(20)}');
       final AiNativeDrawing unsafe = groupCreationDrawing(consumed);
       check(() => unsafe.moveContourGroups(groups: [unsafe.groups.last], parent: unsafe.groups.first, bounds: topologyBounds, inheritParentFlags: true)).throws<UnsupportedError>();
@@ -213,10 +213,11 @@ void main() {
     check(() => drawing.moveContourGroups(groups: [drawing.groups.last], parent: drawing.groups.first, bounds: topologyBounds, inheritParentFlags: true)).throws<UnsupportedError>();
     final String reset = saved.replaceFirst(contourMovementPath(30), '');
     final AiNativeDrawing safe = groupCreationDrawing(reset);
-    check(_widths(safe.moveContourGroups(groups: [safe.groups.last], parent: safe.groups.first, bounds: topologyBounds, inheritParentFlags: true))).deepEquals(_widths(safe));
+    check(contourGroupWidths(safe.moveContourGroups(groups: [safe.groups.last], parent: safe.groups.first, bounds: topologyBounds, inheritParentFlags: true))).deepEquals(contourGroupWidths(safe));
     final String enclosing = objectSource('q u U Q\n${contourMovementPath(20)}u 8 w ${contourMovementPath(10)}U', setup: '').replaceFirst('2 w', '');
     final AiNativeDrawing scoped = groupCreationDrawing(enclosing);
-    check(_widths(scoped.moveContourGroups(groups: [scoped.groups.last], parent: scoped.groups.first, bounds: topologyBounds, inheritParentFlags: true))).deepEquals(_widths(scoped));
+    check(contourGroupWidths(scoped.moveContourGroups(groups: [scoped.groups.last], parent: scoped.groups.first, bounds: topologyBounds, inheritParentFlags: true)))
+        .deepEquals(contourGroupWidths(scoped));
   });
 
   test('retains imported group matrices while refusing a changed outer coordinate basis', () {
@@ -264,11 +265,10 @@ void main() {
     check(latin1.decode(drawing.records.program.bytes)).equals(source);
   });
 
-  test('rejects unknown state split counts and partial compound ownership', () {
+  test('rejects unknown state and split point-count ownership', () {
     final String counted = objectSource('2 As u 10 0 m 11 1 L S U\nu U', setup: '');
-    final String branch = objectSource('*u u ${contourMovementPath(10)}U\n${contourMovementPath(20)}*U\nu U', setup: '');
     final String unknown = objectSource('q u 8 w ${contourMovementPath(10)}U Q\nu U', setup: '').replaceFirst('2 w', '');
-    for (final String source in [counted, branch, unknown]) {
+    for (final String source in [counted, unknown]) {
       final AiNativeDrawing drawing = groupCreationDrawing(source);
       check(() => drawing.moveContourGroups(groups: [drawing.groups.first], parent: drawing.groups.last, bounds: topologyBounds, inheritParentFlags: true)).throws<UnsupportedError>();
       check(latin1.decode(drawing.records.program.bytes)).equals(source);

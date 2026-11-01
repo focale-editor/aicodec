@@ -48,11 +48,15 @@ void _nativeContourFollowing(
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, AiNativeGroup> endings = {for (final AiNativeGroup group in drawing.groups) group.closing.start: group};
   final Set<int> releasedOpenings = {for (final int end in releasedClips.keys) endings[end]!.opening.start};
-  final List<_NativeContourDifferences?> clips = [
-    for (final AiNativeStructureNode parent in parents.reversed)
-      if (parent.kind == .clip) (printing: {}, native: {}),
-  ];
+  final List<_NativeContourDifferences?> clips = [];
   int compoundDepth = 0;
+  for (final AiNativeStructureNode parent in parents.reversed) {
+    if (parent.kind == .compound) {
+      compoundDepth++;
+    } else if (parent.kind == .clip) {
+      clips.add(compoundDepth == 0 ? (printing: {}, native: {}) : null);
+    }
+  }
   int consumed = position;
   for (final AiNativeItem item in _pathInterval(drawing.items, position, drawing.records.program.bodyEnd, (item) => item.start)) {
     if (changed.printing.isEmpty && changed.native.isEmpty && clips.every((saved) => saved == null || saved.printing.isEmpty && saved.native.isEmpty)) {

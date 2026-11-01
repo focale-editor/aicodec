@@ -39,6 +39,7 @@ part '../editing/ai_native_path_topology_editor.dart';
 part '../editing/ai_native_contour_metadata.dart';
 part '../editing/ai_native_contour_movement.dart';
 part '../editing/ai_native_contour_group_movement.dart';
+part '../editing/ai_native_contour_branch_placement.dart';
 part '../editing/ai_native_contour_group_dependencies.dart';
 part '../editing/ai_native_compound_lifecycle.dart';
 part '../editing/ai_native_clipping_state.dart';

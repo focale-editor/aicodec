@@ -1195,7 +1195,7 @@ is native-data validation; broader producer lifecycle and Adobe UI reopening
 remain unqualified.
 
 `moveContourGroups(groups:, bounds:, parent:, layer:, after:,
-inheritParentFlags:)` moves distinct disjoint complete contour trees in caller
+inheritCompoundAppearance:, inheritParentFlags:)` moves distinct disjoint contour trees in caller
 order. The destination can be a group, a layer, or the document root when neither
 parent is supplied. An optional unselected direct group anchor selects an insertion
 point; otherwise the trees append to their destination. Empty groups, ordinary
@@ -1212,9 +1212,21 @@ trees in a batch, saved nested scopes and the scalar instructions retained at
 removed source positions. An unresolved final value, opaque consumer, private
 geometry or unsupported compound grammar rejects the complete transaction.
 
-Source and destination parents must stay outside compounds: a complete compound
-cannot be nested, and extracting a partial branch needs a separate appearance
-contract. Active masks must retain an effective clip after the move. Selected
+Ordinary branches can also move within, out of or into a compound. Leaving a
+compound replays its effective shared paint before each formerly deferred contour.
+Entering a different compound requires `inheritCompoundAppearance: true` and
+adopts its common paint mode while retaining each contour's open/closed form.
+Reordering within the same compound keeps its original common paint. Literal
+assignments inside branches stay exact; additional source-derived replay accounts
+for `q/Q` scopes becoming active or inactive and restores destination state before
+retained contours consume it. Unknown-state proofs start with the actual enclosing
+compound and clip scopes, including deferred consumption at `*U`.
+
+Compound owners cannot nest or become empty. Every affected compound must keep a
+consistent paint mode ignoring case and a single mask role. Ordinary mask branches
+contain groups only, and clipping leaves contain paths only, as specified by the
+AI7 compound-mask grammar. Empty identified intermediate owners are not silently
+deleted. Active masks must retain an effective clip after the move. Selected
 CC printable expansions, live shapes, text and other non-contour families reject.
 Imported matrix owners can move with their exact contents, while external affine
 ancestors must remain identical. Changed parent flags/depth or layers require
@@ -1230,9 +1242,16 @@ consumed scalar state, final state and exact unselected bytes. Four transactions
 move the imported artwork group into the named-view group and back into its layer
 in the two original Inkscape CC programs. All twelve also check consumed stroke
 attributes and final state with the unchanged Adobe prolog in Ghostscript, in
-both scalar projections. These checks do not certify Adobe UI reopening;
-partial compound-branch movement remains open. Complete-producer creation and
-dissolution are qualified above.
+both scalar projections. Twelve further regressions cover partial branch moves,
+clip activation/suppression, explicit shared paint, preserved closure, nested mask
+branches, deferred unknown state, empty-owner refusals and 100-branch batches.
+Sixteen independent transactions check branch hierarchy, identities, counts,
+geometry, mask roles, consumed/final state and exact source patches. Four use
+the complete original Inkscape CC programs after adding only two ordinary group
+delimiters around one source contour; the verifier proves those preparations
+byte for byte. The unchanged Adobe prolog checks consumed stroke and final
+attributes in 32 additional scalar projections. These checks do not certify
+Adobe UI reopening. Complete-producer creation and dissolution are qualified above.
 
 ### Ordinary group lifecycle
 

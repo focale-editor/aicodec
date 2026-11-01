@@ -91,6 +91,7 @@ AiNativeDrawing _moveNativeContourGroups(
   AiLayer? layer,
   AiBoundingBox bounds,
   AiNativeGroup? after,
+  bool inheritCompoundAppearance,
   bool inheritParentFlags,
 ) {
   _nativeTopologyBounds(bounds);
@@ -114,8 +115,21 @@ AiNativeDrawing _moveNativeContourGroups(
   final List<AiNativeStructureNode> targetParents = _artworkParents(structure, target);
   final List<List<AiNativeStructureNode>> sourceParents = [for (final AiNativeGroup group in groups) _artworkParents(structure, structure.parentOf(structure.nodeFor(group)))];
   _nativeContourParents(drawing, {...targetParents, ...sourceParents.expand((value) => value)});
-  if ([...targetParents, ...sourceParents.expand((value) => value)].any((node) => node.kind == .compound)) {
-    throw UnsupportedError('Move a complete outer compound owner instead of nesting or splitting its contour tree.');
+  final AiNativeGroup? targetCompound = targetParents.where((node) => node.kind == .compound).firstOrNull?.source as AiNativeGroup?;
+  final List<AiNativeGroup?> sourceCompounds = [for (final List<AiNativeStructureNode> parents in sourceParents) parents.where((node) => node.kind == .compound).firstOrNull?.source as AiNativeGroup?];
+  if ([targetParents, ...sourceParents].any((parents) => parents.where((node) => node.kind == .compound).length > 1) ||
+      targetCompound != null && groups.any((group) => drawing.groups.any((child) => child.compound && child.start >= group.start && child.end <= group.end))) {
+    throw UnsupportedError('Contour group movement cannot nest compound owners.');
+  }
+  if (targetCompound != null && !inheritCompoundAppearance && sourceCompounds.any((source) => !identical(source, targetCompound))) {
+    throw UnsupportedError('Entering a different compound requires explicit inheritCompoundAppearance.');
+  }
+  final Set<AiNativeGroup> compounds = {?targetCompound, ...sourceCompounds.nonNulls};
+  for (final AiNativeGroup compound in compounds) {
+    _nativeCompoundElements(drawing, compound.children, compound: compound, retainContourData: true);
+    if (compound.paths.map((path) => path.paint.operator.toUpperCase()).toSet().length != 1) {
+      throw UnsupportedError('Moving compound branches requires a consistent shared paint mode.');
+    }
   }
   _nativeContourTransforms(drawing, sourceParents, targetParents);
   if (after != null) {
@@ -136,6 +150,12 @@ AiNativeDrawing _moveNativeContourGroups(
       for (final AiNativeObject owner in owners) ...[owner.start, owner.end],
       for (final AiNativeStructureNode node in {...targetParents, ...sourceParents.expand((value) => value)})
         if (node.source is AiNativeGroup) node.start,
+      if (compounds.isNotEmpty) ...[
+        ...compounds.map((compound) => compound.closing.start),
+        for (final AiNativePath path in groups.expand((group) => group.paths)) path.start,
+        for (final AiNativeInstruction command in commands.expand((value) => value))
+          if (const {'u', '*u', 'q', '*U'}.contains(command.operator)) command.start,
+      ],
     ],
     clipping: true,
     retainedMetadata: drawing._pathTopologyScope.retainedMetadata,
@@ -150,30 +170,59 @@ AiNativeDrawing _moveNativeContourGroups(
     final AiNativeObject owner = entry.$2;
     final List<int> retained = _nativeClipStateReplay(drawing, states[owner.start]!, states[owner.end]!, maxBytes: remaining, keys: _nativeArtworkStateKeys).bytes;
     remaining -= retained.length;
-    final _NativeShapeAccess access = _nativeContourGroupAccess(drawing, commands[entry.$1]);
-    final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
-      drawing,
-      (start: owner.start, end: owner.end),
-      commands[entry.$1],
-      const {},
-      access,
-      states[owner.start]!,
-      states[owner.end]!,
-      states[position]!,
-      states[position]!,
-      maxBytes: remaining,
-      stateKey: _nativeContourStateKey,
-    );
-    _nativeContourPlaced(changed, access, placed.replacement);
-    remaining -= placed.bytes.length;
-    inserted.add(placed.bytes);
+    final List<int> bytes;
+    if (compounds.isNotEmpty) {
+      bytes = _nativeContourBranchPlacement(
+        drawing,
+        owner,
+        commands[entry.$1],
+        states,
+        states[position]!,
+        changed,
+        sourceCompound: sourceCompounds[entry.$1],
+        targetCompound: targetCompound,
+        maxBytes: remaining,
+      );
+    } else {
+      final _NativeShapeAccess access = _nativeContourGroupAccess(drawing, commands[entry.$1]);
+      final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
+        drawing,
+        (start: owner.start, end: owner.end),
+        commands[entry.$1],
+        const {},
+        access,
+        states[owner.start]!,
+        states[owner.end]!,
+        states[position]!,
+        states[position]!,
+        maxBytes: remaining,
+        stateKey: _nativeContourStateKey,
+      );
+      _nativeContourPlaced(changed, access, placed.replacement);
+      bytes = placed.bytes;
+    }
+    remaining -= bytes.length;
+    inserted.add(bytes);
     edits.add(AiSourceEdit(start: owner.start, end: owner.end, bytes: retained.isEmpty ? const [32] : retained));
   }
   _nativeContourFollowing(drawing, position, targetParents, owners, states, changed);
   edits.add(AiSourceEdit(start: position, end: position, bytes: inserted.takeBytes()));
   final AiNativeDrawing result = _nativeCompoundResult(drawing, edits, bounds, drawing.groups.length);
-  // Moving a complete tree preserves its internal grammar. Requalify all masks
-  // against the new external owners before exposing the immutable result.
+  final List<AiNativeGroup> moved = [for (final AiNativeGroup root in groups) ...drawing.groups.where((group) => group.start >= root.start && group.end <= root.end)];
+  final Set<AiNativeGroup> selected = moved.toSet();
+  final List<AiNativeGroup> order = [
+    ...drawing.groups.where((group) => group.closing.start < position && !selected.contains(group)),
+    ...moved,
+    ...drawing.groups.where((group) => group.closing.start >= position && !selected.contains(group)),
+  ];
+  for (final AiNativeGroup compound in compounds) {
+    final AiNativeGroup updated = result.groups[order.indexOf(compound)];
+    if (updated.paths.isEmpty) {
+      throw UnsupportedError('Contour group movement cannot leave an empty compound; move or release its complete owner.');
+    }
+    _nativeCompoundElements(result, updated.children, compound: updated, retainContourData: true);
+  }
+  // Requalify mask ownership after changing compound boundaries and clip scopes.
   final List<AiNativePath> ordinary = result.paths.where((path) => !result._pathTopologyScope.derived.contains(path)).toList();
   if (ordinary.isNotEmpty) {
     _nativePathTopologies(result, ordinary);

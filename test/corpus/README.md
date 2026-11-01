@@ -799,6 +799,28 @@ dart run tool/check_native_imported_contour_lifecycle.dart
 python3 tool/verify_native_imported_contour_lifecycle.py --inkai-source /tmp/extension-ai
 ```
 
+The compound-branch movement suite adds sixteen transactions. Three checksum-pinned
+synthetic sources cover extraction, reordering, nesting, compound entry and return,
+including ordinary mask branches with several clipping leaves. The two original
+Inkscape CC programs each receive exactly two ordinary group delimiters around
+their first contour before branch extraction and return. The independent verifier
+checks those preparations against the complete original producer bytes; no setup,
+metadata, paint or geometry is substituted.
+
+The verifier compares complete hierarchy and object identities, exact geometry,
+point counts, closure, mask roles, group flags, consumed state in both projections
+and outgoing attributes. Exact byte patches permit only the moved owner, requested
+paint-mode changes, source-derived scalar replay and supplied ink bounds. Thirty-two
+Ghostscript projections check consumed stroke attributes and final state with the
+unchanged pinned Adobe prolog. This qualifies native data and serialization, not
+Adobe UI reopening or interactive rendering. Provenance and publication exclusions
+remain those of the existing fixture manifest.
+
+```bash
+dart run tool/check_native_contour_branch_movement.dart
+python3 tool/verify_native_contour_branch_movement.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex
