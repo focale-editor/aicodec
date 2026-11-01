@@ -66,14 +66,14 @@ void main() {
     check(before.liveShape).isNull();
     check(before.dictionary).isNull();
     check(before.printingDictionary).isNull();
-    check(before.path.isPrivate).isTrue();
+    check(before.path!.isPrivate).isTrue();
     final AiNativeAppearances changed = _selected(model);
     final AiNativeAppearanceArtwork after = changed.artworkFor(use: changed.uses.first);
     check(changed.structure.drawing.liveShapes).isEmpty();
     check(changed.styles).length.equals(2);
     check(changed.resolve(use: changed.uses.first)).identicalTo(changed.styles.last);
     check(changed.resolve(use: changed.uses.last)).identicalTo(changed.styles.first);
-    check(_bytes(changed, after.path.start, after.path.end)).deepEquals(_bytes(model, before.path.start, before.path.end));
+    check(_bytes(changed, after.path!.start, after.path!.end)).deepEquals(_bytes(model, before.path!.start, before.path!.end));
     check(_bytes(changed, after.printingGroup.start, after.printingGroup.end)).deepEquals(latin1.encode(appearanceEditedGroup));
     final AiNativeAppearanceArtwork oldNeighbor = model.artworkFor(use: model.uses.last);
     final AiNativeAppearanceArtwork newNeighbor = changed.artworkFor(use: changed.uses.last);

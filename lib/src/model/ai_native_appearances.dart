@@ -209,9 +209,9 @@ final class AiNativeAppearances {
     return use.resolution == .resolved ? styles.singleWhere((style) => identical(style.resource, use.candidates.single)) : null;
   }
 
-  /// Binds a named body use to its native contour and separate printing group.
+  /// Binds a named body use to its native artwork and separate printing group.
   ///
-  /// Live shapes and ordinary private paths share this ownership contract.
+  /// Live shapes, private paths and private groups share this ownership contract.
   /// Unknown metadata, conditional owners and resource-local uses reject.
   AiNativeAppearanceArtwork artworkFor({required AiNativeResourceUse use}) => _nativeAppearanceArtwork(this, use);
 

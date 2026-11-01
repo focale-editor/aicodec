@@ -148,6 +148,30 @@ SVG rectangle: 100,947 changed pixels with identical alpha. These checks do not
 establish Adobe text rendering or text-style editing. Sources, images and reports
 remain ignored under `output/appearance-state`.
 
+### Grouped native appearance owners
+
+```sh
+dart run tool/check_native_appearance_groups.dart
+python3 tool/verify_native_appearance_groups.py --inkai-source /tmp/extension-ai
+```
+
+Six synthetic transactions cover selected/shared nested ordinary groups,
+selected/shared compound groups, uncounted private contours and mixed
+group/single-contour shared users. The unchanged pinned reader independently
+binds each authoring tree, printing group and object dictionary to its complete
+source program. It checks group nesting, private boundaries, contour counts,
+saved point counts and every before/after style, part and named use. Source
+checksums are pinned. An independent full-file byte oracle allows only the
+intended style copy/edit, selected reference, supplied printing group and bounds.
+All authoritative private subtrees and outer/nested metadata must remain exact.
+
+These fixtures qualify group ownership, serialization and state preservation.
+Their supplied printing groups are test inputs, not visual equivalents of the
+multiple-part native styles. They do not establish an untouched complete
+producer body-group edit or Adobe reopening. Groups with internal named styles,
+clips/masks, resource-local ownership or unknown commands remain unqualified.
+Generated sources and reports stay ignored under `output/appearance-groups`.
+
 ### Complete producer appearance edits
 
 ```sh

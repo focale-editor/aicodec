@@ -1,6 +1,6 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// One qualified native contour and its separate host-composed appearance.
+/// Qualified native artwork and its separate host-composed appearance.
 ///
 /// Obtain this handle through `AiNativeAppearances.artworkFor`. It binds source
 /// ownership without composing the style or guaranteeing that every edit is safe.
@@ -11,19 +11,34 @@ final class AiNativeAppearanceArtwork {
   /// Exact named-style application at the end of the authoring pair.
   final AiNativeResourceUse use;
 
-  /// Authoritative private contour, independent of its derived printing paths.
-  final AiNativePath path;
+  /// Authoritative private path or group, separate from its printing expansion.
+  final AiNativeItem authoring;
+
+  /// Single authoritative contour, or null for a grouped appearance.
+  AiNativePath? get path => switch (authoring) {
+    final AiNativePath path => path,
+    _ => null,
+  };
+
+  /// Authoritative group tree, or null for a single-contour appearance.
+  AiNativeGroup? get group => switch (authoring) {
+    final AiNativeGroup group => group,
+    _ => null,
+  };
 
   /// Complete ordinary group supplied by the application for compatibility.
   final AiNativeGroup printingGroup;
 
-  /// Optional authoring metadata retained with the native contour.
+  /// Optional authoring metadata retained with the native path or outer group.
   final AiNativeContainer? dictionary;
 
   /// Optional metadata attached to the derived group.
   final AiNativeContainer? printingDictionary;
 
-  /// Live-shape parameters when present; ordinary paths do not invent a handler.
+  /// Retained outer and nested object dictionaries, in source order.
+  final List<AiNativeContainer> metadata;
+
+  /// Live-shape parameters when present; ordinary artwork does not invent a handler.
   final AiLiveShape? liveShape;
 
   /// First owned source byte, including an optional outer panel flag.
@@ -39,15 +54,17 @@ final class AiNativeAppearanceArtwork {
   AiNativeAppearanceArtwork._({
     required this._owner,
     required this.use,
-    required this.path,
+    required this.authoring,
     required this.printingGroup,
     required this.dictionary,
     required this.printingDictionary,
     required this.liveShape,
     required this.start,
+    List<AiNativeContainer> metadata = const [],
     required List<AiNativeInstruction> commands,
     required Set<String> styleReads,
-  }) : _commands = List.unmodifiable(commands),
+  }) : metadata = List.unmodifiable({?dictionary, ?printingDictionary, ...metadata}.toList()..sort((first, second) => first.start.compareTo(second.start))),
+       _commands = List.unmodifiable(commands),
        _styleReads = Set.unmodifiable(styleReads);
 
   /// Exclusive end of the complete source pair.

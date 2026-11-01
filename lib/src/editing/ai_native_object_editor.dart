@@ -154,7 +154,7 @@ Set<AiNativeContainer> _nativeReferenceBody(
       _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors),
   ];
   final Set<AiNativeContainer> dictionaries = {
-    for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...[?item.dictionary, ?item.printingDictionary],
+    for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...item.metadata,
     for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
     for (final AiNativeLayer layer in model.layers)
       if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,

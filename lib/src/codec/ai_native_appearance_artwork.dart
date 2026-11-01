@@ -1,6 +1,6 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Resolves a complete source pair without treating an ordinary path as a shape.
+/// Resolves a complete source pair without inventing live-shape parameters.
 AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, AiNativeResourceUse use) {
   final AiNativeAppearance? style = model.resolve(use: use);
   final AiNativeDrawing drawing = model.structure.drawing;
@@ -21,12 +21,13 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     return AiNativeAppearanceArtwork._(
       owner: model,
       use: use,
-      path: shape.path!,
+      authoring: shape.path!,
       printingGroup: shape.appearanceGroup!,
       dictionary: shape.dictionary,
       printingDictionary: shape.appearanceDictionary,
       liveShape: shape,
       start: bundle.start,
+      metadata: shape.alternativeDictionaries,
       commands: bundle.commands,
       styleReads: bundle.styleReads,
     );
@@ -35,32 +36,45 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   int index = _pathOffset(items, use.instruction.start, (item) => item.start) - 1;
   final AiNativeContainer? dictionary = index >= 0 && items[index] is AiNativeContainer ? items[index--] as AiNativeContainer : null;
   final AiNativePath? path = index < 0 ? null : drawing.paths.where((path) => identical(path.paint, items[index])).singleOrNull;
-  if (path == null || !path.isPrivate || !const {'n', 'N'}.contains(path.paint.operator) || path.geometry.skip(1).any((command) => command.operator == 'm')) {
-    throw UnsupportedError('Appearance artwork requires one authoritative private contour before its style use.');
+  final AiNativeGroup? authoringGroup = index < 0 || path != null ? null : drawing.groups.where((group) => identical(group.closing, items[index])).singleOrNull;
+  final List<AiNativeContainer> metadata = [];
+  if (path != null) {
+    if (!path.isPrivate || !const {'n', 'N'}.contains(path.paint.operator) || path.geometry.skip(1).any((command) => command.operator == 'm')) {
+      throw UnsupportedError('Appearance artwork requires one authoritative private contour before its style use.');
+    }
+  } else if (authoringGroup != null) {
+    metadata.addAll(_nativeAppearanceGroup(model, authoringGroup));
+  } else {
+    throw UnsupportedError('Appearance artwork requires an authoritative private contour or group before its style use.');
   }
-  index = _pathOffset(items, path.start, (item) => item.start) - 1;
+  final AiNativeItem authoring = path ?? authoringGroup!;
+  index = _pathOffset(items, authoring.start, (item) => item.start) - 1;
   AiNativeInstruction? count;
+  bool panel = false;
   while (index >= 0 && items[index] is AiNativeInstruction && (items[index] as AiNativeInstruction).isPrivate) {
     final AiNativeInstruction item = items[index--] as AiNativeInstruction;
-    if (item.operator == 'As' && count == null) {
+    if (item.operator == 'As' && count == null && path != null) {
       count = item;
+    } else if (item.operator == 'Ae' &&
+        authoringGroup != null &&
+        identical(items[index + 2], authoringGroup.opening) &&
+        !panel &&
+        item.numbers?.length == 1 &&
+        const {0, 1}.contains(item.numbers!.single)) {
+      panel = true;
     } else if (_nativeArtworkStateKey(item) == null) {
-      throw UnsupportedError('Appearance authoring prefixes require qualified scalar state and one point count.');
+      throw UnsupportedError('Appearance authoring prefixes require qualified scalar state and path or group flags.');
     }
   }
   if (count != null) {
-    final List<double> first = path.geometry.first.numbers!;
-    final List<double> last = path.geometry.last.numbers!;
-    if (count.numbers?.length != 1 || count.numbers!.single != path.geometry.length - (path.closed ? 1 : 0) || path.closed && (first[0] != last[last.length - 2] || first[1] != last.last)) {
-      throw UnsupportedError('The authoring point count disagrees with its contour.');
-    }
+    _nativeAppearanceCount(path!, count);
   }
   if (index < 0 ||
       items[index] is! AiNativeInstruction ||
       !_marker(items[index] as AiNativeInstruction, 6) ||
       (items[index] as AiNativeInstruction).isPrivate ||
       aiStringBytes((items[index] as AiNativeInstruction).operands.last).isNotEmpty) {
-    throw UnsupportedError('Appearance artwork requires an empty printing-style boundary before its private contour.');
+    throw UnsupportedError('Appearance artwork requires an empty printing-style boundary before its private artwork.');
   }
   index--;
   while (index >= 0 && items[index] is AiNativeInstruction) {
@@ -78,28 +92,31 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   _printingState(drawing, group);
   _printingPointCounts(drawing, group);
   final AiNativeStructureNode owner = model.structure.nodeFor(group);
-  for (final AiNativeItem item in [path, use.instruction, ?dictionary, ?printingDictionary]) {
+  for (final AiNativeItem item in [authoring, use.instruction, ?dictionary, ?printingDictionary]) {
     if (!_sameNativeObjectOwner(owner, model.structure.nodeFor(item))) {
       throw UnsupportedError('Appearance artwork cannot cross lexical owners or version branches.');
     }
   }
   [?dictionary, ?printingDictionary].forEach(_nativeAppearanceDictionary);
-  final AiNativeInstruction? panel = drawing._objects.forSource(group).expansion;
-  if (panel != null && (panel.isPrivate || panel.numbers?.length != 1 || !const {0, 1}.contains(panel.numbers!.single) || !_sameNativeObjectOwner(owner, model.structure.nodeFor(panel)))) {
+  final AiNativeInstruction? expansion = drawing._objects.forSource(group).expansion;
+  if (expansion != null &&
+      (expansion.isPrivate || expansion.numbers?.length != 1 || !const {0, 1}.contains(expansion.numbers!.single) || !_sameNativeObjectOwner(owner, model.structure.nodeFor(expansion)))) {
     throw UnsupportedError('Appearance artwork has an unqualified outer panel flag.');
   }
-  final int start = panel?.start ?? group.start;
+  final int start = expansion?.start ?? group.start;
   _nativeAppearanceParents(model.structure, start, use.instruction.end, group);
   if (_nativeObjectMetadataComments(drawing, start, use.instruction.end)) {
     throw UnsupportedError('Appearance artwork contains unresolved structured comments or payloads.');
   }
   final List<AiNativeInstruction> commands = [];
-  final Set<AiNativeInstruction> geometry = {...path.geometry, path.paint};
+  final Set<AiNativeInstruction> geometry = {
+    if (path != null) ...[...path.geometry, path.paint],
+  };
   for (final AiNativeItem item in _pathInterval(items, start, use.instruction.end, (item) => item.start)) {
-    if (identical(item, dictionary) || identical(item, printingDictionary)) {
+    if (identical(item, dictionary) || identical(item, printingDictionary) || metadata.contains(item)) {
       continue;
     }
-    if (item is! AiNativeInstruction || item.start >= path.start && item.end <= path.end && !geometry.contains(item)) {
+    if (item is! AiNativeInstruction || path != null && item.start >= path.start && item.end <= path.end && !geometry.contains(item)) {
       throw UnsupportedError('Appearance artwork contains an unresolved native owner or interleaved contour state.');
     }
     commands.add(item);
@@ -108,12 +125,13 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   return AiNativeAppearanceArtwork._(
     owner: model,
     use: use,
-    path: path,
+    authoring: authoring,
     printingGroup: group,
     dictionary: dictionary,
     printingDictionary: printingDictionary,
     liveShape: null,
     start: start,
+    metadata: metadata,
     commands: commands,
     styleReads: state.reads,
   );

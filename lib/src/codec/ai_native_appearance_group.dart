@@ -1,0 +1,88 @@
+part of 'package:aikit/src/model/ai_native_records.dart';
+
+/// Qualifies an immutable private group tree without expanding its appearance.
+List<AiNativeContainer> _nativeAppearanceGroup(AiNativeAppearances model, AiNativeGroup group) {
+  if (!group.opening.isPrivate || !const {'u', '*u'}.contains(group.opening.operator) || group.paths.isEmpty) {
+    throw UnsupportedError('Grouped appearances require a nonempty private ordinary or compound group.');
+  }
+  final AiNativeDrawing drawing = model.structure.drawing;
+  final List<AiNativeItem> items = _pathInterval(drawing.items, group.start, group.end, (item) => item.start).toList();
+  final Map<int, AiNativePath> paths = {for (final AiNativePath path in group.paths) path.start: path};
+  final Map<int, AiNativeItem> endings = {
+    for (final AiNativePath path in group.paths) path.end: path,
+    for (final AiNativeGroup child in drawing.groups.where((child) => child.start >= group.start && child.end <= group.end)) child.end: child,
+  };
+  final List<AiNativeContainer> metadata = [];
+  AiNativeInstruction? count;
+  bool panel = false;
+  for (int index = 0; index < items.length; index++) {
+    final AiNativeItem item = items[index];
+    if (item is AiNativeContainer) {
+      final AiNativeItem? owner = index == 0 ? null : endings[items[index - 1].end];
+      if (owner == null || count != null || panel || !drawing.records._projection.isPrivate(item.start) || !_sameNativeObjectOwner(model.structure.nodeFor(owner), model.structure.nodeFor(item))) {
+        throw UnsupportedError('Grouped appearance metadata requires direct private ownership.');
+      }
+      _nativeAppearanceDictionary(item);
+      metadata.add(item);
+      continue;
+    }
+    if (item is! AiNativeInstruction || !item.isPrivate) {
+      throw UnsupportedError('Grouped authoring artwork cannot mix private and printing commands.');
+    }
+    final String operator = item.operator;
+    if (panel && !const {'u', '*u'}.contains(operator)) {
+      throw UnsupportedError('A private group panel flag must immediately precede its group.');
+    }
+    if (const {'u', 'U', '*u', '*U'}.contains(operator)) {
+      if (item.operands.isNotEmpty || count != null) {
+        throw UnsupportedError('Private group boundaries cannot consume operands or point counts.');
+      }
+      panel = false;
+    } else if (paths[item.start] case final AiNativePath path) {
+      final Set<AiNativeInstruction> geometry = {...path.geometry, path.paint};
+      final int first = index;
+      while (index + 1 < items.length && items[index + 1].start < path.end) {
+        index++;
+      }
+      if (!path.isPrivate ||
+          path.geometry.skip(1).any((command) => command.operator == 'm') ||
+          path.geometry.any((command) => command.numbers!.any((value) => value.abs() > 9007199254740991)) ||
+          items.sublist(first, index + 1).any((command) => !geometry.contains(command))) {
+        throw UnsupportedError('Private group paths require contiguous portable geometry.');
+      }
+      if (count != null) {
+        _nativeAppearanceCount(path, count);
+      }
+      count = null;
+    } else if (operator == 'As') {
+      if (count != null || item.numbers?.length != 1 || item.numbers!.single < 0 || item.numbers!.single != item.numbers!.single.truncateToDouble()) {
+        throw UnsupportedError('Private point counts must precede one complete contour.');
+      }
+      count = item;
+    } else if (operator == 'Ae') {
+      if (count != null || item.numbers?.length != 1 || !const {0, 1}.contains(item.numbers!.single)) {
+        throw UnsupportedError('Private group panel flags require one Boolean value.');
+      }
+      panel = true;
+    } else if (operator == 'Xd') {
+      if (item.numbers?.length != 2 || item.numbers!.any((value) => value != 0 && value != 1)) {
+        throw UnsupportedError('Private paint flags require two Boolean values.');
+      }
+    } else if (_nativeArtworkStateKey(item) == null) {
+      throw UnsupportedError('Grouped appearances have no qualified local contract for $operator.');
+    }
+  }
+  if (count != null || panel) {
+    throw UnsupportedError('Grouped appearances cannot leave unfinished counts or panel flags.');
+  }
+  return metadata;
+}
+
+/// Requires the saved point count and closure to describe exactly one contour.
+void _nativeAppearanceCount(AiNativePath path, AiNativeInstruction count) {
+  final List<double> first = path.geometry.first.numbers!;
+  final List<double> last = path.geometry.last.numbers!;
+  if (count.numbers?.length != 1 || count.numbers!.single != path.geometry.length - (path.closed ? 1 : 0) || path.closed && (first[0] != last[last.length - 2] || first[1] != last.last)) {
+    throw UnsupportedError('The authoring point count disagrees with its contour.');
+  }
+}

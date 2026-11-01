@@ -45,7 +45,7 @@ void main() {
       check(changed.substring(changed.indexOf('/FutureRecord'))).equals(text.substring(text.indexOf('/FutureRecord')));
       check(appearanceAssignment(after.styles.last, 1, .fillColor).numbers).isNotNull().deepEquals([0.7, 0.6, 0.5]);
       check(latin1.decode(before.structure.drawing.records.program.bytes)).equals(text);
-      check(after.artworkFor(use: after.uses.last).path.geometry.length).equals(before.artworkFor(use: before.uses.last).path.geometry.length);
+      check(after.artworkFor(use: after.uses.last).path!.geometry.length).equals(before.artworkFor(use: before.uses.last).path!.geometry.length);
     }
   });
 
