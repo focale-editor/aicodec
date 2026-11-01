@@ -1539,6 +1539,27 @@ owners reject before any edit. These rules qualify resource preservation during
 artboard changes. Brush assignment descriptors, calligraphic `GObjRef` ownership,
 brush-instance editing and synthesized stroke geometry remain separate contracts.
 
+Native `%AI10_BeginSVGFilter` collections retain every ordered `SVGFilter`/`Def`
+tree with its complete XML-node envelopes, literal attributes and child arrays.
+The artboard inspector recognizes local scalar filter primitives, lighting and
+component-transfer children, plus parent-targeted `animate`/`set` records with
+literal clock timing. The observed Illustrator `resultScale` parameter remains
+literal. Filter IDs and repeated `in`/`in2`/`result` names are independent of
+native artboard identity: SVG defines these result names within a filter, not
+as document object references. See the W3C
+[filter dependency rules](https://www.w3.org/TR/SVG11/filters.html#FilterPrimitiveInAttribute)
+and [animation target rules](https://www.w3.org/TR/SVG11/animate.html#TargetElement).
+
+All saved numeric parameters, order, visibility-related values and animations
+remain source-backed. This is dependency qualification, not SVG evaluation or
+validation of rendering results; existing unresolved local result names are not
+rewritten. Scalar color/opacity presentation declarations cannot contain URLs,
+CSS escapes, external profiles or variable expressions. External images, hrefs,
+scripts, event timing, nonlocal animation targets, unknown fields and conditional
+or incomplete section ownership reject atomically. Original parser and output
+limits still apply. Filter editing, animation execution and rendering belong to
+separate contracts; no rendering engine is introduced here.
+
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
 retained with compact ATE versions 7 and 9. Point, area and path frames use
 explicit canvas geometry; story frame lists and cached frame references resolve
@@ -2240,7 +2261,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
-| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text can remain unchanged with resolved point/area/path frame references; complex setup-resource isolation and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
+| Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources and local SVG-filter trees can remain unchanged. Calligraphic assignment, blend ownership and divergent cached-header profiles remain incomplete. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |

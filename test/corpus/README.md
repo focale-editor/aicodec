@@ -856,6 +856,28 @@ dart run tool/check_native_artboard_brushes.dart
 python3 tool/verify_native_artboard_brushes.py --inkai-source /tmp/extension-ai
 ```
 
+The retained SVG-filter suite adds twenty transactions over four real carriers
+and one synthetic source. It copies all 72 producer filter trees and their 24
+animations in the exact original collections. The pinned independent reader
+compares every native XML field, attribute, child and scalar value, while full
+collection-byte comparisons also preserve attribute order and native trivia.
+The same carriers retain all previously qualified brushes, color/alpha planes,
+appearance graphs, symbols, masks, text, fonts, patterns, gradients and palettes;
+these are compared to the original producer data again after each edit.
+
+The synthetic graph deliberately shares an artboard's spelling in SVG IDs and
+repeated local result names. Creation, resizing, reordering and removal change
+only the prescribed Document/crop fields. The carriers still exclude Band's
+blend dependency and Chrome Highlight's calligraphic brush descriptor. Full
+original files now pass filter inspection before those remaining owners; this
+does not establish end-to-end producer-file editability or Adobe reopening.
+No filter evaluation, animation execution or host renderer is involved.
+
+```bash
+dart run tool/check_native_artboard_svg_filters.dart
+python3 tool/verify_native_artboard_svg_filters.py --inkai-source /tmp/extension-ai
+```
+
 ## Native print selections
 
 The print-job suite reuses the three CC unit/origin fixtures pinned in

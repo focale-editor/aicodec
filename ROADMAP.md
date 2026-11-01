@@ -833,6 +833,19 @@ groups and compound topology. There is no general modern object lifecycle API.
   Full validation: 826 VM/825 Node tests, clean format/fix/analysis and 162
   independent transactions, including regeneration and comparison of all 142
   previous resource/text/lifecycle outcomes. This artboard task remains open.
+  Retained SVG-filter collections now qualify complete native XML ownership,
+  local scalar primitives and parent-targeted animations without evaluating
+  effects. Repeated result names stay in their filter namespace, even when they
+  match a native artboard UUID. External resources, scripts, event timing, unknown
+  fields, malformed ownership and conditional sections still reject atomically.
+  Eight focused regressions cover all four operations and original depth/output
+  limits. Twenty independent transactions compare all 72 producer filter trees
+  and 24 animations, complete source bytes and the retained brush/appearance/text
+  resources. Full original CC sources now pass SVG-filter inspection before the
+  calligraphic descriptor refusal; flowtext still stops at Band's blend metadata.
+  Full validation: 834 VM/833 Node tests, clean format/fix/analysis and all twenty
+  new independent transactions, including producer resource and text comparisons.
+  This artboard task remains open pending those dependency owners.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

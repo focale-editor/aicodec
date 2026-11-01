@@ -10,7 +10,7 @@ import 'check_native_artboard_styles.dart' show retainedAppearanceCarrier;
 import 'check_native_artboards.dart' show artboardInventory;
 
 /// Copies each complete brush definition, including counted color/alpha samples.
-String _carrier(AiNativeSource source) {
+String retainedBrushCarrier(AiNativeSource source) {
   final String text = latin1.decode(source.bytes);
   final List<String> brushes = RegExp(r'%AI8_BeginBrushPattern[\s\S]*?%AI8_EndBrushPattern').allMatches(text).map((match) => match[0]!).toList();
   if (brushes.length != 4 && brushes.length != 5) {
@@ -26,7 +26,7 @@ Future<void> main() async {
   for (final String name in ['simple_cc_legacy.ai', 'simple_v2020.ai', 'text_transforms.ai', 'flowtext.ai']) {
     final AiNativeSource source = AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single;
     await File('${output.path}/$name.producer.ps').writeAsBytes(source.bytes);
-    carriers[name] = _carrier(source);
+    carriers[name] = retainedBrushCarrier(source);
   }
   carriers['synthetic-brush'] = artboardSource(extra: artboardBrush());
   final List<Map<String, Object?>> rows = [];

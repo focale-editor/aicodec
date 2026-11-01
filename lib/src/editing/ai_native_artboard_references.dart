@@ -18,12 +18,16 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   final List<({int start, int end})> independent = _referenceGradientRanges(layers, fontDeclarations: fonts);
   independent.addAll(_artboardFontSetupRanges(layers, fonts));
   independent.addAll(resources.ranges);
+  independent.addAll(_artboardSvgFilterRanges(layers));
   independent.addAll(_artboardSetupRanges(layers, patternNames: resources.patterns, symbolNames: resources.symbols));
   independent.addAll(text.ranges);
   for (final AiNativeContainer record in model.records.roots.where((record) => !dictionaries.contains(record))) {
     switch (record.type) {
       case 'KnownStyle':
         _artboardRetainedStyle(layers, record, references, resources.patterns);
+      case 'SVGFilter':
+        // The complete declaration and its XML owner were checked together.
+        continue;
       case 'Document':
         _referenceDocument(layers, record);
       case 'AI11TextDocument' || 'AI11UndoFreeTextDocument':
