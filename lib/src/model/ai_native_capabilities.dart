@@ -129,6 +129,12 @@ enum AiNativeEditOperation {
   /// Wrap consecutive independent sibling paths in an ordinary group.
   groupCreation,
 
+  /// Combine ordinary contours and subgroups into one native compound.
+  compoundCreation,
+
+  /// Release a compound's parent while retaining complete child artwork.
+  compoundDissolution,
+
   /// Remove ordinary boundaries while retaining child artwork and state.
   groupDissolution,
 

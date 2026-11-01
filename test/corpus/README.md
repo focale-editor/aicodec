@@ -696,6 +696,21 @@ dart run tool/check_native_path_topology.dart
 python3 tool/verify_native_path_topology.py --inkai-source /tmp/extension-ai
 ```
 
+The compound lifecycle suite adds ten transactions over six checksum-pinned
+synthetic programs: ordinary nested branches, direct masks, grouped mask leaves,
+complete neighboring CC pairs, identified-parent metadata disposal and the release
+of 200 compounds. Selections, predecessor snapshots and exact source boundaries
+are prescribed by the verifier independently of the Dart writer. The unmodified
+native reader checks every contour's geometry, paint, counts, private status and
+new ancestry. Exact-byte checks permit only the requested compound delimiters and
+explicit parent attachments to change. These are format-data checks; they do not
+qualify Adobe reopening or a real producer's complete compound-editing workflow.
+
+```bash
+dart run tool/check_native_compound_lifecycle.dart
+python3 tool/verify_native_compound_lifecycle.py --inkai-source /tmp/extension-ai
+```
+
 ## Native artboard state and rectangles
 
 `artboard_manifest.json` pins three CC unit/origin examples, two existing complex

@@ -1,10 +1,10 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies retained body dependencies once for each immutable drawing snapshot.
-({AiNativeLayers layers, Set<AiNativePath> derived}) _nativePathTopologyScope(AiNativeDrawing drawing) {
+({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries}) _nativePathTopologyScope(AiNativeDrawing drawing) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
-  _nativeReferenceBody(
+  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
     layers,
     _layerHeaderItems(layers),
     inspect: (model, start, end, headers) => _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: const {}),
@@ -25,7 +25,14 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       derived.add(path);
     }
   }
-  return (layers: layers, derived: Set.unmodifiable(derived));
+  return (layers: layers, derived: Set.unmodifiable(derived), dictionaries: Set.unmodifiable(dictionaries));
+}
+
+/// Requires host bounds representable by both Dart runtimes without rounding.
+void _nativeTopologyBounds(AiBoundingBox bounds) {
+  if ([bounds.left, bounds.bottom, bounds.right, bounds.top].any((value) => value.abs() > 9007199254740991)) {
+    throw ArgumentError('Native path bounds must use portable coordinates.');
+  }
 }
 
 /// Resolves local contour ownership without promoting retained CC expansions.
@@ -66,9 +73,7 @@ List<AiNativePathTopology> _nativePathTopologies(AiNativeDrawing drawing, List<A
 
 /// Changes complete contour requests while retaining all other native source.
 AiNativeDrawing _editNativePaths(AiNativeDrawing drawing, List<AiNativePathEdit> changes, AiBoundingBox bounds) {
-  if ([bounds.left, bounds.bottom, bounds.right, bounds.top].any((value) => value.abs() > 9007199254740991)) {
-    throw ArgumentError('Native path bounds must use portable coordinates.');
-  }
+  _nativeTopologyBounds(bounds);
   if (changes.isEmpty || changes.map((change) => change.path).toSet().length != changes.length) {
     throw ArgumentError('Native path edits require distinct source contours.');
   }

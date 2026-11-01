@@ -81,11 +81,11 @@ void _ordinaryObjectRemoval(AiNativeDrawing drawing, List<AiNativeItem> sources)
 }
 
 /// Refuses identity deletion unless all possible native reference owners qualify.
-void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers) {
+void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifier> identifiers, Map<int, AiNativeLayer> headers, {Set<AiNativeContainer>? bodyDictionaries}) {
   if (identifiers.isEmpty) {
     return;
   }
-  _nativeReferenceScope(model, headers);
+  _nativeReferenceScope(model, headers, bodyDictionaries: bodyDictionaries);
   final Map<String, int> occurrences = {};
   for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
     occurrences.update(latin1.decode(identifier.bytes), (count) => count + 1, ifAbsent: () => 1);
@@ -95,9 +95,9 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
   }
 }
 
-/// Qualifies declarative document, resource and artwork dependency owners.
-void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers) {
-  final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(model, headers);
+/// Qualifies references, optionally reusing an already checked immutable body.
+void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers, {Set<AiNativeContainer>? bodyDictionaries}) {
+  final Set<AiNativeContainer> dictionaries = bodyDictionaries ?? _nativeReferenceBody(model, headers);
   final List<({int start, int end})> independent = _referenceGradientRanges(model);
   for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
     if (record.type == 'KnownStyle') {

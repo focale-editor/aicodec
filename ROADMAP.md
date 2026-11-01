@@ -898,12 +898,24 @@ groups and compound topology. There is no general modern object lifecycle API.
   Twelve independent synthetic edits and three checksum-pinned producer refusals
   pass. The producer shape compounds are derived; the Inkscape CC compounds still
   require imported SVG metadata qualification. Successful full-producer edits,
-  compound/clip owner creation/dissolution/reparenting and broader relationship
+  clip owner creation/dissolution, general reparenting and broader relationship
   qualification remain outstanding; Adobe reopening remains unqualified.
   Validation: 858 VM/857 Node tests pass, followed by 19 focused VM/Node checks
   after caching retained-body inspection per immutable snapshot and adding the
   operation-specific capability entry. All fifteen independent cases pass again;
   formatting, fixes and analysis are clean.
+  Compound creation/release now wrap or dissolve complete ordinary contour trees,
+  including direct and grouped masks, without rewriting child state or identities.
+  Parent metadata disposal and flag inheritance are explicit; removed identities
+  undergo whole-source reference qualification. Complete CC and compact-text
+  neighbors remain retained, while selected text or derived geometry rejects.
+  Ten new regression cases and ten independent synthetic transactions cover these
+  operations, including 200 disjoint compound releases. The task remains open for
+  full-producer edits, clip-owner lifecycle and general relationship movement.
+  Validation: 868 VM/867 Node tests pass; ten focused checks on both runtimes also
+  cover the final refusal of text inside a released compound. All ten new and
+  fifteen existing independent topology cases pass. Formatting, analysis, fix
+  dry-run, Python compilation and diff checks are clean.
 - [ ] Narrow conservative whole-document refusals only after proving the selected
   object's inherited state and dependencies are isolated.
 

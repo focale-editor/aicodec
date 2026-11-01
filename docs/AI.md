@@ -1016,7 +1016,38 @@ commands and unknown attached metadata reject atomically. Missing mask owners,
 inconsistent compound masks, stale/foreign handles, malformed counts and original
 output/parser limits also reject. `pathTopology` capabilities remain
 `requiresValidation`; the older plain `pathGeometry` operation keeps its separate
-guard. This API does not yet create, dissolve or reparent compound/clip owners.
+guard.
+
+`compoundArtwork(paths:, groups:, bounds:)` wraps consecutive ordinary sibling
+contours and complete ordinary subgroups in an anonymous `*u`/`*U` owner. Input
+selection order does not reorder the source. Counts, coordinates, paint commands,
+identities, child dictionaries and intervening scalar assignments remain exact;
+the host owns the resulting combined appearance and affected ink bounds. A new
+compound cannot absorb an existing compound, a live shape, a printable expansion,
+text, unselected artwork or a partial owner. Ordinary compound elements may be
+paths or nested ordinary groups. All contours must either be masks or not be
+masks. Compound mask branches use ordinary groups of subgroups, with clipping
+leaves containing paths, as described in AI7 section 5.6. Existing clipping scopes
+and `h/H W` controls are retained.
+
+`releaseCompounds(groups:, bounds:)` removes disjoint compound parents while
+retaining their complete children. Released mask contours become independent
+masks in saved source order; this intentionally changes compound clipping into
+successive intersections. Nested clipping scopes stay in place. Nonempty parent
+dictionaries require `discardMetadata: true`; deleted parent identities require
+whole-source reference qualification. Parent panel flags and qualified neutral
+group resets are removed with their owner. Both operations require explicit
+`inheritParentFlags: true` for unknown/non-neutral ancestor flags. No input state
+or color defaults are invented. The capability report exposes compound creation
+and dissolution separately as `requiresValidation`.
+
+Ten additional regressions cover compound creation/release, nested groups, direct
+and grouped masks, removed-parent metadata and references, hidden layers, nearby
+compact text, preserved CC pairs, invalid selections and 200-compound batches.
+Ten independent synthetic transactions check prescribed ownership and permit
+only exact boundary insertions/removals and explicit parent metadata disposal.
+Clip-owner lifecycle, general reparenting and successful full-producer compound
+edits remain outstanding.
 
 Nine regressions exercise nested contours, all paint/closure combinations,
 immutable requests, hidden layers, complete CC neighbors, count normalization and
@@ -2356,7 +2387,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Object metadata | Direct path/group dictionaries, names, saved XML IDs and group panel/default-style attachments | Whole-object movement/copy; qualified identity removal; qualified parent dissolution with explicit metadata disposal | Unknown/private fields and references reject; copied descendants need fresh IDs; identified deletion requires a qualified whole-source reference scope. |
 | Native layers | Headers, names, identities, wrappers and direct ownership | Header edits, empty insertion, qualified ordinary-subtree lifecycle and complete mixed CC-subtree copy/removal/reordering/movement | Additional private fields, masks and unresolved ownership/state reject; identified deletion requires a qualified reference scope; reparenting and view invalidation require explicit policies. |
 | Ordinary native paths | Source-backed geometry, paint and qualified attached metadata | Explicit path creation without a sibling; geometry and qualified lifecycle with fresh copied IDs and retained source state | Unknown required state and dependent/unresolved ownership reject; movement across different layers or ancestor flags requires explicit inheritance. |
-| Ordinary compound/clip contours | Qualified source ancestry, mask controls and point counts | Atomic geometry replacement and local mask changes in existing owners | Selected CC expansions/live shapes, unknown body/metadata and inconsistent compound masks reject. Owner lifecycle and successful full-producer qualification remain incomplete. |
+| Ordinary compound/clip contours | Qualified source ancestry, mask controls and point counts | Atomic geometry/local mask edits; compound creation and release with explicit parent policies | Selected CC expansions/live shapes, unknown body/metadata and inconsistent compound masks reject. Clip-owner lifecycle, reparenting and successful full-producer qualification remain incomplete. |
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |

@@ -200,7 +200,7 @@ final class AiNativeDrawing {
   late final AiNativeObjects _objects = _nativeObjects(this);
 
   /// Shares retained-body qualification across contour inspections and batches.
-  late final ({AiNativeLayers layers, Set<AiNativePath> derived}) _pathTopologyScope = _nativePathTopologyScope(this);
+  late final ({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries}) _pathTopologyScope = _nativePathTopologyScope(this);
 
   /// Builds a bounded structural view without evaluating arbitrary PostScript.
   factory AiNativeDrawing.decode({required AiNativeRecords records}) => _NativeDrawingReader(records: records).read();
@@ -377,6 +377,29 @@ final class AiNativeDrawing {
   /// selected owner. Non-neutral or unknown flags require [inheritParentFlags].
   AiNativeDrawing groupArtwork({List<AiNativePath> paths = const [], List<AiNativeGroup> groups = const [], List<AiLiveShape> liveShapes = const [], bool inheritParentFlags = false}) =>
       _groupNativeArtwork(this, paths, groups, liveShapes, inheritParentFlags);
+
+  /// Combines consecutive ordinary sibling contours into one native compound.
+  ///
+  /// Complete ordinary subgroups may be selected through [groups]. Geometry,
+  /// paint commands, identities and child metadata remain in source order. The
+  /// new anonymous `*u`/`*U` owner changes their compound painting relationship;
+  /// [bounds] supplies the host-computed affected ink extent. Existing compounds,
+  /// live shapes and printing expansions cannot become independent contours.
+  /// Mask and non-mask contours cannot share the new compound. Non-neutral or
+  /// unknown parent flags require explicit [inheritParentFlags].
+  AiNativeDrawing compoundArtwork({required AiBoundingBox bounds, List<AiNativePath> paths = const [], List<AiNativeGroup> groups = const [], bool inheritParentFlags = false}) =>
+      _compoundNativeArtwork(this, paths, groups, bounds, inheritParentFlags);
+
+  /// Releases compound boundaries while retaining the complete child artwork.
+  ///
+  /// Masks become independent masks in saved order; the host must supply [bounds]
+  /// including exposed ink and updated derived representations when saving.
+  /// Nonempty parent metadata requires [discardMetadata], and removed identities
+  /// undergo whole-source reference qualification. Non-neutral or unknown flags
+  /// require [inheritParentFlags], as with [ungroup]. Nested ordinary groups,
+  /// clipping scopes, child metadata and scalar state remain unchanged.
+  AiNativeDrawing releaseCompounds({required List<AiNativeGroup> groups, required AiBoundingBox bounds, bool discardMetadata = false, bool inheritParentFlags = false}) =>
+      _releaseNativeCompounds(this, groups, bounds, discardMetadata, inheritParentFlags);
 
   /// Dissolves ordinary parents while retaining complete children and local state.
   ///
