@@ -56,7 +56,7 @@ void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeCo
 
 /// Qualifies a complete source bundle rather than its individual private paths.
 ///
-/// Only whole-source retained-body inspection can qualify neighbors separately.
+/// Callers opting out must qualify affected neighbors and enclosing effects separately.
 _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNativeStructure structure, {bool qualifyNeighbors = true}) {
   final AiNativeGroup group = _printingShapeGroup(drawing, shape);
   if (!_shapeParameters.containsKey(shape.handler)) {

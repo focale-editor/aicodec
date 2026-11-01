@@ -1074,14 +1074,27 @@ isolation and relative placement. General appearance editing remains incomplete.
   Multiple and effect-local paints remain separate. Qualified stroke alignment,
   winding, literal process colors, overprint, width/cap/join/miter, dash and `Xd`
   assignments are exposed without composed values or inherited defaults. Unknown
-  descriptors and source extensions remain available; capability reports claim
-  inspection only. The independent reader compares all 98 styles, 834 parts and
-  135 uses from six complete untouched CC programs plus one synthetic fixture.
-  Synchronized selected-part/shared-style edits and dependent printing updates
-  still need their editing contracts before this task can be checked off.
-  Validation: 963 VM/962 Node tests pass. The complete appearance comparison and
-  the capability check on all 37 pinned sources pass independently. Formatting,
-  analysis, fix dry-run, Python compilation and diff checks are clean.
+  descriptors and source extensions remain available. The independent reader
+  compares all 98 styles, 834 parts and 135 uses from six complete untouched CC
+  programs plus one synthetic fixture.
+  `updateSelected` now isolates qualified CC users under an explicit fresh name;
+  `updateShared` requires every dependent user and a qualified whole-source
+  reference scope. Exact paint-assignment and saved part-field changes attach all
+  host-supplied printing groups and bounds atomically. Native geometry and saved
+  alternatives remain unchanged. Alignment changes also require the host's label
+  bytes when a saved DisplayString exists. Unknown effects, caches, unresolved
+  following state and incomplete coverage reject. Capabilities report validation
+  requirements, not unconditional editability. Three independent synthetic
+  transactions compare all original/edited trees and the exact full-file delta.
+  SimpleStyle editing, non-live-shape uses, additional appearance graph operations
+  and complete CC producer editing acceptance remain open. In particular,
+  qualified source parts in the complete simple CC programs can still reach
+  unsupported following native owners; their successful inventories remain read
+  evidence rather than editing acceptance.
+  Validation: 974 VM/973 Node tests pass. The three appearance edit transactions,
+  complete appearance inventory and capability check on all 37 pinned sources
+  pass independently. Formatting, analysis, fix dry-run, Python compilation and
+  diff checks are clean.
 - [ ] Add native opacity, blend, isolation, knockout and opacity-mask records,
   including mask artwork, linked/disabled/inverted state and dependent references.
   These are data contracts; compositing remains in the application.

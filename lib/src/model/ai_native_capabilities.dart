@@ -189,6 +189,12 @@ enum AiNativeEditOperation {
   /// Attach a complete host-composed group with a retained outgoing paint state.
   printingGroups,
 
+  /// Change a shared native appearance with every dependent printing owner.
+  sharedAppearance,
+
+  /// Isolate selected users with native part edits and supplied printing groups.
+  selectedAppearance,
+
   /// Edit a gradient's stops with host-supplied printing intervals.
   gradientStops,
 

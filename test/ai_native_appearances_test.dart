@@ -231,7 +231,7 @@ void main() {
       check(findings.any((finding) => finding.support == .typed)).isTrue();
       check(findings.any((finding) => finding.support == .preserved)).isTrue();
       check(findings.any((finding) => finding.support == .malformed)).equals(malformed);
-      check(findings.every((finding) => !finding.editable && finding.edits.isEmpty)).isTrue();
+      check(findings.every((finding) => !finding.editable && finding.edits.every((edit) => edit.support != .available))).isTrue();
     }
   });
 }

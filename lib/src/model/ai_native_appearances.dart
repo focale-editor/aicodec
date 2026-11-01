@@ -160,8 +160,8 @@ final class AiNativeAppearance {
 
 /// Immutable named appearance graphs and their independent resource references.
 ///
-/// These are native data views. They do not compose paints, execute effects or
-/// synchronize printing expansions. Unknown parts retain their original records.
+/// Inspection does not compose paints or execute effects. Qualified edits attach
+/// expansions supplied by the host. Unknown parts retain their original records.
 final class AiNativeAppearances {
   /// Source structure owning declarations, uses and version alternatives.
   final AiNativeStructure structure;
@@ -187,4 +187,31 @@ final class AiNativeAppearances {
     }
     return use.resolution == .resolved ? styles.singleWhere((style) => identical(style.resource, use.candidates.single)) : null;
   }
+
+  /// Changes a shared definition and all qualified dependent printing groups.
+  ///
+  /// Every named use must be a uniquely bound CC shape covered by printing.
+  /// Unknown dependency owners, effects and unresolved following state reject.
+  /// An unused qualified style needs no printing replacement. The host supplies
+  /// matching expansions and the compatibility PDF when saving the document.
+  AiNativeAppearances updateShared({
+    required AiNativeAppearance appearance,
+    List<AiNativePaintChange> paints = const [],
+    List<AiNativeAppearancePartChange> parts = const [],
+    required List<AiNativePrintingGroupReplacement> printing,
+  }) => _editNativeAppearance(this, appearance, paints, parts, printing, null);
+
+  /// Copies a style for selected CC users and attaches their host-composed groups.
+  ///
+  /// The fresh byte name must not capture an existing declaration or reference.
+  /// Only users identified by printing are rebound; the source definition and
+  /// other users remain unchanged. Each selected group must preserve outgoing
+  /// printing state; unresolved changes consumed by following artwork reject.
+  AiNativeAppearances updateSelected({
+    required AiNativeAppearance appearance,
+    List<AiNativePaintChange> paints = const [],
+    List<AiNativeAppearancePartChange> parts = const [],
+    required List<AiNativePrintingGroupReplacement> printing,
+    required List<int> nameBytes,
+  }) => _editNativeAppearance(this, appearance, paints, parts, printing, nameBytes);
 }

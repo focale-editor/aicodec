@@ -2,6 +2,19 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Attaches complete derived groups without changing resources or outgoing state.
 AiNativeDrawing _replaceNativePrintingGroups(AiNativeDrawing drawing, List<AiNativePrintingGroupReplacement> replacements) {
+  final AiNativeDrawing result = AiNativeDrawing.decode(
+    records: AiNativeRecords.decode(
+      program: AiNativeEditor.apply(program: drawing.records.program, edits: _nativePrintingGroupEdits(drawing, replacements)),
+    ),
+  );
+  if (result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => drawing.liveShapes[entry.$1].isBound && !entry.$2.isBound)) {
+    throw const FormatException('Supplied printing groups changed native shape ownership.');
+  }
+  return result;
+}
+
+/// Plans validated group and bounds edits for a single atomic native transaction.
+List<AiSourceEdit> _nativePrintingGroupEdits(AiNativeDrawing drawing, List<AiNativePrintingGroupReplacement> replacements) {
   if (replacements.isEmpty || replacements.map((replacement) => replacement.shape).toSet().length != replacements.length) {
     throw ArgumentError('Printing replacement requires a nonempty distinct shape selection.');
   }
@@ -55,15 +68,7 @@ AiNativeDrawing _replaceNativePrintingGroups(AiNativeDrawing drawing, List<AiNat
       ),
     ),
   );
-  final AiNativeDrawing result = AiNativeDrawing.decode(
-    records: AiNativeRecords.decode(
-      program: AiNativeEditor.apply(program: program, edits: edits),
-    ),
-  );
-  if (result.liveShapes.length != drawing.liveShapes.length || result.liveShapes.indexed.any((entry) => drawing.liveShapes[entry.$1].isBound && !entry.$2.isBound)) {
-    throw const FormatException('Supplied printing groups changed native shape ownership.');
-  }
-  return result;
+  return edits;
 }
 
 /// Parses one bounded group without letting fragment comments redefine its body.

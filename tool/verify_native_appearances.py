@@ -99,7 +99,7 @@ def check_part(data, node, parent, children, row):
         check_paint(data, paint, reported)
 
 
-def verify(inkai, output, row):
+def verify(inkai, output, row, expected=None):
     """Inspect all definitions and uses from the untouched complete source program."""
     from inkai.parser.hierarchy_objects import KnownStyle
 
@@ -133,7 +133,7 @@ def verify(inkai, output, row):
             assert len(tree) == len(reported['parts'])
             for (node, parent, children), part in zip(tree, reported['parts'], strict=True):
                 check_part(data, node, parent, children, part)
-    assert (len(styles), sum(len(style['parts']) for style in row['styles']), len(uses)) == PRODUCERS.get(row['source'], (1, 8, 2))
+    assert (len(styles), sum(len(style['parts']) for style in row['styles']), len(uses)) == (expected or PRODUCERS.get(row['source'], (1, 8, 2)))
 
 
 def main():

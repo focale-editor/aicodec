@@ -302,6 +302,14 @@ final class _NativeCapabilityReader {
         declaration.end,
         const {'SimpleStyle', 'ActiveStyle'}.contains(style.definition.type) ? .typed : .preserved,
         'Named appearance ownership and ordered source parts; shared-use and printing synchronization remain separate editing contracts.',
+        edits: style.definition.type == 'ActiveStyle'
+            ? conditional(
+                [.sharedAppearance, .selectedAppearance],
+                issue: style.parts.any((part) => const {AiNativeAppearancePartKind.effect, AiNativeAppearancePartKind.opaque}.contains(part.kind))
+                    ? 'Unknown parts or effects have no synchronized appearance editing contract.'
+                    : null,
+              )
+            : const [],
       );
       for (final AiNativeAppearancePart part in style.parts) {
         final bool opaque = const {AiNativeAppearancePartKind.opaque, AiNativeAppearancePartKind.effect}.contains(part.kind);

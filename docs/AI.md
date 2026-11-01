@@ -2418,14 +2418,62 @@ not converted into process-color assignments. No defaults, color conversion or
 appearance composition are synthesized. Literal assignments are validated when
 their view is requested, with the original portable numeric and parsing limits.
 
-This inspection API does not yet provide synchronized selected-part or shared-style
-edits. Capability reports distinguish typed graph/settings data from preserved
-effects and do not advertise appearance editing. Serialization of original data
-retains every unknown byte. The independent corpus check compares 98 complete
+Capability reports distinguish typed graph/settings data from preserved effects.
+The qualified operations below remain `requiresValidation`, rather than implying
+that every inspected style can be edited. Serialization of original data retains
+every unknown byte. The independent corpus check compares 98 complete
 styles, 834 parts and 135 named uses across six untouched CC producer programs and
 one synthetic multiple-paint fixture, including field ownership and every reported
 paint assignment. This is native decoding evidence, not Adobe reopening or host
 rendering acceptance; see [the corpus procedure](../test/corpus/README.md#ordered-native-appearances).
+
+### Selected-part and shared-style changes
+
+`updateSelected(appearance:, paints:, parts:, printing:, nameBytes:)` copies one
+qualified active style under an explicit fresh byte name and rebinds only the CC
+shape users identified by `printing`. The original shared definition and all
+other uses remain unchanged. `updateShared(appearance:, paints:, parts:, printing:)`
+instead updates the definition in place, requiring coverage of every named use
+and a qualified whole-source reference inventory. An unused qualified active style
+needs no printing group. Simple styles and users without the separate bound CC
+authoring/printing pair do not yet have this editing contract.
+
+Each `AiNativePaintChange` selects one exact assignment from one paint payload.
+Numeric commands retain their operator and operand count, including both channels
+of a dual CMYK/RGB assignment; the host supplies every channel explicitly. Dash
+changes supply ordered lengths and `dashPhase`, allowing growth, shortening and
+an empty solid-stroke array. Numeric-token edits preserve intervening comments and
+private prefixes. `AiNativeAppearancePartChange` selects explicit saved visibility,
+fill winding or inside/outside stroke alignment. Missing fields are not silently
+inserted. Switching between a built-in centered stroke and an offset-stroke filter
+requires a different graph contract. If an offset stroke has a `DisplayString`,
+an alignment change must also supply `alignmentLabelBytes` in its source encoding;
+the kit does not invent or translate a label.
+
+Every affected user requires an `AiNativePrintingGroupReplacement`, including
+host-computed ink bounds. The existing complete-group contract validates owned
+geometry, counts, resources and identical outgoing printing state. Native edits,
+optional style copying/rebinding, all supplied groups and bounds are applied in
+one immutable transaction. Authoritative paths, live-shape parameters, saved
+alternate dictionaries and unselected parts remain exact. The host remains
+responsible for consistency between the authored settings, supplied expansions
+and compatibility PDF; the kit does not render or prove visual equivalence.
+
+Changed native state must not be consumed unresolved by following artwork.
+Enclosing applied appearances, unknown selected effects/parameters, ambiguous or
+conditional styles, stale/foreign handles, duplicate changes, captured names,
+incomplete shared-use coverage and conflicting supplied groups reject atomically.
+Portable numeric, aggregate operand, token and byte ceilings still apply. No
+source snapshot is mutated, including when a later replacement fails.
+
+Three independent synthetic transactions verify selected-user isolation, shared
+updates and combined part/color/width/dash/alignment-label edits. Their checker
+decodes all original and edited trees and requires an exact complete-file byte
+delta, retaining every unselected field, object and private alternate. This first
+editing contract is not yet qualified on complete CC producer transactions:
+following native owners can still exceed the state dependency contract. Such
+cases reject; the successful complete-producer inventory above remains read
+evidence only.
 
 ## Gradients and paint styles
 
@@ -2672,7 +2720,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Inspection and exact source preservation | Selected-part/shared-style editing and printing synchronization remain incomplete; no effect execution or composed defaults. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified active-style scalar/part edits with shared or isolated CC users and host-supplied printing groups | Explicit fields and existing numeric layouts only; SimpleStyle, other user families and broader complete-producer editing remain incomplete. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

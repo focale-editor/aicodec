@@ -50,6 +50,28 @@ prevent a partial style or subtree from satisfying the check. Output and its
 This qualifies source inspection. It does not establish synchronized appearance
 edits, rendered equivalence, Illustrator reopening or Focale integration.
 
+### Native appearance edits
+
+```sh
+dart run tool/check_native_appearance_edits.dart
+python3 tool/verify_native_appearance_edits.py --inkai-source /tmp/extension-ai
+```
+
+Three generated transactions cover one isolated user, both users of a shared
+definition and combined part visibility/winding, dual process colors, stroke
+width, dash growth, alignment and saved-label changes. The unchanged pinned reader
+decodes all six complete before/after appearance inventories. Pinned synthetic
+source checksums and explicit expected byte substitutions additionally require
+the complete output to contain only the intended style, reference, supplied group
+and bounds changes. Original private geometry, live-shape parameters, metadata
+alternatives, unselected style parts and users cannot disappear inside a broad
+allowed edit region. Results stay under the ignored `output/appearance-edits`.
+
+This is a native serialization/state contract with host-supplied expansions, not
+a visual equivalence check or complete CC producer editing acceptance. The current
+dependency checker still rejects some following owners in the complete CC files;
+those inventories remain covered by the separate inspection check above.
+
 ## Independent reader
 
 Checks using `--inkai-source` require this unchanged external checkout:
