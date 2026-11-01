@@ -57,12 +57,12 @@ dart run tool/check_native_appearance_edits.dart
 python3 tool/verify_native_appearance_edits.py --inkai-source /tmp/extension-ai
 ```
 
-Eight generated transactions cover one isolated user, both users of a shared
+Nine generated transactions cover one isolated user, both users of a shared
 definition and combined part visibility/winding, dual process colors, stroke
 width, dash growth, alignment and saved-label changes, plus isolated and shared
 SimpleStyle process-fill edits. Three of these cases cover isolated/shared stack
 orders and nested chain/stack orders with simultaneous paint/setting changes.
-The unchanged pinned reader decodes all sixteen complete before/after appearance
+The unchanged pinned reader decodes all eighteen complete before/after appearance
 inventories. Pinned synthetic
 source checksums and explicit expected byte substitutions additionally require
 the complete output to contain only the intended style, reference, supplied group
@@ -76,6 +76,14 @@ explicit scalar resets between the two synthetic users; it does not alter a
 downloaded producer source. The expected delta reconstructs prescribed
 permutations from independently bound original subtrees, retaining every other
 byte and applying the selected scalar changes to the moved source owner.
+
+The `scope-shared` transaction retains a gradient, private pattern artwork,
+nested conditional palette cells, known document snapping settings and an empty
+constraint array. The whole-file delta excludes every retained resource byte.
+Independent validation additionally projects all three paths through the saved
+palette branches and decodes each with the unchanged reader: three, two and one
+cells, respectively. This addresses the reader's newer-branch selection without
+replacing input to the actual edit or discarding either saved alternative.
 
 ### Native appearance child lifecycle
 
@@ -157,8 +165,21 @@ of an additional fill without confusing it with replacement of the old fill.
 Generated sources, SVG/PNG renders, difference images and the independent report remain ignored under
 `output/appearance-producers`.
 
-The generator also attempts global edits of these programs and requires their
-explicit conditional-setup rejection before performing the selected edit.
+Six further transactions modify each original shared style in place for fill,
+order and creation, retaining its original name and all use spans. Style/use
+counts remain 17/26 and 18/26, respectively; creation adds one part, while color
+and order edits preserve the part count. Each transaction has a complete-tree
+check and independently specified whole-file delta. Its printing output must
+match every RGBA sample of the corresponding selected edit. No original setup,
+resource or neighbor is removed to permit these edits.
+
+The independent palette helper projects and decodes both 65-cell alternatives of
+each complete producer, then requires the same results after every shared edit.
+It also checks every nested alternative in the synthetic scope fixture. This is
+bounded validation of pinned corpus fragments; the library inspects complete
+cells at every version boundary without enumerating combinations or selecting a
+target version. Resource-local users lacking a supplied qualified printing owner
+still reject shared edits.
 Other complete sources with following `AI11Text` owners still reject unresolved
 native state. Those boundaries remain open and do not turn inspection-only
 inventories into editing acceptance.

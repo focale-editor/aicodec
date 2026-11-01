@@ -96,18 +96,30 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
 }
 
 /// Qualifies references, optionally reusing an already checked immutable body.
-void _nativeReferenceScope(AiNativeLayers model, Map<int, AiNativeLayer> headers, {Set<AiNativeContainer>? bodyDictionaries}) {
-  final Set<AiNativeContainer> dictionaries = bodyDictionaries ?? _nativeReferenceBody(model, headers);
+///
+/// Appearance edits may supply fully inspected resource artwork and brushes,
+/// whose identities stay unchanged. Identity deletion retains its stricter
+/// resource boundary by omitting those scopes.
+void _nativeReferenceScope(
+  AiNativeLayers model,
+  Map<int, AiNativeLayer> headers, {
+  Set<AiNativeContainer>? bodyDictionaries,
+  _ArtboardResourceScope? retainedResources,
+  _ArtboardBrushScope? retainedBrushes,
+}) {
+  final Set<AiNativeContainer> dictionaries = {...bodyDictionaries ?? _nativeReferenceBody(model, headers), ...?retainedResources?.objects};
   final List<_NativeFontEncoding> fonts = [];
   final List<({int start, int end})> independent = _referenceGradientRanges(model, fontDeclarations: fonts)
     ..addAll(_artboardFontSetupRanges(model, fonts))
     ..addAll(_artboardSvgFilterRanges(model))
-    ..addAll(_artboardSetupRanges(model, patternNames: {}, symbolNames: {}))
+    ..addAll(retainedResources?.ranges ?? [])
+    ..addAll(retainedBrushes?.ranges ?? [])
+    ..addAll(_artboardSetupRanges(model, patternNames: retainedResources?.patterns ?? {}, symbolNames: retainedResources?.symbols ?? {}))
     ..addAll(_artboardTextScope(model, requireEmpty: true).ranges);
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use};
   for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
     if (record.type == 'KnownStyle') {
-      _artboardRetainedStyle(model, record, references, {}, {});
+      _artboardRetainedStyle(model, record, references, retainedResources?.patterns ?? {}, retainedBrushes?.names ?? {});
     } else if (record.type == 'Document') {
       _referenceDocument(model, record);
     } else if (record.type == 'SVGFilter') {

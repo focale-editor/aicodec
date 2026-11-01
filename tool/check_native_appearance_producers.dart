@@ -107,19 +107,11 @@ Future<void> main() async {
     }
     final List<AiLiveShape> selected = [shape];
     final List<AiNativePrintingGroupReplacement> groups = selected.map((shape) => _printing(source, drawing, shape)).toList();
-    String? sharedRejection;
-    try {
-      model.updateShared(
-        appearance: style,
-        paints: [AiNativePaintChange(assignment: paint, values: _cyan)],
-        printing: groups,
-      );
-    } on UnsupportedError catch (error) {
-      sharedRejection = error.message;
-    }
-    if (sharedRejection != 'Artboard setup inventories require unconditional ownership.') {
-      throw StateError('The shared producer appearance boundary changed: $sharedRejection');
-    }
+    final AiNativeAppearances shared = model.updateShared(
+      appearance: style,
+      paints: [AiNativePaintChange(assignment: paint, values: _cyan)],
+      printing: groups,
+    );
     final AiNativeAppearances changed = model.updateSelected(
       appearance: style,
       paints: [AiNativePaintChange(assignment: paint, values: _cyan)],
@@ -147,21 +139,44 @@ Future<void> main() async {
       printing: [_addedPrinting(source, drawing, shape)],
       nameBytes: latin1.encode('Added cyan fill'),
     );
+    final AiNativeAppearances sharedOrder = model.updateShared(
+      appearance: style,
+      parts: [AiNativeAppearancePartChange(part: stack, childOrder: stack.childIndices.reversed.map((index) => style.parts[index]).toList())],
+      printing: [_orderedPrinting(source, drawing, shape)],
+    );
+    final AiNativeAppearances sharedAdded = model.updateShared(
+      appearance: style,
+      parts: [
+        AiNativeAppearancePartChange(
+          part: stack,
+          children: [
+            AiNativeAppearanceChild.create(definition: newAppearanceFill()),
+            for (final int index in stack.childIndices) AiNativeAppearanceChild.retain(part: style.parts[index]),
+          ],
+        ),
+      ],
+      printing: [_addedPrinting(source, drawing, shape)],
+    );
     await File('${output.path}/$name.selected.ps').writeAsBytes(changed.structure.drawing.records.program.bytes);
     await File('${output.path}/$name.ordered.ps').writeAsBytes(ordered.structure.drawing.records.program.bytes);
     await File('${output.path}/$name.added.ps').writeAsBytes(added.structure.drawing.records.program.bytes);
+    await File('${output.path}/$name.shared.ps').writeAsBytes(shared.structure.drawing.records.program.bytes);
+    await File('${output.path}/$name.shared-order.ps').writeAsBytes(sharedOrder.structure.drawing.records.program.bytes);
+    await File('${output.path}/$name.shared-added.ps').writeAsBytes(sharedAdded.structure.drawing.records.program.bytes);
     rows.add({
       'file': name,
       'selectedShapes': selected.map(drawing.liveShapes.indexOf).toList(),
       'style': model.styles.indexOf(style),
       'part': part.index,
-      'sharedRejection': sharedRejection,
       'before': {'source': '$name.before', ...appearanceInventory(model)},
       'after': {'source': '$name.selected', ...appearanceInventory(changed)},
       'ordered': {'source': '$name.ordered', ...appearanceInventory(ordered)},
       'added': {'source': '$name.added', ...appearanceInventory(added)},
+      'shared': {'source': '$name.shared', ...appearanceInventory(shared)},
+      'sharedOrder': {'source': '$name.shared-order', ...appearanceInventory(sharedOrder)},
+      'sharedAdded': {'source': '$name.shared-added', ...appearanceInventory(sharedAdded)},
     });
-    stdout.writeln('$name: fill, order and creation edits, ${selected.length} users, ${model.styles.length}/${changed.styles.length} styles');
+    stdout.writeln('$name: selected/shared fill, order and creation edits, ${selected.length} users, ${model.styles.length}/${changed.styles.length} styles');
   }
   await File('${output.path}/report.json').writeAsString('${const JsonEncoder.withIndent('  ').convert(rows)}\n');
 }

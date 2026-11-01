@@ -1778,6 +1778,14 @@ overlapping cells, private operands, opaque annotations and executable paints
 reject. This retention contract does not grant swatch,
 gradient or pattern lifecycle edits.
 
+Version alternatives inside a palette are retained when every opening,
+alternate and closing marker lies between complete cells. Both branches,
+including nested and newer-only additions, are inspected without choosing a
+target version. Pending operands, unfinished paints/gradients and palette
+opening/closing commands cannot cross a version boundary. The outer palette
+itself and its resource definitions must remain unconditional. This preserves
+the ordinary source bytes while checking every possible local reference.
+
 Direct CC pattern definitions retain their literal byte names, nonempty tile
 rectangles, ordinary/private artwork and local editor metadata. Ordinary,
 compound and clipping groups, path geometry, owned masks and point counts are
@@ -2547,10 +2555,25 @@ outgoing state. All RGBA pixels match an independently composed cyan SVG
 rectangle above the original fill and stroke. Each copied style has seven parts,
 while its original six-part definition remains untouched.
 These tests do not qualify Adobe reopening or arbitrary appearance rendering.
-Shared edits of those complete programs still reject conditional setup
-inventories; other programs with following `AI11Text` owners require a separate
-state dependency contract. Neither limitation is bypassed by stripping source
-records or substituting a simpler setup.
+Shared edits now also retain fully inspected pattern, symbol and brush resources
+and complete conditional palette cells. Known resource-local style applications
+join the full use inventory; a user without a supplied qualified printing owner
+still rejects. Resource artwork identity deletion retains its separate, stricter
+scope. Document inspection additionally retains the five observed Boolean
+snapping settings in `Recorded`, the integer PDF hyperlink-export flag, and an
+empty `Constraint Data` array. Populated constraints and unknown fields reject.
+
+Nine regressions cover these boundaries, and a further synthetic shared
+transaction preserves nested palette alternatives and resource artwork exactly.
+Six additional transactions edit the original shared styles in the two complete
+producer programs: process fill, stack order and fill creation. They retain the
+style name and use count; no copy or rebind is inserted. Full inventories and
+exact whole-file deltas pass, and every RGBA sample equals the corresponding
+selected-edit output. Independent palette projections inspect both 65-cell
+alternatives of each producer and all three paths through the synthetic nested
+branches. These projections are validation-only; the edit APIs receive the
+complete original programs. Other user families and programs with unresolved
+state consumed by following `AI11Text` owners remain open.
 
 ## Gradients and paint styles
 
@@ -2797,7 +2820,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Other user families and global complete-producer editing remain incomplete. Two complete producer programs qualify selected process-fill, stack-order and fill-creation edits. No effect execution or composed defaults. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Other user families and unresolved following text state remain incomplete. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

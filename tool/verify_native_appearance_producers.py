@@ -14,6 +14,7 @@ from lxml import etree
 from PIL import Image, ImageChops
 
 from corpus_support import REVISION
+from native_palette_support import palette_views
 from verify_native_appearance_edits import replace_once, string
 from verify_native_appearance_graphs import NEW_FILL, patch
 from verify_native_appearances import verify
@@ -44,7 +45,7 @@ def added_children(data, parts):
     return patch(data[start:end], edits)
 
 
-def expected(data, row, mode='fill'):
+def expected(data, row, mode='fill', shared=False):
     """Specify exact changes after independently binding all inventory spans."""
     assert row['selectedShapes'] == [0] and row['style'] == 9 and row['part'] == 4
     style = row['before']['styles'][9]
@@ -65,7 +66,8 @@ def expected(data, row, mode='fill'):
             copy = copy[:first - start] + data[slice(*parts[child]['record'])] + copy[last - start:]
     else:
         copy = replace_once(copy, WHITE, CYAN)
-    copy = replace_once(copy, b'(Anon amY4LCj5JfA=) /Name', string(name) + b' /Name')
+    if not shared:
+        copy = replace_once(copy, b'(Anon amY4LCj5JfA=) /Name', string(name) + b' /Name')
     use = row['before']['uses'][21]
     old = b'1 (Anon amY4LCj5JfA=) XW'
     assert data[slice(*use['span'])] == old
@@ -74,7 +76,7 @@ def expected(data, row, mode='fill'):
     foreground = data[body:use['span'][0]]
     assert foreground.count(WHITE) == 1
     color = body + foreground.index(WHITE)
-    edits = [(end, end, b'\n' + copy + b'\n'), (*use['span'], b'1 ' + string(name) + b' XW')]
+    edits = [(start, end, copy)] if shared else [(end, end, b'\n' + copy + b'\n'), (*use['span'], b'1 ' + string(name) + b' XW')]
     if mode != 'fill':
         group_start = body + foreground.index(b'\nu\n') + 1
         group_end = group_start + data[group_start:use['span'][0]].index(b'\nU\n%_/ArtDictionary') + 2
@@ -139,7 +141,6 @@ def main():
     results = []
     for row in rows:
         name, counts = row['file'], PRODUCERS[row['file']]
-        assert row['sharedRejection'] == 'Artboard setup inventories require unconditional ownership.'
         fixture = Path('test/corpus/files', name)
         data, entry = fixture.read_bytes(), manifest[name]
         assert len(data) == entry['size'] and hashlib.sha256(data).hexdigest() == entry['sha256']
@@ -149,10 +150,17 @@ def main():
         ordered = args.output / f'{name}.ordered.ps'
         added = args.output / f'{name}.added.ps'
         assert original.read_bytes() == data
+        palettes = palette_views(data)
+        assert [view['cells'] for view in palettes] == [65, 65]
         verify(inkai, args.output, row['before'], expected=counts)
         verify(inkai, args.output, row['after'], expected=(counts[0] + 1, counts[1] + 6, counts[2]))
         verify(inkai, args.output, row['ordered'], expected=(counts[0] + 1, counts[1] + 6, counts[2]))
         verify(inkai, args.output, row['added'], expected=(counts[0] + 1, counts[1] + 7, counts[2]))
+        for key, mode in (('shared', 'fill'), ('sharedOrder', 'ordered'), ('sharedAdded', 'added')):
+            verify(inkai, args.output, row[key], expected=(counts[0], counts[1] + (1 if mode == 'added' else 0), counts[2]))
+            shared_bytes = (args.output / f'{row[key]["source"]}.ps').read_bytes()
+            assert shared_bytes == expected(data, row, mode=mode, shared=True)
+            assert palette_views(shared_bytes) == palettes
         assert changed.read_bytes() == expected(data, row)
         assert ordered.read_bytes() == expected(data, row, mode='ordered')
         assert added.read_bytes() == expected(data, row, mode='added')
@@ -190,7 +198,10 @@ def main():
         assert sum(delta.getchannel('G').histogram()[1:]) == sum(delta.getchannel('B').histogram()[1:]) == order_pixels == 1308
         assert sum(delta.getchannel('A').histogram()[1:]) == 874
         delta.save(args.output / f'{name}.added.difference.png')
-        results.append(dict(file=name, changedPixels=changed_pixels, changedBounds=difference.getbbox(), orderChangedPixels=order_pixels, orderChangedBounds=lighter.getbbox(), createdChangedPixels=created_pixels, createdChangedBounds=delta.getbbox(alpha_only=False), styles=counts[0] + 1, parts=counts[1] + 6, createdParts=counts[1] + 7, uses=counts[2], sharedRejection=row['sharedRejection']))
+        for key, reference in (('shared', after), ('sharedOrder', above), ('sharedAdded', created)):
+            shared_image = render(inkai, args.output / f'{row[key]["source"]}.ps', args.output)
+            assert shared_image.size == reference.size and shared_image.tobytes() == reference.tobytes(), f'{key} printing differs from the corresponding selected edit'
+        results.append(dict(file=name, changedPixels=changed_pixels, changedBounds=difference.getbbox(), orderChangedPixels=order_pixels, orderChangedBounds=lighter.getbbox(), createdChangedPixels=created_pixels, createdChangedBounds=delta.getbbox(alpha_only=False), styles=counts[0] + 1, parts=counts[1] + 6, createdParts=counts[1] + 7, uses=counts[2], sharedStyles=counts[0], sharedParts=counts[1], sharedCreatedParts=counts[1] + 1, paletteCells=[view['cells'] for view in palettes]))
         print(name, 'passed', flush=True)
     (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, outcomes=results), indent=2) + '\n')
 

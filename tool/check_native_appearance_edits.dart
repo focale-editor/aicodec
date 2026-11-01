@@ -5,6 +5,7 @@ import 'package:aikit/aikit.dart';
 
 import '../test/ai_native_appearance_editing_test.dart' show appearanceAssignment, appearanceEditingModel, appearanceEditingSource, appearancePrinting;
 import '../test/ai_native_appearance_order_test.dart' show appearanceOrderSource, reverseAppearanceChildren;
+import '../test/ai_native_appearance_scope_test.dart' show appearanceScopeSource;
 import '../test/ai_native_simple_style_editing_test.dart' show simpleAppearanceSource;
 import 'check_native_appearances.dart' show appearanceInventory;
 
@@ -12,13 +13,15 @@ import 'check_native_appearances.dart' show appearanceInventory;
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/appearance-edits').create(recursive: true);
   final List<Map<String, Object?>> rows = [];
-  for (final String variant in ['selected', 'shared', 'settings', 'simple-selected', 'simple-shared', 'order-selected', 'order-shared', 'order-nested']) {
+  for (final String variant in ['selected', 'shared', 'settings', 'simple-selected', 'simple-shared', 'order-selected', 'order-shared', 'order-nested', 'scope-shared']) {
     final bool simple = variant.startsWith('simple-');
     final bool ordered = variant.startsWith('order-');
     final bool nested = variant == 'order-nested';
     final bool shared = variant == 'shared' || variant.endsWith('-shared');
     final AiNativeAppearances source = appearanceEditingModel(
-      source: simple
+      source: variant == 'scope-shared'
+          ? appearanceScopeSource()
+          : simple
           ? simpleAppearanceSource()
           : ordered
           ? appearanceOrderSource()

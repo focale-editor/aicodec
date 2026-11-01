@@ -1,13 +1,21 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Keeps palette cells and their local paint references separate from artboards.
-void _artboardPalette(List<AiToken> tokens, AiNativeLimits limits, Map<int, AiNativeResourceUse> gradientUses, Set<String> patternNames) {
+void _artboardPalette(List<AiToken> tokens, AiNativeLimits limits, Map<int, AiNativeResourceUse> gradientUses, Set<String> patternNames, {Set<int> versionMarkers = const {}}) {
   final _NativeCommandReader reader = _NativeCommandReader(maxDepth: limits.maxDepth);
   final List<AiNativeInstruction> gradient = [];
   bool opened = false;
   bool closed = false;
   bool paint = false;
   for (final AiToken token in tokens) {
+    if (versionMarkers.contains(token.start)) {
+      // Every branch starts and ends between complete cells. Both alternatives
+      // can then be checked once without merging operands or choosing a version.
+      if (!opened || closed || paint || gradient.isNotEmpty || !reader.isEmpty) {
+        throw UnsupportedError('Palette version boundaries require complete cells inside the original palette.');
+      }
+      continue;
+    }
     final AiNativeInstruction? command = reader.add(token, isPrivate: false);
     if (command == null) {
       continue;

@@ -292,6 +292,7 @@ void _referenceDocument(AiNativeLayers model, AiNativeContainer document) {
           'SVG_CropBoxWidth': (entry) => _referenceSvgCoordinates(entry, count: 1),
           'SVG_CropBoxHeight': (entry) => _referenceSvgCoordinates(entry, count: 1),
           'ArtboardArray': _referenceArtboards,
+          'Constraint Data': (entry) => _referenceEmpty(entry, 'Array'),
           'DocumentDict/ExportableAssetsKey': (entry) => _referenceEmpty(entry, 'Dictionary'),
           'SelHatDocTableDict': (entry) => _referenceFields(
             _referenceRecord(entry, 'Dictionary'),

@@ -58,9 +58,13 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {requir
       throw const FormatException('Unterminated artboard setup inventory.');
     }
     final AiToken end = tokens[index];
-    if (layers.structure.versions.blocks.any((block) => block.start < end.end && block.end > token.start)) {
+    final List<AiNativeVersionBlock> versions = layers.structure.versions.blocks.where((block) => block.start < end.end && block.end > token.start).toList();
+    if (versions.isNotEmpty && (section != '%AI5_BeginPalette' || versions.any((block) => block.start < token.end || block.end > end.start))) {
       throw UnsupportedError('Artboard setup inventories require unconditional ownership.');
     }
+    final Set<int> versionMarkers = {
+      for (final AiNativeVersionBlock block in versions) ...[block.opening.start, if (block.alternate != null) block.alternate!.start, block.closing.start],
+    };
     final List<AiToken> contents = tokens.sublist(first, index);
     if (token.lexeme == '%AI9_BeginArtStyles') {
       for (final AiToken value in contents) {
@@ -79,15 +83,15 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {requir
         }
       }
     } else {
-      if (contents.any((value) => value.kind == .comment && (value.lexeme.startsWith('%AI') || value.lexeme.startsWith('%%')))) {
+      if (contents.any((value) => value.kind == .comment && (value.lexeme.startsWith('%AI') || value.lexeme.startsWith('%%')) && !versionMarkers.contains(value.start))) {
         throw UnsupportedError('Artboard setup inventories cannot hide opaque annotations.');
       }
       final List<AiToken> values = contents.where((value) => value.kind != .comment).toList();
       if (token.lexeme == '%AI5_BeginPalette') {
-        if (values.any((value) => records._projection.isPrivate(value.start))) {
+        if (contents.any((value) => records._projection.isPrivate(value.start))) {
           throw UnsupportedError('Retained palettes require ordinary operands and commands.');
         }
-        _artboardPalette(values, records.program.limits, gradientUses, patternNames);
+        _artboardPalette(contents, records.program.limits, gradientUses, patternNames, versionMarkers: versionMarkers);
       } else if (token.lexeme == '%AI9_BeginArtStyleList') {
         if (values.any((value) => !const {AiTokenKind.string, AiTokenKind.hexString}.contains(value.kind) || !styleNames.contains(latin1.decode(aiStringBytes(value))))) {
           throw UnsupportedError('Retained style lists require existing literal style names.');

@@ -38,11 +38,12 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   original snapshot copies and new process fills/strokes, stacks/chains and
   conduits. Cycles, duplicate retained ownership and edits to removed parts
   reject; new native state must remain safe for following artwork.
-  Two complete CC programs qualify selected process-fill, stack-order and fill-creation edits
+  Two complete CC programs qualify selected/shared process-fill, stack-order and fill-creation edits
   with independent native/printing comparisons. Unknown effects remain preserved;
-  other user families and global complete-producer appearance
-  editing are still open. Conditional setup inventories and unresolved following
-  text state remain explicit rejection boundaries.
+  qualified retained resources and complete palette alternatives remain exact.
+  Both branches are inspected without selecting a version. Other user families,
+  uncovered resource-local users, populated constraints and unresolved following
+  text state remain explicit boundaries.
 - Qualified CC live-shape translation, rotation and uniform scaling, including
   dependent printing geometry, gradients and shared-style isolation.
 - Host-supplied contours and complete groups for separate, bound CC printing

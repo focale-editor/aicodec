@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 from corpus_support import REVISION
+from native_palette_support import palette_views
 from verify_native_appearances import verify
 
 SOURCES = {
@@ -22,6 +23,7 @@ SOURCES = {
     'order-selected': 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf',
     'order-shared': 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf',
     'order-nested': 'ca35d60c8e6bdf5e8453516c8c6d3e6f0127b1c119d60b254cda7f27986635cf',
+    'scope-shared': '747ba3c272e2fdd250f1f616f372a0a5a80cb212116511195915c9752b2550ea',
 }
 GROUP = b'u\n0.7 0.6 0.5 Xa\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU'
 SIMPLE_GROUP = b'u\n1 0 0 0 k\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU'
@@ -68,7 +70,7 @@ def ordered_style(data, original, nested):
 def expected(before, variant, original):
     """Prescribe every changed byte, including unaffected objects and metadata."""
     simple = variant.startswith('simple-')
-    shared = variant in ('shared', 'simple-shared', 'order-shared')
+    shared = variant == 'shared' or variant.endswith('-shared')
     start, end = original['styles'][0]['record']
     # The inventory checker has bound this entire span to an independent style.
     style = before[start:end]
@@ -132,10 +134,14 @@ def main():
         after = (args.output / f'{variant}.after.ps').read_bytes()
         assert hashlib.sha256(before).hexdigest() == checksum
         parts = 0 if variant.startswith('simple-') else 8
-        styles = 1 if variant in ('shared', 'simple-shared', 'order-shared') else 2
+        styles = 1 if variant == 'shared' or variant.endswith('-shared') else 2
         verify(inkai, args.output, inventory[f'{variant}.before'], expected=(1, parts, 2))
         verify(inkai, args.output, inventory[f'{variant}.after'], expected=(styles, styles * parts, 2))
         assert after == expected(before, variant, inventory[f'{variant}.before'])
+        if variant == 'scope-shared':
+            views = palette_views(before)
+            assert views == [dict(cells=3, names=['None', 'Newer gray', 'Pattern']), dict(cells=2, names=['None', 'Pattern']), dict(cells=1, names=['Gradient'])]
+            assert palette_views(after) == views
         print(variant, 'passed', flush=True)
     (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, variants=list(SOURCES)), indent=2) + '\n')
 

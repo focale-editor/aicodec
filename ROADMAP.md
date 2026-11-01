@@ -1138,13 +1138,28 @@ isolation and relative placement. General appearance editing remains incomplete.
   The creation changes 44,274 pixels per fixture, including 1,308 green/blue edge
   pixels and 874 alpha samples. These checks qualify the supplied expansions;
   the synthetic lifecycle groups qualify serialization/state, not visual output.
-  Non-live-shape uses and broader
-  complete-producer acceptance remain open. Shared edits of these two sources
-  still reject conditional setup inventories; other complete CC sources still
-  reject unresolved state consumed by following `AI11Text` owners.
-  Validation: 1002 VM/1001 Node tests, fifteen synthetic appearance edits and
-  six complete producer transactions pass. The producer generator also requires
-  the two explicit shared-edit refusals. The 98-style/834-part/135-use inventory
+  Shared edits now inspect complete retained pattern/symbol/brush resources and
+  every palette alternative at complete-cell boundaries. Nested and newer-only
+  branches remain exact; split operands, paints, gradients or palette boundaries
+  reject. Resource-local style uses join the required coverage. Document scope
+  retains observed recorded snapping flags, the PDF hyperlink-export flag and
+  empty constraint arrays; populated constraints remain unqualified. Identity
+  deletion keeps its stricter resource boundary. Nine regressions cover these
+  contracts and source/limit preservation.
+  A new synthetic shared transaction retains all resources and nested palettes
+  with an exact independently checked byte delta. Six further transactions edit
+  the original shared styles in both complete producer programs, covering color,
+  order and new fills. All native inventories and complete-file deltas pass;
+  each output matches every RGBA pixel of the corresponding selected edit.
+  Independent projections additionally decode both 65-cell producer palette
+  alternatives and all three synthetic nested paths. Actual edits use untouched
+  complete sources, with no discarded setup or neighbors.
+  Non-live-shape uses and broader complete-producer acceptance remain open;
+  other complete CC sources still reject unresolved state consumed by following
+  `AI11Text` owners.
+  Validation: 1011 VM/1010 Node tests, sixteen synthetic appearance edits and
+  twelve complete producer transactions pass. All 54 independent artboard lifecycle
+  transactions pass again after the palette-scope change. The 98-style/834-part/135-use inventory
   and capability checks on all 37 pinned sources passed in the previous increment;
   those inspection contracts are unchanged. Formatting, analysis, fix dry-run,
   Python compilation and diff checks are clean.

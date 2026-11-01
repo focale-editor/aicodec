@@ -52,7 +52,9 @@ AiNativeAppearances _editNativeAppearance(
       throw UnsupportedError('A shared appearance change must cover every source use and its printing owner.');
     }
     // The known-use inventory cannot establish that opaque owners have no links.
-    _nativeReferenceScope(layers, _layerHeaderItems(layers));
+    final _ArtboardResourceScope resources = _artboardResourceScope(layers);
+    final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.brushes);
+    _nativeReferenceScope(layers, _layerHeaderItems(layers), retainedResources: resources, retainedBrushes: brushes);
     edits.addAll(styleEdits);
   } else {
     if (printing.isEmpty ||
