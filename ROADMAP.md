@@ -1084,17 +1084,33 @@ isolation and relative placement. General appearance editing remains incomplete.
   alternatives remain unchanged. Alignment changes also require the host's label
   bytes when a saved DisplayString exists. Unknown effects, caches, unresolved
   following state and incomplete coverage reject. Capabilities report validation
-  requirements, not unconditional editability. Three independent synthetic
+  requirements, not unconditional editability. Five independent synthetic
   transactions compare all original/edited trees and the exact full-file delta.
-  SimpleStyle editing, non-live-shape uses, additional appearance graph operations
-  and complete CC producer editing acceptance remain open. In particular,
-  qualified source parts in the complete simple CC programs can still reach
-  unsupported following native owners; their successful inventories remain read
-  evidence rather than editing acceptance.
-  Validation: 974 VM/973 Node tests pass. The three appearance edit transactions,
-  complete appearance inventory and capability check on all 37 pinned sources
-  pass independently. Formatting, analysis, fix dry-run, Python compilation and
-  diff checks are clean.
+  Process-only `SimpleStyle` definitions now share the selected/shared editing
+  contract through their separate paint payload. Explicit assignments determine
+  outgoing state; disabled paints and inherited defaults are not inferred from
+  `Xd`. Eight regressions cover isolation, shared changes, inherited dependencies,
+  unused styles, complete-pair copy/removal, capability reporting and rejection
+  of unknown, conditional or repeated owners. Geometry transforms retain their
+  previous active-style boundary.
+  Two complete original CC producer programs (`simple_shapes.ai` and
+  `simple_shapes_cc.ai`) now qualify selected process-fill transactions without
+  setup or neighbor substitution. Independent decoding covers every original and
+  edited style/part/use; the entire byte delta permits only the copied style,
+  selected reference, matching supplied printing paint and bounds spelling.
+  Independent InkAI/Inkscape output confirms the white-to-cyan fill change:
+  44,274 changed pixels per fixture, identical alpha/green/blue and no red
+  increase. This qualifies those supplied expansions, not Adobe reopening or
+  arbitrary effect rendering.
+  Non-live-shape uses, additional appearance graph operations and broader
+  complete-producer acceptance remain open. Shared edits of these two sources
+  still reject conditional setup inventories; other complete CC sources still
+  reject unresolved state consumed by following `AI11Text` owners.
+  Validation: 982 VM/981 Node tests, five synthetic appearance edits, both
+  complete producer transactions, the 98-style/834-part/135-use inventory and
+  capability checks on all 37 pinned sources pass. The producer generator also
+  requires the two explicit shared-edit refusals. Formatting, analysis, fix
+  dry-run, Python compilation and diff checks are clean.
 - [ ] Add native opacity, blend, isolation, knockout and opacity-mask records,
   including mask artwork, linked/disabled/inverted state and dependent references.
   These are data contracts; compositing remains in the application.

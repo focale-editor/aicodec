@@ -17,8 +17,11 @@ SOURCES = {
     'selected': '6fe71fbd8ae3cad10651919649bb474f84fd76bb03f7ed2f00ac2ade41a7882d',
     'shared': '6fe71fbd8ae3cad10651919649bb474f84fd76bb03f7ed2f00ac2ade41a7882d',
     'settings': 'c74a591901980f0cd751de5f79a40ab101f53279537ad16f7d705c57182001b6',
+    'simple-selected': '9618b13fd1fd2261ad9b96cbd9f60b65ca8de593a0d015b3a2d154be33afaa92',
+    'simple-shared': '9618b13fd1fd2261ad9b96cbd9f60b65ca8de593a0d015b3a2d154be33afaa92',
 }
 GROUP = b'u\n0.7 0.6 0.5 Xa\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU'
+SIMPLE_GROUP = b'u\n1 0 0 0 k\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU'
 
 
 def string(value):
@@ -34,6 +37,8 @@ def replace_once(data, before, after):
 
 def expected(before, variant, original):
     """Prescribe every changed byte, including unaffected objects and metadata."""
+    simple = variant.startswith('simple-')
+    shared = variant in ('shared', 'simple-shared')
     start, end = original['styles'][0]['record']
     # The inventory checker has bound this entire span to an independent style.
     style = before[start:end]
@@ -48,11 +53,13 @@ def expected(before, variant, original):
             (b'[2 3 0] -1 d', b'[5.0 2.0 3.0 4.0 ] -2.0 d'),
         ]:
             style = replace_once(style, old, new)
+    elif simple:
+        style = replace_once(style, b'0.1 0.2 0.3 0.4 k', b'1.0 0.0 0.0 0.0 k')
     else:
         style = replace_once(style, b'0.2 0.3 0.4 Xa', b'0.7 0.6 0.5 Xa')
-    users = [0, 1] if variant == 'shared' else [1] if variant == 'settings' else [0]
+    users = [0, 1] if shared else [1] if variant == 'settings' else [0]
     edits = []
-    if variant == 'shared':
+    if shared:
         edits.append((start, end, style))
     else:
         style = replace_once(style, b'(Shared) /Name', string(b'Selected') + b' /Name')
@@ -65,8 +72,8 @@ def expected(before, variant, original):
     for index in users:
         group, application = groups[index], applications[index]
         assert group.end() < application.start()
-        edits.append((group.start(), group.end(), GROUP))
-        if variant != 'shared':
+        edits.append((group.start(), group.end(), SIMPLE_GROUP if simple else GROUP))
+        if not shared:
             edits.append((application.start(), application.end(), b'1 ' + string(b'Selected') + b' XW'))
     for start, end, value in sorted(edits, reverse=True):
         before = before[:start] + value + before[end:]
@@ -86,14 +93,16 @@ def main():
     sys.path.insert(0, str(args.inkai_source.resolve()))
     inkai = importlib.import_module('inkai')
     rows = json.loads((args.output / 'report.json').read_text())
-    assert len(rows) == 6 and {row['source'] for row in rows} == {f'{variant}.{phase}' for variant in SOURCES for phase in ('before', 'after')}
+    assert len(rows) == 2 * len(SOURCES) and {row['source'] for row in rows} == {f'{variant}.{phase}' for variant in SOURCES for phase in ('before', 'after')}
     inventory = {row['source']: row for row in rows}
     for variant, checksum in SOURCES.items():
         before = (args.output / f'{variant}.before.ps').read_bytes()
         after = (args.output / f'{variant}.after.ps').read_bytes()
         assert hashlib.sha256(before).hexdigest() == checksum
-        verify(inkai, args.output, inventory[f'{variant}.before'], expected=(1, 8, 2))
-        verify(inkai, args.output, inventory[f'{variant}.after'], expected=(1, 8, 2) if variant == 'shared' else (2, 16, 2))
+        parts = 0 if variant.startswith('simple-') else 8
+        styles = 1 if variant in ('shared', 'simple-shared') else 2
+        verify(inkai, args.output, inventory[f'{variant}.before'], expected=(1, parts, 2))
+        verify(inkai, args.output, inventory[f'{variant}.after'], expected=(styles, styles * parts, 2))
         assert after == expected(before, variant, inventory[f'{variant}.before'])
         print(variant, 'passed', flush=True)
     (args.output / 'independent-report.json').write_text(json.dumps(dict(oracleRevision=REVISION, variants=list(SOURCES)), indent=2) + '\n')

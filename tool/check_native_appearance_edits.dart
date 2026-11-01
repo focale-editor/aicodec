@@ -4,20 +4,29 @@ import 'dart:io';
 import 'package:aikit/aikit.dart';
 
 import '../test/ai_native_appearance_editing_test.dart' show appearanceAssignment, appearanceEditingModel, appearanceEditingSource, appearancePrinting;
+import '../test/ai_native_simple_style_editing_test.dart' show simpleAppearanceSource;
 import 'check_native_appearances.dart' show appearanceInventory;
 
 /// Saves source-owned inventories for independent scalar and byte comparisons.
 Future<void> main() async {
   final Directory output = await Directory('test/corpus/output/appearance-edits').create(recursive: true);
   final List<Map<String, Object?>> rows = [];
-  for (final String variant in ['selected', 'shared', 'settings']) {
+  for (final String variant in ['selected', 'shared', 'settings', 'simple-selected', 'simple-shared']) {
+    final bool simple = variant.startsWith('simple-');
+    final bool shared = variant == 'shared' || variant == 'simple-shared';
     final AiNativeAppearances source = appearanceEditingModel(
-      source: variant == 'settings'
+      source: simple
+          ? simpleAppearanceSource()
+          : variant == 'settings'
           ? appearanceEditingSource().replaceFirst('1 /Bool (StrokeOffsetInside)', '(Inside) /String (DisplayString) , 1 /Bool (StrokeOffsetInside)')
           : appearanceEditingSource(),
     );
     final AiNativeAppearance style = source.styles.single;
-    final List<AiNativePaintChange> paints = variant == 'settings'
+    final List<AiNativePaintChange> paints = simple
+        ? [
+            AiNativePaintChange(assignment: style.simplePaint!.assignments.singleWhere((assignment) => assignment.parameter == .fillColor), values: [1, 0, 0, 0]),
+          ]
+        : variant == 'settings'
         ? [
             AiNativePaintChange(assignment: appearanceAssignment(style, 6, .dash), values: [5, 2, 3, 4], dashPhase: -2),
             AiNativePaintChange(assignment: appearanceAssignment(style, 6, .strokeWidth), values: [8]),
@@ -26,8 +35,12 @@ Future<void> main() async {
         : [
             AiNativePaintChange(assignment: appearanceAssignment(style, 2, .fillColor), values: [0.7, 0.6, 0.5]),
           ];
-    final AiNativeAppearances changed = variant == 'shared'
-        ? source.updateShared(appearance: style, paints: paints, printing: [appearancePrinting(source, 0), appearancePrinting(source, 1)])
+    final List<AiNativePrintingGroupReplacement> printing = [
+      for (final int index in shared ? [0, 1] : [if (variant == 'settings') 1 else 0])
+        if (simple) appearancePrinting(source, index, bytes: 'u\n1 0 0 0 k\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU') else appearancePrinting(source, index),
+    ];
+    final AiNativeAppearances changed = shared
+        ? source.updateShared(appearance: style, paints: paints, printing: printing)
         : source.updateSelected(
             appearance: style,
             paints: paints,
@@ -37,7 +50,7 @@ Future<void> main() async {
                 AiNativeAppearancePartChange(part: style.parts[6], strokeAlignment: .outside, alignmentLabelBytes: latin1.encode('Outside')),
               ],
             ],
-            printing: [appearancePrinting(source, variant == 'settings' ? 1 : 0)],
+            printing: printing,
             nameBytes: latin1.encode('Selected'),
           );
     for (final (String, AiNativeAppearances) item in [('before', source), ('after', changed)]) {

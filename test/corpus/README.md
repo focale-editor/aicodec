@@ -57,20 +57,56 @@ dart run tool/check_native_appearance_edits.dart
 python3 tool/verify_native_appearance_edits.py --inkai-source /tmp/extension-ai
 ```
 
-Three generated transactions cover one isolated user, both users of a shared
+Five generated transactions cover one isolated user, both users of a shared
 definition and combined part visibility/winding, dual process colors, stroke
-width, dash growth, alignment and saved-label changes. The unchanged pinned reader
-decodes all six complete before/after appearance inventories. Pinned synthetic
+width, dash growth, alignment and saved-label changes, plus isolated and shared
+SimpleStyle process-fill edits. The unchanged pinned reader
+decodes all ten complete before/after appearance inventories. Pinned synthetic
 source checksums and explicit expected byte substitutions additionally require
 the complete output to contain only the intended style, reference, supplied group
 and bounds changes. Original private geometry, live-shape parameters, metadata
 alternatives, unselected style parts and users cannot disappear inside a broad
 allowed edit region. Results stay under the ignored `output/appearance-edits`.
 
-This is a native serialization/state contract with host-supplied expansions, not
-a visual equivalence check or complete CC producer editing acceptance. The current
-dependency checker still rejects some following owners in the complete CC files;
-those inventories remain covered by the separate inspection check above.
+These synthetic cases verify native serialization/state with host-supplied
+expansions. They do not qualify visual equivalence.
+
+### Complete producer appearance edits
+
+```sh
+dart run tool/check_native_appearance_producers.dart
+python3 tool/verify_native_appearance_producers.py --inkai-source /tmp/extension-ai
+```
+
+Both `simple_shapes.ai` and `simple_shapes_cc.ai` are complete original producer
+programs from the pinned manifest. No setup, neighbor, metadata or artwork is
+replaced before editing. Each transaction isolates the first live shape under
+the explicit name `Selected cyan` and changes its saved white process fill to
+host-supplied CMYK/RGB cyan alternatives. The host supplies the corresponding
+printing group, retaining its expanded black stroke and outgoing state.
+
+The verifier checks manifest provenance, revision, license, size and SHA-256,
+then independently decodes every before/after style, part and use. Original
+inventories contain 17/143/26 and 18/149/26 styles/parts/uses, respectively. Each
+output adds exactly one six-part style and rebinds one of the existing uses.
+An independently specified complete-file delta allows only the copied style,
+its fill operands, one named use, the matching printing operands and canonical
+bounds spelling. All other bytes must remain exact.
+
+InkAI's printing projection and Inkscape render both versions at width 1200.
+The comparison requires identical dimensions, alpha, green and blue channels;
+red may only decrease, with at least 1000 pixels changing by 200 or more. Both
+fixtures change 44,274 pixels in the same selected-fill bounds. This verifies the
+supplied white-to-cyan ink while retaining geometry/opacity; it is not general
+appearance rendering acceptance or Adobe reopening. Generated sources, SVG/PNG
+renders, difference images and the independent report remain ignored under
+`output/appearance-producers`.
+
+The generator also attempts global edits of these programs and requires their
+explicit conditional-setup rejection before performing the selected edit.
+Other complete sources with following `AI11Text` owners still reject unresolved
+native state. Those boundaries remain open and do not turn inspection-only
+inventories into editing acceptance.
 
 ## Independent reader
 

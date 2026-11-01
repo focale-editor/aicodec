@@ -52,6 +52,9 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   if (drawing._objects.structure.versions.blocks.any((block) => block.start < style.end && block.end > style.start)) {
     throw UnsupportedError('Shape copies require unconditional native filter execution.');
   }
+  if (style['Def']?.container case final AiNativeContainer definition when definition.type == 'SimpleStyle') {
+    return _nativeSimpleStyleState(drawing, style, definition);
+  }
   _LiveShapeEditor(drawing: drawing, shapes: [])._checkStyle(style);
   final Set<String> writes = {};
   final Set<String> reads = {};
@@ -89,6 +92,31 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
     }
   }
   return (reads: reads, writes: writes);
+}
+
+/// Qualifies process-only SimpleStyle commands without assuming disabled paints.
+({Set<String> reads, Set<String> writes}) _nativeSimpleStyleState(AiNativeDrawing drawing, AiNativeContainer style, AiNativeContainer definition) {
+  _artboardSetupRecord(AiNativeLayers.decode(drawing: drawing), style);
+  _artboardStyleFields(style, {'Name', 'Def'});
+  _artboardStyleFields(definition, {'Paint'});
+  if (style.entries.length != 2 || style['Name']?.stringBytes?.isNotEmpty != true) {
+    throw UnsupportedError('Simple appearance state requires an owned named definition.');
+  }
+  final Set<String> writes = {};
+  for (final AiNativeInstruction command in AiNativePaintStyle.decode(records: drawing.records, record: definition).instructions) {
+    if (!_solidStyleCommands.contains(command.operator)) {
+      throw UnsupportedError('Simple appearance state requires qualified literal process paint.');
+    }
+    final String? key = _nativeArtworkStateKey(command);
+    if (key != null) {
+      writes.add(key);
+    } else if (command.operator != 'Xd' || command.numbers?.length != 2 || command.numbers!.any((value) => value != 0 && value != 1)) {
+      throw UnsupportedError('Simple appearance state has no contract for ${command.operator}.');
+    }
+  }
+  // Xd is retained literally; without executing it, either paint may read its
+  // inherited values. Only explicit local assignments remove those dependencies.
+  return (reads: {'fill', 'stroke', 'O', 'R', 'Xy', 'J', 'j', 'w', 'M', 'd', 'XR'}.difference(writes), writes: writes);
 }
 
 /// Captures known source values separately for printing and private authoring.

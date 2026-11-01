@@ -29,10 +29,14 @@ Focale integration is deferred. See [the responsibility split](HOST.md) and the
   opaque preservation, unsupported structures, malformed data and inspection limits.
 - Ordered named appearance trees retain multiple fills/strokes, exact part and
   parameter ownership, shared uses, local visibility, qualified stroke alignment
-  and literal paint/dash assignments. Qualified active-style changes synchronize
+  and literal paint/dash assignments. Qualified active-style and process-only
+  SimpleStyle changes synchronize
   selected or shared CC users with host-supplied printing groups, including saved
-  alignment labels. Unknown effects remain preserved; other user families and
-  broader complete-producer appearance editing are still open.
+  alignment labels. Two complete CC programs qualify selected process-fill edits
+  with independent native/printing comparisons. Unknown effects remain preserved;
+  other user families, graph changes and global complete-producer appearance
+  editing are still open. Conditional setup inventories and unresolved following
+  text state remain explicit rejection boundaries.
 - Qualified CC live-shape translation, rotation and uniform scaling, including
   dependent printing geometry, gradients and shared-style isolation.
 - Host-supplied contours and complete groups for separate, bound CC printing
