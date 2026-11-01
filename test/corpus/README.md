@@ -762,6 +762,29 @@ dart run tool/check_native_artboard_text.dart
 python3 tool/verify_native_artboard_text.py --inkai-source /tmp/extension-ai
 ```
 
+The retained-symbol suite checks twenty further transactions in five pinned
+carriers. Four extend the text/font/pattern carriers above with complete selected
+producer symbols and an explicit panel inventory. Twelve definitions from each
+of the first three producers contain 65 paths; three from `flowtext.ai` contain
+167 paths, for 39 copied definitions altogether. Selection is fixed in both
+tools, rather than skipping whichever definitions happen to fail. Every selected
+definition remains byte-identical to its original producer section. The external
+reader compares complete symbol commands and metadata, names, inventory order,
+gradient references and all text/font/pattern data against the originals and
+each edited result. A synthetic source separately checks private counted geometry,
+blending flags, a resolved style and an XML artwork ID equal to an artboard UUID.
+Whole-native comparisons permit only the declared Document/crop edits.
+
+These carriers qualify resource retention, not symbol-instance editing or full
+producer artboard edits. Symbols containing raster masks, blend owners or further
+appearance dependencies still require separate qualification, alongside brush
+and SVG-filter resources.
+
+```sh
+dart run tool/check_native_artboard_symbols.dart
+python3 tool/verify_native_artboard_symbols.py --inkai-source /tmp/extension-ai
+```
+
 ## Native print selections
 
 The print-job suite reuses the three CC unit/origin fixtures pinned in

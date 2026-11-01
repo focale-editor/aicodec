@@ -761,6 +761,22 @@ groups and compound topology. There is no general modern object lifecycle API.
   owners, including brush resources, remain unresolved, so this task stays open.
   Full validation: 793 VM/792 Node tests, 82 independent transactions and clean
   format, fix and analysis. No renderer or Focale integration was added.
+  Direct CC symbol definitions now share the retained resource-artwork parser.
+  Ordinary/private paths and groups, local registration grids, XML identities,
+  rotation, named colors and literal blending flags remain exact. Style and
+  pattern references resolve to unique unconditional definitions; AI10/AI24 panel
+  lists retain their independent order and names, including the observed legacy
+  NUL-terminated opening wrapper. Eight regressions cover ownership, limits and
+  all four edits. A new independent suite checks twenty transactions with 39
+  byte-exact producer symbol definitions and one synthetic identified/style-bound
+  symbol. The four real carriers retain the producers' complete text, fonts,
+  patterns, gradients and palettes alongside the selected symbols. Complete
+  symbol commands/metadata, inventory order and retained bytes are independently
+  compared. Full-producer editing still requires symbol masks/blends, additional
+  appearance graphs and other setup resource owners; the artboard task stays open.
+  Full validation: 801 VM/800 Node tests and clean format, fix and analysis. All
+  102 independent transactions pass, including regeneration/rechecks of the
+  previous 28 text/pattern and 54 lifecycle outcomes after sharing resource scope.
 - [ ] Support editing ordinary native compound paths and clipping relationships
   without treating a CC object's printable expansion as its authoritative model.
 - [ ] Narrow conservative whole-document refusals only after proving the selected

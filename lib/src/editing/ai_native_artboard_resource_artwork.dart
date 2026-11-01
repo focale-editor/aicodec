@@ -1,14 +1,14 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Checks unchanged tile geometry and local paint without instantiating a motif.
-void _artboardPatternArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map<int, AiNativeResourceUse> references) {
+/// Checks retained resource geometry and local paint without instantiating artwork.
+void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map<int, AiNativeResourceUse> references, Set<String> patterns) {
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, AiNativeGroup> groups = {for (final AiNativeGroup group in drawing.groups) group.start: group};
   final Set<AiNativeInstruction> endings = {for (final AiNativeGroup group in drawing.groups) group.closing};
   final Set<AiNativeInstruction> gradients = {};
   for (final AiNativeGradient gradient in drawing.gradients) {
     if (references[gradient.geometry.instruction.start]?.resolution != .resolved) {
-      throw UnsupportedError('Retained pattern gradients require one unconditional setup definition.');
+      throw UnsupportedError('Retained resource gradients require one unconditional setup definition.');
     }
     gradients.addAll([gradient.opening, gradient.geometry.instruction, ?gradient.highlight, ...gradient.imagingMatrices, gradient.closing]);
   }
@@ -17,7 +17,7 @@ void _artboardPatternArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map
   };
   for (final AiNativeGradient gradient in drawing.gradients) {
     if (_pathInterval(drawing.items, gradient.start, gradient.end, (item) => item.start).any((item) => !gradients.contains(item) && !geometry.contains(item))) {
-      throw UnsupportedError('Retained pattern gradients cannot cross group, state or metadata boundaries.');
+      throw UnsupportedError('Retained resource gradients cannot cross group, state or metadata boundaries.');
     }
   }
   AiNativeInstruction? count;
@@ -32,7 +32,7 @@ void _artboardPatternArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map
       final List<AiNativeItem> commands = drawing.items.sublist(first, index + 1).where((item) => !gradients.contains(item)).toList();
       _artboardRetainedPath(layers, path, commands, count, clipping: clipDepth > 0);
       if (count != null && count.isPrivate != path.isPrivate) {
-        throw UnsupportedError('Pattern point counts must belong to the same representation as their paths.');
+        throw UnsupportedError('Resource point counts must belong to the same representation as their paths.');
       }
       count = null;
       continue;
@@ -42,17 +42,17 @@ void _artboardPatternArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map
     }
     if (item is AiNativeContainer) {
       if (count != null) {
-        throw const FormatException('A pattern point count crosses artwork metadata.');
+        throw const FormatException('A resource point count crosses artwork metadata.');
       }
       continue;
     }
     final AiNativeInstruction command = item as AiNativeInstruction;
     if (command.operands.any((operand) => operand.number != null && (!operand.number!.isFinite || operand.number!.abs() > 9007199254740991))) {
-      throw const FormatException('Retained pattern operands must be finite portable numbers.');
+      throw const FormatException('Retained resource operands must be finite portable numbers.');
     }
     if (groups.containsKey(command.start) || endings.contains(command)) {
       if (count != null || command.operands.isNotEmpty) {
-        throw const FormatException('Pattern groups cannot consume operands or pending point counts.');
+        throw const FormatException('Resource groups cannot consume operands or pending point counts.');
       }
       if (command.operator == 'q') {
         clipDepth++;
@@ -61,33 +61,47 @@ void _artboardPatternArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Map
       }
     } else if (command.operator == 'As') {
       if (count != null || command.numbers?.length != 1 || command.numbers!.single < 0 || command.numbers!.single % 1 != 0) {
-        throw const FormatException('Invalid retained pattern point count.');
+        throw const FormatException('Invalid retained resource point count.');
       }
       count = command;
     } else if (command.operator == 'XW') {
-      if (command.operands.length != 2 ||
-          !const {6, 9}.contains(command.operands.first.number) ||
-          !const {AiTokenKind.string, AiTokenKind.hexString}.contains(command.operands.last.kind) ||
-          aiStringBytes(command.operands.last).isNotEmpty) {
-        throw UnsupportedError('Retained pattern artwork requires literal empty style resets.');
+      if (command.operands.length != 2 || !const {AiTokenKind.string, AiTokenKind.hexString}.contains(command.operands.last.kind)) {
+        throw const FormatException('Retained resource styles require literal operands.');
       }
+      final bool reset = const {6, 9}.contains(command.operands.first.number) && aiStringBytes(command.operands.last).isEmpty;
+      if (!reset && (command.operands.first.number != 1 || references[command.start]?.resolution != .resolved)) {
+        throw UnsupportedError('Retained resource styles require empty resets or one resolved definition.');
+      }
+    } else if (command.operator == 'p' || command.operator == 'P') {
+      _artboardPatternUse(command, patterns);
+    } else if (const {'Xs', 'XS', 'Xz', 'XZ'}.contains(command.operator)) {
+      _artboardPaletteColor(command);
     } else if (command.operator == 'Ae') {
       if (command.numbers?.length != 1 || command.numbers!.single != 0) {
-        throw UnsupportedError('Retained pattern artwork has an unknown editing flag.');
+        throw UnsupportedError('Retained resource artwork has an unknown editing flag.');
       }
     } else if (command.operator == 'Xd') {
       if (command.numbers?.length != 2 || command.numbers!.any((value) => value != 0 && value != 1)) {
-        throw const FormatException('Pattern fill/stroke flags must be Boolean.');
+        throw const FormatException('Resource fill/stroke flags must be Boolean.');
       }
     } else if (command.operator == 'Xy') {
-      if (command.numbers?.length != 5 || !const {0, 1}.contains(command.numbers!.first) || !_gradientUnit(command.numbers![1]) || command.numbers!.skip(2).any((value) => value != 0)) {
-        throw UnsupportedError('Retained patterns require qualified local opacity state.');
+      if (command.numbers?.length != 5) {
+        throw const FormatException('Retained resource blending requires five numeric operands.');
+      }
+      if (command.numbers!.first < 0 ||
+          command.numbers!.first > 15 ||
+          command.numbers!.first % 1 != 0 ||
+          !_gradientUnit(command.numbers![1]) ||
+          !const {0, 1}.contains(command.numbers![2]) ||
+          !const {0, 1, 2}.contains(command.numbers![3]) ||
+          !const {0, 1}.contains(command.numbers![4])) {
+        throw UnsupportedError('Retained resources require qualified local opacity state.');
       }
     } else if (_nativeArtworkStateKey(command) == null) {
-      throw UnsupportedError('Artboard pattern isolation does not cover ${command.operator}.');
+      throw UnsupportedError('Artboard resource isolation does not cover ${command.operator}.');
     }
   }
   if (count != null) {
-    throw const FormatException('A retained pattern point count has no path.');
+    throw const FormatException('A retained resource point count has no path.');
   }
 }

@@ -85,14 +85,15 @@ void _artboardPaletteColor(AiNativeInstruction command) {
     if (operands.isNotEmpty) {
       throw const FormatException('A none palette cell has no paint operands.');
     }
-  } else if (command.operator == 'Xz' || command.operator == 'Xs') {
-    final int components = command.operator == 'Xz' ? 7 : 4;
-    if (operands.length != (command.operator == 'Xz' ? 10 : 6) ||
+  } else if (const {'Xz', 'XZ', 'Xs', 'XS'}.contains(command.operator)) {
+    final bool rgb = command.operator == 'Xz' || command.operator == 'XZ';
+    final int components = rgb ? 7 : 4;
+    if (operands.length != (rgb ? 10 : 6) ||
         operands.take(components).any((operand) => operand.number == null || !_gradientUnit(operand.number!.toDouble())) ||
         !_artboardPaletteName(operands[components]) ||
         operands[components + 1].number == null ||
         !_gradientUnit(operands[components + 1].number!.toDouble()) ||
-        command.operator == 'Xz' && operands[9].number != 1) {
+        rgb && operands[9].number != 1) {
       throw const FormatException('Named palette colors require unit components, a literal name and a tint.');
     }
   } else if (!const {'fill', 'stroke'}.contains(_nativeArtworkStateKey(command))) {

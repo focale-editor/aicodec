@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Retains declarative setup inventories separately from instantiated artwork.
-List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {required Set<String> patternNames}) {
+List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {required Set<String> patternNames, required Set<String> symbolNames}) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiToken> tokens = records._projection.tokens;
   final List<AiNativeContainer> styles = records.roots.where((record) => record.type == 'KnownStyle' && record.end <= records.program.bodyStart).toList();
@@ -47,7 +47,8 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {requir
       index += 3;
       continue;
     }
-    final String? closing = sections[token.lexeme];
+    final String section = token.lexeme == '%AI10_BeginSymbolList\u0000' ? '%AI10_BeginSymbolList' : token.lexeme;
+    final String? closing = sections[section];
     if (closing == null) {
       continue;
     }
@@ -91,8 +92,19 @@ List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {requir
         if (values.any((value) => !const {AiTokenKind.string, AiTokenKind.hexString}.contains(value.kind) || !styleNames.contains(latin1.decode(aiStringBytes(value))))) {
           throw UnsupportedError('Retained style lists require existing literal style names.');
         }
-      } else if (values.isNotEmpty) {
-        throw UnsupportedError('Artboard isolation of nonempty symbol inventories requires a separate dependency contract.');
+      } else {
+        final Set<String> names = {};
+        if (records._projection.isPrivate(token.start) ||
+            records._projection.isPrivate(end.start) ||
+            values.any(
+              (value) =>
+                  records._projection.isPrivate(value.start) ||
+                  !_artboardPaletteName(value) ||
+                  !symbolNames.contains(latin1.decode(aiStringBytes(value))) ||
+                  !names.add(latin1.decode(aiStringBytes(value))),
+            )) {
+          throw UnsupportedError('Retained symbol inventories require distinct ordinary names with qualified definitions.');
+        }
       }
     }
     ranges.add((start: token.start, end: end.end));

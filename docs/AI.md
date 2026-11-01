@@ -1449,7 +1449,7 @@ atomically.
 Artboard edits have a separate retained-dependency scope. Qualified ordinary
 artwork, complete CC pairs and shared literal resources remain exact. This scope
 also accepts literal `SimpleStyle` process paints, plug-in name inventories,
-existing style-name lists, empty symbol lists and qualified process/named-color
+existing style-name lists, resolved symbol lists and qualified process/named-color
 and gradient/pattern palettes. These are preserved declarations, not permission to
 execute plug-ins, edit symbol instances or synthesize artwork.
 
@@ -1475,6 +1475,22 @@ separate pattern namespace and preserve offsets, scales, rotation, reflection,
 shear and six-value matrices. Duplicate/missing names, conditional boundaries,
 unknown metadata, executable tile programs and opaque payloads reject. Old
 PostScript string-program tiles remain outside this direct-artwork contract.
+
+Direct `%AI14_BeginSymbol` definitions share those bounded artwork checks and
+retain their literal name and complete ordinary/private geometry. Symbol-local
+registration type, nine-slice grid, pixel-perfect flag, compound-shape mode,
+rotation and XML artwork identities remain distinct from artboard identities.
+Pattern paints and mode-one `XW` style assignments require unique unconditional
+definitions; empty mode-six/nine resets are retained. Named fill/stroke colors,
+literal opacity, blend mode, isolation, knockout and alpha-as-shape flags remain
+exact. The retained scalar domains follow the Adobe SDK's
+[blend-style definitions](https://ai-sdk-2020.84.nz/html/_a_i_mask_8h), without
+compositing or evaluating the appearance. AI10/AI24 panel inventories require
+distinct ordinary literal names that resolve to qualified symbols; the observed
+AI10 opening comment with a terminal NUL is retained verbatim. Unlisted
+definitions may remain unused. Unknown metadata, nested resource declarations,
+mask artwork, opaque payloads and executable state still reject. Symbol instances
+and definition lifecycle remain separate editing contracts.
 
 One setup `AI11TextDocument` and an optional `AI11UndoFreeTextDocument` can be
 retained with compact ATE versions 7 and 9. Point, area and path frames use
@@ -1588,10 +1604,19 @@ pattern commands/metadata, gradient commands/operands, palette references and
 exact source bytes. Eight pattern regressions cover all four edits, private and
 ordinary tiles, empty definitions, clipping/count ownership, resource references,
 malformed transforms, unsupported execution and original depth limits.
-These carriers do not qualify artboard edits of the full producer files. Those
-now pass their patterns and palettes before rejecting symbol inventories or
-other setup art dictionaries, including brush resources. Those complex owners
-still require separate dependency qualification.
+These carriers do not qualify artboard edits of the full producer files.
+Eight symbol regressions additionally cover all four artboard edits, separate
+resource/identity namespaces, ordinary/private/empty definitions, old inventory
+wrappers, complete blending flags, named colors, malformed ownership and limits.
+A separate independent suite checks twenty transactions in five pinned carriers:
+39 exact producer symbol definitions across the same four CC sources, plus one
+synthetic symbol with a resolved style and an XML ID equal to an artboard UUID.
+The reader compares complete symbol commands and metadata, inventory order,
+resource references, producer text/fonts/patterns/gradients and all retained
+bytes. The first three real carriers have twelve symbols and 65 symbol paths
+each; `flowtext.ai` contributes three symbols and 167 paths. The full producers
+still require qualification of symbol mask/blend owners, additional appearance
+graphs and other setup resources, including brushes and SVG filters.
 Adobe reopening remains unqualified.
 
 ### Native print selections during artboard edits
