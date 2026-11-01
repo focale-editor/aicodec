@@ -246,6 +246,28 @@ contour state, not color rendering, native-style execution or visual equivalence
 Complete-producer mask interoperability and Adobe reopening remain unqualified.
 Sources and reports stay ignored under `output/appearance-clipping`.
 
+### Enclosing appearance clipping groups
+
+```sh
+dart run tool/check_native_appearance_ancestors.dart
+python3 tool/verify_native_appearance_ancestors.py --inkai-source /tmp/extension-ai
+```
+
+Ten checksum-pinned synthetic transactions edit ordinary, live-shape and private
+group users under ordinary, nested and compound clipping masks. The independent
+reader checks every style, part, use, path, mask, count and group. A complete byte
+oracle permits only the prescribed stroke-width change, selected-style copy and
+references, supplied printing groups and bounds. Ancestor geometry, metadata and
+all native authoring bytes remain exact.
+
+Thirty printing-state comparisons use the unchanged pinned Adobe prolog and two
+incoming contour states. Sixty further comparisons explicitly substitute two
+possible original width writes and the edited width at the style application.
+This probes restoration by enclosing scopes; it does not execute native style
+descriptors. Colors remain byte-checked separately, as in the clipping suite.
+No producer interoperability, visual equivalence or Adobe reopening is claimed.
+Sources and reports stay ignored under `output/appearance-ancestors`.
+
 ### Complete producer appearance edits
 
 ```sh

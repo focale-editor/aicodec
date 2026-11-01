@@ -4,6 +4,8 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 ///
 /// Obtain this handle through `AiNativeAppearances.artworkFor`. It binds source
 /// ownership without composing the style or guaranteeing that every edit is safe.
+/// Ordinary enclosing clipping groups remain outside this pair; their masks and
+/// metadata stay unchanged when the host supplies a replacement printing group.
 final class AiNativeAppearanceArtwork {
   /// Immutable appearance snapshot that issued this handle.
   final AiNativeAppearances _owner;

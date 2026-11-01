@@ -145,13 +145,14 @@ Set<AiNativeContainer> _nativeReferenceBody(
   Map<int, AiNativeLayer> headers, {
   void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>)? inspect,
   bool qualifyShapeNeighbors = true,
+  bool clipping = false,
   List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
   final void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>) inspectInterval =
       inspect ?? (model, start, end, headers) => _referenceArtworkInterval(model, start, end, headers, appearanceArtwork: appearanceArtwork);
   final List<_NativeShapeBundle> shapes = [
     for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true))
-      _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors),
+      _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors, clipping: clipping),
   ];
   final Set<AiNativeContainer> dictionaries = {
     for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...item.metadata,

@@ -156,9 +156,12 @@ Iterable<T> _pathInterval<T>(List<T> values, int start, int end, int Function(T)
 }
 
 /// Refuses postfix object metadata and unqualified parent-appearance bindings.
-void _ordinaryPathFollowing(List<AiNativeItem> items, int end) {
+void _ordinaryPathFollowing(List<AiNativeItem> items, int end, {bool clipping = false}) {
   for (int index = _pathOffset(items, end, (item) => item.start); index < items.length; index++) {
     final AiNativeItem next = items[index];
+    if (clipping && next is AiNativeInstruction && !next.isPrivate && next.operands.isEmpty && const {'q', 'Q', '*u', '*U'}.contains(next.operator)) {
+      return;
+    }
     if (next is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(next.operator)) {
       throw UnsupportedError('The selected object has unresolved trailing metadata or references.');
     }

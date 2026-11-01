@@ -35,6 +35,7 @@ part '../editing/ai_live_shape_editor.dart';
 part '../editing/ai_native_printing_editor.dart';
 part '../editing/ai_native_printing_group_editor.dart';
 part '../editing/ai_native_appearance_editor.dart';
+part '../editing/ai_native_appearance_scope.dart';
 part '../editing/ai_native_appearance_order_editor.dart';
 part '../editing/ai_native_appearance_graph_editor.dart';
 part '../editing/ai_native_appearance_part_writer.dart';

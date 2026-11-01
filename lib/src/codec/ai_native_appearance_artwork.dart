@@ -179,14 +179,14 @@ void _nativeAppearanceParents(AiNativeStructure structure, int start, int end, A
     throw UnsupportedError('Appearance artwork requires an unconditional source owner.');
   }
   for (final AiNativeStructureNode parent in _artworkParents(structure, structure.parentOf(structure.nodeFor(group)))) {
-    if (parent.versions.isNotEmpty || !const {AiNativeStructureKind.layer, AiNativeStructureKind.group}.contains(parent.kind)) {
+    if (parent.versions.isNotEmpty || !const {AiNativeStructureKind.layer, AiNativeStructureKind.group, AiNativeStructureKind.clip}.contains(parent.kind)) {
       throw UnsupportedError('Appearance artwork has an unresolved enclosing owner.');
     }
     if (parent.source case final AiNativeGroup enclosing) {
-      if (enclosing.opening.isPrivate) {
-        throw UnsupportedError('Appearance artwork cannot inherit a private group.');
+      if (enclosing.opening.isPrivate || enclosing.closing.isPrivate || enclosing.opening.operands.isNotEmpty || enclosing.closing.operands.isNotEmpty) {
+        throw UnsupportedError('Appearance artwork requires ordinary literal enclosing groups.');
       }
-      _ordinaryObjectFollowing(structure.drawing, enclosing);
+      _ordinaryObjectFollowing(structure.drawing, enclosing, clipping: true);
     } else if (parent.source case final AiLayer layer) {
       final AiNativeLayers layers = AiNativeLayers.decode(drawing: structure.drawing);
       _qualifiedLayerHeader(layers, layers.layerFor(layer));

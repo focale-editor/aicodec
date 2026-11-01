@@ -48,11 +48,15 @@ void _shapeFollowingDependencies(
 );
 
 /// Visits whole replacement owners and retained pairs in original source order.
+///
+/// Appearance callers enable clipping to retain enclosing scopes even while
+/// current state is equal; lifecycle callers keep their ordinary-owner boundary.
 void _sourceFollowingDependencies(
   AiNativeDrawing drawing,
   Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements, {
   Map<int, _NativeSourceReplacement> insertions = const {},
   List<AiNativeAppearanceArtwork> retainedArtwork = const [],
+  bool clipping = false,
   Map<int, Set<String>> styleChanges = const {},
   Map<int, Map<String, AiNativeInstruction>> styleRestorations = const {},
 }) {
@@ -140,7 +144,25 @@ void _sourceFollowingDependencies(
 
   /// Qualifies ordinary intervening artwork only while state may still differ.
   void ordinary(int start, int end) {
-    if (unresolved.isEmpty && printingUnresolved.isEmpty || start == end) {
+    if (start == end) {
+      return;
+    }
+    if (clipping) {
+      final bool changed = unresolved.isNotEmpty || printingUnresolved.isNotEmpty || clips.any((saved) => saved != null && (saved.native.isNotEmpty || saved.printing.isNotEmpty));
+      if (changed) {
+        _nativeAppearanceInterval(layers, start, end, headers).forEach(command);
+      } else {
+        // Even equal local state can precede a later edit inside this scope.
+        // Keep its entry snapshot so Q cannot inherit that edit's differences.
+        for (final AiNativeInstruction item in _pathInterval(drawing.items, start, end, (item) => item.start).whereType<AiNativeInstruction>()) {
+          if (const {'q', 'Q', '*u', '*U'}.contains(item.operator)) {
+            command(item);
+          }
+        }
+      }
+      return;
+    }
+    if (unresolved.isEmpty && printingUnresolved.isEmpty) {
       return;
     }
     int position = start;
@@ -191,6 +213,12 @@ void _sourceFollowingDependencies(
       : positions.isEmpty
       ? spans.first.start
       : min(spans.first.start, positions.first);
+  if (clipping) {
+    final List<AiNativeGroup> parents = drawing.groups.where((group) => group.start < position && group.end > position).toList()..sort((first, second) => first.start.compareTo(second.start));
+    for (final AiNativeGroup group in parents) {
+      command(group.opening);
+    }
+  }
   final Map<_NativeSubtreeSpan, AiLiveShape> retained = {
     for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.appearanceGroup != null && shape.path?.isPrivate == true && shape.end > position))
       if (!spans.any((span) => shape.start >= span.start && shape.end <= span.end)) (start: drawing._objects.forSource(shape.appearanceGroup!).expansion?.start ?? shape.start, end: shape.end): shape,
@@ -213,7 +241,13 @@ void _sourceFollowingDependencies(
           command(instruction, styleReads: item._styleReads[instruction.end]);
         }
       } else {
-        final _NativeShapeBundle bundle = _shapeBundle(drawing, retained[owner]!, layers.structure, qualifyNeighbors: retainedArtwork.isEmpty, clipping: retainedArtwork.isNotEmpty);
+        final _NativeShapeBundle bundle = _shapeBundle(
+          drawing,
+          retained[owner]!,
+          layers.structure,
+          qualifyNeighbors: !clipping && retainedArtwork.isEmpty,
+          clipping: clipping || retainedArtwork.isNotEmpty,
+        );
         for (final AiNativeInstruction item in bundle.commands) {
           command(item, styleReads: bundle.styleReads);
         }
@@ -224,5 +258,8 @@ void _sourceFollowingDependencies(
   interval(position, drawing.records.program.bodyEnd);
   if (inserted != positions.length) {
     throw const FormatException('A shape insertion has no owned native body boundary.');
+  }
+  if (clipping && (clips.isNotEmpty || compoundDepth != 0)) {
+    throw const FormatException('Appearance state inspection left an unfinished native group.');
   }
 }

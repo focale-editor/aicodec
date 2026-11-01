@@ -102,7 +102,7 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
     throw UnsupportedError('Shape copies require one unconditional lexical owner.');
   }
   for (final AiNativeStructureNode parent in _artworkParents(structure, structure.parentOf(owner))) {
-    if (parent.versions.isNotEmpty || !const {AiNativeStructureKind.layer, AiNativeStructureKind.group}.contains(parent.kind)) {
+    if (parent.versions.isNotEmpty || !const {AiNativeStructureKind.layer, AiNativeStructureKind.group}.contains(parent.kind) && !(clipping && parent.kind == .clip)) {
       throw UnsupportedError('Shape copies cannot cross unresolved enclosing owners.');
     }
     if (parent.source case final AiNativeGroup group) {
@@ -110,7 +110,7 @@ _NativeShapeBundle _shapeBundle(AiNativeDrawing drawing, AiLiveShape shape, AiNa
         throw UnsupportedError('A shape copy cannot inherit a private enclosing group.');
       }
       if (qualifyNeighbors) {
-        _ordinaryObjectFollowing(drawing, group);
+        _ordinaryObjectFollowing(drawing, group, clipping: clipping);
       }
     } else if (parent.source case final AiLayer layer) {
       _qualifiedLayerHeader(layers, layers.layerFor(layer));

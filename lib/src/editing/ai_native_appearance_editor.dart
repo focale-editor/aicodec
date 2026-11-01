@@ -64,7 +64,14 @@ AiNativeAppearances _editNativeAppearance(
     // The known-use inventory cannot establish that opaque owners have no links.
     final _ArtboardResourceScope resources = _artboardResourceScope(layers);
     final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.brushes);
-    _nativeReferenceScope(layers, _layerHeaderItems(layers), retainedResources: resources, retainedBrushes: brushes, appearanceArtwork: retained);
+    final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
+    _nativeReferenceScope(
+      layers,
+      headers,
+      bodyDictionaries: _nativeReferenceBody(layers, headers, inspect: _nativeAppearanceInterval, qualifyShapeNeighbors: false, clipping: true, appearanceArtwork: retained),
+      retainedResources: resources,
+      retainedBrushes: brushes,
+    );
     edits.addAll(styleEdits);
   } else {
     if (replacements.isEmpty ||
@@ -136,6 +143,7 @@ AiNativeAppearances _editNativeAppearance(
         ),
     },
     retainedArtwork: retained,
+    clipping: true,
     styleChanges: {for (final AiNativeResourceUse use in selected) use.instruction.end: changedState},
     styleRestorations: {for (final AiNativeResourceUse use in selected) use.instruction.end: restored},
   );

@@ -13,7 +13,7 @@ AiNativeObject _ordinaryObject(AiNativeDrawing drawing, AiNativeItem source) {
 }
 
 /// Checks successors after the complete object and its qualified metadata.
-void _ordinaryObjectFollowing(AiNativeDrawing drawing, AiNativeItem source) => _ordinaryPathFollowing(drawing.items, _ordinaryObject(drawing, source).end);
+void _ordinaryObjectFollowing(AiNativeDrawing drawing, AiNativeItem source, {bool clipping = false}) => _ordinaryPathFollowing(drawing.items, _ordinaryObject(drawing, source).end, clipping: clipping);
 
 /// Recognizes qualified dictionary, panel and constant group-style attachments.
 bool _ordinaryObjectAttachment(AiNativeDrawing drawing, AiNativeItem item) => drawing._objects._attachments[item.start]?.bindingIssue == null && drawing._objects._attachments.containsKey(item.start);

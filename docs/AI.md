@@ -2508,7 +2508,21 @@ compound paint dependencies are checked when the compound is consumed. Malformed
 controls, ineffective mask owners and changed outgoing state reject atomically.
 This extends complete-group attachment and appearance editing. Geometry-only
 printing replacements and live-shape geometry lifecycle keep their stricter
-clipping restrictions; enclosing ordinary clipping ancestors remain unqualified.
+clipping restrictions.
+
+Complete appearance pairs can also remain inside ordinary enclosing `q/Q`
+groups, including nested scopes and ordinary compound masks. These parents must
+have literal ordinary boundaries, unconditional ownership and qualified attached
+metadata, without a separately applied enclosing appearance. Their geometry,
+masks and identities remain unchanged and outside the supplied printing group.
+The dependency pass initializes scopes already open before the first edited pair,
+tracks subsequent boundaries even when local state is equal, and retains saved
+uncertainty across explicit assignments inside nested scopes. Persistent colors
+still require proven state or explicit restoration before following consumers.
+Shared edits additionally qualify the complete ordinary body, including mask
+counts, effective compound ownership and every reference owner. Private,
+compound and effect-owning ancestors of the pair remain unsupported. This does
+not authorize geometry lifecycle within those clipping parents.
 
 `nestedUses` exposes source-ordered private mode-zero/one named applications
 inside a group. Each must directly follow a path or group, optionally after its
@@ -2718,6 +2732,16 @@ pinned Adobe prolog in Ghostscript with two incoming states. That probe excludes
 color assignments whose CC layouts differ from the older prolog; exact colors
 remain covered by the byte oracle. It does not execute native styles or establish
 visual equivalence or complete-producer mask interoperability.
+Ten additional synthetic transactions edit ordinary, live-shape and private-group
+pairs under ordinary, nested and compound clipping masks. Full style/path/group
+inventories and complete-file byte deltas pass independent checks. Thirty
+printing-state comparisons verify enclosing-scope restoration through the pinned
+Adobe prolog. Sixty further comparisons explicitly substitute two possible
+original width writes and the edited width at the style application, checking the
+scope contract with two incoming states. Those are modeled writes, not execution
+of native `KnownStyle` descriptors. All ancestor masks, native geometry and
+metadata remain byte-exact; producer interoperability and Adobe reopening are
+still separate acceptance work.
 Shared edits now also retain fully inspected pattern, symbol and brush resources
 and complete conditional palette cells. Known resource-local style applications
 join the full use inventory; a user without a supplied qualified printing owner
@@ -3021,7 +3045,7 @@ These statuses do not imply complete Illustrator compatibility.
 | Ordinary native groups | Source topology and qualified declarative state | Group/ungroup, duplicate, remove, reorder and qualified moves; complete mixed CC-subtree grouping/dissolution/copy/removal/reordering/movement | Qualified metadata/identity policies apply; unknown required state and unresolved references reject; group dissolution needs explicit metadata/parent-flag policies and rejects applied styles. |
 | Hierarchical records and artboards | Source-owned settings, order, identifiers, separate active/selection/crop state, origins and print selections | Qualified native creation, removal, resizing and complete reordering; artboard print-range remapping and supplied physical-page selections; explicit host PDF page mappings and full/font-filtered cached-header synchronization | Private arrays and qualified whole-source dependencies only. Compact ATE 7/9 text, qualified appearance/brush resources, calligraphic references and local SVG-filter trees can remain unchanged. Paired local blend endpoint annotations and independent perspective view settings are retained. Unknown dependency owners and divergent cached-header profiles still reject. Unknown print-range grammars/encodings require explicit qualified replacements. |
 | Source structure and version alternatives | Ordered owners, saved identifiers, both branches and qualified shared references | Inspection; existing edit contracts still apply | No target-version selection or unknown plug-in reference resolution. |
-| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Private-contour and qualified private ordinary/compound-group users share the supplied-group contract; group edits have synthetic serialization/state acceptance. Selected and shared stroke edits pass in three additional complete producers, retaining version-one dash adjustment and empty generative provenance. Qualified nested literal styles support explicit child selection and shared coverage through one complete enclosing printing group, with per-use dependency checks and native-only restoration before sibling consumers. Private clipping groups expose exact contour/mask ownership and preserve scoped contour state; complete supplied printing groups accept qualified masks, with independent synthetic data/state acceptance. Resource/text users, opacity-mask resources, broader producer coverage and unprovable following state remain incomplete; uniform explicit state restoration qualifies isolated fills before retained text in two further complete producers. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
+| Ordered appearances | Complete named trees, selected part handles, shared uses, literal paint settings and qualified stroke alignment | Qualified scalar/part edits, stack/chain ordering and child creation/removal/copy/reparenting, plus process-only SimpleStyle edits with shared or isolated CC users and host-supplied printing groups | New parts cover process fills/strokes, stacks/chains and conduits; existing scalar edits retain their numeric layouts. Private-contour and qualified private ordinary/compound-group users share the supplied-group contract; group edits have synthetic serialization/state acceptance. Selected and shared stroke edits pass in three additional complete producers, retaining version-one dash adjustment and empty generative provenance. Qualified nested literal styles support explicit child selection and shared coverage through one complete enclosing printing group, with per-use dependency checks and native-only restoration before sibling consumers. Private clipping groups expose exact contour/mask ownership and preserve scoped contour state; complete supplied printing groups accept qualified masks. Ordinary enclosing clipping parents retain their masks and saved contour state across selected/shared edits, with independent synthetic data/state acceptance. Resource/text users, opacity-mask resources, broader producer coverage and unprovable following state remain incomplete; uniform explicit state restoration qualifies isolated fills before retained text in two further complete producers. Two complete producer programs qualify selected/shared process-fill, stack-order and fill-creation edits with retained resource artwork and conditional palettes. No effect execution or composed defaults. |
 | CC live shapes | Five qualified families | Translate, rotate, uniform scale; complete pair copies/removal/reordering/movement; supplied printing contours and qualified groups | Parameter changes, general affine resizing and unresolved printing dependencies remain incomplete; movement requires qualified parent/state ownership. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset; supplied layouts | Shaping and composition belong to the host. |
 | Gradient resources and placement | Qualified classic layouts | Stops, focus, isolation, relative CC placement | Host supplies ramps; general appearance/resource editing is incomplete. |

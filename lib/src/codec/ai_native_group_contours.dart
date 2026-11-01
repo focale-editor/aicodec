@@ -1,11 +1,14 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Inspects local contours without granting independent edits to derived data.
-List<AiNativePathTopology> _nativeGroupContours(AiNativeDrawing drawing, AiNativeGroup root, {Set<AiNativeInstruction> retainedCommands = const {}}) {
+///
+/// Retained ordinary compounds can supply outermost-first ancestors so mask
+/// ownership includes a clipping scope outside the inspected subtree.
+List<AiNativePathTopology> _nativeGroupContours(AiNativeDrawing drawing, AiNativeGroup root, {Set<AiNativeInstruction> retainedCommands = const {}, List<AiNativeGroup> ancestors = const []}) {
   final Map<int, AiNativeGroup> groups = {for (final AiNativeGroup group in drawing.groups.where((group) => group.start >= root.start && group.end <= root.end)) group.start: group};
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in root.paths) path.start: path};
   final List<AiNativeItem> items = _pathInterval(drawing.items, root.start, root.end, (item) => item.start).toList();
-  final List<AiNativeGroup> stack = [];
+  final List<AiNativeGroup> stack = [...ancestors];
   final List<AiNativePathTopology> result = [];
   AiNativeInstruction? count;
   for (int index = 0; index < items.length; index++) {
@@ -43,7 +46,7 @@ List<AiNativePathTopology> _nativeGroupContours(AiNativeDrawing drawing, AiNativ
       throw UnsupportedError('A group point count cannot cross an object dictionary.');
     }
   }
-  if (count != null || stack.isNotEmpty) {
+  if (count != null || stack.length != ancestors.length) {
     throw UnsupportedError('Group contours require complete boundaries and point-count ownership.');
   }
   for (final AiNativeGroup compound in groups.values.where((group) => group.compound)) {
