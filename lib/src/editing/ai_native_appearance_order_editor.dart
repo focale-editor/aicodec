@@ -13,12 +13,12 @@ Set<String> _nativeAppearanceOrderState(AiNativeAppearance appearance, List<AiNa
 /// Color restoration copies saved process alternatives without converting them.
 /// Permutation proofs keep their separate noncolor boundary by default.
 Map<String, AiNativeInstruction> _nativeAppearanceScalarState(AiNativeAppearance appearance, Set<String> reads, {bool colors = false}) {
-  if (appearance.parts.any((part) => part.visible != true)) {
+  if (appearance.parts.any((part) => part.kind != .nativeEffect && part.visible != true)) {
     return {};
   }
   final Map<String, List<AiNativeInstruction>> assignments = {};
   final Set<String> missingColors = {};
-  for (final AiNativeAppearancePart part in appearance.parts) {
+  for (final AiNativeAppearancePart part in appearance.parts.where((part) => part.kind != .nativeEffect)) {
     for (final AiNativeAppearancePaint paint in part.paints) {
       final Set<String> local = {};
       for (final AiNativeInstruction command in paint.style.instructions) {

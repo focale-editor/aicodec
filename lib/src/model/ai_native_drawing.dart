@@ -213,6 +213,16 @@ final class AiNativeDrawing {
   final List<AiLiveShape> liveShapes;
 
   /// Lazily shares immutable object metadata across bounded lifecycle operations.
+  /// Cached family inventories for bounded private and mask wrapper inspection.
+  late final List<AiNativeRaster> _appearanceRasters = _readNativeRasters(records, false);
+
+  /// Cached complete mesh packets for the same source revision.
+  late final List<AiNativeMesh> _appearanceMeshes = _readNativeMeshes(records, false);
+
+  /// Qualified payloads, including negative ordinary-group results.
+  final Map<AiNativeGroup, AiNativeAppearanceLeaf?> _appearanceLeaves = {};
+
+  /// Source-owned identity and metadata associations.
   late final AiNativeObjects _objects = _nativeObjects(this);
 
   /// Shares qualified image framing across immutable state and lifecycle queries.

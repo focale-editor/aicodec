@@ -22,10 +22,17 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   final Map<AiNativeContainer, AiNativeItem> metadataOwners = {};
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.uses) use.instruction.start: use};
   final Map<AiNativeResourceUse, AiNativeItem> owners = {};
+  final List<AiNativeAppearanceLeaf> leaves = [
+    for (final AiNativeGroup child in drawing.groups.where((child) => child.start >= group.start && child.end <= group.end))
+      if (_readNativeAppearanceLeaf(drawing, child) case final AiNativeAppearanceLeaf leaf) leaf,
+  ];
   AiNativeInstruction? count;
   bool panel = false;
   for (int index = 0; index < items.length; index++) {
     final AiNativeItem item = items[index];
+    if (leaves.any((leaf) => item.start >= leaf.group.opening.end && item.end <= leaf.group.closing.start)) {
+      continue;
+    }
     if (item is AiNativeContainer) {
       final AiNativeItem? owner = index == 0 ? null : endings[items[index - 1].end];
       if (owner == null || count != null || panel || !drawing.records._projection.isPrivate(item.start) || !_sameNativeObjectOwner(structure.nodeFor(owner), structure.nodeFor(item))) {

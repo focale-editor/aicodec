@@ -21,10 +21,17 @@ void _artboardResourceArtwork(AiNativeLayers layers, AiNativeDrawing drawing, Ma
       throw UnsupportedError('Retained resource gradients cannot cross group, state or metadata boundaries.');
     }
   }
+  final List<AiNativeAppearanceLeaf> leaves = [
+    for (final AiNativeGroup group in drawing.groups)
+      if (_readNativeAppearanceLeaf(drawing, group) case final AiNativeAppearanceLeaf leaf) leaf,
+  ];
   AiNativeInstruction? count;
   int clipDepth = 0;
   for (int index = 0; index < drawing.items.length; index++) {
     final AiNativeItem item = drawing.items[index];
+    if (leaves.any((leaf) => item.start >= leaf.group.opening.end && item.end <= leaf.group.closing.start)) {
+      continue;
+    }
     if (paths[item.start] case final AiNativePath path) {
       final int first = index;
       while (index + 1 < drawing.items.length && drawing.items[index + 1].start < path.end) {

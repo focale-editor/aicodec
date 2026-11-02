@@ -106,7 +106,9 @@ void _writeNativeAppearanceElement(
             mask: clip.mask,
           );
         }
-        if (depth == 1 && writeChildren != null) {
+        if (element.leaf case final AiNativeAppearanceLeafDefinition leaf) {
+          _writeNativeAppearanceLeaf(bytes, drawing, leaf, private: true);
+        } else if (depth == 1 && writeChildren != null) {
           writeChildren();
         } else {
           for (final AiNativeAppearanceElementDefinition child in element.children) {
@@ -147,9 +149,20 @@ List<AiNativeAppearanceArtwork> _nativeBodyAppearanceArtwork(AiNativeAppearances
 }
 
 /// Tracks literal reads/writes and private style effects without executing them.
-_NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNativeAppearanceArtwork owner, List<AiNativeInstruction> commands) => _nativeArtworkCommandsAccess(drawing, commands, {
-  for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) use.instruction.end: _nativeAppearanceAccessStyle(owner, use),
-}, printingImages: owner.printingRasters);
+_NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNativeAppearanceArtwork owner, List<AiNativeInstruction> commands) => _nativeArtworkCommandsAccess(
+  drawing,
+  [
+    for (final AiNativeInstruction command in commands)
+      if (!owner.leaves.values.any((leaf) => command.start >= leaf.group.opening.end && command.end <= leaf.group.closing.start)) command,
+    for (final AiNativeAppearanceLeaf leaf in owner.leaves.values)
+      for (final AiNativeInstruction command in leaf._commands)
+        if (commands.isNotEmpty && command.start >= commands.first.start && command.end <= commands.last.end) command,
+  ]..sort((first, second) => first.start.compareTo(second.start)),
+  {
+    for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) use.instruction.end: _nativeAppearanceAccessStyle(owner, use),
+  },
+  printingImages: [...owner.printingRasters, ...owner.leaves.values.map((leaf) => leaf.raster).whereType<AiNativeRaster>()],
+);
 
 /// Resolves definite assignments separately from potential style writes.
 ({Set<String> reads, Set<String> writes, Set<String> assigned}) _nativeAppearanceAccessStyle(AiNativeAppearanceArtwork owner, AiNativeResourceUse use) {
@@ -192,7 +205,7 @@ _NativeShapeAccess _nativeArtworkCommandsAccess(
     final AiNativePath? path = paths[command.start];
     final Set<String> reads = const {'XI', '`'}.contains(command.operator)
         ? _nativeImageReads(images[command.start] ?? ordinaryImages[command.start] ?? (throw UnsupportedError('Artwork state requires qualified image ownership.')))
-        : const {'aikit:text', 'aikit:mesh'}.contains(command.operator)
+        : const {'aikit:text', 'aikit:mesh', 'aikit:symbol'}.contains(command.operator)
         ? _nativeArtworkStateKeys
         : path != null
         ? compoundDepth == 0
@@ -315,7 +328,7 @@ AiNativeAppearances _createNativeAppearanceArtwork(AiNativeAppearances model, Li
   final AiNativeAppearanceArtwork owner = _createdAppearanceOwner(created, span);
   if (created.styles.length != model.styles.length ||
       created.uses.length != model.uses.length + owner.nestedUses.length + 1 ||
-      provisional.liveShapes.length != drawing.liveShapes.length + (owner.liveShape == null ? 0 : 1)) {
+      provisional.liveShapes.length != drawing.liveShapes.length + (owner.liveShape == null ? 0 : 1) + owner.leaves.values.where((leaf) => leaf.shape != null).length) {
     throw const FormatException('Created artwork changed unrelated appearance declarations or owners.');
   }
   final Set<String> identities = _nativeIdentityNames(model.structure);

@@ -276,8 +276,8 @@ List<int> _removedGroupState(AiNativeDrawing drawing, AiNativeGroup group) => [
 ];
 
 /// Checks topology after the source editor enforces the original byte/token limits.
-AiNativeDrawing _groupLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, {required int paths, required int groups, int? liveShapes}) {
-  final AiNativeDrawing result = _pathLifecycleResult(drawing, edits, paths, liveShapes: liveShapes);
+AiNativeDrawing _groupLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, {required int paths, required int groups, int? liveShapes, bool appearanceLeaves = false}) {
+  final AiNativeDrawing result = _pathLifecycleResult(drawing, edits, paths, liveShapes: liveShapes, appearanceLeaves: appearanceLeaves);
   if (result.groups.length != groups || result.records.program.layers.length != drawing.records.program.layers.length) {
     throw const FormatException('Group lifecycle edits changed unrelated native topology.');
   }

@@ -5,8 +5,8 @@ extension AiNativeTextSave on AiNativeTextDocument {
   /// Attaches a complete native view from the host, including printable glyphs.
   ///
   /// The host supplies the full ATE strike tree for this exact model revision,
-  /// with font-specific glyphs, advances and shadow styles for point/area frames.
-  /// Path text requires a separately qualified per-glyph geometry contract.
+  /// with font-specific glyphs, advances and shadow styles. Path frames additionally
+  /// require projected glyph bounds and the observed compact path-layout flag.
   /// Frame references and UTF-16 source coverage are checked; glyph selection,
   /// metrics and visual
   /// equivalence remain the host's responsibility. Unknown node kinds, incomplete
@@ -23,7 +23,15 @@ extension AiNativeTextSave on AiNativeTextDocument {
     }
     _printableTextFrames(this, story);
     PsEngineCodec.encode(value: view, limits: engine.limits);
-    _validateComposedText(story, view, overflowStart ?? story.modelText.length);
+    _validateComposedText(
+      story,
+      view,
+      overflowStart ?? story.modelText.length,
+      pathFrames: {
+        for (final AiNativeTextFrame frame in frames)
+          if (frame.kind == .path) frame.index,
+      },
+    );
     final _TextLifecycle edit = _TextLifecycle(source: this);
     edit.storyValues[story.index] = PsEngineDictionary(values: {...story.record.values, _textKey(story.record, '1', 'View'): view});
     objects.where((object) => object.storyIndex == story.index).forEach(edit.invalidateMetadata);
@@ -44,13 +52,21 @@ extension AiNativeTextSave on AiNativeTextDocument {
     _TextLifecycle(source: this);
     for (final AiNativeTextStory story in stories) {
       _printableTextFrames(this, story);
-      _validateComposedText(story, _dictionary(story.view), overflowStarts[story] ?? story.modelText.length);
+      _validateComposedText(
+        story,
+        _dictionary(story.view),
+        overflowStarts[story] ?? story.modelText.length,
+        pathFrames: {
+          for (final AiNativeTextFrame frame in frames)
+            if (frame.kind == .path) frame.index,
+        },
+      );
     }
   }
 }
 
 /// Validates owned frames, complete logical coverage and printable glyph leaves.
-void _validateComposedText(AiNativeTextStory story, PsEngineDictionary view, int end) {
+void _validateComposedText(AiNativeTextStory story, PsEngineDictionary view, int end, {Set<int> pathFrames = const {}}) {
   _knownTextKeys(view, {'0', 'Frames', '2', 'Strikes'}, 'composed view');
   if (end < 0 || end > story.modelText.length) {
     throw RangeError.range(end, 0, story.modelText.length, 'overflowStart');
@@ -71,6 +87,7 @@ void _validateComposedText(AiNativeTextStory story, PsEngineDictionary view, int
   }
   final List<int> composedFrames = [];
   int covered = 0;
+  bool path = false;
 
   /// Checks hierarchy so orphan glyphs cannot satisfy a segment's coverage.
   void visit(AiNativeTextStrike strike, AiNativeTextStrikeKind? parent) {
@@ -97,6 +114,7 @@ void _validateComposedText(AiNativeTextStory story, PsEngineDictionary view, int
         throw const FormatException('Composed frame strike has no resource.');
       }
       composedFrames.add(frame);
+      path = pathFrames.contains(frame);
     }
     if (strike.kind == .segment) {
       final int? start = strike.firstCharacterIndex;
@@ -109,6 +127,9 @@ void _validateComposedText(AiNativeTextStory story, PsEngineDictionary view, int
     }
     if (strike.kind == .glyphs && (strike.glyphIds.isEmpty || strike.children.isNotEmpty)) {
       throw const FormatException('Printable glyph strikes require glyph IDs and no children.');
+    }
+    if (path && strike.kind == .glyphs && (strike.visualBounds == null || strike.record['24'] is! PsEngineNumber || (strike.record['24']! as PsEngineNumber).value != 0)) {
+      throw UnsupportedError('Composed path glyphs require explicit projected bounds and the observed path layout flag.');
     }
     for (final AiNativeTextStrike child in strike.children) {
       visit(child, strike.kind);
@@ -145,7 +166,7 @@ void _printableTextFrames(AiNativeTextDocument document, AiNativeTextStory story
   if (story.frameIndices.any((index) => index >= document.frames.length)) {
     throw const FormatException('Text composition references a missing frame resource.');
   }
-  if (story.frameIndices.any((index) => document.frames[index].kind != .point && document.frames[index].kind != .area)) {
-    throw UnsupportedError('Printable path text requires per-glyph path geometry qualification.');
+  if (story.frameIndices.any((index) => document.frames[index].kind == .unknown)) {
+    throw UnsupportedError('Printable text requires a known frame geometry.');
   }
 }

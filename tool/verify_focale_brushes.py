@@ -113,3 +113,72 @@ def verify_affine_brushes(inkai, output):
             assert ghostscript_renders(path) == ghostscript_renders(reference), stem
             print(stem, 'passed', flush=True)
     print('Verified ten affine-brush views: native nib metrics, exact original PDF pixels, bounded reopened Poppler edges and exact Ghostscript 72 dpi pixels.')
+
+
+def verify_artwork_brushes(inkai, output):
+    """Check source tiles, native references and host views for art/pattern saves.
+
+    This parses the native dictionaries independently and compares composed
+    printing/PDF views. It does not execute Adobe's artwork brush plug-ins.
+    """
+    from verify_focale_group_paints import ghostscript_renders
+
+    for kind, fit in (('art', 'stretch'), ('pattern', 'stretch'), ('pattern', 'space')):
+        for edited in (False, True):
+            for reopened in (False, True):
+                stem = f'artwork-brush-{kind}-{fit}' + ('-edited' if edited else '') + ('-reopened' if reopened else '')
+                path = output / f'{stem}.ai'
+                source = output / f'{stem}.ps'
+                assert native_programs(path) == [source.read_bytes()], stem
+                document = inkai.parse(str(source))
+                state = descriptor_state(document)
+                assert state['references'], stem
+                definitions = descriptors(document)
+                assert len(definitions) == (2 if edited else 1), stem
+                plugin = b'Adobe ArtOnPath Brush Tool' if kind == 'art' else b'Adobe PatternOnPath Brush Tool'
+                for (owner, _), payload in definitions.items():
+                    assert owner == plugin, stem
+                    fields = [field.strip() for field in payload.split(b'/')]
+                    assert len(fields) == 9 and fields[0] == b'2' and fields[1], stem
+                    assert fields[6] == b'0 0' and fields[7] == b'0 1', stem
+                    values = list(map(float, fields[8].split()))
+                    assert len(values) == 15 and values[1] == 1 and values[2] == values[4] == values[8], stem
+                filters = [value for value in native_values(document.setup) if type(value).__name__ == 'BasicFilter' and value.Filter[0].encode() == plugin]
+                assert len(filters) == (3 if edited else 1), stem
+                parameters = filters[-1].Dict
+                assert float(parameters['Scaling']) == (1 if kind == 'art' else 1.2 if edited else .8), stem
+                assert int(parameters['Adjustment']) == (1 if fit == 'space' else 0), stem
+                assert int(parameters['Colorization']) == 1 and not parameters['Segmented'], stem
+                reference = output / f'{stem}-reference.pdf'
+                saved, host = PdfReader(path, strict=True), PdfReader(reference, strict=True)
+                assert len(saved.pages) == len(host.pages) == 1 and saved.pages[0].mediabox == host.pages[0].mediabox, stem
+                assert renders(path) == renders(reference), stem
+                assert renders(path, dpi=144) == renders(reference, dpi=144), stem
+                assert ghostscript_renders(path) == ghostscript_renders(reference), stem
+                print(stem, 'passed', flush=True)
+    for suffix in ('', '-reopened'):
+        stem = 'artwork-brush-reflected' + suffix
+        path, source = output / f'{stem}.ai', output / f'{stem}.ps'
+        assert native_programs(path) == [source.read_bytes()], stem
+        document = inkai.parse(str(source))
+        assert descriptor_state(document)['references'], stem
+        definition, = descriptors(document).values()
+        fields = [field.strip() for field in definition.split(b'/')]
+        assert all(fields[1:6]) and fields[2] != fields[3] and fields[4] != fields[5], stem
+        reference = output / f'{stem}-reference.pdf'
+        for dpi, maximum_pixels in ((72, 5), (144, 8)):
+            actual, expected = renders(path, dpi=dpi), renders(reference, dpi=dpi)
+            if not suffix:
+                assert actual == expected, stem
+            else:
+                # Baking the source reflection into spine coordinates changes
+                # floating-point outline evaluation at a few antialiased edges.
+                # Native controls/tiles are checked separately by host tests.
+                assert len(actual) == len(expected) == 1, stem
+                difference = ImageChops.difference(Image.open(BytesIO(actual[0])).convert('RGB'), Image.open(BytesIO(expected[0])).convert('RGB'))
+                pixels = list(difference.getdata())
+                assert sum(max(pixel) != 0 for pixel in pixels) <= maximum_pixels, (stem, dpi)
+                assert max(max(pixel) for pixel in pixels) <= 24, (stem, dpi)
+        assert ghostscript_renders(path) == ghostscript_renders(reference), stem
+        print(stem, 'passed', flush=True)
+    print('Verified fourteen artwork brush views, source resources and complete saved native references.')

@@ -302,3 +302,34 @@ AiNativeArtworkResources _replaceUnusedNativeArtworkResource(AiNativeArtworkReso
   _validateCreatedResourceIdentities(model, result, changed, replaced: resource);
   return result;
 }
+
+/// Renames one resolved symbol namespace without touching editable or printed art.
+AiNativeArtworkResources _renameNativeSymbol(AiNativeArtworkResources model, AiNativeArtworkResource resource, List<int> name) {
+  if (!model.resources.contains(resource) ||
+      resource.kind != .symbol ||
+      name.isEmpty ||
+      model.resources.any((other) => !identical(other, resource) && other.kind == .symbol && _sameNativeBytes(other.nameBytes, name))) {
+    throw ArgumentError('Symbol renaming requires a current master and a free literal name.');
+  }
+  _qualifiedArtworkResources(model);
+  final AiNativeSymbols symbols = AiNativeSymbols.decode(artworkResources: model);
+  final List<int> literal = _nativeLiteralString(name, model.structure.drawing.records.program.limits.maxDecodedBytes);
+  final List<AiSourceEdit> edits = [AiSourceEdit(start: resource.name.start, end: resource.name.end, bytes: literal)];
+  for (final AiNativeSymbolInstance instance in symbols.instancesOf(definition: resource)) {
+    if (instance.definition != resource || instance.resource != null || instance.node.versions.isNotEmpty) {
+      throw UnsupportedError('Symbol renaming requires complete ordinary reference ownership.');
+    }
+    _nativeSymbolDefinition(instance.record);
+    final AiNativeEntry entry = instance.record['SymbolRef']!;
+    final AiToken token = (entry.items.single as AiNativeToken).token;
+    edits.add(AiSourceEdit(start: token.start, end: token.end, bytes: literal));
+  }
+  for (final _NativeSymbolList panel in _nativeSymbolLists(model)) {
+    for (final AiToken token in panel.names) {
+      if (_sameNativeBytes(aiStringBytes(token), resource.nameBytes)) {
+        edits.add(AiSourceEdit(start: token.start, end: token.end, bytes: literal));
+      }
+    }
+  }
+  return _artworkResourceResult(model, edits, model.resources.length);
+}

@@ -38,6 +38,13 @@ AiNativeAppearances _paintResourceScope(AiNativeRecords records) {
     retainedResources: resources,
     retainedBrushes: brushes,
   );
+  final AiNativeSymbols symbols = AiNativeSymbols.decode(artworkResources: model.artworkResources);
+  for (final AiNativeSymbolInstance instance in symbols.instances) {
+    if (instance.definition == null || instance.resource != null || instance.otherEntries.isNotEmpty || instance.node.versions.isNotEmpty) {
+      throw UnsupportedError('Resource edits require uniquely resolved unconditional static symbol instances.');
+    }
+    _nativeSymbolDefinition(instance.record);
+  }
   return model;
 }
 

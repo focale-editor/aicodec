@@ -208,14 +208,22 @@ const Set<String> _ordinaryPathSuccessors = {
 };
 
 /// Reopens a complete atomic edit and checks the expected body-path count.
-AiNativeDrawing _pathLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, int count, {int? liveShapes}) {
+AiNativeDrawing _pathLifecycleResult(AiNativeDrawing drawing, List<AiSourceEdit> edits, int count, {int? liveShapes, bool appearanceLeaves = false}) {
   final AiNativeDrawing result = AiNativeDrawing.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: drawing.records.program, edits: edits),
     ),
   );
-  final List<AiLiveShape> unresolved = drawing.liveShapes.where((shape) => !shape.isBound).toList();
-  final List<AiLiveShape> retained = result.liveShapes.where((shape) => !shape.isBound).toList();
+  Set<AiLiveShape> leaves(AiNativeDrawing value) => appearanceLeaves
+      ? {
+          for (final AiNativeAppearanceArtwork owner in _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: value))))
+            for (final AiNativeAppearanceLeaf leaf in owner.leaves.values) ?leaf.shape,
+        }
+      : {};
+  final Set<AiLiveShape> originalLeaves = leaves(drawing);
+  final Set<AiLiveShape> resultingLeaves = leaves(result);
+  final List<AiLiveShape> unresolved = drawing.liveShapes.where((shape) => !shape.isBound && !originalLeaves.contains(shape)).toList();
+  final List<AiLiveShape> retained = result.liveShapes.where((shape) => !shape.isBound && !resultingLeaves.contains(shape)).toList();
   if (result.paths.length != count ||
       result.liveShapes.length != (liveShapes ?? drawing.liveShapes.length) ||
       unresolved.length != retained.length ||

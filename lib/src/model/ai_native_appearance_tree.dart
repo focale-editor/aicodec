@@ -72,6 +72,11 @@ final class AiNativeAppearanceGroupDefinition extends AiNativeAppearanceElementD
   /// Ordered native children, retained separately from the printing expansion.
   final List<AiNativeAppearanceElementDefinition> children;
 
+  /// One complete image, mesh or live shape instead of vector child definitions.
+  ///
+  /// The ordinary wrapper retains independent identity, appearance and masks.
+  final AiNativeAppearanceLeafDefinition? leaf;
+
   /// Optional unpainted prefix mask, separate from the ordered content children.
   final AiNativeAppearanceClipDefinition? clip;
 
@@ -94,6 +99,7 @@ final class AiNativeAppearanceGroupDefinition extends AiNativeAppearanceElementD
   AiNativeAppearanceGroupDefinition({
     required List<AiNativeAppearanceElementDefinition> children,
     this.clip,
+    this.leaf,
     List<int>? styleNameBytes,
     List<int>? nameBytes,
     List<int>? identifierBytes,
@@ -103,6 +109,9 @@ final class AiNativeAppearanceGroupDefinition extends AiNativeAppearanceElementD
        styleNameBytes = styleNameBytes == null ? null : List.unmodifiable(styleNameBytes),
        nameBytes = nameBytes == null ? null : List.unmodifiable(nameBytes),
        identifierBytes = identifierBytes == null ? null : List.unmodifiable(identifierBytes) {
+    if (leaf != null && (children.isNotEmpty || clip != null)) {
+      throw ArgumentError('An appearance leaf requires an unclipped wrapper without other children.');
+    }
     if ([styleNameBytes, nameBytes, identifierBytes].whereType<List<int>>().any((bytes) => bytes.any((byte) => byte < 0 || byte > 255)) || styleNameBytes?.isEmpty == true) {
       throw ArgumentError('Appearance trees require literal byte names and nonempty style names.');
     }
@@ -123,18 +132,24 @@ final class AiNativeAppearanceTreeChild {
   /// children may move between groups among the complete owners selected in the transaction.
   final List<AiNativeAppearanceTreeChild>? children;
 
+  /// Replaces a complete non-text payload while retaining its wrapper metadata.
+  final AiNativeAppearanceLeafDefinition? leaf;
+
   /// Retains source data and optionally changes the children of a retained group.
-  AiNativeAppearanceTreeChild.retain({required AiNativeItem source, List<AiNativeAppearanceTreeChild>? children})
+  AiNativeAppearanceTreeChild.retain({required AiNativeItem source, List<AiNativeAppearanceTreeChild>? children, this.leaf})
     : source = source,
       definition = null,
       children = children == null ? null : List.unmodifiable(children) {
+    if (leaf != null && (source is! AiNativeGroup || children != null)) {
+      throw ArgumentError('Leaf replacement requires a group without a child plan.');
+    }
     if (source is! AiNativePath && source is! AiNativeGroup || children != null && source is! AiNativeGroup) {
       throw ArgumentError('Retained appearance children require paths or groups; only groups have replacement children.');
     }
   }
 
   /// Inserts independently authored data instead of borrowing an existing identity.
-  const AiNativeAppearanceTreeChild.create({required AiNativeAppearanceElementDefinition this.definition}) : source = null, children = null;
+  const AiNativeAppearanceTreeChild.create({required AiNativeAppearanceElementDefinition this.definition}) : source = null, children = null, leaf = null;
 
   /// Creates a fresh group around retained or new children from the selected owners.
   ///
@@ -142,6 +157,7 @@ final class AiNativeAppearanceTreeChild {
   /// its typed children must be empty because this plan supplies their ownership.
   AiNativeAppearanceTreeChild.group({required AiNativeAppearanceGroupDefinition definition, required List<AiNativeAppearanceTreeChild> children})
     : definition = definition,
+      leaf = null,
       source = null,
       children = List.unmodifiable(children) {
     if (definition.children.isNotEmpty) {
@@ -158,6 +174,9 @@ final class AiNativeAppearanceTreeChange {
   /// Retained or fresh children, excluding the root's attached clipping contour.
   final List<AiNativeAppearanceTreeChild> children;
 
+  /// Replacement payload when the complete root itself represents one leaf.
+  final AiNativeAppearanceLeafDefinition? leaf;
+
   /// Freezes a child plan for an atomic multi-owner topology transaction.
-  AiNativeAppearanceTreeChange({required this.artwork, required List<AiNativeAppearanceTreeChild> children}) : children = List.unmodifiable(children);
+  AiNativeAppearanceTreeChange({required this.artwork, required List<AiNativeAppearanceTreeChild> children, this.leaf}) : children = List.unmodifiable(children);
 }

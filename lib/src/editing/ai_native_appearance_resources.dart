@@ -181,28 +181,43 @@ List<AiNativeInstruction> _nativeResourceAppearanceInterval(AiNativeDrawing draw
   return result;
 }
 
-/// Resolves fixed nib references without qualifying unrelated brush libraries for ordinary styles.
+/// Resolves fixed brush references without qualifying unrelated brush libraries for ordinary styles.
 Set<(String, String)> _nativeStyleBrushes(AiNativeDrawing drawing, AiNativeContainer style) {
   final List<AiNativeContainer> filters = drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end && record.type == 'BasicFilter').toList();
-  final List<AiNativeContainer> calligraphic = filters.where((record) => _nativeAppearanceKind(record, _nativeAppearanceFilter(record)) == .calligraphic).toList();
-  if (calligraphic.isEmpty) {
+  final List<AiNativeContainer> brushFilters = filters
+      .where((record) => _nativeAppearanceKind(record, _nativeAppearanceFilter(record)) == .calligraphic || _nativeAppearanceKind(record, _nativeAppearanceFilter(record)) == .artworkBrush)
+      .toList();
+  if (brushFilters.isEmpty) {
     return const {};
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final _ArtboardResourceScope resources = _artboardResourceScope(layers);
-  final Map<String, AiNativeBrushDescriptor> descriptors = {};
+  final Map<(String, String), AiNativeBrushDescriptor> descriptors = {};
   final _ArtboardBrushScope brushes = _artboardBrushScope(
     layers,
     resources.brushes,
     inspect: (brush) {
-      if (brush.kind == .calligraphic) {
-        descriptors[latin1.decode(brush.nameBytes)] = brush;
-      }
+      descriptors[(brush.plugin, latin1.decode(brush.nameBytes))] = brush;
     },
   );
-  for (final AiNativeContainer filter in calligraphic) {
+  for (final AiNativeContainer filter in brushFilters) {
+    final String plugin = latin1.decode(_nativeAppearanceFilter(filter)!.nameBytes);
+    if (plugin != AiNativeBrushKind.calligraphic.plugin) {
+      final AiNativeArtworkBrushPaint paint = AiNativeArtworkBrushPaint._decode(filter, plugin == AiNativeBrushKind.art.plugin ? .art : .pattern);
+      final AiNativeBrushDescriptor? descriptor = descriptors[(plugin, latin1.decode(paint.brushNameBytes))];
+      if (descriptor == null) {
+        throw UnsupportedError('Artwork brush styles require a resolved descriptor.');
+      }
+      final List<String> fields = latin1.decode(descriptor.payloadBytes).split('/').map((field) => field.trim()).toList();
+      final String expected = latin1.decode(paint.descriptorPayload(tileNames: fields.skip(1).take(5).map(latin1.encode).toList()));
+      final List<String> normalized = expected.split('/').map((field) => field.trim()).toList();
+      if (fields.length != normalized.length || fields.indexed.any((field) => field.$1 < 6 ? field.$2 != normalized[field.$1] : !_sameBrushScalars(field.$2, normalized[field.$1]))) {
+        throw UnsupportedError('Artwork brush descriptor and local fixed parameters must agree.');
+      }
+      continue;
+    }
     final AiNativeCalligraphicPaint nib = AiNativeCalligraphicPaint._decode(filter);
-    final AiNativeBrushDescriptor? descriptor = descriptors[latin1.decode(nib.brushNameBytes)];
+    final AiNativeBrushDescriptor? descriptor = descriptors[(plugin, latin1.decode(nib.brushNameBytes))];
     final List<double> expected = _artboardBrushNumbers(latin1.decode(nib.descriptorPayload), count: 11);
     final List<double>? actual = descriptor == null ? null : _artboardBrushNumbers(latin1.decode(descriptor.payloadBytes), count: 11);
     if (actual == null || actual.indexed.any((value) => value.$2 != expected[value.$1])) {
@@ -210,4 +225,11 @@ Set<(String, String)> _nativeStyleBrushes(AiNativeDrawing drawing, AiNativeConta
     }
   }
   return brushes.names;
+}
+
+/// Compares bounded descriptor scalar groups without depending on number spelling.
+bool _sameBrushScalars(String first, String second) {
+  final List<double> expected = _artboardBrushNumbers(second, count: RegExp(r'\S+').allMatches(second).length);
+  final List<double> actual = _artboardBrushNumbers(first, count: expected.length);
+  return actual.indexed.every((value) => value.$2 == expected[value.$1]);
 }

@@ -110,12 +110,26 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   }
   final AiNativeContainer? printingDictionary = index >= 0 && items[index] is AiNativeContainer ? items[index--] as AiNativeContainer : null;
   final AiNativeGroup? group = index < 0 ? null : drawing.groups.where((group) => group.end == items[index].end).singleOrNull;
-  if (group == null || group.opening.isPrivate || group.compound || drawing.liveShapes.any((shape) => shape.start < use.instruction.end && shape.end > group.start)) {
+  if (group == null || group.opening.isPrivate || group.compound || drawing.liveShapes.any((shape) => shape.start < authoring.start && shape.end > group.start)) {
     throw UnsupportedError('Appearance artwork requires a distinct ordinary printing group.');
   }
   _printingState(drawing, group, clipping: true);
   _printingPointCounts(drawing, group);
-  final List<AiNativeRaster> images = _printingRasters(drawing, group);
+  final List<AiNativeAppearanceLeaf> leaves = [
+    if (authoringGroup != null)
+      for (final AiNativeGroup child in drawing.groups.where((child) => child.start >= authoringGroup.start && child.end <= authoringGroup.end))
+        if (_readNativeAppearanceLeaf(drawing, child) case final AiNativeAppearanceLeaf leaf) leaf,
+  ];
+  for (final AiNativeAppearanceLeaf leaf in leaves) {
+    if (leaf.symbol case final AiNativeContainer symbol) {
+      final AiNativeAppearanceSymbolDefinition instance = _nativeSymbolDefinition(symbol);
+      final List<AiNativeArtworkResource> masters = model.artworkResources.resources.where((master) => master.kind == .symbol && _sameNativeBytes(master.nameBytes, instance.nameBytes)).toList();
+      if (resource != null || masters.length != 1 || masters.single.isPrivate || masters.single.versions.isNotEmpty) {
+        throw UnsupportedError('Symbol leaves require a unique unconditional master outside resource artwork.');
+      }
+    }
+  }
+  final List<AiNativeRaster> images = [..._printingRasters(drawing, group), ...leaves.map((leaf) => leaf.raster).whereType<AiNativeRaster>()];
   final AiNativeStructureNode owner = structure.nodeFor(group);
   for (final AiNativeItem item in [authoring, instruction, ?dictionary, ?printingDictionary]) {
     if (!_sameNativeObjectOwner(owner, structure.nodeFor(item))) {
@@ -147,6 +161,13 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
     if (path != null) ...[...path.geometry, path.paint],
   };
   for (final AiNativeItem item in _pathInterval(items, start, use.instruction.end, (item) => item.start)) {
+    final AiNativeAppearanceLeaf? leaf = leaves.where((leaf) => item.start >= leaf.group.opening.end && item.end <= leaf.group.closing.start).singleOrNull;
+    if (leaf != null) {
+      if (item.start == _pathInterval(items, leaf.group.opening.end, leaf.group.closing.start, (item) => item.start).first.start) {
+        commands.addAll(leaf._commands);
+      }
+      continue;
+    }
     if (identical(item, dictionary) || identical(item, printingDictionary) || metadata.contains(item)) {
       continue;
     }

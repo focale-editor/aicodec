@@ -17,6 +17,11 @@ final class AiNativeTextGlyphLayout {
   /// Host-measured local bounds `[left, top, right, bottom]`.
   final List<double> bounds;
 
+  /// Host-composed bounds after path placement, before the frame matrix.
+  ///
+  /// Required for path frames; origins remain distances in the unwrapped line.
+  final List<double>? pathBounds;
+
   /// Whether this is the nonprinting space glyph representing a paragraph mark.
   ///
   /// The host must supply the real space glyph from [font]; this does not select
@@ -24,10 +29,14 @@ final class AiNativeTextGlyphLayout {
   final bool paragraphMark;
 
   /// Retains checked original glyph identity and compositor geometry.
-  AiNativeTextGlyphLayout({required this.font, required this.glyphId, required this.x, required this.y, required List<double> bounds, this.paragraphMark = false})
-    : bounds = List.unmodifiable(bounds) {
+  AiNativeTextGlyphLayout({required this.font, required this.glyphId, required this.x, required this.y, required List<double> bounds, List<double>? pathBounds, this.paragraphMark = false})
+    : bounds = List.unmodifiable(bounds),
+      pathBounds = pathBounds == null ? null : List.unmodifiable(pathBounds) {
     if (glyphId < 0 || glyphId > 65535 || !x.isFinite || !y.isFinite || bounds.length != 4 || bounds.any((value) => !value.isFinite) || bounds[0] > bounds[2] || bounds[1] > bounds[3]) {
       throw ArgumentError('Invalid host-composed Illustrator glyph.');
+    }
+    if (pathBounds != null && (pathBounds.length != 4 || pathBounds.any((value) => !value.isFinite) || pathBounds[0] > pathBounds[2] || pathBounds[1] > pathBounds[3])) {
+      throw ArgumentError('Invalid composed path-glyph bounds.');
     }
   }
 }
@@ -110,7 +119,7 @@ final class AiNativeTextLineLayout {
   }
 }
 
-/// A point/area frame's composed lines, referencing an owned native resource.
+/// A point, area or path frame's composed lines, referencing an owned native resource.
 final class AiNativeTextFrameLayout {
   /// Source resource whose path and transform remain unchanged.
   final AiNativeTextFrame frame;
@@ -139,7 +148,8 @@ extension AiNativeTextComposition on AiNativeTextDocument {
   /// Each segment describes one shaping cluster. Positions are explicit, so
   /// kerning and tracking do not have to be reconstructed from glyph advances.
   /// The final CR uses a real host-supplied space glyph marked [AiNativeTextGlyphLayout.paragraphMark].
-  /// Compact CC point/area frames are supported. Complex many-to-many cluster
+  /// Compact CC point, area and path frames are supported. Path glyphs require
+  /// explicit projected [AiNativeTextGlyphLayout.pathBounds]. Complex many-to-many cluster
   /// maps, automatic hyphens and named CS glyph caches use [withComposedText].
   AiNativeTextDocument withGlyphLayout({required AiNativeTextStory story, required List<AiNativeTextFrameLayout> frames, required AiBoundingBox bounds, int? overflowStart}) {
     if (!stories.contains(story)) {
@@ -164,6 +174,9 @@ extension AiNativeTextComposition on AiNativeTextDocument {
             throw UnsupportedError('Glyph segments require one qualified shaping cluster without automatic insertions.');
           }
           for (final AiNativeTextGlyphLayout glyph in segment.glyphs) {
+            if ((frame.frame.kind == .path) != (glyph.pathBounds != null)) {
+              throw ArgumentError('Path frames require projected glyph bounds alongside unwrapped origins.');
+            }
             if (!(frame.x + line.x + segment.x + glyph.x).isFinite || !(frame.y + line.y + segment.y + glyph.y).isFinite) {
               throw ArgumentError('Composed Illustrator glyph origin overflows its frame.');
             }
@@ -241,7 +254,7 @@ extension AiNativeTextComposition on AiNativeTextDocument {
       if (frame.frame.index >= this.frames.length || !identical(this.frames[frame.frame.index], frame.frame) || frame.frame.index != story.frameIndices[index]) {
         throw ArgumentError('Foreign, stale or reordered Illustrator composition frame.');
       }
-      if (frame.frame.kind != .point && frame.frame.kind != .area) {
+      if (frame.frame.kind != .point && frame.frame.kind != .area && !(glyphs && frame.frame.kind == .path)) {
         throw UnsupportedError('Composed Illustrator path text requires per-glyph path geometry.');
       }
       final List<PsEngineValue> lines = [];
@@ -440,6 +453,8 @@ final class _TextCompositionWriter {
     fields: {
       '1': coordinates(glyph.bounds),
       '5': PsEngineArray(values: [PsEngineNumber(value: glyph.glyphId)]),
+      if (glyph.pathBounds != null) '8': coordinates(glyph.pathBounds!),
+      if (glyph.pathBounds != null) '24': PsEngineNumber(value: 0),
       '10': PsEngineDictionary(
         values: {
           '0': PsEngineArray(

@@ -59,6 +59,9 @@ Uint8List _createdNativeLocalArtwork(AiNativeRecords records, List<AiNativeAppea
             mask: clip.mask,
           );
         }
+        if (element.leaf case final AiNativeAppearanceLeafDefinition leaf) {
+          _writeNativeAppearanceLeaf(output, drawing, leaf, private: private);
+        }
         for (final AiNativeAppearanceElementDefinition child in element.children) {
           write(child, depth + 1);
         }

@@ -57,9 +57,18 @@ extension AiNativeTextLifecycle on AiNativeTextDocument {
   /// A null layer selects the program root. Existing resources are retained and
   /// new ones appended. The returned story is `stories.last`. Supply composition
   /// and a matching PDF before saving; no glyphs or font metrics are invented.
-  /// Only unconditional ordinary text with qualified local dependencies can be
+  /// [appearanceParent] inserts into an empty private wrapper of a qualified
+  /// appearance pair; the host must refresh its printing view before saving.
+  /// Only unconditional text with qualified local dependencies can be
   /// changed. Unknown reference owners and text appearance expansions reject.
-  AiNativeTextDocument createStory({required String text, required List<AiNativeTextFrameDefinition> frames, AiNativeTextStyle? characterStyle, AiNativeTextStyle? paragraphStyle, AiLayer? layer}) {
+  AiNativeTextDocument createStory({
+    required String text,
+    required List<AiNativeTextFrameDefinition> frames,
+    AiNativeTextStyle? characterStyle,
+    AiNativeTextStyle? paragraphStyle,
+    AiLayer? layer,
+    AiNativeGroup? appearanceParent,
+  }) {
     _editableText(text);
     if (frames.isEmpty || frames.length > engine.limits.maxNodes ~/ 8) {
       throw ArgumentError('A new text story requires at least one frame.');
@@ -68,7 +77,13 @@ extension AiNativeTextLifecycle on AiNativeTextDocument {
       throw ArgumentError('Text styles must belong to this snapshot and resource kind.');
     }
     final _TextLifecycle edit = _TextLifecycle(source: this);
-    final int position = edit.insertion(layer);
+    if (appearanceParent != null && frames.length != 1) {
+      throw ArgumentError('One private appearance wrapper owns exactly one text frame.');
+    }
+    if (layer != null && appearanceParent != null) {
+      throw ArgumentError('Select a layer or an appearance wrapper, not both.');
+    }
+    final int position = appearanceParent == null ? edit.insertion(layer) : validateTextAppearanceParent(records: records, parent: appearanceParent);
     final bool named = edit.named;
     final String content = '$text\r';
     final _TextEditBudget budget = _TextEditBudget(remaining: engine.limits.maxNodes ~/ 4);
@@ -106,7 +121,7 @@ extension AiNativeTextLifecycle on AiNativeTextDocument {
         },
       ),
     );
-    edit.insertObjects(position, stories.length, indices, frames);
+    edit.insertObjects(position, stories.length, indices, frames, private: appearanceParent != null);
     return edit.finish();
   }
 
@@ -211,7 +226,10 @@ extension AiNativeTextLifecycle on AiNativeTextDocument {
       AiSourceEdit(
         start: object.record.start,
         end: edit.objectEnd(object),
-        bytes: edit.objectBytes(story.index, object.frameIndex, definition),
+        bytes: edit
+            .objectBytes(story.index, object.frameIndex, definition, private: _textPrivateAt(records.program, object.record.start))
+            .skip(_textPrivateAt(records.program, object.record.start) ? 2 : 0)
+            .toList(),
       ),
     );
     for (final AiNativeTextObject neighbor in edit.objectsByStory[story.index]!) {
@@ -389,7 +407,7 @@ final class _TextLifecycle {
     final Map<AiNativeItem, int> offsets = {for (final (int index, AiNativeItem item) in drawing.items.indexed) item: index};
     for (final AiNativeTextObject object in source.objects) {
       final AiNativeStructureNode node = structure.nodeFor(object.record);
-      if (node.versions.isNotEmpty || !offsets.containsKey(object.record) || _textPrivateAt(source.records.program, object.record.start)) {
+      if (node.versions.isNotEmpty || !offsets.containsKey(object.record)) {
         throw UnsupportedError('Text lifecycle requires unconditional ordinary drawing records.');
       }
       if (!seen.add((object.storyIndex, object.frameIndex))) {
@@ -592,20 +610,26 @@ final class _TextLifecycle {
   PsEngineDictionary withFrames(PsEngineDictionary story, List<int> indices) => PsEngineDictionary(values: {...story.values, _textKey(story, '1', 'View'): view(indices)});
 
   /// Inserts ordinary drawing objects; the final parser validates supplied Art.
-  void insertObjects(int position, int story, List<int> indices, List<AiNativeTextFrameDefinition> definitions, {int firstFrame = 0}) {
+  void insertObjects(int position, int story, List<int> indices, List<AiNativeTextFrameDefinition> definitions, {int firstFrame = 0, bool private = false}) {
     final List<int> bytes = [10];
+    if (private) {
+      bytes.addAll(ascii.encode('%_0 A\n%_0 Xw\n%_0 Ap\n%_0 D\n%_0 XR\n%_0 O\n%_0 R\n%_0 1 0 0 0 Xy\n'));
+    }
     for (int index = 0; index < indices.length; index++) {
-      final List<int> object = objectBytes(story, firstFrame + index, definitions[index]);
+      final List<int> object = objectBytes(story, firstFrame + index, definitions[index], private: private);
       if (bytes.length + object.length > source.records.program.limits.maxDecodedBytes) {
         throw const FormatException('Text drawing insertion exceeds the aggregate output limit.');
       }
       bytes.addAll(object);
     }
+    if (private) {
+      bytes.addAll(ascii.encode('%_'));
+    }
     edits.add(AiSourceEdit(start: position, end: position, bytes: bytes));
   }
 
   /// Serializes one explicit drawing owner without carrying stale cache metadata.
-  List<int> objectBytes(int story, int frame, AiNativeTextFrameDefinition definition) {
+  List<int> objectBytes(int story, int frame, AiNativeTextFrameDefinition definition, {bool private = false}) {
     final StringBuffer text = StringBuffer('/AI11Text : 0 /FreeUndo , $story /StoryIndex , $frame /FrameIndex ,');
     if (definition.antialiasing case final int antialiasing) {
       text.write(' $antialiasing /TextAntialiasing ,');
@@ -620,7 +644,7 @@ final class _TextLifecycle {
     if (definition.rotationRadians case final double angle) {
       text.write('%_/ArtDictionary :\n%_($angle) /String (BBAccumRotation) ,\n%_;\n');
     }
-    return latin1.encode(text.toString());
+    return latin1.encode(private ? text.toString().split('\n').map((line) => line.isEmpty || line.startsWith('%_') ? line : '%_$line').join('\n') : text.toString());
   }
 
   /// Updates one already validated drawing reference.

@@ -103,6 +103,16 @@ AiNativeAppearancePartKind _nativeAppearanceKind(AiNativeContainer record, AiNat
     if (name == 'Adobe Calligraphic Brush Tool' && const {'Illustrator.exe', 'CalligraphicBrushTool.aip'}.contains(record['PluginFileName']?.text())) {
       return .calligraphic;
     }
+    if ((name == AiNativeBrushKind.art.plugin || name == AiNativeBrushKind.pattern.plugin) &&
+        {
+          'Illustrator.exe',
+          if (name == AiNativeBrushKind.art.plugin) 'ArtOnPathBrushTool.aip' else 'PatternOnPathBrushTool.aip',
+        }.contains(record['PluginFileName']?.text())) {
+      return .artworkBrush;
+    }
+    if (AiNativeEffectKind.values.any((kind) => kind.plugin == name) && {'Illustrator.exe', _artboardStylePlugins[name]}.contains(record['PluginFileName']?.text())) {
+      return .nativeEffect;
+    }
     return name == 'Adobe Stroke Offset' && const {'Illustrator.exe', 'StrokeOffset.aip'}.contains(record['PluginFileName']?.text()) ? .strokeOffset : .effect;
   }
   if (filter.flags.first != 0) {
@@ -154,6 +164,7 @@ int _nativeAppearancePart(AiNativeRecords records, AiNativeContainer record, int
     }
   }
   parts[index] = AiNativeAppearancePart._(
+    records: records,
     index: index,
     parentIndex: parent,
     childIndices: children,

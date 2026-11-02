@@ -52,6 +52,9 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Deletes disjoint complete owners while retaining shared styles and neighbors.
 AiNativeAppearances _removeNativeAppearanceArtwork(AiNativeAppearances model, List<AiNativeAppearanceArtwork> artwork) {
   final List<AiNativeAppearanceArtwork> selected = _selectedBodyAppearanceArtwork(model, artwork);
+  if (selected.any((owner) => owner.leaves.values.any((leaf) => leaf.text != null))) {
+    throw UnsupportedError('Text appearance lifecycle requires updating its global story resources first.');
+  }
   final AiNativeDrawing drawing = model.structure.drawing;
   final List<AiNativeAppearanceArtwork> retained = _nativeBodyAppearanceArtwork(model);
 
@@ -99,6 +102,7 @@ AiNativeAppearances _removeNativeAppearanceArtwork(AiNativeAppearances model, Li
   final AiNativeDrawing result = _groupLifecycleResult(
     drawing,
     edits,
+    appearanceLeaves: true,
     paths: drawing.paths.where((path) => !removed(path.start, path.end)).length,
     groups: drawing.groups.where((group) => !removed(group.start, group.end)).length,
     liveShapes: drawing.liveShapes.where((shape) => !removed(shape.start, shape.end)).length,

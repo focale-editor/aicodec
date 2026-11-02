@@ -44,7 +44,16 @@ _ArtboardResourceScope _artboardResourceScope(AiNativeLayers layers) {
       }
     }
     final AiNativeDrawing drawing = resource._drawing;
+    final Set<AiNativeContainer> shapeDictionaries = {
+      if (resource.kind == .symbol)
+        for (final AiNativeGroup group in drawing.groups)
+          if (_readNativeAppearanceLeaf(drawing, group)?.shape case final AiLiveShape shape) shape.dictionary,
+    };
     for (final AiNativeContainer record in resource.metadata) {
+      if (shapeDictionaries.contains(record)) {
+        objects.add(record);
+        continue;
+      }
       if (resource.kind == .pattern && !rasterOwners.containsKey(record)) {
         _artboardPatternMetadata(layers, record);
       } else {

@@ -285,6 +285,64 @@ These profiles have regression and independent-reader evidence recorded in
 [FOCALE_INTEGRATION.md](FOCALE_INTEGRATION.md). They do not establish arbitrary
 Illustrator execution or an Adobe round trip.
 
+## Fixed artwork brush authoring
+
+Use `AiNativeArtworkBrushPaint` with an `.artworkBrush` appearance part for the
+fixed art/pattern profile. Install source tiles through `AiNativeArtworkResources`
+and their descriptor through `AiNativeBrushes` before authoring the application.
+`encodeBrushArtwork` serializes supplied monochrome compound contours and natural
+bounds without interpreting a spine or producing outlines. Referenced resources
+remain immutable; source/parameter changes install replacements and update the
+complete printing owner. Width-only edits can reuse the resource identities.
+
+Focale retains source silhouettes, holes, five pattern tile slots and fixed
+fitting controls, and composes the printing/PDF views through its existing brush
+pipeline. Unsupported pressure, segmentation, colorization and affine artwork
+warps require preservation or explicit rejection. Syntax and host round-trip
+checks do not certify Illustrator's native recomposition, especially the shared
+PatternOnPath application layout without a pinned producer application fixture.
+
+## Literal geometric and appearance effects
+
+`AiNativeEffect` describes qualified Offset Path, Round Corners, Drop Shadow and
+Outer Glow filters in an appearance chain. Preserve original contours and supply
+complete printing/PDF views with parameter, visibility and order changes. Effect
+colors belong to their own dictionaries and never become outgoing artwork paint.
+Unknown modes and dictionaries remain outside semantic editing.
+
+Focale connects closed offsets, rounding and one simple shadow or glow on paths
+and groups. Its compositor supplies bounded compatibility images for shadows and
+glows, while private authoring remains editable. Compatibility capture uses the
+document coordinate frame to avoid reflected image resampling after reopening.
+This is an admitted subset, not a general mapping of Photoshop layer styles or
+Adobe effect execution. See the effect profile in [FOCALE_INTEGRATION.md](FOCALE_INTEGRATION.md#geometric-recipes-and-whole-owner-appearance-effects).
+
+## Retained host effect authoring
+
+When the user accepts Focale-only effect controls, `AiHostSnapshot` can retain
+the complete host project beside developed AI/PDF artwork. Focale expands guide
+bending and other unqualified geometry through its existing geometry evaluator.
+For unsupported active layer styles or advanced blending, its existing exporter
+captures **every output page**, at three pixels per document unit, preserving
+backdrop interactions. Those pages are ordinary embedded native images with
+matching PDF content; they do not expose Illustrator-native effect controls.
+Focale restores the separate editable objects, source geometry, libraries and
+effect settings from the verified payload.
+
+The `FocaleEffects` payload is a bounded UTF-8 `.fvector` version-1 envelope.
+Focale binds both the payload and canonical native/PDF graph with SHA-256 before
+restoration. External edits or corrupt metadata fall back to current native/PDF
+artwork with an `AiOrigin.effectNotice`; stale host settings are never restored.
+An imported ordinary AI source is retained once as the editing baseline, avoiding
+nested snapshots on repeated saves. Project recovery preserves this baseline.
+Unchanged saves retain exact bytes. Source files imported only through PDF and
+page rasterization across preserved opaque native owners still reject.
+
+AiKit only stores the bounded opaque stream and supplies binding bytes. It gains
+no rendering engine, project schema or host dependency. This mode covers retained
+Focale authoring and supplied appearances, not Adobe execution of equivalent
+effects. See [the integration profile](FOCALE_INTEGRATION.md#retained-focale-effect-controls).
+
 ## Scope change
 
 The development renderer APIs `AiNativePdf`, `AiNativePlacementResolver`,

@@ -130,6 +130,57 @@ final class AiNativeArtworkResources {
   static Uint8List encodeVectorArtwork({required AiNativeRecords records, required List<AiNativeAppearanceElementDefinition> elements, bool private = true}) =>
       _createdNativeLocalArtwork(records, elements, private);
 
+  /// Encodes monochrome brush contours as one compound silhouette.
+  ///
+  /// The unpainted bounds preserve intentional margins and the natural tile
+  /// aspect. All coordinates, winding and ink are supplied by the host.
+  static Uint8List encodeBrushArtwork({required AiNativeRecords records, required List<AiNativePathDefinition> contours, required AiBoundingBox bounds}) {
+    if (contours.isEmpty ||
+        contours.any(
+          (path) =>
+              !path.artwork.closed ||
+              path.artwork.fill?.space != .gray ||
+              path.artwork.fill!.channels.single != 0 ||
+              path.stroked ||
+              path.identifierBytes != null ||
+              path.opacity != 1 ||
+              path.transparency != null ||
+              path.artwork.evenOdd != contours.first.artwork.evenOdd,
+        )) {
+      throw ArgumentError('Brush silhouettes require opaque black closed contours sharing one winding rule.');
+    }
+    final _NativeDocumentBytes output = _NativeDocumentBytes(maximum: records.program.limits.maxDecodedBytes);
+    final AiNativePathDefinition rectangle = AiNativePathDefinition(
+      artwork: AiArtworkPath(
+        segments: [
+          AiPathSegment(operator: 'm', coordinates: [bounds.left, bounds.bottom]),
+          AiPathSegment(operator: 'L', coordinates: [bounds.right, bounds.bottom]),
+          AiPathSegment(operator: 'L', coordinates: [bounds.right, bounds.top]),
+          AiPathSegment(operator: 'L', coordinates: [bounds.left, bounds.top]),
+        ],
+        closed: true,
+      ),
+      bounds: bounds,
+    );
+    output.add(
+      encodeVectorArtwork(
+        records: records,
+        elements: [AiNativeAppearancePathDefinition(definition: rectangle)],
+        private: false,
+      ),
+    );
+    output.text('*u\n');
+    output.add(
+      encodeVectorArtwork(
+        records: records,
+        elements: [for (final AiNativePathDefinition path in contours) AiNativeAppearancePathDefinition(definition: path)],
+        private: false,
+      ),
+    );
+    output.text('*U\n');
+    return output.takeBytes().asUnmodifiableView();
+  }
+
   /// Returns local artwork after validating resource geometry and dependencies.
   ///
   /// This qualifies the shared declaration namespace, including retained sibling
@@ -185,6 +236,12 @@ final class AiNativeArtworkResources {
   /// Existing local identities may remain; new identities must be globally fresh.
   AiNativeArtworkResources replaceUnused({required AiNativeArtworkResource resource, required List<int> artworkBytes, AiBoundingBox? bounds}) =>
       _replaceUnusedNativeArtworkResource(this, resource, artworkBytes, bounds);
+
+  /// Renames a static symbol and all qualified instance and panel references.
+  ///
+  /// Artwork and printing bytes remain untouched. Conditional or opaque users,
+  /// duplicate names and resource-local references reject atomically.
+  AiNativeArtworkResources renameSymbol({required AiNativeArtworkResource resource, required List<int> nameBytes}) => _renameNativeSymbol(this, resource, nameBytes);
 
   /// Finds the enclosing declaration for an exact known source application.
   ///

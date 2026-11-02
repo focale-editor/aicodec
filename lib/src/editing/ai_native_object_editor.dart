@@ -201,11 +201,14 @@ Set<AiNativeContainer> _nativeReferenceBody(
       inspect ?? (model, start, end, headers) => _referenceArtworkInterval(model, start, end, headers, appearanceArtwork: appearanceArtwork);
   final List<_NativeShapeBundle> shapes = [
     for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true))
-      if (!appearanceArtwork.any((owner) => identical(owner.liveShape, shape)))
+      if (!appearanceArtwork.any((owner) => identical(owner.liveShape, shape) || owner.leaves.values.any((leaf) => identical(leaf.shape, shape))))
         _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors, clipping: clipping, patterns: patterns),
   ];
   final Set<AiNativeContainer> dictionaries = {
-    for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...item.metadata,
+    for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...[
+      ...item.metadata,
+      for (final AiNativeAppearanceLeaf leaf in item.leaves.values) ...[?leaf.shape?.dictionary, ?leaf.text, ?leaf.symbol],
+    ],
     for (final _NativeShapeBundle bundle in shapes) ...[bundle.shape.dictionary, bundle.shape.appearanceDictionary!, ...bundle.shape.alternativeDictionaries],
     for (final AiNativeLayer layer in model.layers)
       if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,

@@ -83,13 +83,13 @@ void _artboardStyleFilter(AiNativeLayers layers, AiNativeContainer filter, Map<i
   }
   final Map<String, String> paints = switch (name) {
     'Fill Style Filter' => {'FillStyle': 'FillStyle'},
-    'Stroke Style Filter' || 'Adobe Stroke Offset' || 'Adobe Calligraphic Brush Tool' => {'StrokeStyle': 'StrokeStyle'},
+    'Stroke Style Filter' || 'Adobe Stroke Offset' || 'Adobe Calligraphic Brush Tool' || 'Adobe ArtOnPath Brush Tool' || 'Adobe PatternOnPath Brush Tool' => {'StrokeStyle': 'StrokeStyle'},
     'Blend Style Filter' => {'BlendStyle': 'BlendStyle'},
     'Adobe Drop Shadow' || 'Adobe Outer Glow' => {'sclr': 'FillStyle'},
     _ => {},
   };
   final AiNativeContainer dictionary = _referenceRecord(entry, 'Dictionary');
-  if (name == 'Adobe Calligraphic Brush Tool' && (dictionary['Brush'] == null || dictionary['StrokeStyle'] == null)) {
+  if (const {'Adobe Calligraphic Brush Tool', 'Adobe ArtOnPath Brush Tool', 'Adobe PatternOnPath Brush Tool'}.contains(name) && (dictionary['Brush'] == null || dictionary['StrokeStyle'] == null)) {
     throw UnsupportedError('Retained calligraphic styles require an owned brush reference and stroke.');
   }
   _referenceFields(
@@ -98,7 +98,7 @@ void _artboardStyleFilter(AiNativeLayers layers, AiNativeContainer filter, Map<i
     notRecorded: true,
     nested: {
       if (const {'Stroke Style Filter', 'Adobe Stroke Offset'}.contains(name)) 'kAIBeautifulStrokesParamsDictKey': _nativeAppearanceStrokeDictionary,
-      if (name == 'Adobe Calligraphic Brush Tool') 'Brush': (field) => _artboardBrushReference(field, name, brushes),
+      if (const {'Adobe Calligraphic Brush Tool', 'Adobe ArtOnPath Brush Tool', 'Adobe PatternOnPath Brush Tool'}.contains(name)) 'Brush': (field) => _artboardBrushReference(field, name, brushes),
       for (final MapEntry<String, String> paint in paints.entries)
         paint.key: (field) {
           final AiNativeContainer record = _referenceRecord(field, paint.value);
@@ -145,6 +145,8 @@ void _artboardStylePaint(AiNativeLayers layers, AiNativeContainer record, String
 /// Known native plug-in identifiers, including the older separate-module names.
 const Map<String, String> _artboardStylePlugins = {
   'Adobe Calligraphic Brush Tool': 'CalligraphicBrushTool.aip',
+  'Adobe ArtOnPath Brush Tool': 'ArtOnPathBrushTool.aip',
+  'Adobe PatternOnPath Brush Tool': 'PatternOnPathBrushTool.aip',
   'Adobe Stroke Offset': 'StrokeOffset.aip',
   'Adobe Fuzzy Mask': 'FuzzyEffect.aip',
   'Adobe Round Corners': 'Round.aip',
@@ -160,6 +162,20 @@ const Map<String, Map<String, Set<String>>> _artboardStyleParameters = {
     'Real': {'Angle', 'Diameter', 'Roundness', 'AngleVariation', 'DiameterVariation', 'RoundnessVariation'},
     'Int': {'AngleDependsOn', 'DiameterDependsOn', 'RoundnessDependsOn', 'AngleRelativeTo'},
     'String': {'DisplayString'},
+  },
+  'Adobe ArtOnPath Brush Tool': {
+    'Real': AiNativeArtworkBrushPaint.realFields,
+    'Int': AiNativeArtworkBrushPaint.integerFields,
+    'Bool': AiNativeArtworkBrushPaint.booleanFields,
+    'String': {'DisplayString'},
+    'UnicodeString': {'DisplayString'},
+  },
+  'Adobe PatternOnPath Brush Tool': {
+    'Real': AiNativeArtworkBrushPaint.realFields,
+    'Int': AiNativeArtworkBrushPaint.integerFields,
+    'Bool': AiNativeArtworkBrushPaint.booleanFields,
+    'String': {'DisplayString'},
+    'UnicodeString': {'DisplayString'},
   },
   'Conduit Filter': {},
   'Stroke Style Filter': {},

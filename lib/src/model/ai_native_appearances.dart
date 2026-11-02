@@ -20,6 +20,9 @@ enum AiNativeAppearancePartKind {
   /// A native calligraphic nib and its independently qualified stroke paint.
   calligraphic,
 
+  /// A native artistic or pattern brush with independently owned source tiles.
+  artworkBrush,
+
   /// A local blend part whose original paint commands remain available.
   blend,
 
@@ -28,6 +31,9 @@ enum AiNativeAppearancePartKind {
 
   /// A plug-in descriptor retained without executing or qualifying its effect.
   effect,
+
+  /// A bounded literal geometric, shadow or glow effect with supplied printing.
+  nativeEffect,
 
   /// An unknown record or descriptor whose complete source remains available.
   opaque,
@@ -133,11 +139,22 @@ final class AiNativeAppearancePart {
   /// Advanced options of a stroke part, independent of its literal dash array.
   final AiNativeStrokeSettings? strokeSettings;
 
+  /// Qualified effect parameters without executing the plug-in.
+  AiNativeEffect? get effect => kind == .nativeEffect ? AiNativeEffect._decode(_records, record) : null;
+
+  /// Source reader binding owned effect paints to their immutable snapshot.
+  final AiNativeRecords _records;
+
+  /// Fixed artwork parameters, rejecting unsupported variation and fitting.
+  AiNativeArtworkBrushPaint? get artworkBrush =>
+      kind == .artworkBrush ? AiNativeArtworkBrushPaint._decode(record, latin1.decode(filter!.nameBytes) == AiNativeBrushKind.art.plugin ? .art : .pattern) : null;
+
   /// Fixed calligraphic parameters, rejecting device-dependent nib settings.
   AiNativeCalligraphicPaint? get calligraphic => kind == .calligraphic ? AiNativeCalligraphicPaint._decode(record) : null;
 
   /// Freezes owned graph indices and paint payloads after bounded inspection.
   AiNativeAppearancePart._({
+    required this._records,
     required this.index,
     required this.parentIndex,
     required List<int> childIndices,

@@ -24,6 +24,9 @@ AiNativeAppearances _duplicateNativeAppearanceArtwork(
   Map<AiNativeContainer, List<int>> identifiers,
 ) {
   final List<AiNativeAppearanceArtwork> selected = _selectedBodyAppearanceArtwork(model, artwork);
+  if (selected.any((owner) => owner.leaves.values.any((leaf) => leaf.text != null))) {
+    throw UnsupportedError('Text appearance lifecycle requires updating its global story resources first.');
+  }
   final AiNativeDrawing drawing = model.structure.drawing;
   final AiNativeRecords records = drawing.records;
 
@@ -104,6 +107,7 @@ AiNativeAppearances _duplicateNativeAppearanceArtwork(
   final AiNativeDrawing result = _groupLifecycleResult(
     drawing,
     edits,
+    appearanceLeaves: true,
     paths: drawing.paths.length + drawing.paths.where((path) => copied(path.start, path.end)).length,
     groups: drawing.groups.length + drawing.groups.where((group) => copied(group.start, group.end)).length,
     liveShapes: drawing.liveShapes.length + drawing.liveShapes.where((shape) => copied(shape.start, shape.end)).length,

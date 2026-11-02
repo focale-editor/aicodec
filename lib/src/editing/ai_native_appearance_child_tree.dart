@@ -127,6 +127,20 @@ AiNativeAppearances _replaceNativeAppearanceTrees(
     final List<AiNativeInstruction> commands = owner._commands.where((command) => command.start >= span.start && command.end <= span.end).toList();
     final _NativeShapeAccess access = _nativeAppearanceArtworkAccess(drawing, owner, commands);
     replay(span.start, access.nativeReads);
+    if (child.leaf case final AiNativeAppearanceLeafDefinition leaf) {
+      final AiNativeAppearanceLeaf? original = owner.leaves[item];
+      if (original == null || original.text != null) {
+        throw UnsupportedError('Payload replacement requires a qualified non-text wrapper.');
+      }
+      final AiNativeGroup group = item as AiNativeGroup;
+      copy(span.start, group.opening.end);
+      bytes.text('\n');
+      _writeNativeAppearanceLeaf(bytes, drawing, leaf, private: true);
+      replay(group.closing.start, _nativeArtworkStateKeys);
+      copy(group.closing.start, span.end);
+      bytes.text('\n');
+      return;
+    }
     if (child.children == null) {
       copy(span.start, span.end);
       bytes.text('\n');
@@ -179,7 +193,7 @@ AiNativeAppearances _replaceNativeAppearanceTrees(
     copy(owner.start, printable.start);
     bytes.add(printable.bytes);
     copy(printable.end, spans[root]!.start);
-    write(AiNativeAppearanceTreeChild.retain(source: root, children: change.children), 1);
+    write(AiNativeAppearanceTreeChild.retain(source: root, children: change.leaf == null ? change.children : null, leaf: change.leaf), 1);
     copy(spans[root]!.end, owner.end);
     final Uint8List replacement = bytes.takeBytes();
     outputBytes += replacement.length;
@@ -190,6 +204,9 @@ AiNativeAppearances _replaceNativeAppearanceTrees(
       .where((identity) => owners.any((owner) => identity.field.owner.start >= owner.start && identity.field.owner.end <= owner.end))
       .where((identity) => !preserved.any((span) => identity.field.owner.start >= span.start && identity.field.owner.end <= span.end))
       .toList();
+  if (owners.any((owner) => owner.leaves.values.any((leaf) => leaf.text != null && !preserved.any((span) => leaf.text!.start >= span.start && leaf.text!.end <= span.end)))) {
+    throw UnsupportedError('Remove text through its global story lifecycle before removing its private wrapper.');
+  }
   if (removed.isNotEmpty) {
     final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
     final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
@@ -217,7 +234,7 @@ AiNativeAppearances _replaceNativeAppearanceTrees(
     ),
   );
   final AiNativeAppearances candidate = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: provisional));
-  if (candidate.styles.length != model.styles.length || provisional.liveShapes.length != drawing.liveShapes.length) {
+  if (candidate.styles.length != model.styles.length) {
     throw const FormatException('Private topology changed unrelated native definitions.');
   }
   final Set<String> oldNames = _nativeIdentityNames(model.structure);
@@ -291,13 +308,23 @@ AiNativeAppearances _replaceNativeAppearanceTrees(
     useIndices.add(candidate.uses.indexOf(revised.use));
   }
   _sourceFollowingDependencies(drawing, replacements, retainedArtwork: retained, clipping: true, patterns: candidate._patternNames);
-  final AiNativeDrawing result = _groupLifecycleResult(
-    drawing,
-    [...placedEdits, ...printingEdits.where((edit) => !embeddedPrinting.contains(edit))],
-    paths: provisional.paths.length,
-    groups: provisional.groups.length,
-    liveShapes: drawing.liveShapes.length,
+  // Every changed private shape belongs to a fully requalified complete owner.
+  // Ordinary lifecycle checks keep unresolved shapes byte-identical, which is
+  // deliberately stricter than this explicit payload-replacement transaction.
+  final AiNativeDrawing result = AiNativeDrawing.decode(
+    records: AiNativeRecords.decode(
+      program: AiNativeEditor.apply(
+        program: program,
+        edits: [...placedEdits, ...printingEdits.where((edit) => !embeddedPrinting.contains(edit))],
+      ),
+    ),
   );
+  if (result.paths.length != provisional.paths.length ||
+      result.groups.length != provisional.groups.length ||
+      result.liveShapes.length != provisional.liveShapes.length ||
+      result.records.program.layers.length != drawing.records.program.layers.length) {
+    throw const FormatException('Private topology changed unrelated native ownership.');
+  }
   final AiNativeAppearances updated = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: result));
   for (final int index in useIndices) {
     updated.artworkFor(use: updated.uses[index]);

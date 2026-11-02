@@ -6,12 +6,25 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// library; this shares the native document and setup dependency contracts.
 List<({int start, int end})> validateTextLifecycleSource({required AiNativeRecords records, required Set<AiNativeContainer> textRecords}) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: records));
+  final AiNativeAppearances appearances = AiNativeAppearances.decode(structure: layers.structure);
+  final List<AiNativeAppearanceArtwork> owners = _nativeBodyAppearanceArtwork(appearances);
+  final Set<AiNativeContainer> privateText = {
+    for (final AiNativeAppearanceArtwork owner in owners)
+      for (final AiNativeAppearanceLeaf leaf in owner.leaves.values) ?leaf.text,
+  };
   for (final AiNativeContainer record in textRecords.where((record) => record.type == 'AI11Text')) {
+    if (records._projection.isPrivate(record.start) && !privateText.contains(record)) {
+      throw UnsupportedError('Private text requires a complete qualified appearance wrapper.');
+    }
+    if (privateText.contains(record)) {
+      continue;
+    }
     final AiNativeStructureNode node = layers.structure.nodeFor(record);
     _sourceMovementParents(layers.drawing, _artworkParents(layers.structure, layers.structure.parentOf(node)));
   }
   final List<_NativeImageOwner> images = _nativeImageOwners(layers.drawing);
   final List<({int start, int end})> artwork = [
+    for (final AiNativeAppearanceArtwork owner in owners) (start: owner.start, end: owner.end),
     for (final _NativeImageOwner image in images) image.span,
     for (final AiNativeMeshArtwork owner in layers.drawing.meshArtwork) (start: owner.start, end: owner.end),
     for (final AiNativeGradientArtwork owner in layers.drawing.gradientArtwork) (start: owner.start, end: owner.end),
@@ -40,7 +53,14 @@ List<({int start, int end})> validateTextLifecycleSource({required AiNativeRecor
     throw UnsupportedError('Text lifecycle requires at most one independent undo-free snapshot.');
   }
   for (final AiNativeContainer record in records.roots) {
-    if (textRecords.contains(record)) {
+    if (artwork.any((owner) => record.start >= owner.start && record.end <= owner.end)) {
+      continue;
+    }
+    if (record.type == 'KnownStyle') {
+      final AiNativeAppearance style = appearances.styles.singleWhere((style) => identical(style.resource.definition.source, record));
+      _nativeAppearanceStyleState(appearances, style);
+      independent.add((start: record.start, end: record.end));
+    } else if (textRecords.contains(record)) {
       if (record.type == 'AI11TextDocument') {
         _artboardSetupRecord(layers, record);
         if (record.entries.length > 1 ||
@@ -105,4 +125,22 @@ bool _nativeTextIndependentObject(AiNativeDrawing drawing, AiNativeObject object
     return true;
   }
   return object.dictionary!.entries.every((field) => const {'AI10_ArtUID', 'AIArtName', 'Object name', 'BBAccumRotation'}.contains(field.key));
+}
+
+/// Requires an empty private ordinary wrapper in a complete appearance pair.
+int validateTextAppearanceParent({required AiNativeRecords records, required AiNativeGroup parent}) {
+  final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
+  final AiNativeGroup? group = drawing.groups.where((group) => identical(group.opening.token, parent.opening.token)).singleOrNull;
+  if (group == null ||
+      !group.opening.isPrivate ||
+      group.opening.operator != 'u' ||
+      group.children.isNotEmpty ||
+      drawing.items.any((item) => item.start >= group.opening.end && item.end <= group.closing.start)) {
+    throw ArgumentError('New appearance text requires an empty source-owned private wrapper.');
+  }
+  final AiNativeAppearances model = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: drawing));
+  if (!_nativeBodyAppearanceArtwork(model).any((owner) => group.start >= owner.authoring.start && group.end <= owner.authoring.end)) {
+    throw UnsupportedError('Text insertion requires a complete qualified appearance owner.');
+  }
+  return group.closing.start;
 }

@@ -29,6 +29,101 @@ AiNativeTextDocument _compose(AiNativeTextDocument source, List<AiNativeTextSegm
 
 /// Checks native mappings and ownership; rendering acceptance belongs to Focale.
 void main() {
+  test('writes path glyphs with unwrapped origins and explicit projected bounds', () {
+    final AiNativeTextDocument source = newDocumentText().createStory(
+      text: 'X',
+      frames: [
+        AiNativeTextFrameDefinition(
+          resource: PsEngineDictionary(
+            values: {
+              '1': PsEngineDictionary(
+                values: {
+                  '0': PsEngineArray(
+                    values: [
+                      for (final int value in [0, 0, 10, -20, 30, -20, 40, 0]) PsEngineNumber(value: value),
+                    ],
+                  ),
+                },
+              ),
+              '2': PsEngineDictionary(
+                values: {
+                  '0': PsEngineNumber(value: 2),
+                  '6': PsEngineArray(values: [PsEngineNumber(value: 0), PsEngineNumber(value: 1)]),
+                },
+              ),
+            },
+          ),
+          confinement: latin1.encode('X= 0 0 m 10 20 30 20 40 0 C n X+'),
+        ),
+      ],
+    );
+    final AiNativeTextDocument composed = _compose(source, [
+      AiNativeTextSegmentLayout(
+        start: 0,
+        end: 1,
+        glyphs: [
+          AiNativeTextGlyphLayout(font: source.fonts.first, glyphId: 2, x: 0, y: 0, bounds: [0, -10, 8, 2], pathBounds: [0, -20, 12, 2]),
+        ],
+      ),
+      AiNativeTextSegmentLayout(
+        start: 1,
+        end: 2,
+        glyphs: [
+          AiNativeTextGlyphLayout(font: source.fonts.first, glyphId: 1, x: 8, y: 0, bounds: [0, 0, 0, 0], pathBounds: [0, 0, 0, 0], paragraphMark: true),
+        ],
+      ),
+    ]);
+    composed.validateTextForSave();
+    final AiNativeTextStrike glyph = composed.stories.single.strikes.single.descendants.firstWhere((strike) => strike.kind == .glyphs);
+    check(glyph.visualBounds!).deepEquals([0, -20, 12, 2]);
+    check((glyph.record['24']! as PsEngineNumber).value).equals(0);
+    check(composed.duplicateStory(story: composed.stories.single).stories.length).equals(2);
+    for (final String omitted in ['8', '24']) {
+      /// Removes only one required glyph-cache field from a host-provided view.
+      PsEngineValue withoutField(PsEngineValue value) => switch (value) {
+        PsEngineDictionary() => PsEngineDictionary(
+          values: {
+            for (final MapEntry<String, PsEngineValue> entry in value.values.entries)
+              if (entry.key != omitted || value['99'] is! PsEngineName || (value['99']! as PsEngineName).value != 'G') entry.key: withoutField(entry.value),
+          },
+        ),
+        PsEngineArray() => PsEngineArray(values: value.values.map(withoutField).toList()),
+        _ => value,
+      };
+      check(
+        () => composed.withComposedText(
+          story: composed.stories.single,
+          view: withoutField(composed.stories.single.view!) as PsEngineDictionary,
+          bounds: AiBoundingBox(left: 0, bottom: -20, right: 40, top: 0),
+        ),
+      ).throws<UnsupportedError>();
+      composed.validateTextForSave();
+    }
+
+    check(
+      () => _compose(source, [
+        AiNativeTextSegmentLayout(start: 0, end: 1, glyphs: [_glyph(source, 2, 0)]),
+        AiNativeTextSegmentLayout(start: 1, end: 2, glyphs: [_glyph(source, 1, 8, mark: true)]),
+      ]),
+    ).throws<ArgumentError>();
+  });
+
+  test('rejects malformed path glyph bounds and path caches on ordinary frames', () {
+    final AiNativeTextDocument source = _source('X');
+    check(() => AiNativeTextGlyphLayout(font: source.fonts.first, glyphId: 2, x: 0, y: 0, bounds: [0, 0, 1, 1], pathBounds: [2, 0, 1, 1])).throws<ArgumentError>();
+    check(
+      () => _compose(source, [
+        AiNativeTextSegmentLayout(
+          start: 0,
+          end: 1,
+          glyphs: [
+            AiNativeTextGlyphLayout(font: source.fonts.first, glyphId: 2, x: 0, y: 0, bounds: [0, 0, 1, 1], pathBounds: [0, 0, 1, 1]),
+          ],
+        ),
+      ]),
+    ).throws<ArgumentError>();
+  });
+
   test('writes contractions, explicit glyph origins and a real paragraph-mark slot', () {
     final AiNativeTextDocument source = _source('fiX');
     final AiNativeTextDocument composed = _compose(source, [

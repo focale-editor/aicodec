@@ -91,6 +91,13 @@ final class AiNativeAppearanceArtwork {
   /// for host composition; ordinary path-edit APIs still reject private paths.
   final List<AiNativePathTopology> groupContours;
 
+  /// Complete heterogeneous payloads indexed by their ordinary group wrapper.
+  late final Map<AiNativeGroup, AiNativeAppearanceLeaf> leaves = Map.unmodifiable({
+    if (group != null)
+      for (final AiNativeGroup child in (resource?._structure.drawing ?? _owner.structure.drawing).groups.where((child) => child.start >= group!.start && child.end <= group!.end))
+        if (AiNativeAppearanceLeaf.read(drawing: resource?._structure.drawing ?? _owner.structure.drawing, group: child) case final AiNativeAppearanceLeaf leaf) child: leaf,
+  });
+
   /// Exact private child paths or groups bound to the retained named uses.
   final Map<AiNativeResourceUse, AiNativeItem> _nestedOwners;
 

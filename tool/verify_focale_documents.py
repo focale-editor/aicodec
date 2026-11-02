@@ -19,11 +19,17 @@ from pypdf import PdfReader
 from pypdf.generic import ContentStream
 
 from verify_focale_patterns import verify_patterns
-from verify_focale_brushes import verify_brushes, verify_affine_brushes
+from verify_focale_effects import verify_effects
+from verify_focale_retained_effects import verify_retained_effects
+from verify_focale_brushes import verify_brushes, verify_affine_brushes, verify_artwork_brushes
 from verify_focale_conversions import verify_conversions
 from verify_focale_group_paints import verify_group_paints
 from verify_focale_group_topology import verify_group_topology, verify_group_transfers
 from verify_focale_style_gradients import verify_style_gradients
+from verify_focale_text_flow import verify_text_flow
+from verify_focale_mixed_appearances import verify_mixed_appearances
+from verify_focale_mesh_editing import verify_mesh_editing
+from verify_focale_symbols import verify_symbols
 from corpus_support import REVISION, native_programs
 from verify_native_colors import operators
 from verify_native_documents import renders
@@ -563,11 +569,18 @@ def main():
     verify_patterns(inkai, args.output)
     verify_brushes(inkai, args.output)
     verify_affine_brushes(inkai, args.output)
+    verify_artwork_brushes(inkai, args.output)
+    verify_effects(inkai, args.output)
+    verify_retained_effects(inkai, args.output)
     verify_conversions(inkai, args.output)
     verify_group_paints(inkai, args.output)
     verify_group_topology(inkai, args.output)
     verify_group_transfers(inkai, args.output)
     verify_style_gradients(inkai, args.output)
+    verify_text_flow(inkai, args.output)
+    verify_mixed_appearances(inkai, args.output)
+    verify_mesh_editing(args.output)
+    verify_symbols(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 

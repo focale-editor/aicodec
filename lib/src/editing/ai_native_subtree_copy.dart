@@ -84,7 +84,7 @@ _NativeShapeAccess _subtreeCopyAccess(
     final _NativeShapeBundle? style = styles[command.end];
     final Set<String> reads = paths.containsKey(command.start)
         ? _shapeCopyReads(drawing, paths[command.start]!)
-        : const {'aikit:text', 'aikit:mesh'}.contains(command.operator)
+        : const {'aikit:text', 'aikit:mesh', 'aikit:symbol'}.contains(command.operator)
         ? _nativeArtworkStateKeys
         : const {'XI', '`'}.contains(command.operator)
         ? _nativeImageReads(images[command.start] ?? (throw UnsupportedError('Subtree image reads require qualified raster ownership.')))

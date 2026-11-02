@@ -1631,12 +1631,12 @@ removing owners retain the independent descriptor and named-style library.
 Project persistence retains the brush inputs instead of serialized outline caches.
 
 AiKit additionally provides complete descriptor lifecycle operations for art,
-pattern and bristle brush libraries. Their application/geometry connections in
-Focale remain separate work. Current host qualification covers one open spine,
-fixed nibs with roundness at least five percent, no pressure profile or dashes,
-and similarity placement. Other brush families still require their native
-connections. Host outline folds
-or exhausted geometry budgets fail atomically with the original source intact.
+pattern and bristle brush libraries. The initial calligraphic qualification below
+covers one open spine, fixed nibs with roundness at least five percent, no pressure
+profile or dashes, and similarity placement. Later sections extend affine nib
+placement and connect [artistic and pattern brushes](#retained-artistic-and-pattern-brushes).
+Bristle applications remain outside this host profile. Host outline folds or
+exhausted geometry budgets fail atomically with the original source intact.
 
 `ai_brush_test.dart` emits six initial/edited/reopened comparisons for the
 independent native/container/PDF verifier. The reader checks literal nib metrics
@@ -1788,13 +1788,11 @@ ambiguous or conditional resolution. Equal pattern or brush names do not bind
 symbol instances. Malformed/repeated fields remain inspectable instead of being
 replaced by defaults; association work has its own aggregate token budget.
 
-This supplies the reference inventory needed for Focale's symbol table and
-instance synchronization. It does not yet connect symbol instances to host objects
-or qualify their printing/cache ownership. The pinned external parser contains
+This supplies the reference inventory used by the static-symbol integration
+described below. Inspection alone does not qualify printing/cache ownership. The pinned external parser contains
 an observed instance-field fixture; the inspected pinned artwork corpus contains
-no complete symbol-instance specimen. Relative-to-canvas conversion, native
-instance writing and actual Illustrator acceptance therefore remain unverified.
-The existing resource mutation guards are unchanged.
+no complete symbol-instance specimen. The static writer supplies explicit local-to-native placements and complete
+printing owners. Actual Illustrator acceptance remains unverified.
 
 
 Local validation passes all 1,554 package tests on both VM and Node. Eight new
@@ -1802,8 +1800,8 @@ regressions cover namespaces, raw byte names, relative matrices, conditional and
 ambiguous bindings, opaque/local records, malformed fields, immutable handles and
 bounded association work. The pinned independent reader confirms eight references
 across four synthetic sources. Analysis, formatting and scoped fix checks pass.
-These checks establish inspection behavior only; instance authoring and real
-Illustrator exchange remain outstanding.
+These earlier checks establish inspection behavior only; the later static-symbol
+lot adds authoring checks, while real Illustrator exchange remains outstanding.
 
 ### Affine placement of fixed calligraphic brushes
 
@@ -1901,3 +1899,348 @@ gradient parameters are checked separately as described above.
 AiKit runtime code is unchanged in this host lot; its preceding 1,562 VM and Node
 test results remain the package baseline. Actual Illustrator rendering, native
 editability and Illustrator-to-Focale resaving remain unverified.
+
+### Path text and multiple paragraphs
+
+Focale's native text projection now preserves LF/CR paragraph boundaries in point
+text and rectangular frames, including empty paragraphs and a final explicit
+return. Each native paragraph mark uses an actual nonpainting space glyph from
+the resolved face. Paragraph-local shaping clusters map to global UTF-16 story
+offsets; wrapped lines, character styles across returns, frame identity and
+subsequent content edits stay synchronized. Empty paragraph origins come from
+the existing compositor's measured baselines rather than invented glyphs.
+
+Text along one continuous cubic baseline now has a native CC path frame with
+matching drawing confinement. Open and closed paths, multiple segments,
+start/end distances, reversed direction and a shared baseline offset use Focale's
+existing text-flow tools. Native segment-plus-parameter ranges are converted with
+the host's path metrics. The shared perpendicular offset maps to the native
+character baseline shift and reopens as a host flow offset; independently shifted
+character runs on a path still reject. Local path units are preserved, with
+physical page scaling on the frame matrix, so changing DPI does not alter the
+compositor's geometric approximation. Geometry edits rebuild native path data,
+projected glyph bounds, printing contours and the complete PDF together.
+
+The accepted typography profile remains ordinary horizontal paragraphs with the
+existing qualified character styles. Overset text, disconnected baselines,
+non-baseline path alignment, other path effects, linked frames and unresolved
+fonts do not become silently editable. This adds no AiKit text compositor and
+requires no new editor tool. Actual Illustrator rendering and recomposition
+remain unverified.
+
+`tool/verify_focale_text_flow.py` checks artifacts generated by the host's
+`ai_text_flow_test.dart` using the pinned independent ATE reader and PDF renders.
+It verifies model text, paragraph marks, complete cluster coverage, path settings,
+stable frame identities and first/repeated-save printing. Local checks and their
+precise rendering tolerances are recorded with this lot's validation below.
+
+Local validation passes all 1,564 AiKit tests on VM and Node, the 350-test host
+AI/PDF/source/prepress/color/outline suite, and the final ten focused flow cases
+(including two additional flip/offset combinations). Package analysis is clean;
+host analysis has no errors or warnings. Formatting and scoped fix checks pass.
+The complete independent host verifier also passes, with seventeen new native
+text saves. Original PDFs match Poppler exactly at 72 and 144 dpi. Reopened views
+also match, except one pixel in the original flipped, zero-offset fixture at
+144 dpi, with a maximum channel difference of 11/255. Native segment-parameter
+inversion through float path metrics introduces a subpixel position change;
+that fixture alone allows one pixel and 11/255. Ghostscript at 72 dpi matches all
+original and reopened views exactly. These bounds are fixture-specific, not an
+arbitrary-resolution or Illustrator-rendering guarantee.
+
+### Heterogeneous groups and opacity masks
+
+Focale now saves complete private appearances containing paths, embedded process
+images, qualified meshes, live shapes and native text together. Private wrapper
+metadata carries each object's stable identity, name, blending and opacity mask;
+import projects the original family directly, without exposing an extra group or
+substituting the printing raster for editable data. Clipped mixed groups retain
+their clipping contour. Existing paragraph/path text composition remains owned by
+Focale and the global ATE resources remain synchronized.
+
+Creation, content/placement edits, reordering, insertion, duplication and removal
+refresh complete printing/PDF views with the native authoring. Removing text or
+its complete owner first removes its global story and compacts frame references.
+Cloning creates fresh native identities and stories. Placement-only image edits
+retain original source samples. Mask-local paths, embedded images, meshes and
+live shapes can coexist and be edited; owner mask flags remain independently
+editable. Legacy rectangle masks without a canvas ruler origin retain the existing
+ordinary-contour representation.
+
+This is a qualified extension, not arbitrary Illustrator appearance support.
+Text inside opacity-mask Art, private linked-image authoring, image/mesh/text
+overprint, new mesh or typography profiles, plugin objects and nested mask
+creation remain outside this lot. Visibility/locking edits on retained private
+payload wrappers reject explicitly. Unsupported ownership/state does not silently
+flatten into an editable object. Actual Illustrator reopen/edit/resave validation
+remains outstanding.
+
+`ai_mixed_appearance_test.dart` covers native family preservation, mixed/clipped
+groups, text resource lifetime, mask carriers and repeated saves. AiKit's
+`tool/verify_focale_mixed_appearances.py` independently reads eight generated
+native/ATE/container saves and compares original/reopened PDFs with Poppler at
+72/144 dpi and Ghostscript at 72 dpi. The host retains a downward local mesh basis
+with an explicit native-coordinate flip, avoiding a quantization seam caused by
+reflecting midpoint samples. This changes no AiKit rendering responsibility.
+
+Local validation passes all 1,566 AiKit tests on both VM and Node, the 321-test
+Focale AI/PDF suite and the final four focused heterogeneous workflows (including
+all four masked carrier families and modified mask geometry). The final package
+leaf tests also check that deleting text through generic tree/owner operations
+rejects before global story cleanup, on VM and Node. Package analysis is clean;
+full host analysis has no errors or warnings, with existing informational lints;
+final new-helper/test analysis is clean. Formatting, scoped fixes and diff checks
+pass. The complete independent host verifier passes, including exact original and
+reopened pixel comparisons for all eight new heterogeneous saves. Existing
+fixture-specific tolerances for earlier brush/gradient/path-text lots remain
+unchanged. No Illustrator validation, commit or push was performed.
+
+### Mesh points, handles, vertex paint and subdivision
+
+The AI adapter accepts bounded Cartesian smooth-tensor grids with at least one
+cell on each axis. Shared positions and cubic handles remain explicit; RGB,
+CMYK and gray components and independent per-vertex opacity retain full source
+precision, including transparent vertices. Object opacity remains separate.
+Repeated row/column insertion uses the existing Focale subdivision tools and
+refreshes native cells together with the host-composed PDF/printing appearance.
+This applies to ordinary meshes, private group leaves and mask-local leaves.
+
+Imported meshes carrying numeric patch `/R` data now receive explicit source-cell
+lineage. Each subdivision inherits its original cell's opaque array; other cells
+retain their own arrays even when their indices shift. Focale project grid
+version 4 persists this bounded provenance through local save/reopen, node edits,
+transposition and repeated insertions. Reopening an AI save seeds a new lineage
+against that native snapshot. AiKit continues to serialize the complete explicit
+replacement supplied by the host, without assigning `/R` a rotation or geometric
+interpolation meaning. Missing or mismatched provenance rejects topology changes
+that would discard these arrays. Unbound copies carrying such provenance also
+reject instead of silently discarding native cell data.
+
+This extends the native smooth-tensor workflow. Legacy Coons/bilinear grids,
+named/mixed ink spaces, rational weights and intermediate boundary nodes still
+require their own visual projection; they are not silently converted. Nonuniform
+mesh placement retains its geometry-dependent color-field guard. Insertion
+rebuilds smooth tensor cells and color derivatives using Focale's existing tool
+policy; it does not promise a mathematically identical pre-insertion surface.
+Literal native data and host-composed views can be validated locally; Illustrator
+recomposition and the meaning of arbitrary retained `/R` values remain separate
+interoperability questions.
+
+Ordinary imports now share the downward local mesh basis used by private leaves,
+with an explicit native-coordinate flip. Retained edits and tree transactions
+keep that basis for printing, avoiding midpoint quantization seams. Accumulated
+frame rotation uses the actual change relative to the imported basis. Older
+Focale projects migrate only when their complete transformed baseline exactly
+matches a fresh native decode; pending geometry/color edits survive that change.
+Unrelated baseline discrepancies still reject.
+
+Local validation passes 397 Focale AI/PDF/mesh tests, including 18 focused
+mesh/provenance cases and the existing canvas/history/interchange workflows.
+The 45 relevant AiKit mesh/transparency/private-leaf tests pass on both VM and
+Node; no additional package runtime feature was needed. Package analysis is clean;
+full host analysis has no errors or warnings and retains 551 informational lints.
+Formatting and diff checks pass. `tool/verify_focale_mesh_editing.py` independently
+checks all duplicated native controls, process components, vertex alpha and
+mapped patch parameters in 13 saves. Original and reopened views match exactly
+with Poppler at 72/144 dpi and Ghostscript at 72 dpi on those fixtures. This is
+local structural and PDF evidence, not Illustrator recomposition certification.
+No commit or push was performed.
+The complete independent host verifier also passes on the regenerated fixtures;
+earlier brush, gradient and path-text tolerances remain unchanged.
+
+### Static symbols connected to Focale
+
+Focale's symbol commands now save native shared masters and instances rather than
+rejecting all symbol libraries. Creation from an ordinary selection, insertion,
+master replacement, rename and dissociation are connected to the AI adapter.
+Instance translation, rotation, unequal scaling, reflection and shear use an
+explicit native relative matrix. Instance opacity and complete opacity masks
+remain on the appearance wrapper. Private mixed-group instances retain complete
+printing owners; crossing an ordinary/private owner boundary creates a fresh
+export-only native identity without changing editor identities.
+
+Masters retain local artwork and are shared by all reopened instances. Unused
+library definitions are kept. Source-equal definitions reuse exact native bytes;
+changed definitions are staged under temporary names while every affected
+instance and its printable owner is updated. Old unused masters are then removed,
+with final names and symbol-panel references committed together. Swapped names
+are staged too. The transaction also covers changed artboards and repeated saves.
+Body image inventories exclude setup master images, which have their own local
+ownership and pixel budget.
+
+The qualified master profile comprises ordinary process-painted paths and groups,
+clipping groups, supported dynamic shapes, embedded process images and supported
+meshes. Text masters, named/gradient local paints requiring broader composition,
+non-neutral local image/mesh/group blending, nested opacity masks, dynamic symbol
+overrides, symbol instances inside masks/resources and producer registration or
+pixel-perfect grids still reject explicitly. Unqualified sources keep the existing
+preservation/PDF fallback policy. This is static-symbol authoring, not universal
+Adobe symbol compatibility.
+
+`ai_symbols_test.dart` exercises the real editor commands as well as shared
+updates, detached ordinary artwork, unused definitions, mixed masters, masked
+private groups, page edits and name swaps. `tool/verify_focale_symbols.py` compares
+native definitions, panel entries, references and matrices with pinned inkai, and
+checks original/reopened PDF views with Poppler and Ghostscript. These checks do
+not establish Illustrator recomposition or editability in Adobe's application.
+
+Local validation passes 1,569 package tests on each of VM and Node and 438 Focale
+AI/PDF/mesh/symbol tests, including 12 symbol workflows. Package analysis is clean;
+full host analysis has no errors or warnings and retains 551 existing informational
+lints. Formatting, scoped fixes and diff checks pass. No commit or push was made.
+
+The complete independent host verifier passes on the regenerated fixtures. All
+22 symbol saves match the original and reopened PDF views exactly in Poppler at
+72/144 dpi and Ghostscript at 72 dpi; pinned inkai independently confirms master
+names, symbol-panel entries, resolved references and all six affine components.
+Earlier fixture-specific tolerances remain unchanged. Actual Illustrator
+recomposition and editability remain unverified.
+
+### Retained artistic and pattern brushes
+
+The AI adapter now connects Focale's retained art silhouettes and five-slot
+pattern brushes to native brush-art declarations, descriptors and path
+appearances. Creating a brush-bearing path, editing its source or pattern slots,
+changing repeat scale/spacing/fitting, changing width/color, copying, deleting
+and removing its brush use the complete appearance transaction. PDF and printing
+representations still come from Focale's shared brush composition.
+
+Source contours, handles, winding and holes remain editable. Natural tile aspect
+and margins are retained. Reflection mirrors local sources and exchanges the two
+corner slots; ordinary similarity placements scale the nominal stroke width.
+Calligraphic nibs retain their existing full affine ellipse placement support.
+Pattern spines may be closed; artistic/calligraphic spines remain open according
+to Focale's current geometry contract. Group opacity continues to compose once.
+
+The new profile is monochrome, fixed-width and undashed. Pressure profiles,
+nonuniform artistic/pattern warps, gradient brush strokes, tiling-pattern tint
+paints on art/pattern brushes, automatic Adobe
+corners, segmented artwork and arbitrary producer brush libraries are not
+promoted to editable host brushes. Source-reading qualification compares the
+complete canonical silhouette grammar so unknown paints or metadata are never
+silently discarded. Unsupported existing owners retain the established mixed
+file preservation/PDF fallback behavior; unsupported new edits reject atomically.
+
+`ai_artwork_brush_test.dart` covers compound sources, all five slots, both repeat
+fits, repeated saves, resource reuse, group lifecycle, closed spines and reflected
+corners. `verify_artwork_brushes` independently inspects native references and
+compares original/reopened PDF views in Poppler and Ghostscript. Native brush
+recomposition inside Illustrator remains unverified, particularly the shared
+PatternOnPath application layout for which the pinned corpus lacks a producer
+application fixture. This is an explicit authored profile, not a universal brush
+library importer.
+
+Local validation passes 1,574 package tests on each of VM and Node, and 481
+Focale AI/PDF/mesh/symbol/brush tests. The six new host cases and five package cases pass, including the
+final source-qualification and tint-paint guards. Package and changed-host-file
+analysis are clean; full host analysis retains 551 pre-existing informational
+lints and no errors or warnings. Formatting, scoped fix checks and diff checks
+pass. No commit or push was made.
+
+The fourteen new independent brush views pass. Twelve initial/edited views and
+the original reflected view are pixel-identical in Poppler at 72/144 dpi. The
+reopened reflected view differs at three/five antialiased edge pixels, with
+maximum channel differences 18/21; fixture-specific limits are five/eight pixels
+and 24 levels. Its spine coordinates and all five source slots are checked
+separately, with source coordinate drift below `1e-12`. All fourteen views match
+exactly in Ghostscript at 72 dpi. These are PDF-view checks, not execution of the
+native brush plug-ins by Illustrator.
+
+The complete independent verifier also passes on the regenerated full host corpus,
+including the earlier text, mixed-appearance, mesh and symbol transactions. Their
+existing fixture-specific tolerances remain unchanged.
+
+### Geometric recipes and whole-owner appearance effects
+
+The native adapter connects closed-contour offset, corner rounding, and a single
+simple drop shadow or outer glow on ordinary paths and groups. Native filters
+retain source contours, ordered geometry recipes, disabled settings and local
+process effect colors. Selected parameter/order/visibility edits replace the
+complete printing owner and synchronized PDF; unchanged resources and neighbors
+retain their source ownership. Group effects remain independent of child paints
+and outer opacity. Focale's existing geometry/layer-style composition supplies
+all derived representations.
+
+Offsets/radii scale in points through similarity placements. Shadow displacement
+uses the native horizontal/downward UI axes, independently of native y-up path
+coordinates; the host's size maps to twice the native blur parameter. The
+current profile requires neutral falloff, no spread/noise/gradient glow and no
+Photoshop layer knockout. Owners use normal outer blending. Effect blending is
+normal, black multiply or white screen; other colored backdrop modes require
+separate printing planes instead of one transparent owner image. The colored
+backdrop regression compares the original host composition with its detached
+printing image exactly. These are explicit interoperability assumptions pending
+Illustrator recomposition acceptance, not a claim of identical Adobe blur kernels.
+
+Guide bending, directed open offsets, parallel shadow/glow branches, Photoshop
+interior/bevel/overlay effects, advanced blending and nonuniform effect placement
+remain outside this native mapping; the retained-host mode below covers their
+Focale authoring. Individual text/image/mesh/symbol/live-shape leaves need an
+additional wrapper-coordinate contract; effects may instead belong to an
+explicit enclosing group. Unknown or unqualified source owners follow the
+existing preservation policy. No unsupported recipe is silently expanded or
+saved as if its effect controls were natively editable.
+
+Compatibility-only shadow/glow images are composed in document coordinates on a
+stable pixel grid; native authoring retains the original editable owners. The
+28-view independent fixture checks use exact Poppler 72/144 dpi and Ghostscript
+72 dpi comparisons except the reopened rotated group. That one fixture changes
+the raster evaluation order from rotated local blur to blur of rotated contours:
+its coverage differences are bounded by 1,400/5,500 pixels at 72/144 dpi, maximum
+36/255 per channel and mean 0.2/255. These are fixture-specific acceptance bounds,
+not a universal rendering tolerance or proof of Adobe recomposition.
+
+Local validation passes 1,580 AiKit tests on VM and Node, and 668 Focale tests
+covering AI/PDF, meshes, symbols, brushes, geometry recipes and layer styles.
+AiKit analysis is clean. Focale's complete analysis has no errors or warnings;
+its existing informational diagnostics remain. The complete independent Focale
+verifier and the 28 effect views pass. The rotated-group observations are
+1,311/5,155 changed pixels with maximum 30/32 at Poppler 72/144 dpi, and 1,168
+pixels with maximum 33 at Ghostscript 72 dpi; mean channel error stays below
+0.16/255. Actual Illustrator reopening, editing and recomposition are unverified.
+
+### Retained Focale effect controls
+
+The accepted fallback keeps source geometry, all effect parameters, inactive
+settings and libraries editable in Focale using `AiHostSnapshot`. Guide bending
+is developed into native vector contours. Inner shadows/glows, bevel/emboss,
+satin, color/gradient/pattern overlays, broader shadows/glows and combinations
+use Focale's current compositor. Unsupported active layer styles or advanced
+blending capture every page at three pixels per document unit, including plain
+pages, to preserve complete background interactions. The AI/PDF view then contains
+page images; Illustrator does not receive equivalent native effect controls.
+Already-qualified native effect mappings remain available without this fallback.
+
+The payload is a UTF-8 `.fvector` envelope, bounded to 32 MiB decoded with the
+existing 20 MiB binary-resource budget. The overall AI file retains its 20 MB
+limit. `AiOrigin.retainedEffects` identifies host restoration;
+`nativeOrigin` holds at most one ordinary imported AI source. Revisions replay
+against that source, preserving unrelated metadata without accumulating nested
+snapshots. Recovery keeps the same fields. Both native/PDF objects and payload
+participate in the SHA-256 binding. External changes invalidate restoration and
+populate `effectNotice`; the current file artwork is then imported instead.
+Even nonvisual external rewrites may invalidate the binding. No-op saves preserve
+the exact current file. Raster development rejects preserved opaque owners, and
+PDF-only source imports remain outside native save support.
+
+`ai_retained_effects_test.dart` covers nine appearance families, guide bending,
+combined effects over colored multi-page backgrounds, parameter edits,
+disable/removal, recovery, source metadata and repeated saves, plus external
+changes and corrupt payloads. Additional regressions cover revised symbol masters,
+advanced blending, reflected transforms and rejection beside opaque native owners.
+`verify_focale_retained_effects.py` checks 22 original
+and restored views with the pinned native parser, exact native/PDF image samples,
+and Poppler at 72/144 dpi plus Ghostscript at 72 dpi. These checks validate host
+appearance preservation, not Illustrator reopening or recomposition.
+
+Final local validation passes all 1,583 AiKit tests on VM and Node, and all 862
+Focale tests in the expanded AI/PDF/SVG, gradient, mesh, symbol, brush, geometry,
+style, transform and native-resource suite. The obsolete SVG coincident-stop
+rejection exposed by project round trips has been removed: the existing native
+gradient model preserves those stops, their source order and narrow intervals.
+Six new SVG regressions pass, and ten source/export views render pixel-identically
+in librsvg. AiKit analysis is clean; complete Focale analysis retains 550
+informational diagnostics with no errors or warnings. Scoped format/fix checks
+and both repository diff checks pass. The complete independent AI verifier passes,
+including the 22 retained-effect views with exact native/PDF image samples and
+Poppler/Ghostscript comparisons. Actual Illustrator reopening and editing remain
+unverified.

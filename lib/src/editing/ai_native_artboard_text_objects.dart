@@ -3,12 +3,16 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Binds retained drawing text to its selected main or undo-free frame namespace.
 Set<AiNativeContainer> _artboardTextObjects(AiNativeLayers layers, List<_ArtboardTextSnapshot> snapshots) {
   final AiNativeDrawing drawing = layers.drawing;
+  final Set<AiNativeContainer> privateText = {
+    for (final AiNativeGroup group in drawing.groups.where((group) => group.opening.isPrivate))
+      if (_readNativeAppearanceLeaf(drawing, group)?.text case final AiNativeContainer text) text,
+  };
   final Set<AiNativeContainer> result = {};
   for (final AiNativeContainer record in drawing.records.containers.where((record) => record.type == 'AI11Text')) {
     final int index = _pathOffset(drawing.items, record.start, (item) => item.start);
     if (index == drawing.items.length ||
         !identical(drawing.items[index], record) ||
-        drawing.records._projection.isPrivate(record.start) ||
+        drawing.records._projection.isPrivate(record.start) && !privateText.contains(record) ||
         layers.structure.nodeFor(record).versions.isNotEmpty ||
         record.hasBinary ||
         _nativeObjectMetadataComments(drawing, record.start, record.end)) {

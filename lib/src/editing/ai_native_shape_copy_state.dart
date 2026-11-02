@@ -48,6 +48,9 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   'Angle' || 'Diameter' || 'Roundness' || 'AngleVariation' || 'DiameterVariation' || 'RoundnessVariation' => field.type == 'Real' && field.number != null,
   'AngleDependsOn' || 'DiameterDependsOn' || 'RoundnessDependsOn' || 'AngleRelativeTo' => field.type == 'Int' && field.number == 0,
   'NotRecorded' => field.isQualifier,
+  _ when AiNativeArtworkBrushPaint.realFields.contains(field.key) => field.type == 'Real' && field.number != null,
+  _ when AiNativeArtworkBrushPaint.integerFields.contains(field.key) => field.type == 'Int' && field.number != null && field.number == field.number!.truncateToDouble(),
+  _ when AiNativeArtworkBrushPaint.booleanFields.contains(field.key) => field.type == 'Bool' && field.boolean != null,
   _ => false,
 };
 
@@ -64,9 +67,19 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   _artboardRetainedStyle(layers, style, {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use}, patterns, _nativeStyleBrushes(drawing, style));
+  final List<AiNativeContainer> effects = drawing.records.containers
+      .where((record) => record.start >= style.start && record.end <= style.end && _nativeAppearanceKind(record, _nativeAppearanceFilter(record)) == .nativeEffect)
+      .toList();
+  for (final AiNativeContainer effect in effects) {
+    AiNativeEffect._decode(drawing.records, effect);
+  }
   final Set<String> writes = {};
   final Set<String> reads = {};
   for (final AiNativeContainer record in drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end)) {
+    // Effect-local color records do not assign the enclosing artwork's paint.
+    if (effects.any((effect) => record.start >= effect.start && record.end <= effect.end)) {
+      continue;
+    }
     if (const {'BasicFilter', 'CompoundFilter'}.contains(record.type) &&
         const {AiNativeAppearancePartKind.effect, AiNativeAppearancePartKind.opaque}.contains(_nativeAppearanceKind(record, _nativeAppearanceFilter(record)))) {
       throw UnsupportedError('Native appearance state requires qualified literal filter roles.');
@@ -75,7 +88,7 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
       throw UnsupportedError('Shape copies require literal, typed native filter fields.');
     }
     final String? plugin = record['PluginFileName']?.text();
-    if (plugin != null && !const {'Illustrator.exe', 'StrokeOffset.aip', 'CalligraphicBrushTool.aip'}.contains(plugin)) {
+    if (plugin != null && !const {'Illustrator.exe', 'StrokeOffset.aip', 'CalligraphicBrushTool.aip', 'ArtOnPathBrushTool.aip', 'PatternOnPathBrushTool.aip'}.contains(plugin)) {
       throw UnsupportedError('Shape copies cannot qualify external appearance plug-ins.');
     }
     if (const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type)) {
@@ -149,7 +162,17 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
   List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
   String? Function(AiNativeInstruction) stateKey = _nativeArtworkStateKey,
 }) {
-  neutralSpans ??= _nativeNeutralArtwork(drawing);
+  final List<_NativeSubtreeSpan> qualifiedNeutral = [
+    ...neutralSpans ?? _nativeNeutralArtwork(drawing),
+    for (final AiNativeAppearanceArtwork owner in appearanceArtwork)
+      for (final AiNativeAppearanceLeaf leaf in owner.leaves.values) ...[
+        if (leaf.raster case final AiNativeRaster raster) (start: raster.start, end: raster.end),
+        if (leaf.mesh case final AiNativeMesh mesh) (start: mesh.start, end: mesh.end),
+        if (leaf.text case final AiNativeContainer text) (start: text.start, end: text.end),
+        if (leaf.symbol case final AiNativeContainer symbol) (start: symbol.start, end: symbol.end),
+        if (leaf.shape case final AiLiveShape shape) (start: shape.dictionary.start, end: shape.dictionary.end),
+      ],
+  ]..sort((first, second) => first.start.compareTo(second.start));
   final List<int> positions = boundaries.toSet().toList()..sort();
   if (positions.isEmpty) {
     return {};
@@ -267,10 +290,10 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
   for (final int position in positions) {
     while (index < drawing.items.length && drawing.items[index].end <= position) {
       final AiNativeItem item = drawing.items[index++];
-      while (neutralIndex < neutralSpans.length && neutralSpans[neutralIndex].end <= item.start) {
+      while (neutralIndex < qualifiedNeutral.length && qualifiedNeutral[neutralIndex].end <= item.start) {
         neutralIndex++;
       }
-      if (neutralIndex < neutralSpans.length && item.start >= neutralSpans[neutralIndex].start && item.end <= neutralSpans[neutralIndex].end) {
+      if (neutralIndex < qualifiedNeutral.length && item.start >= qualifiedNeutral[neutralIndex].start && item.end <= qualifiedNeutral[neutralIndex].end) {
         continue;
       }
       if (headers.containsKey(item.start) && (headers[item.start]!.bindingIssue == null || retainedMetadata.contains(headers[item.start]!.dictionary)) ||
@@ -333,9 +356,11 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
             nativeOrigins[key] = item.start;
           }
           final List<AiNativeContainer> records = drawing.records.containers.where((record) => record.start >= shape.style!.start && record.end <= shape.style!.end).toList();
-          if (records.every((record) => record['Visible'] == null || record['Visible']!.number == 1)) {
+          final List<AiNativeContainer> effectOwners = records.where((record) => _nativeAppearanceKind(record, _nativeAppearanceFilter(record)) == .nativeEffect).toList();
+          final List<AiNativeContainer> outgoing = records.where((record) => !effectOwners.any((effect) => record.start >= effect.start && record.end <= effect.end)).toList();
+          if (outgoing.every((record) => record['Visible'] == null || record['Visible']!.number == 1)) {
             final Map<String, List<AiNativeInstruction>> candidates = {};
-            for (final AiNativeContainer record in records.where((record) => const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type))) {
+            for (final AiNativeContainer record in outgoing.where((record) => const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type))) {
               for (final AiNativeInstruction command in AiNativePaintStyle.decode(records: drawing.records, record: record).instructions) {
                 final String? key = _nativeArtworkStateKey(command);
                 if (key != null && key != 'fill' && key != 'stroke') {

@@ -131,7 +131,7 @@ AiNativeAppearances _moveNativeAppearanceArtwork(
     }
     return AiNativeAppearances.decode(
       structure: AiNativeStructure.decode(
-        drawing: _groupLifecycleResult(drawing, edits, paths: drawing.paths.length, groups: drawing.groups.length, liveShapes: drawing.liveShapes.length),
+        drawing: _groupLifecycleResult(drawing, edits, appearanceLeaves: true, paths: drawing.paths.length, groups: drawing.groups.length, liveShapes: drawing.liveShapes.length),
       ),
     );
   }
@@ -180,6 +180,7 @@ AiNativeAppearances _moveNativeAppearanceArtwork(
       AiSourceEdit(start: position, end: position, bytes: placed.bytes),
       ...AiNativeEditor.includeBoundsEdits(program: drawing.records.program, bounds: bounds),
     ],
+    appearanceLeaves: true,
     paths: drawing.paths.length,
     groups: drawing.groups.length,
     liveShapes: drawing.liveShapes.length,

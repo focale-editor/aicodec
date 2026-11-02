@@ -4,15 +4,13 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 ///
 /// Structural edits retain the parameters and geometry together. Separate
 /// printing expansions and version alternatives require their own lifecycle.
-String? _directNativeShapeIssue(AiLiveShape shape) {
-  if (!shape.isBound ||
-      shape.path?.isPrivate != false ||
+String? _directNativeShapeIssue(AiLiveShape shape, {bool appearanceLeaf = false}) {
+  if (!appearanceLeaf && (!shape.isBound || shape.path?.isPrivate != false) ||
       shape.appearanceGroup != null ||
       shape.appearanceDictionary != null ||
       shape.alternativeDictionaries.isNotEmpty ||
       shape.style != null ||
-      shape.appearancePaths.length != 1 ||
-      !identical(shape.appearancePaths.single, shape.path)) {
+      !appearanceLeaf && (shape.appearancePaths.length != 1 || !identical(shape.appearancePaths.single, shape.path))) {
     return 'The live shape requires a separate authoring/printing lifecycle contract.';
   }
   final Set<String>? fields = _shapeParameters[shape.handler];
@@ -21,6 +19,9 @@ String? _directNativeShapeIssue(AiLiveShape shape) {
       shape.definition['ai::LiveShape::HandlerName']?.type != 'UnicodeString' ||
       shape.definition['ai::LiveShape::Params']?.container?.type != 'Dictionary') {
     return 'The live shape has an unqualified handler or parameter owner.';
+  }
+  if (shape.parameters.notRecorded || shape.parameters.entries.map((field) => field.key).toSet().length != shape.parameters.entries.length) {
+    return 'The live shape has conditional or repeated parameter fields.';
   }
   for (final AiNativeEntry field in shape.parameters.entries) {
     final String prefix = '${shape.handler}::';

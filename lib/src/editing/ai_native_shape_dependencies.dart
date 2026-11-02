@@ -123,7 +123,7 @@ void _sourceFollowingDependencies(
       read(change?.reads ?? (compoundDepth == 0 ? _shapeCopyReads(drawing, path) : _nativeContourFlags), private: nativeOnly);
     } else if (item.operator == 'aikit:mesh') {
       read(_nativeArtworkStateKeys, private: false);
-    } else if (item.operator == 'aikit:text') {
+    } else if (const {'aikit:text', 'aikit:symbol'}.contains(item.operator)) {
       read(_nativeArtworkStateKeys, private: true);
     } else if (const {'XI', '`'}.contains(item.operator)) {
       read(_nativeImageReads(printingImages[item.start] ?? images[item.start] ?? (throw UnsupportedError('Following image reads require qualified raster ownership.'))), private: nativeOnly);

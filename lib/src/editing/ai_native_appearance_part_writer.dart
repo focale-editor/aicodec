@@ -20,20 +20,46 @@ Uint8List _createdNativeAppearancePart(
   /// Writes fixed grammar and numeric data without changing source projection.
   void text(String value) => append(latin1.encode(value));
 
+  if (definition.effect case final AiNativeEffect effect) {
+    text(
+      '/BasicFilter : (${effect.kind.plugin}) 1 0 /Filter , ${definition.visible ? 1 : 0} /Visible , (${_artboardStylePlugins[effect.kind.plugin]}) /PluginFileName , /Dictionary : /NotRecorded , ',
+    );
+    for (final MapEntry<String, double> field in effect.realParameters.entries) {
+      text('${field.value} /Real (${field.key}) , ');
+    }
+    for (final MapEntry<String, int> field in effect.integerParameters.entries) {
+      text('${field.value} /Int (${field.key}) , ');
+    }
+    for (final MapEntry<String, bool> field in effect.booleanParameters.entries) {
+      text('${field.value ? 1 : 0} /Bool (${field.key}) , ');
+    }
+    if (effect.color case final AiColor color) {
+      final String operator = switch (color.space) {
+        .gray => 'g',
+        .rgb => 'Xa',
+        .cmyk => 'k',
+      };
+      text('/FillStyle : 0 O ${color.channels.join(' ')} $operator 0 1 0 0 0 Xy 0 XR 0 1 Xd /Def ; (sclr) , ');
+    }
+    text('; /Dict , ;');
+    return output.takeBytes();
+  }
   final bool compound = definition.kind == .stack || definition.kind == .chain;
   final bool calligraphic = definition.kind == .calligraphic;
+  final bool artworkBrush = definition.kind == .artworkBrush;
   final bool offset = definition.kind == .stroke && definition.strokeAlignment != .center;
   final String filter = switch (definition.kind) {
     .stack => 'Stack Style Filter',
     .chain => 'Chain Style Filter',
     .fill => 'Fill Style Filter',
     .calligraphic => 'Adobe Calligraphic Brush Tool',
+    .artworkBrush => definition.artworkBrush!.kind.plugin,
     .stroke => offset ? 'Adobe Stroke Offset' : 'Stroke Style Filter',
     .conduit => 'Conduit Filter',
     .blend => 'Blend Style Filter',
     _ => throw ArgumentError('Unsupported created appearance part.'),
   };
-  text('/${compound ? 'CompoundFilter' : 'BasicFilter'} : ($filter) ${offset || calligraphic ? 1 : 0} 0 /Filter , ${definition.visible ? 1 : 0} /Visible , ');
+  text('/${compound ? 'CompoundFilter' : 'BasicFilter'} : ($filter) ${offset || calligraphic || artworkBrush ? 1 : 0} 0 /Filter , ${definition.visible ? 1 : 0} /Visible , ');
   if (compound) {
     for (final AiNativeAppearanceChild child in definition.children) {
       append(childBytes(child));
@@ -42,10 +68,13 @@ Uint8List _createdNativeAppearancePart(
   } else if (definition.kind == .blend) {
     text('/Dictionary : /NotRecorded , /BlendStyle : ${definition.transparency!.operands.join(' ')} Xy /Def ; (BlendStyle) , ; /Dict , ');
   } else if (definition.kind != .conduit) {
-    final bool stroke = definition.kind == .stroke || calligraphic;
+    final bool stroke = definition.kind == .stroke || calligraphic || artworkBrush;
     if (stroke) {
       if (calligraphic) {
         text('(CalligraphicBrushTool.aip) /PluginFileName , ');
+      }
+      if (artworkBrush) {
+        text('(${definition.artworkBrush!.kind == .art ? 'ArtOnPath' : 'PatternOnPath'}BrushTool.aip) /PluginFileName , ');
       }
       if (offset) {
         text('(StrokeOffset.aip) /PluginFileName , ');
@@ -61,6 +90,17 @@ Uint8List _createdNativeAppearancePart(
       text('0 /Real (AngleVariation) , 0 /Real (DiameterVariation) , 0 /Real (RoundnessVariation) , ');
       text('0 /Int (AngleDependsOn) , 0 /Int (DiameterDependsOn) , 0 /Int (RoundnessDependsOn) , 0 /Int (AngleRelativeTo) , ');
       append(_nativeLiteralString(nib.brushNameBytes, limits.maxDecodedBytes));
+      text(' /String (DisplayString) , ');
+    }
+    if (definition.artworkBrush case final AiNativeArtworkBrushPaint brush) {
+      text('/GObjRef : ');
+      append(_nativeLiteralString(brush.brushNameBytes, limits.maxDecodedBytes));
+      text(' (${brush.kind.plugin}) /PluginObject ; (Brush) , ');
+      text('${brush.scaling} /Real (Scaling) , ${brush.spacing} /Real (Spacing) , ');
+      text('${brush.scaling} /Real (MinScaling) , ${brush.scaling} /Real (MaxScaling) , ');
+      text('0 /Int (ScaleYDependsOn) , 1 /Int (Colorization) , 0 /Int (UpsideDown) , 0 /Int (Counterclockwise) , ${brush.adjustment} /Int (Adjustment) , ');
+      text('0 /Real (StartSegmentLength) , 0 /Real (EndSegmentLength) , 0 /Bool (Segmented) , 1 /Bool (FoldAdjustment) , 0 /Bool (Proportional) , ');
+      append(_nativeLiteralString(brush.brushNameBytes, limits.maxDecodedBytes));
       text(' /String (DisplayString) , ');
     }
     if (!stroke) {

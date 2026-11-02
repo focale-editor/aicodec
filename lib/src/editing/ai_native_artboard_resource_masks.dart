@@ -33,6 +33,7 @@ void _artboardOpacityMask(_ArtboardResourceInspection scope, AiNativeContainer s
     }
   }
   final List<AiNativeItem> items = [];
+  final List<AiNativeContainer> shapes = [];
   final _NativeCommandReader reader = _NativeCommandReader(maxDepth: records.program.limits.maxDepth);
   int rasterIndex = 0;
   AiNativeRaster? active;
@@ -54,7 +55,11 @@ void _artboardOpacityMask(_ArtboardResourceInspection scope, AiNativeContainer s
     }
     if (item is AiNativeContainer) {
       reader.finish();
-      _artboardSymbolMetadata(scope, item, raster: metadata[item]);
+      if (item.type == 'ArtDictionary' && item['ai::LiveShape'] != null) {
+        shapes.add(item);
+      } else {
+        _artboardSymbolMetadata(scope, item, raster: metadata[item]);
+      }
       items.add(item);
     } else if (item is AiNativeToken) {
       final AiNativeInstruction? instruction = reader.add(item.token, isPrivate: records._projection.isPrivate(item.start));
@@ -80,5 +85,13 @@ void _artboardOpacityMask(_ArtboardResourceInspection scope, AiNativeContainer s
     throw const FormatException('Retained opacity masks require matching empty artwork boundaries.');
   }
   _artboardResourceAnnotations(scope, source.start, source.end, rasters);
-  scope.drawings.add(_NativeDrawingReader(records: records).readItems(items.sublist(1, items.length - 1)));
+  final AiNativeDrawing drawing = _NativeDrawingReader(records: records).readItems(items.sublist(1, items.length - 1));
+  final Set<AiNativeContainer> qualified = {
+    for (final AiNativeGroup group in drawing.groups)
+      if (_readNativeAppearanceLeaf(drawing, group)?.shape case final AiLiveShape shape) shape.dictionary,
+  };
+  if (!qualified.containsAll(shapes)) {
+    throw UnsupportedError('Mask shapes require complete qualified native wrappers.');
+  }
+  scope.drawings.add(drawing);
 }
