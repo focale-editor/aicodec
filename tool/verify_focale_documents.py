@@ -23,6 +23,67 @@ from verify_native_rasters import images, samples
 from verify_native_placements import preview_data
 from verify_native_mesh_geometry import read_packet
 from verify_native_group_lifecycle import inventory as group_inventory
+from verify_native_structure import native_values
+
+
+def verify_appearance_lifecycle(inkai, output):
+    """Check fresh complete owners, exact mask carriers and two saved revisions."""
+    from inkai.parser.hierarchy_objects import Mask
+
+    count = 0
+    for kind in ('path', 'group'):
+        for destination in ('layer', 'group', 'root'):
+            first_identities = None
+            for revision in (1, 2):
+                stem = f'appearance-{kind}-{destination}-{revision}'
+                path = output / f'{stem}.ai'
+                native = (output / f'{stem}.ps').read_bytes()
+                document = inkai.parse(str(output / f'{stem}.ps'))
+                values = list(native_values(document.trailer))
+                owners = [value for value in values if isinstance(value, dict) and 'AI10_ArtUID' in value]
+                identifiers = [value['AI10_ArtUID'] for value in owners]
+                assert len(set(identifiers)) == len(identifiers), stem
+                assert identifiers.count('focale_object_1') == identifiers.count('focale_object_2') == 1, stem
+                if revision == 1:
+                    first_identities = identifiers
+                else:
+                    assert identifiers == first_identities, stem
+                masked = [value for value in owners if 'AI9_Mask' in value]
+                assert len(masked) == (1 if kind == 'path' else 3), stem
+                assert len([value for value in values if isinstance(value, Mask)]) == len(masked), stem
+                for owner in masked:
+                    name, mask = owner['AIArtName'], owner['AI9_Mask']
+                    assert isinstance(mask, Mask), (stem, name)
+                    if name == 'Added':
+                        expected = (kind == 'path', revision == 2, kind == 'group', kind == 'path')
+                    elif name == 'Added-inner':
+                        expected = (True, True, True, False)
+                    else:
+                        assert name.endswith('Added-path'), (stem, name)
+                        expected = (True, False, False, True)
+                    assert (mask.Linked, mask.Disabled, mask.Clipping, mask.Inverted) == expected, (stem, name)
+                    assert mask.Art[0].command == 'X=' and mask.Art[-1].command == 'X+', stem
+                    starts = [list(map(float, op.tokens)) for op in operators(mask.Art) if op.command == 'm']
+                    assert starts == [[45, -10]], (stem, name, starts)
+                raster, = images(document)
+                color, alpha = samples(raster)
+                assert len(color) == raster.w * raster.h * 3 and len(alpha) == raster.w * raster.h, stem
+                state = None
+                selected = []
+                for op in operators(document.trailer):
+                    if op.command == 'Xy':
+                        state = list(map(float, op.tokens))
+                    if op is raster:
+                        selected.append(state)
+                assert selected == [[int(kind == 'group'), .7 if revision == 1 else .4, 1, 0, 0]], (stem, selected)
+                assert native_programs(path) == [native], stem
+                pdf = PdfReader(path, strict=True)
+                assert len(pdf.pages) == 1, stem
+                private = pdf.pages[0]['/PieceInfo']['/Illustrator']['/Private']
+                assert private['/AIMetaData'].get_data() == native[:native.index(b'%%EndComments\n') + len(b'%%EndComments\n')], stem
+                assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+                count += 1
+    return count
 
 
 def main():
@@ -230,6 +291,8 @@ def main():
         assert renders(path) == renders(args.output / f'{reference}.pdf'), stem
     assert identities['boards-removed'] == [identities['boards-inserted'][i] for i in (1, 0)]
     assert page_references['boards-removed'] == [page_references['boards-inserted'][i] for i in (1, 0)]
+    appearances = verify_appearance_lifecycle(inkai, args.output)
+    print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 
 

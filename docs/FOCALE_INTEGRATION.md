@@ -1310,7 +1310,7 @@ claimed by these synthetic regression fixtures.
 
 - Mixed preserved owners retain topology, pages and ancestor attributes. Broader
   mixed lifecycle and public compound/clipping printing need explicit contracts.
-- New complete-appearance copies, broader mutations of containing ordinary
+- Arbitrary source-appearance copies, broader mutations of containing ordinary
   subtrees, complex/threaded/path text, pattern/brush/symbol/effect authoring and
   arbitrary named resource libraries are not certified by this integration.
 - Native document save checks and independent readers do not establish an actual
@@ -1345,3 +1345,27 @@ flag ownership, text-container projection, image incorporation terminators, PDF
 page identity, complete-mask PDF preparation and exact DeviceGray interpretation.
 The editable-font fixture explicitly permits editable incorporation; preview-only
 fonts retain their original restrictions. No Illustrator exchange is claimed.
+
+## Fresh appearance insertion in existing AI files
+
+Focale now shares its initial appearance authoring implementation with the retained
+native lifecycle writer. New isolated groups and standalone masked process paths
+can be inserted into existing layers, ordinary groups and the global canvas. Native
+styles, private descendants, exact mask carriers and supplied printing are created
+together with deterministic fresh identities. The lifecycle ledger preserves complete
+pair ownership and mixed sibling order, while the final PDF uses the same revision.
+
+The qualified private process-path/group subset is unchanged. Retained source
+children cannot be silently regenerated inside a fresh pair; unsupported conversions
+are rejected before saving. Exact duplication of arbitrary source appearance graphs
+and further private families remain separate work. Integration regressions cover
+creation, nested masks, clipping, repeated saves and preserved neighbor bytes.
+
+Validation on 2026-11-02: all 479 tests in the extended Focale AI/PDF campaign pass,
+including nine new lifecycle cases. Full application analysis retains the existing
+550 informational lints, with no errors or warnings; formatting and scoped fix
+checks pass. The independent verifier checks 34 complete saves: the previous 22
+plus 12 new group/path appearances at layer, ordinary-group and canvas scope across
+two revisions. It checks exact mask carriers/settings, native identities, composed
+image state, current header caches and exact Poppler PDF pixels. AiKit runtime
+sources are unchanged by this addition. No Adobe Illustrator exchange is claimed.
