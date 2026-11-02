@@ -1623,3 +1623,25 @@ shapes, gradient owners, compound/clipping descendants and unresolved metadata
 or inherited state reject atomically. Those families retain their own authoring
 contracts. The host may rename the ordinary object before conversion and attach
 a mask to the resulting private carrier through the existing complete-owner API.
+
+### Named paints on private group children
+
+`AiNativeAppearancePathDefinition.styled` creates an unpainted private child with
+an existing immutable style name. The group writer emits a direct mode-zero
+application after the child's metadata. The complete outer group owns the
+printing representation; child paths do not acquire separate printing wrappers.
+
+`applyStyleToPaths` assigns a first named style to independent private group
+contours. It clears their direct paint role, retaining geometry, closure, point
+counts, metadata, XML identities and masks. Each selected outer body owner needs
+one complete host printing replacement. The transaction restores known native
+outputs and checks unresolved changes against following children and outer
+artwork. Stale handles, extra/missing printing owners, existing applications,
+compound contours, clipping contours and resource-local owners reject atomically.
+Use `applyStyle` with exact nested uses for subsequent selected style changes.
+
+`replaceArtworkContours` also accepts independently named private group children.
+Closure, visibility and locking changes retain their style application and mask
+carrier; child flag edits never change the whole printing group's flags. All
+selected children of one group share one host printing replacement. Geometry and
+printing/PDF composition remain host responsibilities.

@@ -3,6 +3,7 @@
 
 import argparse
 import copy
+from decimal import Decimal
 import hashlib
 import importlib
 import json
@@ -58,7 +59,9 @@ def inventory(document):
             geometry.append((operator, operands))
         elif operator == 'As':
             assert count is None and len(operands) == 1
-            count = int(operands[0])
+            value = Decimal(operands[0].decode('ascii'))
+            assert value.is_finite() and value >= 0 and value == value.to_integral_value()
+            count = int(value)
         elif operator in PAINT and geometry:
             node = dict(kind='path', geometry=geometry, paint=operator, count=count, state=dict(state), private=private)
             paths.append(node)

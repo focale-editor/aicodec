@@ -192,12 +192,12 @@ final class AiNativeAppearancePathChange {
   }
 }
 
-/// Complete geometry and flags for a standalone styled private contour.
+/// Complete geometry and flags for an independently styled private contour.
 ///
 /// Named paints, metadata, identities and opacity-mask artwork remain owned by
 /// the source. The host supplies replacement printing and the matching PDF.
 final class AiNativeAppearanceContourChange {
-  /// Current standalone authoring path obtained through its complete owner.
+  /// Current independently styled authoring path obtained through its complete owner.
   final AiNativePath path;
 
   /// Complete new anchors, without an extra endpoint required only by counting.
@@ -206,10 +206,10 @@ final class AiNativeAppearanceContourChange {
   /// Explicit contour closure, serialized as the unpainted `n` or `N` role.
   final bool closed;
 
-  /// Visibility of the native path and its complete printing owner.
+  /// Visibility of the native path, and of printing when this is the root contour.
   final bool hidden;
 
-  /// Locking of the native path and its complete printing owner.
+  /// Locking of the native path, and of printing when this is the root contour.
   final bool locked;
 
   /// Freezes one portable contour without changing its named paints or identity.

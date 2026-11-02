@@ -68,6 +68,11 @@ AiNativeAppearances _createNativeAppearanceTree(
     switch (element) {
       case AiNativeAppearancePathDefinition():
         _writeNativeAppearancePath(bytes, drawing, element.definition);
+        if (element.styleNameBytes case final List<int> name) {
+          bytes.text('%_0 ');
+          bytes.add(_nativeLiteralString(name, limits.maxDecodedBytes));
+          bytes.text(' XW\n');
+        }
       case AiNativeAppearanceGroupDefinition():
         bytes.text('%_${element.locked ? 1 : 0} A\n%_${element.hidden ? 1 : 0} Xw\n%_${element.clip == null ? 'u' : 'q'}\n');
         if (element.clip case final AiNativeAppearanceClipDefinition clip) {

@@ -1600,8 +1600,8 @@ remain source-owned. Project persistence retains this editable scene data.
 Current qualification covers rectangular positive repeats matching tile bounds,
 literal local paths/groups/clips and canonical placement plus an affine matrix.
 Other repeat layouts, isolated tile groups, local image/text/nested-resource
-content and private group children need broader
-connections. `ai_pattern_test.dart` covers creation, copying, reordering, deletion,
+content need broader connections. `ai_pattern_test.dart` covers creation,
+copying, reordering, deletion,
 shared tiles, successive edits and project persistence. It emits eight
 initial/edited/reopened PDF comparisons for `tool/verify_focale_patterns.py`.
 Independent native parsing does not render AI patterns and does not establish
@@ -1634,8 +1634,8 @@ AiKit additionally provides complete descriptor lifecycle operations for art,
 pattern and bristle brush libraries. Their application/geometry connections in
 Focale remain separate work. Current host qualification covers one open spine,
 fixed nibs with roundness at least five percent, no pressure profile or dashes,
-and similarity placement. Private group children and
-other brush families still require their native connections. Host outline folds
+and similarity placement. Other brush families still require their native
+connections. Host outline folds
 or exhausted geometry budgets fail atomically with the original source intact.
 
 `ai_brush_test.dart` emits six initial/edited/reopened comparisons for the
@@ -1662,8 +1662,8 @@ composes the complete printing view and synchronized PDF from the same revision.
 The transient lifecycle ledger changes family only after successful conversion,
 so reparenting, sibling ordering and multiple conversions share one atomic save.
 On reopening, the scene uses its normal `ai-appearance-*` projection identity.
-Dynamic shape conversion and children inside a private group remain separate
-contracts. Independent native/PDF checks do not establish Illustrator acceptance.
+Dynamic shape conversion retains its separate contract. Independent native/PDF
+checks do not establish Illustrator acceptance.
 
 Native `UnicodeString` object names now reuse the explicit UTF-16 reader used by
 image/group dictionaries. Conversion leaves unchanged names byte-preserved;
@@ -1676,3 +1676,41 @@ rejections. Package analysis, formatting and fix checks pass. Six independent
 original/reopened comparisons cover pattern, calligraphic and masked conversions,
 in addition to the prior 78 native/container/PDF checks. Illustrator execution
 and editability remain unverified.
+
+### Pattern and calligraphic children in private appearance groups
+
+Focale now authors and projects independent pattern/calligraphic styles on
+private group contours, including nested groups and child opacity masks. Native
+styles and resource references remain editable; one composed printing owner and
+same-revision PDF represent the enclosing group. Initial group creation, first
+styling of retained direct children, selected paint/placement revisions and
+whole-owner copying, reordering and deletion use the existing source transaction.
+Named child closure, visibility and locking edits retain their own masks and
+identities without changing parent flags. Shared tile and brush resources are
+reused or retained for other applications.
+
+The same tile/nib qualification applies as for standalone contours. New native
+private child topology, dynamic shape children, other brush families and broader
+effects still require their authoring contracts. Acceptance tooling inspects
+nested applications, references, identities, masks and original/reopened host
+PDF pixels. It does not execute Illustrator's native brush/pattern engines.
+
+The grouped-paint verifier uses exact Poppler comparisons at 144 dpi and exact
+Ghostscript comparisons at 72 dpi for both original and reopened scenes. Original
+same-revision exports also retain the exact Poppler check at 72 dpi. Poppler's
+72 dpi sampling differs for the tiny initial tile when equivalent scaling moves
+between a containing transparency form and its pattern matrix; both additional
+checks agree without pixel tolerances. Pattern matrices remain relative to the
+parent content stream as specified in
+[ISO 32000-1, section 8.7.2](https://opensource.adobe.com/dc-acrobat-sdk-docs/standards/pdfstandards/pdf/PDF32000_2008.pdf);
+no PDF exporter coordinate change is needed for this lot.
+
+Local validation passes 1,534 package tests on both VM and Node and 321 Focale
+AI/PDF/source/prepress/color tests. Six package regressions cover child style
+attachment, exact application selection, masks/identities, closure/flags,
+clipping rejection and atomic byte-limit failure. Package analysis is clean;
+host analysis retains 550 existing informational lints with no errors or warnings.
+Formatting and scoped fix checks pass.
+The complete independent host verifier passes 92 native/container/PDF comparisons,
+including eight grouped-paint views; the 13 existing independent group lifecycle
+variants also pass. Illustrator rendering and editability remain unverified.

@@ -8,11 +8,21 @@ sealed class AiNativeAppearanceElementDefinition {
 
 /// An independently painted editable contour inside an appearance group.
 final class AiNativeAppearancePathDefinition extends AiNativeAppearanceElementDefinition {
-  /// Complete process paint, geometry, flags and fresh metadata supplied by host.
+  /// Complete geometry, flags, fresh metadata and optional direct process paint.
   final AiNativePathDefinition definition;
 
+  /// Existing named style owning the paints of an unpainted private contour.
+  final List<int>? styleNameBytes;
+
   /// Retains the immutable path definition without composing its printing view.
-  const AiNativeAppearancePathDefinition({required this.definition});
+  const AiNativeAppearancePathDefinition({required this.definition}) : styleNameBytes = null;
+
+  /// Authors an unpainted child with an existing independently editable style.
+  AiNativeAppearancePathDefinition.styled({required this.definition, required List<int> styleNameBytes}) : styleNameBytes = List.unmodifiable(styleNameBytes) {
+    if (definition.filled || definition.stroked || styleNameBytes.isEmpty || styleNameBytes.any((byte) => byte < 0 || byte > 255)) {
+      throw ArgumentError('Styled appearance children require unpainted geometry and a nonempty literal style name.');
+    }
+  }
 }
 
 /// An unpainted prefix contour defining one private group's clipping region.

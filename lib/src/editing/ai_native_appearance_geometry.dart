@@ -75,7 +75,7 @@ AiNativeAppearances _editNativeAppearancePaths(
   return result;
 }
 
-/// Changes root contours while retaining styles, masks and both outgoing states.
+/// Changes independently styled contours while retaining masks and boundary state.
 AiNativeAppearances _replaceNativeAppearanceContours(
   AiNativeAppearances model,
   List<AiNativeAppearanceContourChange> changes,
@@ -85,17 +85,41 @@ AiNativeAppearances _replaceNativeAppearanceContours(
     throw ArgumentError('Standalone contour changes require distinct current paths.');
   }
   final List<AiNativeAppearanceArtwork> owners = _selectedBodyAppearanceArtwork(model, artwork.map((replacement) => replacement.artwork).toList());
-  if (owners.length != changes.length ||
-      owners.any((owner) => owner.path == null || owner.liveShape != null) ||
-      artwork.any((replacement) => replacement.uses.length != 1 || !identical(replacement.uses.single, replacement.artwork.use)) ||
-      changes.any((change) => !owners.any((owner) => identical(owner.path, change.path)))) {
-    throw ArgumentError('Standalone contours require exactly their complete current body owners.');
+  if (owners.any((owner) => owner.liveShape != null) || artwork.any((replacement) => replacement.uses.length != 1 || !identical(replacement.uses.single, replacement.artwork.use))) {
+    throw ArgumentError('Styled contours require complete current body owners.');
+  }
+  final Map<AiNativePath, AiNativeAppearanceArtwork> targets = {};
+  final Map<AiNativePath, AiNativeResourceUse> uses = {};
+  final Map<AiNativePath, AiNativeInstruction?> counts = {};
+  for (final AiNativeAppearanceArtwork owner in owners) {
+    if (owner.path case final AiNativePath path) {
+      targets[path] = owner;
+      uses[path] = owner.use;
+      counts[path] = owner._commands.where((command) => command.isPrivate && command.operator == 'As' && command.end < path.start).singleOrNull;
+    }
+    for (final AiNativePathTopology contour in owner.groupContours) {
+      final List<AiNativeResourceUse> styles = owner.nestedUses.where((use) => identical(owner.authoringFor(use: use), contour.path)).toList();
+      if (contour.compound == null && contour.mask == .none && styles.length == 1 && const {'n', 'N'}.contains(contour.path.paint.operator)) {
+        targets[contour.path] = owner;
+        uses[contour.path] = styles.single;
+        counts[contour.path] = contour.pointCount;
+      }
+    }
+    if (!changes.any((change) => identical(targets[change.path], owner))) {
+      throw ArgumentError('Every printing owner must cover a selected styled contour.');
+    }
+  }
+  if (changes.any((change) => !targets.containsKey(change.path))) {
+    throw ArgumentError('Contour changes require independently styled current private paths.');
   }
   final AiNativeDrawing drawing = model.structure.drawing;
   final List<AiNativeAppearanceArtwork> retained = _nativeBodyAppearanceArtwork(model);
   final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(
     drawing,
-    owners.expand((owner) => [owner.printingGroup.end, owner.end]),
+    [
+      ...owners.expand((owner) => [owner.printingGroup.end, owner.end]),
+      ...uses.values.map((use) => use.instruction.end),
+    ],
     clipping: true,
     appearanceArtwork: retained,
   );
@@ -112,23 +136,31 @@ AiNativeAppearances _replaceNativeAppearanceContours(
   }
 
   for (final AiNativeAppearanceContourChange change in changes) {
-    final AiNativeAppearanceArtwork owner = owners.singleWhere((owner) => identical(owner.path, change.path));
-    final ({Set<String> reads, Set<String> writes}) style = _nativeAppearanceStyleState(model, model.resolve(use: owner.use)!);
+    final AiNativeAppearanceArtwork owner = targets[change.path]!;
+    final AiNativeResourceUse use = uses[change.path]!;
+    final ({Set<String> reads, Set<String> writes}) style = _nativeAppearanceStyleState(model, model.resolve(use: use)!);
     const Set<String> flags = {'A', 'Xw'};
     if (style.reads.intersection(flags).isNotEmpty || style.writes.intersection(flags).isNotEmpty) {
       throw UnsupportedError('Standalone contour flags require a style independent of visibility and locking state.');
     }
-    final Map<String, AiNativeInstruction> native = states[owner.end]!.native;
+    final Map<String, AiNativeInstruction> native = states[use.instruction.end]!.native;
     final Map<String, AiNativeInstruction> printing = states[owner.printingGroup.end]!.printing;
-    if (!native.keys.toSet().containsAll(flags) || !printing.keys.toSet().containsAll(flags)) {
+    if (!native.keys.toSet().containsAll(flags) || owner.path != null && !printing.keys.toSet().containsAll(flags)) {
       throw UnsupportedError('Standalone contour flags require proven native and printing restoration values.');
     }
     final String prefix = '${change.locked ? 1 : 0} A ${change.hidden ? 1 : 0} Xw ';
-    final AiNativeInstruction? count = owner._commands.where((command) => command.isPrivate && command.operator == 'As' && command.end < change.path.start).singleOrNull;
+    final AiNativeInstruction? count = counts[change.path];
     for (final AiSourceEdit edit in _replaceShapeContour(drawing, change.path, count, change.segments, remaining, closed: change.closed)) {
       add(edit.start == change.path.geometry.first.start ? AiSourceEdit(start: edit.start, end: edit.end, bytes: [...latin1.encode(prefix), ...edit.bytes]) : edit);
     }
     add(AiSourceEdit(start: change.path.paint.start, end: change.path.paint.end, bytes: ascii.encode(change.closed ? 'n' : 'N')));
+
+    if (owner.path == null) {
+      // The host printing belongs to the entire group. Only this child's native
+      // flags change; restore them after its style and before the next sibling.
+      add(AiSourceEdit(start: use.instruction.end, end: use.instruction.end, bytes: latin1.encode('\n${flags.map((key) => _shapeStateText(native[key]!, private: true)).join()}%_')));
+      continue;
+    }
 
     // Keep the printing dictionary adjacent to its group and the authoring
     // dictionary adjacent to its contour. Restorations live past those owners.
@@ -164,7 +196,12 @@ AiNativeAppearances _replaceNativeAppearanceContours(
   final AiNativeAppearances result = _nativeAppearanceResult(model, edits, owners.map((owner) => owner.use).toList());
   for (final AiNativeAppearanceArtwork owner in owners) {
     final AiNativeAppearanceArtwork after = result.artworkFor(use: result.uses[model.uses.indexOf(owner.use)]);
-    if (after.path == null || after.liveShape != null || after.opacityMasks.length != owner.opacityMasks.length || !_sameNativeBytes(after.use.nameBytes, owner.use.nameBytes)) {
+    if ((after.path == null) != (owner.path == null) ||
+        after.liveShape != null ||
+        after.groupContours.length != owner.groupContours.length ||
+        after.nestedUses.length != owner.nestedUses.length ||
+        after.opacityMasks.length != owner.opacityMasks.length ||
+        !_sameNativeBytes(after.use.nameBytes, owner.use.nameBytes)) {
       throw const FormatException('Standalone contour replacement changed its style or mask ownership.');
     }
   }

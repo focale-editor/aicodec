@@ -27,11 +27,11 @@ def sections(items):
             yield from sections(item.children)
 
 
-def renders(path):
+def renders(path, dpi=72):
     """Render every PDF page and retain exact PPM pixels for deterministic equality."""
     with tempfile.TemporaryDirectory() as directory:
         prefix = Path(directory) / 'page'
-        result = subprocess.run(['pdftoppm', '-r', '72', str(path), str(prefix)], check=True, capture_output=True)
+        result = subprocess.run(['pdftoppm', '-r', str(dpi), str(path), str(prefix)], check=True, capture_output=True)
         assert b'Syntax Error' not in result.stderr, result.stderr
         return [page.read_bytes() for page in sorted(Path(directory).glob('*.ppm'))]
 

@@ -286,6 +286,18 @@ final class AiNativeAppearances {
   /// applications need dependent-instance propagation and reject here.
   AiNativeAppearances applyStyle({required AiNativeAppearance appearance, required List<AiNativeAppearanceReplacement> artwork}) => _applyNativeAppearanceStyle(this, appearance, artwork);
 
+  /// Gives independent private contours their first named style application.
+  ///
+  /// Supply current child paths and exactly their complete body printing owners.
+  /// Direct contour paints become unpainted geometry; the existing named style
+  /// supplies the appearance. Metadata, masks, identities, geometry and sibling
+  /// order remain attached. Native scalar outputs are restored for following
+  /// children and outer artwork, with unresolved dependencies rejected atomically.
+  /// Already styled paths use `applyStyle`; compound and clipping contours retain
+  /// their separate contracts. Save with the matching host-composed PDF.
+  AiNativeAppearances applyStyleToPaths({required AiNativeAppearance appearance, required List<AiNativePath> paths, required List<AiNativeAppearanceReplacement> artwork}) =>
+      _applyNativeAppearanceChildStyle(this, appearance, paths, artwork);
+
   /// Inserts a complete host-authored native/printing appearance pair.
   ///
   /// Bytes contain optional explicit scalar state, one printing group, its
@@ -461,13 +473,15 @@ final class AiNativeAppearances {
     Map<AiNativeItem, double> frameAngles = const {},
   }) => _editNativeAppearancePaths(this, edits, artwork, frameAngles);
 
-  /// Replaces standalone private contour geometry, closure and visibility/locking.
+  /// Replaces styled private contour geometry, closure and visibility/locking.
   ///
-  /// Each change requires exactly one current complete printing replacement.
+  /// Each complete body owner requires one current printing replacement, even
+  /// when several independently styled child contours change together.
   /// The native contour remains unpainted and keeps its named style, metadata,
   /// mask and identity. Counts follow the new closure; explicit flag restorations
   /// protect following native and printing artwork. Unknown inherited flag state,
-  /// live shapes, private group children and resource-local owners reject.
+  /// live shapes, compound/clipping contours and resource-local owners reject.
+  /// Child flags do not change the complete printing group's visibility/locking.
   /// The host supplies complete printing and a matching compatibility PDF.
   AiNativeAppearances replaceArtworkContours({required List<AiNativeAppearanceContourChange> changes, required List<AiNativeAppearanceReplacement> artwork}) =>
       _replaceNativeAppearanceContours(this, changes, artwork);
