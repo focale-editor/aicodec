@@ -460,7 +460,7 @@ runtime dependency of AiKit.
 The tools compare native data and serialization. They do not package edited
 programs with stale original PDF pages. The former native-to-PDF exporter and
 its dedicated comparisons were removed. PDF compatibility generation belongs
-to the application; see [the host contract](../../docs/HOST.md).
+to the application; see [the host contract](../../docs/AI.md#package-and-host-responsibilities).
 
 ## Native text and shapes
 
@@ -1687,7 +1687,8 @@ separate acceptance work. See [the technical reference](../../docs/AI.md).
 
 ### Focale ordinary CC integration
 
-From the sibling Focale checkout, with its local AiKit dependency override, run:
+From the sibling Focale checkout, using the matching AiKit revision (or an
+optional local dependency override), run:
 
 ```sh
 FOCALE_AI_NEW_OUTPUT=/tmp/focale-ai-new-validation flutter test test/features/documents/ai_new_document_test.dart test/features/documents/ai_path_appearance_test.dart test/features/documents/ai_object_lifecycle_test.dart test/features/documents/ai_artboard_lifecycle_test.dart test/features/documents/ai_embedded_image_test.dart
@@ -1714,3 +1715,21 @@ complete saved PDF with separately composed host references. These cases do not
 establish image lifecycle, linked-image integration or Adobe editing acceptance.
 Generated artwork remains outside publication.
 This is bounded application integration evidence, not Adobe Illustrator acceptance.
+
+### Additional Focale workflows
+
+The following host suites emit fixtures when `FOCALE_AI_NEW_OUTPUT` names an
+output directory. Run each suite from Focale with `flutter test`, then invoke
+its verifier from AiKit's Python corpus environment with
+`--reference <pinned-inkai-checkout> --output <same-directory>`.
+
+| Workflow | Focale test under `test/features/documents/` | AiKit verifier |
+| --- | --- | --- |
+| Path text and paragraphs | `ai_text_flow_test.dart` | [verify_focale_text_flow.py](../../tool/verify_focale_text_flow.py) |
+| Mixed groups and opacity masks | `ai_mixed_appearance_test.dart` | [verify_focale_mixed_appearances.py](../../tool/verify_focale_mixed_appearances.py) |
+| Pattern resources | `ai_pattern_test.dart` | [verify_focale_patterns.py](../../tool/verify_focale_patterns.py) |
+| Static symbols | `ai_symbols_test.dart` | [verify_focale_symbols.py](../../tool/verify_focale_symbols.py) |
+
+These checks inspect native records and compare supplied/reopened PDF views.
+They do not execute Illustrator's compositor. See the
+[current host profile](../../docs/AI.md#focale-integration) for editing limits.

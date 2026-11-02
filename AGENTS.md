@@ -108,7 +108,7 @@
 ## AiKit package boundary
 
 * This is a pure Dart format package. Keep `lib` independent of Flutter, Riverpod, native rendering engines and Focale application code. The generic app-state guidance above does not introduce those dependencies here.
-* Follow the PsdKit/Focale responsibility split: AiKit owns native editable data, preservation and serialization; Focale owns editing tools, interactive document rendering and composition of derived representations. See `docs/HOST.md` for the package/host contract.
+* Follow the PsdKit/Focale responsibility split: AiKit owns native editable data, preservation and serialization; Focale owns editing tools, interactive document rendering and composition of derived representations. See [the package/host contract](docs/AI.md#package-and-host-responsibilities).
 * Do not introduce a native-to-PDF renderer, mesh tessellator, text compositor or interactive editing tools. Save representations supplied by the host together with native edits; serialization must not depend on a rendering operator whitelist.
 * Prioritize native AI CC data and serialization, then older formats. Preserve and report unsupported native data; do not label preserved or PDF-only content as natively editable. Focale integration is deferred to a separate task.
 * Keep the public API in `lib/aikit.dart`, implementations in `lib/src`, runnable examples in `example`, format contracts in `docs/AI.md`, and optional external fixtures under `test/corpus`.

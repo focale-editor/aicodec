@@ -1,4 +1,0 @@
-# Local development only; the published dependency stays in pubspec.yaml.
-dependency_overrides:
-  pdfcore:
-    path: ../PdfCore

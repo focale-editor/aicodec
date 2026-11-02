@@ -1,8 +1,53 @@
 # Illustrator technical reference
 
-This document describes how AiKit represents Illustrator data, which structures it can edit and serialize, and what remains with the host application. Start with the [README](../README.md) for an introduction and the [host contract](HOST.md) for application responsibilities.
+This document describes how AiKit represents Illustrator data, which structures it can edit and serialize, and what remains with the host application. Start with the [README](../README.md) for an introduction.
 
 AiKit is a pure Dart format package. PdfCore handles PDF containers, ZCodec handles native compression, and PsCore supplies the Adobe text-engine grammar shared with PsdKit. Consumers normally import `package:aikit/aikit.dart`.
+
+## Contents
+
+- [Package and host responsibilities](#package-and-host-responsibilities)
+- [Reading and writing documents](#reading-and-writing-documents)
+- [Native programs and immutable edits](#native-programs-and-immutable-edits)
+- [Saving native edits with host-supplied representations](#saving-native-edits-with-host-supplied-representations)
+- [New native CC documents](#new-native-cc-documents)
+- [Document settings and artboards](#document-settings-and-artboards)
+- [Native layers](#native-layers)
+- [Native paths and groups](#native-paths-and-groups)
+- [CC live shapes](#cc-live-shapes)
+- [Editable text](#editable-text)
+- [Ordered native appearances](#ordered-native-appearances)
+- [Native transparency and opacity masks](#native-transparency-and-opacity-masks)
+- [Gradients and paint styles](#gradients-and-paint-styles)
+- [Reusable artwork resources](#reusable-artwork-resources)
+- [Mesh data](#mesh-data)
+- [Images and linked files](#images-and-linked-files)
+- [Catalog metadata](#catalog-metadata)
+- [Effects and host authoring](#effects-and-host-authoring)
+- [Supported data](#supported-data)
+- [Focale integration](#focale-integration)
+- [Safety and platform behavior](#safety-and-platform-behavior)
+- [Corpus validation and compatibility](#corpus-validation-and-compatibility)
+- [References](#references)
+
+## Package and host responsibilities
+
+AiKit follows the PsdKit/Focale split: it owns native data, preservation and
+serialization. The host owns the editing experience and the resulting appearance.
+
+| AiKit | Host application |
+| --- | --- |
+| Decode containers, native programs and metadata. | Map supported native data into its document model. |
+| Expose and edit qualified layers, paths, text, colors, meshes and resources. | Provide tools, selection, undo/redo and interactive rendering. |
+| Preserve unknown records and reject unsafe edits. | Choose an explicit fallback for unsupported visual semantics. |
+| Write supplied contours, text layouts, ramps, pixels and previews. | Shape text, manage color, evaluate effects and compose derived representations. |
+| Package edited native bytes with the supplied compatibility PDF. | Produce a matching PDF from the same immutable document revision. |
+
+AiKit does not execute arbitrary PostScript, shape text, tessellate meshes or
+render native artwork to PDF. Serialization does not depend on a rendering
+operator whitelist. A preserved record or PDF appearance is not evidence of
+native editability. Use the [capability report](#native-capability-reports) and
+operation-specific contracts to decide which edits are safe.
 
 ## Reading and writing documents
 
@@ -29,65 +74,15 @@ Detection uses `%PDF-`, `%!PS-Adobe-` or a DOS binary EPS header, not the filena
 
 PdfCore's limits and restrictions apply to PDF-backed files, including encryption rejection and signature invalidation on a full rewrite. Exact legacy byte preservation does not imply that the PostScript program can be executed or that all its authoring data is understood.
 
-## New native CC documents
+### Inspecting legacy files
 
-`AiNativeDocument.create` creates an immutable native version-24 document without
-an input AI, template or copied producer program. Required inputs are artboard
-definitions, a nonempty `AiNativeDocumentLayer` tree, title bytes, RGB/CMYK mode
-and a timestamp. Every layer specifies its existing `AiNativeLayerDefinition`;
-its ordinary paths precede its children in source paint order. A blank document
-uses one empty layer and at least one board. Path geometry, colors, opacity,
-stroke parameters and ink bounds use `AiNativePathDefinition` and its existing
-validation. There is no native-to-PDF rendering step.
+`AiArtworkPath`, `AiColor` and `AiColorSpace` are immutable inputs for editing native paths in existing documents. Standalone AI7 document creation is outside the package contract. Existing legacy files retain bounded inspection and exact byte preservation.
 
-The writer initializes a single `Document` dictionary, Recorded artboard array,
-active index, NotRecorded last-artboard counter, root-layer count, crop/header
-bounds, ruler units/origin and explicit ordinary painting state. Artboard UUIDs
-must be canonical and distinct; optional layer/path XML identities share one
-uniqueness namespace. The default ink bounds enclose the boards and every supplied
-path extent; explicit `inkBounds` replace the board contribution. These are
-host-computed bounds, not measured or rendered extents. Names retain their supplied
-byte encoding and are escaped as literals. Timestamps are normalized to UTC.
-No text snapshots, fonts, color profiles, previews or advanced appearances are
-invented. Further qualified data can be added through existing native APIs before
-the first save. The normal `(none)` font-header sentinel remains valid for later
-artboard edits; mixed or deferred string declarations still reject.
+Legacy DSC inspection retains comments and continuations, resolves `(atend)` metadata and prefers high-resolution bounds. Declared data and embedded documents are skipped. DOS EPS section/preview ranges are checked and the entire envelope is retained. Raster/placement previews use the same bounded binary readers as native inspection.
 
-`AiNativeDocument.createPdf` takes the resulting current records, a complete
-host-authored `PdfDocument`, explicit `AiNativeDocumentPage` bindings and a UTC
-modification timestamp. Each binding must refer to the current artboard record
-and its corresponding indirect PDF page, once each and in matching order. The
-initial profile requires one native Document, canvas scale one, a version-24
-header, explicit color mode, coherent layer counts and distinct board UUIDs.
-Known missing/ambiguous native style/gradient references reject. Other native
-operators are preserved; packaging has no rendering operator whitelist.
+`AiPostScriptDocument.dscIssue` reports a damaged or unsupported native binary boundary with its offset relative to `postScriptBytes`. Only earlier comments are exposed; later bytes are not searched for plausible metadata. Exact source encoding remains possible. A null issue means inspection reached the end, not that the document is executable or completely editable.
 
-PDF pages must be unrotated with UserUnit one. Their TrimBox dimensions must match
-the native board within 0.000001 points; absent TrimBox falls back to CropBox then
-MediaBox. Crop/trim must lie inside their containing boxes. Bleed and nonzero PDF
-origins remain exact, and the host supplies any required content transforms.
-Reachable dangling PDF references, encryption and existing catalog/page
-Illustrator attachments (including partial metadata) reject. Other producer
-PieceInfo, XMP, content, resources and graph identities are retained.
-
-The writer attaches one shared private dictionary to all pages, with
-`ContainerVersion=12`, `CreatorVersion=24`, `RoundtripStreamType=2` and
-`RoundtripVersion=24`. Its contiguous `AIPrivateDataN` streams contain the
-Zstandard envelope; configurable `blockBytes` defaults to 1 MiB. `NumBlock` and
-`LastModified` are initialized, and a shared `AIMetaData` stream contains the full
-initial native header through the EndComments line ending. No stale thumbnails
-are created. Native byte/token/depth limits and PDF object/stream limits bound
-construction. Serialize the returned `AiPdfDocument` with `AiCodec`; the host owns
-atomic file persistence. For subsequent saves, extract fresh sources and use the
-normal `AiNativeData.replace`/mapped replacement APIs.
-
-See [the runnable example](../example/create_document.dart). Eight synthetic
-complete-file cases (new RGB/CMYK blank/multipage documents and subsequent edits)
-pass the pinned independent native reader and pypdf; Poppler pixels remain exact
-against each supplied host PDF. This is a qualified initial CC serialization
-profile, not all Illustrator authoring features, Adobe reopening certification or
-an implemented Focale export command. AI7 standalone authoring remains outside
-this contract.
+`AiPostScript.tokenize` exposes immutable source spans and Latin-1 lexemes for numbers, names, strings, arrays, dictionaries, procedures, comments and protected data blocks. It does not execute operators. Procedure braces must balance; array/dictionary delimiters can cross procedure boundaries. Dynamic PostScript and binary-token execution are outside the package contract.
 
 ## Native programs and immutable edits
 
@@ -110,7 +105,7 @@ Edits return new snapshots. Obtain layers, paths, frames, resources and other ha
 
 `AiNativeEditor.apply` is a lower-level byte-edit API. It validates spans, overlap and output size, then reparses the result. Its caller owns semantic consistency between any dependent native records it changes.
 
-## Native capability reports
+### Native capability reports
 
 `AiNativeCapabilityReport.inspect(source: source)` inventories one extracted program. Inspect every source returned by `AiNativeData.extract`; a PDF page is not necessarily a native document. Findings retain the source, catalog/page `owners`, a source-relative `selector` and byte span.
 
@@ -125,6 +120,40 @@ Edits return new snapshots. Obtain layers, paths, frames, resources and other ha
 Operations independently report `available`, `requiresValidation` or `unsupported`. `editable` means at least one operation is available, not that the whole object or its children can be edited. The selected operation still validates ownership, state and dependencies.
 
 `limits` bounds parsing and `maxFindings` bounds diagnostics, reserving a truncation finding when needed. `complete` means inspection finished without failure or truncation; preserved and unsupported data may still exist. `AiLimitException` distinguishes resource ceilings from malformed syntax while remaining a `FormatException`. `AiNativeAmbiguousFieldError` identifies a failed unique-field lookup without declaring repeated fields invalid. The report is diagnostic, not a serialization gate.
+
+### Layers, paths and hierarchical records
+
+`AiProgram.decode` reads body instructions outside prologs, setup, procedures, embedded documents and opaque binary samples. It exposes nested layers, source spans, names, visibility, lock/print flags and path segments. Corner/smooth curve operators, shorthand curves, comments and paint operators are retained. `unhandledOperators` and `hasPrivateExtensions` identify unresolved semantics; neither an empty diagnostic set nor a path count proves complete editability.
+
+`AiNativeEditor.updateLayer` changes supported layer names and flags without rewriting unrelated object state. Names use Latin-1 through `name`, or explicit bytes through `nameBytes`; no locale encoding is guessed. `replacePath` replaces plain geometry while retaining comments and paint. It rejects unresolved operators, private editing extensions and appearance-owned geometry that would leave alternate representations stale.
+
+When a qualified CC `As` point count precedes a path, `replacePath` updates it with the geometry. Counted closed paths use an explicit closing endpoint; the writer adds a closing line if the supplied last endpoint differs from the first. Duplicate, interleaved, cross-object or inconsistent counts reject atomically. The capability report flags plain paths in counted programs as requiring this additional validation. Sources without counts retain their existing layout.
+
+### Structure and ownership
+
+`AiNativeRecords.decode(program:)` exposes source-backed dictionaries, arrays, objects and binary resources in ordinary and private `%_` syntax. Unknown fields, repeated entries and embedded drawing commands remain ordered. Use `values(key)` for repeated fields; ambiguous single lookups reject. `decodeBinary(maxOutputBytes:)` performs bounded ASCII85 decoding without claiming support for the enclosed format.
+
+`replaceString`, `replaceNumbers` and `replaceBinary` update existing entries and reparse the result. They are low-level record edits: changing a scalar does not synchronize dependent geometry or appearances. Numeric values must be representable on both the Dart VM and JavaScript; string encodings remain explicit.
+
+`AiNativeStructure.decode(drawing:)` indexes lexical parents, child order, paths, groups, layers, records, version blocks and named style/gradient references. `nodeFor`, `parentOf`, `childrenOf` and `entryFor` require exact handles from the same snapshot. Unknown records stay inspectable without gaining editing semantics. `AiNativeVersions` retains both branches of saved version alternatives; no target Illustrator version is selected.
+
+References distinguish `resolved`, `missing`, `ambiguous` and `conditional` uses. Duplicate declarations stay separate, opposite version branches cannot bind each other, and an empty style name is an unnamed application. Unknown plug-in references remain opaque. Structural ownership does not authorize moving arbitrary byte spans.
+
+`AiNativeObjects.decode(drawing:)` associates paths/groups with their attached dictionary, name, saved XML identifier, panel expansion and default-style application. `bindingIssue` reports unqualified ownership or metadata. Inspection can include private, compound and derived objects that ordinary lifecycle methods cannot edit. Layer-header dictionaries belong to `AiNativeLayers` instead.
+
+### Shared lifecycle policies
+
+Native lifecycle operations preserve source-backed metadata, geometry and state rather than reconstructing objects from a partial model. Selections must contain current, distinct, disjoint owned handles. Unknown dependencies reject atomically.
+
+Copies require fresh caller-supplied identities for every identified descendant, including redundant and alternate CC dictionaries. Layer keys use `AiNativeLayer`; ordinary artwork uses its path/group handle; complete CC pairs use each identified `AiNativeContainer`. The reserved XML namespace includes opaque owners and both version branches. Artboard UUIDs and resource names have separate namespaces. Anonymous objects stay anonymous, and existing references continue to target the originals.
+
+Deleting identities requires a qualified whole-source reference inventory, including unselected resources and styles. Anonymous deletion can retain unrelated opaque data. Removing a parent while retaining its children requires `discardMetadata: true` for qualified nonempty metadata; the option does not bypass reference checks or allow unknown fields to be discarded.
+
+Paint persists across ordinary `u/U` groups and `Lb/LB` layers. Editors retain persistent assignments at the old position and restore known input/output state at the destination, separately for native and printing interpretations. Missing values remain unknown; no graphics defaults or color conversion are invented. An unresolved value still read by retained artwork rejects the edit.
+
+Changing layers, ancestor flags or group depth requires explicit `inheritParentFlags: true` where applicable. Objects retain their own flags and inherit the destination ancestors; this does not reproduce their former effective visibility. Geometry remains in native coordinates. Imported affine ancestors must retain their qualified basis unless an operation explicitly supports rebasing.
+
+Bounds supplied by the host describe complete ink, including strokes and effects. Edits conservatively expand drawing bounds, without inferring artboards or PDF pages. Visual changes require matching host-generated representations before saving.
 
 ## Saving native edits with host-supplied representations
 
@@ -203,39 +232,122 @@ New cache streams retain unknown dictionary entries and references while droppin
 
 `AiPdfDocument.forPdfInterchange(pdf: ...)` explicitly removes stale Illustrator authoring links from a PDF. It does not synthesize native CC editing records.
 
-## Layers, paths and hierarchical records
+### Derived representations
 
-`AiProgram.decode` reads body instructions outside prologs, setup, procedures, embedded documents and opaque binary samples. It exposes nested layers, source spans, names, visibility, lock/print flags and path segments. Corner/smooth curve operators, shorthand curves, comments and paint operators are retained. `unhandledOperators` and `hasPrivateExtensions` identify unresolved semantics; neither an empty diagnostic set nor a path count proves complete editability.
+Keep native data and every affected representation tied to the same immutable
+revision. Cache invalidation is an intermediate state, not a complete save.
 
-`AiNativeEditor.updateLayer` changes supported layer names and flags without rewriting unrelated object state. Names use Latin-1 through `name`, or explicit bytes through `nameBytes`; no locale encoding is guessed. `replacePath` replaces plain geometry while retaining comments and paint. It rejects unresolved operators, private editing extensions and appearance-owned geometry that would leave alternate representations stale.
+| Payload | Required handling |
+| --- | --- |
+| Compatibility PDF | Recompose affected content, resources and dependent structures in the original graph. Nonvisual edits may retain the existing appearance. Use explicit page bindings for structural changes. |
+| Native printing groups and contours | Supply complete geometry, paints and actual ink bounds from the host. Preserve the required outgoing state; the kit does not invent missing defaults or compare appearance. |
+| Text views | Recompose edited stories with actual fonts and glyphs, attach the layouts, and run `validateTextForSave`. Structural coverage does not prove shaping or PDF equivalence. |
+| Gradient ramps and cached strips | Supply composed native/fallback intervals and regenerate affected cached strips, including hard-stop changes. Native resources and printing/PDF paints must agree. |
+| Embedded samples and linked previews | Supply decoded pixels and explicit color/alpha data. Relinking refreshes or removes the preview; geometry-only changes may retain unchanged samples. External files are never resolved implicitly. |
+| `AIMetaData` | Let the kit synchronize qualified full or font-filtered header caches. Unchanged headers may preserve unknown caches; changed ambiguous layouts reject. |
+| Native thumbnails | Replacement drops the selected program's old leading thumbnails. There is no qualified thumbnail-image writer; unselected programs retain theirs. |
+| PDF page thumbnails | Regenerate or remove affected `/Thumb` entries in the supplied PDF graph. AiKit cannot infer visual changes from native owner indices. |
+| XMP, fonts and linked resources | Update affected dependencies explicitly. Native placement identities do not imply an automatic XMP mapping; font programs and embedding belong to the host. |
+| Unknown derived payloads | Preserve them while dependencies are unchanged. Editing a dependency requires a qualified update or invalidation contract. |
 
-When a qualified CC `As` point count precedes a path, `replacePath` updates it with the geometry. Counted closed paths use an explicit closing endpoint; the writer adds a closing line if the supplied last endpoint differs from the first. Duplicate, interleaved, cross-object or inconsistent counts reject atomically. The capability report flags plain paths in counted programs as requiring this additional validation. Sources without counts retain their existing layout.
+After packaging, encode and reopen the result, then check the intended native
+changes and retained dependencies. Persist the file atomically and advance the
+host save checkpoint only after successful writing. These checks establish
+serialization coherence; visual and Adobe interoperability acceptance are separate.
 
-### Structure and ownership
+## New native CC documents
 
-`AiNativeRecords.decode(program:)` exposes source-backed dictionaries, arrays, objects and binary resources in ordinary and private `%_` syntax. Unknown fields, repeated entries and embedded drawing commands remain ordered. Use `values(key)` for repeated fields; ambiguous single lookups reject. `decodeBinary(maxOutputBytes:)` performs bounded ASCII85 decoding without claiming support for the enclosed format.
+`AiNativeDocument.create` creates an immutable native version-24 document without
+an input AI, template or copied producer program. Required inputs are artboard
+definitions, a nonempty `AiNativeDocumentLayer` tree, title bytes, RGB/CMYK mode
+and a timestamp. Every layer specifies its existing `AiNativeLayerDefinition`;
+its ordinary paths precede its children in source paint order. A blank document
+uses one empty layer and at least one board. Path geometry, colors, opacity,
+stroke parameters and ink bounds use `AiNativePathDefinition` and its existing
+validation. There is no native-to-PDF rendering step.
 
-`replaceString`, `replaceNumbers` and `replaceBinary` update existing entries and reparse the result. They are low-level record edits: changing a scalar does not synchronize dependent geometry or appearances. Numeric values must be representable on both the Dart VM and JavaScript; string encodings remain explicit.
+The writer initializes a single `Document` dictionary, Recorded artboard array,
+active index, NotRecorded last-artboard counter, root-layer count, crop/header
+bounds, ruler units/origin and explicit ordinary painting state. Artboard UUIDs
+must be canonical and distinct; optional layer/path XML identities share one
+uniqueness namespace. The default ink bounds enclose the boards and every supplied
+path extent; explicit `inkBounds` replace the board contribution. These are
+host-computed bounds, not measured or rendered extents. Names retain their supplied
+byte encoding and are escaped as literals. Timestamps are normalized to UTC.
+No text snapshots, fonts, color profiles, previews or advanced appearances are
+invented. Further qualified data can be added through existing native APIs before
+the first save. The normal `(none)` font-header sentinel remains valid for later
+artboard edits; mixed or deferred string declarations still reject.
 
-`AiNativeStructure.decode(drawing:)` indexes lexical parents, child order, paths, groups, layers, records, version blocks and named style/gradient references. `nodeFor`, `parentOf`, `childrenOf` and `entryFor` require exact handles from the same snapshot. Unknown records stay inspectable without gaining editing semantics. `AiNativeVersions` retains both branches of saved version alternatives; no target Illustrator version is selected.
+`AiNativeDocument.createPdf` takes the resulting current records, a complete
+host-authored `PdfDocument`, explicit `AiNativeDocumentPage` bindings and a UTC
+modification timestamp. Each binding must refer to the current artboard record
+and its corresponding indirect PDF page, once each and in matching order. The
+initial profile requires one native Document, canvas scale one, a version-24
+header, explicit color mode, coherent layer counts and distinct board UUIDs.
+Known missing/ambiguous native style/gradient references reject. Other native
+operators are preserved; packaging has no rendering operator whitelist.
 
-References distinguish `resolved`, `missing`, `ambiguous` and `conditional` uses. Duplicate declarations stay separate, opposite version branches cannot bind each other, and an empty style name is an unnamed application. Unknown plug-in references remain opaque. Structural ownership does not authorize moving arbitrary byte spans.
+PDF pages must be unrotated with UserUnit one. Their TrimBox dimensions must match
+the native board within 0.000001 points; absent TrimBox falls back to CropBox then
+MediaBox. Crop/trim must lie inside their containing boxes. Bleed and nonzero PDF
+origins remain exact, and the host supplies any required content transforms.
+Reachable dangling PDF references, encryption and existing catalog/page
+Illustrator attachments (including partial metadata) reject. Other producer
+PieceInfo, XMP, content, resources and graph identities are retained.
 
-`AiNativeObjects.decode(drawing:)` associates paths/groups with their attached dictionary, name, saved XML identifier, panel expansion and default-style application. `bindingIssue` reports unqualified ownership or metadata. Inspection can include private, compound and derived objects that ordinary lifecycle methods cannot edit. Layer-header dictionaries belong to `AiNativeLayers` instead.
+The writer attaches one shared private dictionary to all pages, with
+`ContainerVersion=12`, `CreatorVersion=24`, `RoundtripStreamType=2` and
+`RoundtripVersion=24`. Its contiguous `AIPrivateDataN` streams contain the
+Zstandard envelope; configurable `blockBytes` defaults to 1 MiB. `NumBlock` and
+`LastModified` are initialized, and a shared `AIMetaData` stream contains the full
+initial native header through the EndComments line ending. No stale thumbnails
+are created. Native byte/token/depth limits and PDF object/stream limits bound
+construction. Serialize the returned `AiPdfDocument` with `AiCodec`; the host owns
+atomic file persistence. For subsequent saves, extract fresh sources and use the
+normal `AiNativeData.replace`/mapped replacement APIs.
 
-### Shared lifecycle policies
+See [the runnable example](../example/create_document.dart) and the
+[new-document corpus checks](../test/corpus/README.md#new-cc-documents-without-a-source-ai).
+This is a qualified CC serialization profile; standalone AI7 authoring remains
+outside this contract. Adobe reopening is not certified.
 
-Native lifecycle operations preserve source-backed metadata, geometry and state rather than reconstructing objects from a partial model. Selections must contain current, distinct, disjoint owned handles. Unknown dependencies reject atomically.
+## Document settings and artboards
 
-Copies require fresh caller-supplied identities for every identified descendant, including redundant and alternate CC dictionaries. Layer keys use `AiNativeLayer`; ordinary artwork uses its path/group handle; complete CC pairs use each identified `AiNativeContainer`. The reserved XML namespace includes opaque owners and both version branches. Artboard UUIDs and resource names have separate namespaces. Anonymous objects stay anonymous, and existing references continue to target the originals.
+`AiNativeDocumentSettings.decode(records:)` exposes the initial numeric header declarations together with their exact `AiToken` spans, top-level `Document` records, ordered artboards and setup `AI11TextDocument` ruler origins. Header inspection stops at the header boundary; embedded documents, procedure comments and declarations in setup/body data cannot replace the owning header's settings. Repeated or version-dependent settings reject rather than choosing a branch. Malformed numeric layouts throw `FormatException`. Parsing retains the source byte/token/depth limits and immutable field collections.
 
-Deleting identities requires a qualified whole-source reference inventory, including unselected resources and styles. Anonymous deletion can retain unrelated opaque data. Removing a parent while retaining its children requires `discardMetadata: true` for qualified nonempty metadata; the option does not bypass reference checks or allow unknown fields to be discarded.
+`rulerUnitCode` and `largeRulerUnitCode` retain raw nonnegative codes, including unknown values. `rulerUnit` interprets ordinary codes 0–4 and 6 and large codes 7–10. A present large code takes precedence even when unknown; unknown codes have no inferred enum value. Code 5 remains unqualified. `largeCanvasScale`, `canvasSize`, `templateBox` and `pageOrigin` expose their saved values without unit conversion or substituting defaults when absent.
 
-Paint persists across ordinary `u/U` groups and `Lb/LB` layers. Editors retain persistent assignments at the old position and restore known input/output state at the destination, separately for native and printing interpretations. Missing values remain unknown; no graphics defaults or color conversion are invented. An unresolved value still read by retained artwork rejects the edit.
+Artboard bounds use drawing coordinates with y up. `artboard.rulerOrigin` stores the saved artboard origin in canvas coordinates with y down. Each `textRulerOrigins` entry retains its own text-document container and source entry; it is not silently merged with another origin or inferred from a page. Artboards, canvas extent, drawing/ink bounds and compatibility PDF pages remain distinct. This is an inspection contract, not an artboard lifecycle or origin-edit API.
 
-Changing layers, ancestor flags or group depth requires explicit `inheritParentFlags: true` where applicable. Objects retain their own flags and inherit the destination ancestors; this does not reproduce their former effective visibility. Geometry remains in native coordinates. Imported affine ancestors must retain their qualified basis unless an operation explicitly supports rebasing.
+`AiNativeArtboards.decode(records:, document:)` selects one explicit Document owner; omitting `document` requires exactly one. `activeIndex`/`activeArtboard`, `selectedArtboards`, `lastArtboardId` and `cropBounds` are independent saved data. The last ID is not a count or array index. Missing fields remain absent; malformed or ambiguous owners reject.
 
-Bounds supplied by the host describe complete ink, including strokes and effects. Edits conservatively expand drawing bounds, without inferring artboards or PDF pages. Visual changes require matching host-generated representations before saving.
+| Operation | Required policy |
+| --- | --- |
+| `resize(artboard:, bounds:, cropBounds:, rulerOrigin:)` | Positive drawing rectangle; explicit crop policy and optional ruler-origin change. |
+| `create(definition:, index:, lastArtboardId:, cropBounds:, activate:)` | Explicit name, fresh canonical UUID, bounds and canvas ruler origin; insertion and activation choices. |
+| `reorder(artboards:, cropBounds:)` | Every current board exactly once. |
+| `remove(artboards:, activeArtboard:, cropBounds:)` | Retain at least one board; provide a retained active replacement if the active board is removed. |
+
+A null `cropBounds` preserves the saved crop header. Creating a board requires an explicitly larger `lastArtboardId` only when the original field exists; missing fields stay absent. Reordering/removal preserve creation history. Coordinates and all retained artwork stay in place, including when the first board changes. These methods do not alter the global text origin or infer a PDF-page mapping.
+
+Structural edits require qualified private array entries, unique portable identities and a known retained-dependency scope. Ordinary compound/clipping artwork, complete CC pairs, literal styles/palettes, qualified pattern/symbol/brush artwork, mask resources, local SVG-filter trees and saved perspective controls can remain exact. Retaining their fields does not make their visual semantics editable.
+
+Qualified compact ATE 7/9 main and undo-free snapshots can retain stories, linked frames, typography resources and caches. Compact ATE 11 retention additionally requires both snapshots to contain no stories or frames. Unknown text profiles, drawing/reference owners, cache fields, executable resources and unresolved dependencies reject the affected edit. The original text and graphics coordinate bases remain unchanged.
+
+Save the edited program with matching host pages through the [explicit page mapping](#explicit-nativepdf-page-mappings) contract, including the [cached header](#cached-native-headers) policy. Preserving a resource during an artboard edit does not grant independent editing permission for that resource.
+
+### Native print selections during artboard edits
+
+`AiNativeArtboards.printJob` exposes the selected Document's existing `NotRecorded/AI11 Print JobInfo Dict` as `AiNativePrintJob`, or null when absent. `allArtboards` and `allPages` retain separate optional zero/one integer flags. `artboardRangeBytes` and `pageRangeBytes` preserve exact decoded strings, including encoding markers. Empty ranges, missing fields and dormant selections under an all flag stay distinct. `artboardIndices` returns the stored zero-based selection; `pageIndices(pageCount:)` requires the host's physical output count. Neither getter equates printed pages with artboards or compatibility PDF pages.
+
+The qualified range grammar is a comma-separated list of positive one-based numbers and inclusive ascending ranges, including an open upper endpoint (`2-`). Whitespace and repeated/overlapping selections are accepted; inspection returns sorted distinct indices. Endpoints must fit the declared count, and expansion has a `maxTokens` budget that also counts repeated selections. ASCII and explicit UTF-16 BOM encodings are supported. Unmarked multibyte encodings and other range grammars reject; malformed flags and out-of-range endpoints raise format errors.
+
+Creation, reordering and removal remap stored artboard selections by retained board identity. New boards are not added to an explicit saved selection. All flags retain their meaning independently; dormant nonempty ranges are remapped too. An unchanged numerical selection keeps its exact source spelling. Changed ranges use compact one-based intervals while retaining encoding, field type and unrelated trivia. If removal exhausts an active or unspecified selection, the edit requires an explicit replacement; a dormant range under `allArtboards: true` may become empty without changing that flag.
+
+All four lifecycle methods accept optional `artboardPrinting` and `pagePrinting` values of `AiNativePrintSelection(count:, indices:)`. Null `indices` explicitly selects all and clears the corresponding stored range; otherwise supply a nonempty list of distinct zero-based indices. Inputs are validated and frozen. The artboard count must equal the resulting native count. Both the all flag and range field must already exist when supplying a choice; this API does not invent absent print dictionaries or fields. A supplied choice may replace an unqualified range grammar when its string encoding and field ownership are known.
+
+Physical printed-page ranges cannot be remapped from board ordinals: Illustrator can tile an artboard across several sheets or ignore artboard boundaries. When a geometry, ordinal or stored artboard-selection edit leaves a nonempty physical page range, supply `pagePrinting` from the host's print layout. This also applies to dormant physical ranges; the kit never guesses a new page count. For example, `AiNativePrintSelection(count: 12, indices: [0, 5, 11])` writes `1,6,12` and selects range mode, while `AiNativePrintSelection(count: 12, indices: null)` writes the all-pages flag and an empty range. This is serialization of a supplied selection, not printing, tiling or page composition. See Adobe's [printing guide](https://helpx.adobe.com/illustrator/using/setting-documents-printing.html) for the distinction between artboard and physical-page output.
 
 ## Native layers
 
@@ -354,7 +466,7 @@ The host composes resource ramps and the matching compatibility PDF. These nativ
 authoring methods contain no renderer. Absolute authoring instances need no
 PostScript `Bm`/`Bc` imaging expansion (AI 7 specification, sections 3.5.3–3.5.6);
 EPS/print-stream generation and relative cached instances remain separate
-contracts. Regression execution and actual Illustrator exchange are pending.
+contracts. Actual Illustrator exchange remains unverified.
 
 ### Ordinary contour geometry and masks
 
@@ -376,6 +488,38 @@ Entering another compound requires `inheritCompoundAppearance: true`; changed an
 Effective `q/Q` scopes restore line cap/join, width, miter and dash state. Colors, overprint, fill rules and object flags remain persistent assignments; `q/Q` inside compounds does not create an independent graphics-state scope. No general PostScript execution model is inferred.
 
 Qualified imported SVG metadata, literal transparency, unchanged text and standalone gradients can be retained without granting arbitrary lifecycle edits to those owners. Affine bases and reference identities must remain coherent. Selected private paths, live-shape printing expansions, unresolved dependencies and unknown mask owners reject these ordinary contour operations.
+
+### Ordinary group visibility and locking
+
+`updateGroupAttributes(group:, hidden:, locked:)` changes only flags consumed by
+an ordinary group's opening `u` command. Null arguments retain their source value.
+Assignments restore both native and printable state immediately after the opening,
+so existing child attributes, image/mesh alpha and following artwork remain exact.
+Repeated equal assignments are no-ops. `createGroup(hidden:, locked:)` can supply
+the same explicit flags for a new empty group while retaining the existing
+`inheritParentFlags` acknowledgement for inherited ancestry/current flags.
+
+These operations do not distribute group blending to children. Whole-group
+opacity, blending and masks belong to the appearance contract. Private, clipped,
+compound, conditional or applied-appearance groups and unknown required incoming
+state reject. The host recomposes the PDF when visibility changes. Display names
+remain available through `renameObjects` without changing source identities.
+
+### Literal native artwork names and center display
+
+`AiNativeDrawing.renameObjects(names:)` edits display-name bytes on qualified
+current path/group handles, including direct live shapes. It replaces all existing
+`AIArtName`/`Object name` aliases while retaining their scalar types, or adds one
+private `AIArtName` field when absent. XML identity, geometry, paint and other
+metadata remain source-owned. Empty selections, stale handles, invalid bytes,
+opaque selected metadata and output-limit violations reject atomically. Since
+this is nonvisual metadata, the existing matching PDF may be retained.
+
+`replacePathArtwork` and `replaceDirectLiveShape` retain the source `Ap` center-point
+display setting, including separate public/private assignments located inside a
+replaced counted span. Newly created ordinary paths keep their explicit default.
+This flag controls Illustrator's center marker, not fill/stroke rendering. Focale
+admits both defined values.
 
 ## CC live shapes
 
@@ -406,6 +550,14 @@ Unknown effects, patterns, clipping, executable transforms, unsupported version 
 Complete bound CC pairs additionally support `duplicateLiveShapes`, `removeLiveShapes`, `reorderLiveShapes`, `moveLiveShapeAfter`, `moveLiveShapeToGroup` and `moveLiveShapeToLayer`. Printing groups, private outlines, point counts, panel flags and all saved metadata alternatives travel together; shared styles/resources remain shared. Direct single-path shapes use ordinary path operations.
 
 Copies need fresh IDs for every identified native container. Deletion qualifies all removed identities and preserves definite outgoing scalar effects. Reordering/movement restores native and printing state separately and rejects unresolved values consumed by following artwork. Qualified mixed group/layer subtree operations use the same complete-pair rules. No operation derives printing geometry from native parameters.
+
+The host's circular corner bridge uses effective fitted rectangle radii and
+converts polygon/star tangent setbacks to actual circle radii. Native rectangle
+corner ordering and initial quadrant, native polygon rotation convention, all
+cubic controls and native centers are checked together. This interpretation follows
+the pinned Inkscape AI reference notes and corpus. See the
+[shape verification guide](../test/corpus/README.md#native-text-and-shapes) for
+independent checks; no Illustrator exchange result is implied.
 
 ### Affine contours and dynamic shape parameters
 
@@ -493,7 +645,7 @@ serializer shares the ordinary path grammar, bounds tree depth/output, and check
 fresh identities and resolved styles across the complete atomic insertion.
 It does not flatten children into the supplied expansion. Additional private
 image, gradient, text and live-shape children require their respective contracts.
-Independent ordinary path, gradient, image/mesh and group insertion now resolves
+Independent ordinary path, gradient, image/mesh and group insertion resolves
 qualified preceding appearance boundaries and state without treating unknown
 neighboring operators as editable.
 
@@ -509,42 +661,26 @@ Ordinary appearance owners also accept host-composed binary process rasters in t
 
 Counted CC source groups must count every path; supplied groups retain this convention whenever both views contain paths, including new paths and explicit closed endpoints. Counts are validated against the supplied geometry, not silently corrected. A raster-only view has no path-count convention; no pending count may cross an image invocation. Byte, token, nesting and portable numeric limits apply before attachment and to the complete result. Document markers, unqualified embedded data and private metadata are forbidden inside the fragment. Batches are atomic and require distinct current source handles. Invalid local syntax/operands throw `FormatException`; unresolved ownership, state, resources or count conventions throw `UnsupportedError`; stale/duplicate handles and invalid constructor arguments throw `ArgumentError`; configured parsing ceilings throw `AiLimitException`.
 
-## Document settings and artboards
+### Direct live-shape authoring
 
-`AiNativeDocumentSettings.decode(records:)` exposes the initial numeric header declarations together with their exact `AiToken` spans, top-level `Document` records, ordered artboards and setup `AI11TextDocument` ruler origins. Header inspection stops at the header boundary; embedded documents, procedure comments and declarations in setup/body data cannot replace the owning header's settings. Repeated or version-dependent settings reject rather than choosing a branch. Malformed numeric layouts throw `FormatException`. Parsing retains the source byte/token/depth limits and immutable field collections.
+`AiNativeDrawing.createLiveShape` creates one ordinary painted contour and attaches
+a complete `AiNativeShapeParameters` dictionary. `setPathLiveShape` promotes an
+existing qualified ordinary contour, retaining its original name, identity and
+other admitted literal metadata. The caller supplies the canvas-relative center,
+all dimensions/angles, contour, ink bounds and synchronized PDF. Line handlers
+require open contours; rectangle/ellipse/polygon/star handlers require closed
+contours. The package never generates or certifies shape geometry from parameters.
 
-`rulerUnitCode` and `largeRulerUnitCode` retain raw nonnegative codes, including unknown values. `rulerUnit` interprets ordinary codes 0–4 and 6 and large codes 7–10. A present large code takes precedence even when unknown; unknown codes have no inferred enum value. Code 5 remains unqualified. `largeCanvasScale`, `canvasSize`, `templateBox` and `pageOrigin` expose their saved values without unit conversion or substituting defaults when absent.
+`replaceDirectLiveShape` replaces typed parameters, contour and complete process
+appearance together. The path definition must omit name and identity; both remain
+source-owned. Existing frame rotation requires an explicit resulting angle. Sharp
+rectangle-to-irregular-four-sided-polygon conversion uses the same explicit family
+transition as `replaceLiveShapes`. Separate CC printing expansions, alternatives
+and unknown handlers reject here and retain their existing dedicated contracts.
 
-Artboard bounds use drawing coordinates with y up. `artboard.rulerOrigin` stores the saved artboard origin in canvas coordinates with y down. Each `textRulerOrigins` entry retains its own text-document container and source entry; it is not silently merged with another origin or inferred from a page. Artboards, canvas extent, drawing/ink bounds and compatibility PDF pages remain distinct. This is an inspection contract, not an artboard lifecycle or origin-edit API.
-
-`AiNativeArtboards.decode(records:, document:)` selects one explicit Document owner; omitting `document` requires exactly one. `activeIndex`/`activeArtboard`, `selectedArtboards`, `lastArtboardId` and `cropBounds` are independent saved data. The last ID is not a count or array index. Missing fields remain absent; malformed or ambiguous owners reject.
-
-| Operation | Required policy |
-| --- | --- |
-| `resize(artboard:, bounds:, cropBounds:, rulerOrigin:)` | Positive drawing rectangle; explicit crop policy and optional ruler-origin change. |
-| `create(definition:, index:, lastArtboardId:, cropBounds:, activate:)` | Explicit name, fresh canonical UUID, bounds and canvas ruler origin; insertion and activation choices. |
-| `reorder(artboards:, cropBounds:)` | Every current board exactly once. |
-| `remove(artboards:, activeArtboard:, cropBounds:)` | Retain at least one board; provide a retained active replacement if the active board is removed. |
-
-A null `cropBounds` preserves the saved crop header. Creating a board requires an explicitly larger `lastArtboardId` only when the original field exists; missing fields stay absent. Reordering/removal preserve creation history. Coordinates and all retained artwork stay in place, including when the first board changes. These methods do not alter the global text origin or infer a PDF-page mapping.
-
-Structural edits require qualified private array entries, unique portable identities and a known retained-dependency scope. Ordinary compound/clipping artwork, complete CC pairs, literal styles/palettes, qualified pattern/symbol/brush artwork, mask resources, local SVG-filter trees and saved perspective controls can remain exact. Retaining their fields does not make their visual semantics editable.
-
-Qualified compact ATE 7/9 main and undo-free snapshots can retain stories, linked frames, typography resources and caches. Compact ATE 11 retention additionally requires both snapshots to contain no stories or frames. Unknown text profiles, drawing/reference owners, cache fields, executable resources and unresolved dependencies reject the affected edit. The original text and graphics coordinate bases remain unchanged.
-
-Save the edited program with matching host pages through the [explicit page mapping](#explicit-nativepdf-page-mappings) contract, including the [cached header](#cached-native-headers) policy. Preserving a resource during an artboard edit does not grant independent editing permission for that resource.
-
-### Native print selections during artboard edits
-
-`AiNativeArtboards.printJob` exposes the selected Document's existing `NotRecorded/AI11 Print JobInfo Dict` as `AiNativePrintJob`, or null when absent. `allArtboards` and `allPages` retain separate optional zero/one integer flags. `artboardRangeBytes` and `pageRangeBytes` preserve exact decoded strings, including encoding markers. Empty ranges, missing fields and dormant selections under an all flag stay distinct. `artboardIndices` returns the stored zero-based selection; `pageIndices(pageCount:)` requires the host's physical output count. Neither getter equates printed pages with artboards or compatibility PDF pages.
-
-The qualified range grammar is a comma-separated list of positive one-based numbers and inclusive ascending ranges, including an open upper endpoint (`2-`). Whitespace and repeated/overlapping selections are accepted; inspection returns sorted distinct indices. Endpoints must fit the declared count, and expansion has a `maxTokens` budget that also counts repeated selections. ASCII and explicit UTF-16 BOM encodings are supported. Unmarked multibyte encodings and other range grammars reject; malformed flags and out-of-range endpoints raise format errors.
-
-Creation, reordering and removal remap stored artboard selections by retained board identity. New boards are not added to an explicit saved selection. All flags retain their meaning independently; dormant nonempty ranges are remapped too. An unchanged numerical selection keeps its exact source spelling. Changed ranges use compact one-based intervals while retaining encoding, field type and unrelated trivia. If removal exhausts an active or unspecified selection, the edit requires an explicit replacement; a dormant range under `allArtboards: true` may become empty without changing that flag.
-
-All four lifecycle methods accept optional `artboardPrinting` and `pagePrinting` values of `AiNativePrintSelection(count:, indices:)`. Null `indices` explicitly selects all and clears the corresponding stored range; otherwise supply a nonempty list of distinct zero-based indices. Inputs are validated and frozen. The artboard count must equal the resulting native count. Both the all flag and range field must already exist when supplying a choice; this API does not invent absent print dictionaries or fields. A supplied choice may replace an unqualified range grammar when its string encoding and field ownership are known.
-
-Physical printed-page ranges cannot be remapped from board ordinals: Illustrator can tile an artboard across several sheets or ignore artboard boundaries. When a geometry, ordinal or stored artboard-selection edit leaves a nonempty physical page range, supply `pagePrinting` from the host's print layout. This also applies to dormant physical ranges; the kit never guesses a new page count. For example, `AiNativePrintSelection(count: 12, indices: [0, 5, 11])` writes `1,6,12` and selects range mode, while `AiNativePrintSelection(count: 12, indices: null)` writes the all-pages flag and an empty range. This is serialization of a supplied selection, not printing, tiling or page composition. See Adobe's [printing guide](https://helpx.adobe.com/illustrator/using/setting-documents-printing.html) for the distinction between artboard and physical-page output.
+Complete direct scalar shape dictionaries, mesh owners and gradient owners may be
+retained while initializing or editing the independent native text namespace.
+Unknown references and incomplete owners still reject.
 
 ## Editable text
 
@@ -574,7 +710,7 @@ final AiProgram changedProgram = changed.records.program;
 
 Both change models support `inherit` to remove local overrides without modifying named parent resources. Unknown style features survive qualified edits. Changed inline styles receive fresh identities when required; unchanged fragments retain theirs. `renameStyle` changes only a style's display name.
 
-Content and feature edits invalidate the selected story's rendered-data/glyph caches. Exact no-ops retain the original snapshot. The host must recompose edited text and provide matching native printing/PDF representations before saving. `withoutTextLayout(story:)` explicitly invalidates the same known caches when an external dependency changes without changing the text model. It retains frame references, styles, resources, other stories and the undo-free payload; unknown view fields and stale story handles reject. Repeating it on an already cleared view returns the same snapshot. This intermediate state still requires host composition before a synchronized save. See the [derived-payload policy](HOST.md#derived-representations).
+Content and feature edits invalidate the selected story's rendered-data/glyph caches. Exact no-ops retain the original snapshot. The host must recompose edited text and provide matching native printing/PDF representations before saving. `withoutTextLayout(story:)` explicitly invalidates the same known caches when an external dependency changes without changing the text model. It retains frame references, styles, resources, other stories and the undo-free payload; unknown view fields and stale story handles reject. Repeating it on an already cleared view returns the same snapshot. This intermediate state still requires host composition before a synchronized save. See the [derived-payload policy](#derived-representations).
 
 ### Text and frame lifecycle
 
@@ -674,7 +810,7 @@ The package neither computes curved placement nor interprets path effects.
 Position-only `withTextLayout` still excludes path frames. Actual Illustrator
 recomposition remains a separate acceptance step.
 
-Appending a font now extends literal `DocumentFonts` and `DocumentNeededFonts`
+Appending a font extends literal `DocumentFonts` and `DocumentNeededFonts`
 inventories in complete DSC documents. Deferred `(atend)` inventories reject
 rather than receiving an invalid mixed declaration. Headerless native fragments
 keep their namespace-only behavior; existing font resource indices are retained.
@@ -683,7 +819,7 @@ The host supplies actual font-specific glyph IDs, metrics, advances, mappings an
 
 Before packaging, call `validateTextForSave(overflowStarts: ...)` on the current snapshot. It rejects missing glyph composition, stale or foreign overflow handles and unresolved native ownership. This is an opt-in structural gate: general `AiNativeData.replace`/`replaceAll` serialization remains independent of rendering support. It cannot detect a host deliberately supplying visually stale glyph data of the same source length.
 
-A complete save uses that composed native program with the host's matching PDF graph, derived from the original PDF, then reopens the encoded AI. The host must regenerate/remove affected PDF resources and previews as described in [HOST.md](HOST.md). Neither attaching a view nor passing the structural gate proves visual equivalence with the PDF.
+A complete save uses that composed native program with the host's matching PDF graph, derived from the original PDF, then reopens the encoded AI. The host must regenerate/remove affected PDF resources and previews as described in [the derived-representation policy](#derived-representations). Neither attaching a view nor passing the structural gate proves visual equivalence with the PDF.
 
 Regression acceptance covers creation, copying, linked-frame insertion/removal, deletion, cache identity invalidation, resource/strike compaction and a second save after reopening a compressed PDF-backed AI. `tool/check_native_text_lifecycle.dart` generates twelve synthetic CC/CS snapshots and two complete saved files; `tool/verify_native_text_lifecycle.py --reference <pinned-inkai-checkout>` checks their ATE data, drawing references and PDF text using independent readers. Synthetic glyph IDs deliberately test serialization rather than font shaping. This evidence is not Adobe Illustrator reopen/render certification or acceptance of every producer profile.
 
@@ -805,8 +941,8 @@ divergent required values reject. Resource-local applications require their
 dependent-instance propagation contract and are not admitted by this method.
 
 The existing `updateShared`/`updateSelected` transactions also edit newly authored
-styles. Basic execution roots now use the same literal-field validation as compound
-roots. Focale's complete named-appearance/mask connection remains integration work.
+styles. Basic execution roots use the same literal-field validation as compound
+roots. See the [Focale profile](#focale-integration) for connected host workflows.
 
 ### Initial appearance artwork
 
@@ -838,8 +974,7 @@ snapshot exposes the new object through `artworkFor` with current handles.
 The host supplies native geometry, printable geometry, actual ink bounds and the
 matching compatibility PDF on full save. This API proves ownership and dependency
 coherence; it does not render or compare those representations. Resource-local
-creation and Focale's full appearance composition connection require their
-separate lifecycle contracts.
+creation requires its separate lifecycle contract.
 
 ### Appearance object removal
 
@@ -957,6 +1092,118 @@ It then verifies topology, application order, identity counts and exact bytes of
 every qualified retained/moved owner. Resource-local relocation and coordinate
 rebasing across unsupported parent metadata remain separate contracts.
 
+### Ordinary contour conversion to complete appearances
+
+`AiNativeAppearances.convertPathArtwork` changes one qualified ordinary contour
+into an editable private contour with an existing named style and host-supplied
+complete printing group. It retains the original metadata bytes, XML identity,
+point-count convention, parent and stacking slot. Supplied unpainted geometry,
+winding, locking and visibility replace the ordinary authoring geometry. Native
+and printing boundary state are restored separately for following artwork.
+Resource references belong to the existing style; this operation does not delete
+and recreate the source identity. Save with the same-revision host PDF.
+
+Stale handles, painted authoring inputs, private descendants, direct dynamic
+shapes, gradient owners, compound/clipping descendants and unresolved metadata
+or inherited state reject atomically. Those families retain their own authoring
+contracts. The host may rename the ordinary object before conversion and attach
+a mask to the resulting private carrier through the existing complete-owner API.
+
+### Named paints on private group children
+
+`AiNativeAppearancePathDefinition.styled` creates an unpainted private child with
+an existing immutable style name. The group writer emits a direct mode-zero
+application after the child's metadata. The complete outer group owns the
+printing representation; child paths do not acquire separate printing wrappers.
+
+`applyStyleToPaths` assigns a first named style to independent private group
+contours. It clears their direct paint role, retaining geometry, closure, point
+counts, metadata, XML identities and masks. Each selected outer body owner needs
+one complete host printing replacement. The transaction restores known native
+outputs and checks unresolved changes against following children and outer
+artwork. Stale handles, extra/missing printing owners, existing applications,
+compound contours, clipping contours and resource-local owners reject atomically.
+Use `applyStyle` with exact nested uses for subsequent selected style changes.
+
+`replaceArtworkContours` also accepts independently named private group children.
+Closure, visibility and locking changes retain their style application and mask
+carrier; child flag edits never change the whole printing group's flags. All
+selected children of one group share one host printing replacement. Geometry and
+printing/PDF composition remain host responsibilities.
+
+### Private appearance child lifecycle
+
+`replaceArtworkChildren` takes one complete `AiNativeAppearanceReplacement` and
+an ordered list of `AiNativeAppearanceTreeChild` plans. `retain` keeps an exact
+current path/group and its metadata, masks and direct style applications; an
+optional child plan replaces a retained ordinary group's children. `create`
+inserts a typed fresh subtree. `group` creates an empty typed group definition
+around separately planned retained or fresh children. Each retained source item
+occurs once and belongs to this complete owner. Omitted items are removed.
+
+Source-backed children can move between retained or fresh groups in that owner.
+Clipping contours remain attached to their original groups and do not appear in
+the replacement child lists. Compound subtrees remain complete units. Retained
+source slices preserve metadata and comments; literal inherited inputs are
+replayed before moved subtrees and both outgoing native/printing states are
+restored. Unknown inputs and unsafe following dependencies reject atomically.
+Deleted object or mask identities require the same document reference scope as
+complete-owner deletion. New identities cannot recycle even deleted source IDs.
+The complete result is requalified after bounded serialization.
+
+Ordinary private groups may be empty, both in typed creation and after child
+removal. Their metadata and named style remain attached; compound and clipping
+groups retain their required contour structure. The host supplies the complete
+printing view and matching PDF, including for an empty group. This transaction
+does not release clips.
+
+`replaceArtworkTrees` accepts immutable `AiNativeAppearanceTreeChange` plans for
+several complete ordinary group owners. Every source and destination must be
+selected with its complete host printing replacement. Retained children may move
+between these owners, keeping their native identity, mask dictionaries and named
+style applications. An item occurs only once across the entire transaction;
+complete roots remain in place. Omitted children undergo deletion checks only
+after all plans are assembled, so a moved identifier remains a valid reference.
+Each owner restores its original outgoing native and printing state. Aggregate
+byte limits, retained source membership, uniqueness, references and final owner
+qualification are checked before returning the new snapshot. Unselected sources,
+duplicate children, recycled identities and nested complete roots reject atomically.
+
+### Heterogeneous private appearance leaves
+
+`AiNativeAppearanceGroupDefinition.leaf` supplies exactly one native payload in
+an otherwise childless ordinary wrapper. `AiNativeAppearanceRasterDefinition`
+retains process pixels and their placement, `AiNativeAppearanceMeshDefinition`
+retains complete mesh cells, and `AiNativeAppearanceShapeDefinition` couples
+live-shape parameters to the matching host-supplied contour. Names, identities,
+visibility, styles and opacity masks belong to the wrapper. Binary image samples
+are copied by counted extent, never line-prefixed or interpreted as commands.
+`AiNativeAppearanceArtwork.leaves` exposes only qualified payloads, with exact
+source handles; unrelated commands, mixed representations and ambiguous ownership
+do not become editable leaves.
+
+`AiNativeAppearanceTreeChild.retain(leaf:)` replaces a retained payload without
+replacing its wrapper identity, style or mask. `AiNativeAppearanceTreeChange.leaf`
+does the same for a complete root leaf. Typed creation, tree reordering, movement
+and deletion use the existing complete-owner transactions, restoring native and
+printing boundary state and checking live-shape counts. The host still supplies
+complete printing bytes and a same-revision PDF; AiKit adds no compositor.
+
+Text uses the existing global ATE namespace. `createStory(appearanceParent:)`
+accepts one frame in an empty qualified private wrapper. Content/frame changes
+and story removal retain its private representation and coherent global indices.
+Private text cannot be deleted or duplicated through generic appearance slicing:
+remove the global story first, or create a fresh wrapper and story for a clone.
+The host then refreshes the whole owner's printing/PDF. Unsupported text profiles
+and external reference owners retain their existing rejection policy.
+
+Opacity-mask Art can contain typed image, mesh and live-shape wrappers alongside
+ordinary paths and groups. This profile requires neutral payload blending and
+complete local ownership; global text references inside mask Art are not covered.
+It does not add arbitrary plugin objects, linked-image authoring, effects or new
+mesh/text engine profiles. See the [Focale profile](#focale-integration) for
+host editing limits and the [corpus guide](../test/corpus/README.md) for verification.
+
 ## Native transparency and opacity masks
 
 `AiNativeTransparency` remains the common literal `Xy` model: sixteen blend modes,
@@ -1061,20 +1308,6 @@ preserves its native artwork. Saving requires the matching host PDF through
 `AiNativeData.replace`; stale native thumbnails follow the existing invalidation
 policy. These are data/serialization checks, not Adobe visual acceptance.
 
-## Native artwork resource ownership
-
-`AiNativeArtworkResources.decode(structure:)` inventories complete pattern, symbol and brush declarations; `AiNativeAppearances.artworkResources` exposes the same association. Definitions retain namespace, literal name, source spans, pattern rectangle and version memberships. Equal names in different namespaces, duplicate declarations and conditional alternatives remain separate.
-
-Local `items`, `paths`, `groups`, `gradients`, `metadata`, `tokens` and `rasters` retain absolute source positions and resource-local coordinates. Private authoring and ordinary printing data stay distinct. Unknown payloads remain available without execution. Local paths are inspection handles, not body-edit handles.
-
-`forUse(use:)` identifies the exact containing resource, or null outside these declarations; `uses` retains known style/gradient references. This is not a complete instance or plug-in dependency graph. Qualified pairs can be bound through `artworkFor(use:)`, whose `resource` points to their declaration.
-
-Resource-local `updateSelected`/`updateShared` transactions require a qualified whole-source reference scope. Supply `dependents: List<AiNativeAppearanceReplacement>` for every affected pattern-style application, including nested uses and transitive resource owners. Secondary replacements retain their style definitions, reference names, native geometry and metadata. Recursive resources, ambiguous definitions and incomplete coverage reject.
-
-Resource replacements use local bounds and point counts; they do not expand document bounds or change pattern tile rectangles. Dependent body replacements do expand document bounds. Every resource must retain outgoing state independently.
-
-Qualified unreferenced patterns, symbols and brushes can be edited. Connected brush descriptors, direct pattern consumers without a printing owner, unknown instance links, unresolved text/mask dependencies and unsupported reference schemas reject. Preserving such resources during another operation is a separate, narrower contract.
-
 ## Gradients and paint styles
 
 `AiNativeDrawing.gradients` exposes `Bb`/`BB` instances, relative `Bg` geometry, radial `Bh` focus and absolute `Xm`/`Bm`/`Bc` printing matrices. It retains the paths consumed by each instance and any gradient-stroke selector. `AiNativePaintStyle.decode` reads owned fill, stroke, blend and simple-style command lists without flattening repeated appearance parts.
@@ -1097,7 +1330,7 @@ Moving linear stops also updates all qualified strip/cap references while keepin
 
 Lifecycle operations qualify the whole source reference graph before writing. Opaque reference owners, unresolved resources, populated ATE dependencies and conditional gradient banks remain rejection boundaries. Creation does not copy arbitrary procedure bodies or silently introduce new prologs. Numeric, token and aggregate output limits apply.
 
-Stops now allow equal adjacent positions with distinct ordered colors: the earlier stop is the incoming side and the later stop the outgoing side in caller order. Positions must be nondecreasing with a positive total extent. Supply one `AiNativeGradientRamp` per adjacent pair, including the zero-width transition; no epsilon displacement or synthetic interpolation is used. Linear serialization reverses the entire stop sequence, including equal-position order; radial serialization retains caller order. Both authoritative and compatibility copies are written coherently.
+Stops allow equal adjacent positions with distinct ordered colors: the earlier stop is the incoming side and the later stop the outgoing side in caller order. Positions must be nondecreasing with a positive total extent. Supply one `AiNativeGradientRamp` per adjacent pair, including the zero-width transition; no epsilon displacement or synthetic interpolation is used. Linear serialization reverses the entire stop sequence, including equal-position order; radial serialization retains caller order. Both authoritative and compatibility copies are written coherently.
 
 For linear positional edits, existing cached `Bm` interval strips cannot be repartitioned through a hard stop automatically. The host supplies a complete regenerated printing group, possibly using ordinary contours instead of strips. Matrix-free native style/palette notes and radial whole-gradient matrices can retain their placement. An unchanged existing position sequence does not reinterpret its geometry. Native stop changes and supplied ramps alone do not prove that flattened artwork or PDF content has been refreshed.
 
@@ -1190,350 +1423,43 @@ Angles use degrees in −360..360; length and aspect ratio must be positive. Lin
 
 The operation requires the qualified CC clipped layout, resolved stroke state and consistent strip/cap coverage. Arbitrary affine paint changes, legacy placement layouts, plain-path selections and unresolved appearance graphs remain unsupported. Color management, ramp composition and PDF generation belong to the host; native gradient resource modeling and serialization belong to AiKit.
 
-## Mesh data
+### Gradient paints in appearance styles
 
-`AiNativeMeshes.decode(records:, bodyOnly:)` reads `/Mesh X!` packets through `/End X!`. The default includes resources; `bodyOnly: true` restricts the inventory to the drawing body. The supported schema is version 2, Cartesian topology. Other versions/topologies reject typed decoding while the source stays intact.
+`AiNativeGradientPaint` authors a CC artwork-relative gradient in a new fill or
+stroke part. Pass it as `AiNativeAppearancePartDefinition.gradient`, exclusively
+with process colors, named colors and patterns. The byte name must resolve to an
+existing unconditional gradient declaration; that resource owns its editable
+stops and host-supplied ramps. The same typed part can be created in an existing
+appearance tree while supplying every affected printing owner.
 
-Each mesh retains index axes, patches, source fields and cyclic node order, including `/N` corners, `/A` anchors and `/S` subdivision points. Positions, source-order handles, weights, opacity, unknown fields and intermediate nodes are preserved. Patch coverage and ranges are checked without allocating from an unchecked grid-size product. Unknown color spaces retain their declarations. Known gray/RGB/CMYK arities and normalized components are validated.
+The writer retains explicit origin, angle, positive relative length, affine matrix
+and positive aspect ratio. It emits the observed relative `2 (...) ... Bg` layout,
+with matching `Bb`/`BB` fill or stroke selectors. It does not infer artwork bounds,
+coordinate conversion, gradient interpolation, printing or PDF. This initial
+authoring value covers linear and centered radial styles; focal highlights and
+cached imaging matrices remain outside its creation contract. Existing source
+instances keep their broader inspection and selected-edit APIs.
 
-Separation/NChannel `inks` preserve lexical declaration order and device alternatives. Corner `inkTints` pairs tints in component order, which reverses lexical ink order for NChannel. It does not convert spot inks to process colors. `mesh.vertices` groups each logical vertex's one, two or four corner occurrences; duplicated positions must agree exactly. Handles remain distinct.
+`check_native_gradient_paints.dart` and `verify_native_gradient_paints.py` check
+four authored fill/stroke and linear/radial native/container cases against pinned
+inkai. Their supplied placeholder printing/PDF is deliberately not visual
+acceptance. Focale composition and actual Illustrator editing remain separate.
 
-```dart
-final AiNativeMeshes meshes = AiNativeMeshes.decode(records: records);
-final AiNativeMesh mesh = meshes.meshes.first;
-final AiNativeMeshes painted = meshes.paintVertices(
-  mesh: mesh,
-  changes: [
-    AiNativeMeshVertexPaint(
-      vertex: mesh.vertices.first,
-      color: AiNativeMeshProcessColor(space: .rgb, components: [0.8, 0.2, 0.1]),
-      opacity: 0.7,
-    ),
-  ],
-);
-```
+## Reusable artwork resources
 
-`paintVertices` updates every selected corner occurrence atomically. It accepts process color, named-ink `tints`, opacity, or compatible combinations; `color` and `tints` are mutually exclusive. Tint edits require matching ordered inks and alternatives across all copies. Color switches stay local; unselected geometry, weights, colors and declarations remain intact.
+### Native artwork resource ownership
 
-`editGeometry(mesh:, changes:, bounds:)` changes explicit node positions, first/second
-native handles and weights. Every occurrence of a moved shared corner must agree
-in the resulting transaction. Handles are not welded automatically. Intermediate
-anchors/subdivision points retain their separate seven-value layout. Numeric
-edits leave other tokens, color declarations, opacity and patch parameters intact.
-`transform(mesh:, transform:, bounds:)` maps every position and control point
-through one nonsingular affine basis while retaining weights and paint. Distinct
-source points cannot silently collapse through floating-point rounding.
-Transforms and full replacements require an explicit host `rotationRadians` when
-the source has `BBAccumRotation`; they cannot silently retain a stale frame angle.
-Local node edits retain the frame orientation unless a separate transform changes it.
+`AiNativeArtworkResources.decode(structure:)` inventories complete pattern, symbol and brush declarations; `AiNativeAppearances.artworkResources` exposes the same association. Definitions retain namespace, literal name, source spans, pattern rectangle and version memberships. Equal names in different namespaces, duplicate declarations and conditional alternatives remain separate.
 
-`replaceTopology(mesh:, definition:, bounds:)` accepts a complete
-`AiNativeMeshDefinition`: dimensions, uniquely indexed cells, cyclic nodes, colors,
-opacity and explicit weights. Four colored corners per cell and exact shared
-positions are required. `AiNativeMeshPatchDefinition.nativeParameters` carries an
-explicit numeric `/R` array, or null to omit it. AiKit does not assign an assumed
-rotation or subdivision meaning to those values. `fromSource` constructors retain
-qualified node data and named inks without converting their tints. Unknown fields,
-reference-valued parameters and ambiguous parameter ownership reject replacement.
-Focale now supplies explicit source-cell lineage when subdividing imported cells,
-including inherited numeric arrays for both descendants; AiKit neither infers
-that mapping nor interprets those values. Variable vertex opacity and one-cell
-axes use this existing native schema, with composition owned by Focale.
+Local `items`, `paths`, `groups`, `gradients`, `metadata`, `tokens` and `rasters` retain absolute source positions and resource-local coordinates. Private authoring and ordinary printing data stay distinct. Unknown payloads remain available without execution. Local paths are inspection handles, not body-edit handles.
 
-`drawing.meshArtwork` exposes complete independently owned packets with their
-optional terminator, name and identity. `createMeshArtwork` inserts an explicit
-`AiNativeMeshArtworkDefinition` into a qualified root, group or layer, even when the
-document has no existing mesh. `replaceMeshArtwork` changes geometry/topology and
-ordinary object flags while retaining metadata. `transparency` accepts the complete
-native blend/opacity/isolation/knockout/alpha-is-shape tuple independently of corner
-opacity; leave the normal `opacity` shorthand at its default when supplying it.
-`duplicateMeshArtwork` requires
-fresh identities for existing identified owners. Complete mesh handles participate
-in mixed layer reorder/move/removal, containing group/layer copies and artboard
-transactions. Native and printing scalar state are restored independently; mesh
-field declarations never become surrounding path paint assignments. These APIs
-do not certify a particular host's interpretation of the mesh surface.
+`forUse(use:)` identifies the exact containing resource, or null outside these declarations; `uses` retains known style/gradient references. This is not a complete instance or plug-in dependency graph. Qualified pairs can be bound through `artworkFor(use:)`, whose `resource` points to their declaration.
 
-Editing is limited to direct printable body meshes with independent appearance
-ownership. Resource/private copies, unresolved parent/object dependencies, unknown
-mesh fields and incompatible color declarations reject edits. Lifecycle handles
-also exclude attached appearance bindings and clipped/compound parents. Callers
-supply complete ink bounds and regenerate the synchronized PDF/previews.
-Interpolation, tessellation and color management remain application responsibilities.
-The native geometry, topology, paint and lifecycle regressions pass on VM and
-Node. Focale's additional mesh editing fixtures compare serialized native
-controls/colors/opacity and original/reopened host PDF views independently; see
-`tool/verify_focale_mesh_editing.py` and the integration record for exact coverage.
+Resource-local `updateSelected`/`updateShared` transactions require a qualified whole-source reference scope. Supply `dependents: List<AiNativeAppearanceReplacement>` for every affected pattern-style application, including nested uses and transitive resource owners. Secondary replacements retain their style definitions, reference names, native geometry and metadata. Recursive resources, ambiguous definitions and incomplete coverage reject.
 
-## Ordinary group visibility and locking
+Resource replacements use local bounds and point counts; they do not expand document bounds or change pattern tile rectangles. Dependent body replacements do expand document bounds. Every resource must retain outgoing state independently.
 
-`updateGroupAttributes(group:, hidden:, locked:)` changes only flags consumed by
-an ordinary group's opening `u` command. Null arguments retain their source value.
-Assignments restore both native and printable state immediately after the opening,
-so existing child attributes, image/mesh alpha and following artwork remain exact.
-Repeated equal assignments are no-ops. `createGroup(hidden:, locked:)` can supply
-the same explicit flags for a new empty group while retaining the existing
-`inheritParentFlags` acknowledgement for inherited ancestry/current flags.
-
-These operations do not distribute group blending to children. Whole-group
-opacity, blending and masks belong to the appearance contract. Private, clipped,
-compound, conditional or applied-appearance groups and unknown required incoming
-state reject. The host recomposes the PDF when visibility changes. Display names
-remain available through `renameObjects` without changing source identities.
-
-## Ordinary image attributes and mixed lifecycle
-
-`AiNativeRasters.updateAttributes` and `AiNativePlacements.updateAttributes` change
-object transparency, visibility, full locking, overprint and literal names on
-owned ordinary images. `opacity` changes only that scalar, retaining other native
-and printing flags independently. `transparency` instead replaces all five flags
-in both representations; supplying both arguments rejects. Distinct incoming
-native and printing states are restored afterwards. Names retain explicit String/UnicodeString
-encoding. Pixel planes, preview rows, file paths, XML identities and sample caches
-remain unchanged by attribute-only edits.
-
-`AiNativeLayers.rasters` and `placements` expose exact snapshot handles accepted
-by `reorderArtwork`, `moveArtwork` and `removeArtwork`, together with ordinary
-paths, complete groups and layers. Ordinary `AiNativeGroup` handles participate in
-mixed sibling ordering and removal, including nested groups and retained image,
-link, gradient and mesh children. `moveArtwork(group:)` appends into a qualified
-ordinary group; `parent:` remains the layer destination, and supplying both rejects.
-Group/layer/root moves retain native identities and independent native/printing
-boundary states. Changing group depth or inherited flags requires the existing
-`inheritParentFlags` acknowledgement. Native layers cannot be group children.
-Clipped, compound, private, conditional and applied-appearance group parents retain
-their separate contracts. Transactions require complete unconditional owners,
-qualified ancestors, explicit scalar dependencies and inspected references.
-Deletion removes unused DocumentFiles references after complete owner removal;
-shared references survive. Unknown metadata or clipped/private ownership rejects.
-
-`AiNativeDrawing.copyRaster` copies native sample bytes, bit depth, channels and
-qualified metadata under a required fresh artwork identity and fresh sample UUIDs.
-`copyPlacement` retains exact preview rows and external reference bytes under a
-fresh artwork identity. Both accept explicit placement/attributes and qualified
-root/group/layer destinations. Cross-document copies require the host to rebase
-relative paths. Generic subtree copying of image-bearing owners still rejects;
-hosts can author destination layers and copy their qualified children explicitly.
-These extensions are implemented with regression cases pending the final combined
-validation campaign; they do not establish Adobe application acceptance.
-
-## Native image creation
-
-`AiNativeDrawing.createRaster(definition:, parent:, layer:)` inserts a complete
-`AiNativeRasterDefinition` into an ordinary group, layer or the global drawing.
-It writes bounded process samples, optional straight alpha, both placement
-matrices, fresh sample UUIDs and optional fresh XML identity/name. Stencils require
-an explicit process color. `AiNativeImageAttributes` supplies lock, visibility,
-normal opacity or complete `transparency`, and overprint. Keep `opacity` at its
-default when supplying the complete tuple. This also applies to `copyRaster` and
-`copyPlacement`; creation and copying never multiply sample alpha by object
-opacity. Placement bounds expand without moving artboards.
-
-`createPlacement` accepts `AiNativePlacementDefinition` with encoded path bytes,
-a local downward-y rectangle, affine matrix, optional relative directory and
-host-provided eight-bit RGB/alpha preview. It creates file-type-one CC placement
-syntax and updates DocumentFiles declarations atomically. Paths are never opened.
-The created link remains compatible with relink, placement and embedding APIs;
-shared file references survive embedding or relinking another user.
-
-Both operations append within the explicitly selected parent and preserve existing
-owners. Qualified image metadata and binary payloads establish independent object
-boundaries, allowing subsequent images and ordinary paths in the same paint order.
-Native and printing scalar states are restored independently. Unknown incoming
-attributes, conditional parents, private printing expansions, unqualified metadata,
-identity collisions, nonportable geometry and aggregate resource overruns reject.
-Creation does not attach an image to an existing opacity mask or appearance tree.
-The host still supplies the matching PDF and resolves actual linked pixels.
-
-The drawing reader retains qualified relative-directory strings as metadata, not
-operands of the following placement terminator. Two complete synthetic saves are
-checked independently for native samples/preview/placement, updated file references,
-PDF image/alpha resources and exact Poppler pixels. This is not Illustrator acceptance.
-
-## Embedded raster images
-
-`AiNativeRasters.decode(records:, bodyOnly:)` reads binary `XI` images in setup, body and private records. Samples are interleaved process colors followed by a separate alpha plane, with packed row padding preserved. Supported component depths are 1, 2, 4, 8 and 16 bits; 16-bit samples are big-endian. Width/height, bounds, producer flags, source spans and both `XI`/`Xh` matrices remain explicit. No profile conversion is performed.
-
-Binary boundaries come from validated image geometry, including alpha, before checking the exact DSC terminator. Recognized count variants are accepted only when that boundary matches. Sample bytes remain opaque even if they contain PostScript tokens or fake end markers. Corrupt/transcoded data is not repaired by searching for a later marker.
-
-`AiNativeRasters.validateSourceLayout(image:)` qualifies an exact owned handle's
-complete raster framing, process layout and literal object metadata without
-changing samples. Unknown cache fields and annotations reject. This checks the
-image itself; the host must also qualify its enclosing appearance, ownership and
-native/printing state. Ordinary contour edits can retain these qualified image
-neighbors byte-for-byte, including their metadata. This does not qualify image
-removal or arbitrary mixed-subtree lifecycle.
-
-Focale now projects qualified embedded process images to a bounded RGBA8 display
-source while retaining the original native samples. Unchanged pixels preserve
-their source space, depth, row padding and cache identities through placement
-edits. Newly composed or replaced pixels use host RGB8 with optional alpha; the
-native placement accounts for changes in sample resolution. Source-backed image
-attribute/lifecycle changes, linked images, broader appearances and image-bearing
-page transactions remain separate integration work.
-
-| Operation | Behavior |
-| --- | --- |
-| `translate` | Updates both native matrices, retaining samples and metadata. |
-| `replacePixels` | Writes host-supplied `AiNativeRasterSamples`; adjusts dimensions, flags and matrices to retain the placed extent when resolution changes. |
-| `setPlacement` | Writes a host-supplied affine matrix and explicit frame-angle policy without resampling. |
-
-Replacement samples must contain complete rows. Changed planes/layouts renew existing sample UUIDs while stable object identities and unrelated images remain unchanged. Absent UUID fields stay absent. A retained source link is marked as modified. Legacy stencil layouts can retain/replace pixels but do not acquire invented alpha fields; alpha authoring requires qualified extended headers.
-
-For `[a, b, c, d, tx, ty]`, embedded pixels map to `(a*x - c*y + tx, b*x - d*y + ty)`. `rotationRadians` separately controls the editing-frame angle: a finite value updates/adds it; null preserves absence and rejects an existing field. It cannot be inferred uniquely from the matrix. Unknown cache/relationship fields, including unresolved mask/shear metadata, reject geometry edits. Enclosing clips, effects, groups, resources and artboards are separate dependencies. The host supplies matching appearances after edits.
-
-## Linked placements and previews
-
-`AiNativePlacements.decode` reads CC placement sections, retaining raw path bytes, relative directory, local bounds, affine matrix, file type, extensions, preview and object dictionary. Preview byte boundaries are checked from their headers; unknown bounded pixel layouts stay preserved. `preview.toSamples()` explicitly converts qualified format-17 straight ARGB into RGB and separate alpha. It never silently substitutes that preview for the full-resolution linked resource.
-
-Qualified raster edits require file type 1, extensions `4 4 0`, consistent paths and `IncludeFile` references, known versioned metadata and a nonsingular matrix. The kit never opens files, resolves URLs or selects image decoders.
-
-| Operation | Behavior |
-| --- | --- |
-| `translate` / `setPlacement` | Changes geometry while retaining link paths, preview data and local bounds. |
-| `embed(object:, samples:)` | Replaces a link with host-decoded native raster samples while retaining placed extent and qualified metadata. |
-| `relink(object:, pathBytes:, relativeDirectoryBytes:, preview:)` | Updates path operands, declarations, relative directory and explicitly supplied or removed preview. |
-
-Embedding removes an old file dependency only when no other native reference uses it. Relinking uses caller-selected path bytes and escapes native strings; ambiguous/control-containing paths and unresolved metadata reject. Null relative directory or preview arguments explicitly remove those records. New previews use qualified 8-bit RGB with optional alpha. Neither operation resamples pixels or changes catalog XMP automatically.
-
-Linked matrices map local coordinates to `(a*x + c*y + tx, b*x + d*y + ty)`; the local y axis points down. `rasterMatrix(width:, height:)` exposes the corresponding pixel-to-native transform; `validateRasterLayout()` checks the qualified layout independently. Frame-angle policy matches embedded rasters. External PDF/EPS artwork, older `XF` links and dependent effect caches remain unsupported for these edits.
-
-## Catalog metadata
-
-`AiXmpMetadata.fromPdf(document:)` reads catalog XMP; `parse(source:)` reads a standalone UTF-8 packet. `resources` exposes current-document `xmpMM:Manifest` and `xmpMM:Ingredients` references using namespace URIs. History, pantry, `DerivedFrom`, other subjects and page/image metadata remain separate.
-
-`relink(resources:, filePath:, documentId:, instanceId:)` updates explicitly selected references, removes stale identifiers when null and clears alternate paths. Native placement identity is not inferred from inventory order or equal filenames. Managed, extended or part-specific references reject edits; unrelated packet text, comments, namespaces, padding and metadata remain exact.
-
-After the native/PDF save, `writeTo(document:)` installs the changed catalog packet without changing shared original page/image packets. Old unreferenced objects remain, so this is not redaction. PostScript-embedded XMP is not currently read or rewritten by these APIs. XML limits apply before tree construction; DTDs, undefined entities, non-UTF-8 declarations and ambiguous structures reject.
-
-## Inspecting legacy files
-
-`AiArtworkPath`, `AiColor` and `AiColorSpace` are immutable inputs for editing native paths in existing documents. Standalone AI7 document creation is outside the package contract. Existing legacy files retain bounded inspection and exact byte preservation.
-
-Legacy DSC inspection retains comments and continuations, resolves `(atend)` metadata and prefers high-resolution bounds. Declared data and embedded documents are skipped. DOS EPS section/preview ranges are checked and the entire envelope is retained. Raster/placement previews use the same bounded binary readers as native inspection.
-
-`AiPostScriptDocument.dscIssue` reports a damaged or unsupported native binary boundary with its offset relative to `postScriptBytes`. Only earlier comments are exposed; later bytes are not searched for plausible metadata. Exact source encoding remains possible. A null issue means inspection reached the end, not that the document is executable or completely editable.
-
-`AiPostScript.tokenize` exposes immutable source spans and Latin-1 lexemes for numbers, names, strings, arrays, dictionaries, procedures, comments and protected data blocks. It does not execute operators. Procedure braces must balance; array/dictionary delimiters can cross procedure boundaries. Dynamic PostScript and binary-token execution are outside the package contract.
-
-## Supported data
-
-“Editable subset” means the named operations can serialize qualified native changes. “Preserved” means retained source, not semantic editing support. None of these statuses implies complete Illustrator compatibility.
-
-| Feature | Read | Write/edit | Main boundary |
-| --- | --- | --- | --- |
-| PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes remain exact. |
-| Plain/zlib/Zstandard native programs | Yes | Yes | Original compression and shared ownership retained. |
-| Layers, paths, groups and attached metadata | Yes | Editable subset | Qualified state/references; fresh copied IDs and explicit parent inheritance. |
-| Compound paths and clipping | Qualified topology | Editable subset | Explicit mask ownership and compound appearance; no Boolean geometry engine. |
-| Records, settings and artboards | Yes | Editable subset | Explicit crop, print and PDF-page policies; known retained dependencies. |
-| Source identities and version alternatives | Yes | Preserved by qualified edits | No target-version conversion or unknown plug-in reference resolution. |
-| Ordered appearances | Named trees and literal settings | Editable subset | Complete affected-user coverage and host-supplied printing groups. |
-| Geometric and appearance effects | Offset Path, Round Corners, Drop Shadow and Outer Glow | Typed literal descriptors, visibility and complete appearance transactions | Qualified modes and process colors only; host evaluation and printing/PDF composition. |
-| Host authoring snapshots | Bounded opaque application streams | Immutable read, attach, removal and canonical binding bytes | Host verifies content and digest; no Illustrator-native editability claim. |
-| CC live shapes | Five qualified families, including irregular-polygon parallelograms | Similarities, qualified affine changes, host-supplied parameter/contour transactions and complete-pair lifecycle | Host owns regeneration and printing; arbitrary effects and positional dependencies remain excluded. |
-| ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset and supplied layouts | Host composition; unresolved caches/shared dependencies reject. |
-| Gradients and palettes | Qualified resources, instances and cells | Creation/removal, ordered hard stops, exact application rebinding, named paints, focus and CC placement | Host ramps/printing; opaque references, ATE/color-book ink redefinition and unsupported caches remain excluded. |
-| Cartesian version-2 meshes | Yes | Paint, geometry, explicit topology and direct object lifecycle | Native VM/Node and qualified host/PDF checks pass; no package tessellation or Illustrator certification. |
-| Embedded rasters and linked previews | Qualified layouts | Samples, affine placement, relink and embed | Host pixels/decoders; unresolved dependent caches reject. |
-| Setup pattern/symbol/brush artwork | Source-owned inventory | Create, replace/remove unused declarations; qualified appearance transactions and brush descriptors | Fixed calligraphic/art/pattern applications require qualified parameters and complete host-composed representations; arbitrary plug-in semantics remain excluded. |
-| Catalog XMP | Qualified references | Explicit selected-reference changes | No inferred native/XMP identity mapping. |
-| New AI documents | CC version 24 | Initial boards, layers, paths, text resources and images; host PDF packaging | Focale integration and Adobe acceptance remain open; standalone AI7 creation is excluded. |
-| Other effects, resources and plug-ins | Source preserved where parsing permits | No general semantic writer | Recognition does not qualify dependent edits. |
-
-Unknown records and unsupported layouts are retained when safe; edits reject dependencies they cannot update coherently. Consult the relevant API's Dartdoc for exact arguments and guards, and [the host contract](HOST.md) for derived-representation responsibilities.
-
-## Safety and platform behavior
-
-AiKit has no Flutter or native rendering dependency. File access, resource resolution, interactive tools and persistence belong to the application. Parsers and edits use immutable snapshots and explicit resource limits:
-
-| Policy | Default ceilings |
-| --- | --- |
-| `AiLimits.pdf` | PdfCore policy, including a 128 MiB file ceiling and depth 128. |
-| DSC comments | 1 MiB per continued comment; 100,000 retained comments. |
-| `AiNativeLimits` | 128 MiB aggregate encoded/filtered envelopes and decoded programs; 32 MiB Zstandard window; 1,000,000 tokens; depth 128. |
-| Standalone tokenization | 128 MiB, 1,000,000 tokens, depth 128. |
-| Shared text-engine parsing | 128 MiB, 1,000,000 values, depth 64, 64 MiB per decoded string. |
-| `AiXmpLimits` | 8 MiB UTF-8 packet, 100,000 nodes/events including attributes, depth 64. |
-
-Limits are checked before relevant allocation/output growth; they are not a whole-process memory cap. Malformed structures raise `FormatException`; invalid arguments or foreign handles raise `ArgumentError`; unqualified semantic operations use `UnsupportedError`. Unknown containers are rejected, not treated as arbitrary raw AI. An edit's rejection leaves the original snapshot intact.
-
-## Corpus validation and compatibility
-
-Run the package's offline checks with `dart analyze`, `dart test` and `dart test --platform node`. The [external corpus guide](../test/corpus/README.md) contains the required generators, pinned fixture manifests and independent verification commands. Downloads and generated artwork remain ignored and excluded from publication; provenance and licensing stay in the manifests.
-
-Validation distinguishes native extraction, unchanged preservation, semantic edits and save/reopen behavior. Independent readers check source records and unselected data; external SVG rendering can additionally check qualified native geometry without adding a renderer to AiKit. Host-supplied PDF/native save tests check that both representations survive; they cannot prove visual equivalence.
-
-Adobe Illustrator reopening and native Focale integration remain unqualified.
-
-## References
-
-- [Adobe Illustrator 7 file format specification (mirror)](https://13thmonkey.org/documentation/fonts/AI7FileFormat.pdf)
-- [Adobe SDK UID reference contract (documentation mirror)](https://ai-sdk-2020.84.nz/html/struct_a_i_u_i_d_r_e_f_suite)
-- [Adobe DSC specification (mirror)](https://web.mit.edu/PostScript/Adobe/Documents/5001.DSC_Spec.pdf)
-- [Adobe XMP resource references](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/XMPDataTypes/ResourceRef.md)
-- [Adobe XMP media-management properties](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/xmpMM.md)
-- [Native compression observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/compression.md)
-- [Native hierarchy observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/hierarchy.md)
-- [Native layer observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/layers.md)
-- [Native text observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/text_documents.md)
-- [Native document/artboard observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/document_data.md)
-- [Native live-shape observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/live_shapes.md)
-- [Native gradient observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/gradients.md)
-- [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)
-- [PROOF native-record observations](https://github.com/vurglepuddle/PROOF/blob/d822dc5dea265675a0fd5dec550e3e0dcd5988f0/doc/PROOF-ai-native-records.md)
-- [Zstandard specification, RFC 8878](https://www.rfc-editor.org/rfc/rfc8878.html)
-- [PdfCore reference](../../PdfCore/docs/PDF.md)
-
-### Direct live-shape authoring
-
-`AiNativeDrawing.createLiveShape` creates one ordinary painted contour and attaches
-a complete `AiNativeShapeParameters` dictionary. `setPathLiveShape` promotes an
-existing qualified ordinary contour, retaining its original name, identity and
-other admitted literal metadata. The caller supplies the canvas-relative center,
-all dimensions/angles, contour, ink bounds and synchronized PDF. Line handlers
-require open contours; rectangle/ellipse/polygon/star handlers require closed
-contours. The package never generates or certifies shape geometry from parameters.
-
-`replaceDirectLiveShape` replaces typed parameters, contour and complete process
-appearance together. The path definition must omit name and identity; both remain
-source-owned. Existing frame rotation requires an explicit resulting angle. Sharp
-rectangle-to-irregular-four-sided-polygon conversion uses the same explicit family
-transition as `replaceLiveShapes`. Separate CC printing expansions, alternatives
-and unknown handlers reject here and retain their existing dedicated contracts.
-
-Complete direct scalar shape dictionaries, mesh owners and gradient owners may be
-retained while initializing or editing the independent native text namespace.
-Unknown references and incomplete owners still reject. The added authoring and
-Focale integration regressions await the requested final validation phase.
-
-### Literal native artwork names and center display
-
-`AiNativeDrawing.renameObjects(names:)` edits display-name bytes on qualified
-current path/group handles, including direct live shapes. It replaces all existing
-`AIArtName`/`Object name` aliases while retaining their scalar types, or adds one
-private `AIArtName` field when absent. XML identity, geometry, paint and other
-metadata remain source-owned. Empty selections, stale handles, invalid bytes,
-opaque selected metadata and output-limit violations reject atomically. Since
-this is nonvisual metadata, the existing matching PDF may be retained.
-
-`replacePathArtwork` and `replaceDirectLiveShape` retain the source `Ap` center-point
-display setting, including separate public/private assignments located inside a
-replaced counted span. Newly created ordinary paths keep their explicit default.
-This flag controls Illustrator's center marker, not fill/stroke rendering. Focale
-now admits both defined values instead of rejecting the visible-center variant.
-
-The host's circular corner bridge uses effective fitted rectangle radii and
-converts polygon/star tangent setbacks to actual circle radii. Native rectangle
-corner ordering and initial quadrant, native polygon rotation convention, all
-cubic controls and native centers are checked together. This interpretation uses
-the existing pinned Inkscape AI reference format notes and corpus; regressions and the independent export verifier are included in the final
-local integration validation. No Illustrator exchange result is implied.
-
-Newly authored linked preview blocks include an explicit empty
-`%AI17_Alternate_Content` branch, keeping following artwork visible to readers
-that expect both version branches. Existing qualified blocks without that empty
-branch remain readable and editable; their bytes are preserved when unchanged.
+Qualified unreferenced patterns, symbols and brushes can be edited. Connected brush descriptors, direct pattern consumers without a printing owner, unknown instance links, unresolved text/mask dependencies and unsupported reference schemas reject. Preserving such resources during another operation is a separate, narrower contract.
 
 ### Authoring reusable native artwork declarations
 
@@ -1594,136 +1520,6 @@ string literals equal to a removed identity, conservatively including label
 collisions. Unknown metadata, executable references and conditional resource
 ownership retain their rejection policy.
 
-### Gradient paints in appearance styles
-
-`AiNativeGradientPaint` authors a CC artwork-relative gradient in a new fill or
-stroke part. Pass it as `AiNativeAppearancePartDefinition.gradient`, exclusively
-with process colors, named colors and patterns. The byte name must resolve to an
-existing unconditional gradient declaration; that resource owns its editable
-stops and host-supplied ramps. The same typed part can be created in an existing
-appearance tree while supplying every affected printing owner.
-
-The writer retains explicit origin, angle, positive relative length, affine matrix
-and positive aspect ratio. It emits the observed relative `2 (...) ... Bg` layout,
-with matching `Bb`/`BB` fill or stroke selectors. It does not infer artwork bounds,
-coordinate conversion, gradient interpolation, printing or PDF. This initial
-authoring value covers linear and centered radial styles; focal highlights and
-cached imaging matrices remain outside its creation contract. Existing source
-instances keep their broader inspection and selected-edit APIs.
-
-`check_native_gradient_paints.dart` and `verify_native_gradient_paints.py` check
-four authored fill/stroke and linear/radial native/container cases against pinned
-inkai. Their supplied placeholder printing/PDF is deliberately not visual
-acceptance. Focale composition and actual Illustrator editing remain separate.
-
-### Brush descriptors and fixed calligraphic appearances
-
-`AiNativeBrushes` reads qualified calligraphic, art, pattern and bristle plug-in
-namespaces independently of brush-art declarations. Descriptor payloads preserve
-literal continuation bytes. `create`, `replaceUnused`, `remove` and `setOrder`
-update complete declarations and the native manager panel atomically. Creating
-art/pattern descriptors requires their referenced brush-art tiles. Names remain
-independent across plug-ins; panel membership uses its explicit delimiter grammar.
-Unlisted names may contain characters that cannot round-trip through that panel.
-
-Replacement and removal reject references from any retained style, including
-unused styles. Unknown or executable layouts, conditional ownership, stale
-handles, unresolved tiles and output limits retain explicit rejection policies.
-These APIs never synthesize brush geometry, raster samples or previews.
-
-`AiNativeCalligraphicPaint` supplies a fixed nib, its literal descriptor reference
-and the matching version-one descriptor payload. Diameter is in native points,
-roundness in percent and angle in degrees; the owned stroke width is a separate
-multiplier. Creating a `.calligraphic` appearance part supplies its ordinary paint
-and fixed nib together. The appearance parser now distinguishes these qualified
-plug-in parts from generic `.effect` parts. The descriptor must match the local fixed nib; ambiguous overrides reject.
-Variable/device-dependent nib settings remain retained data and reject this fixed-nib editing contract.
-
-The existing complete appearance transactions qualify the descriptor namespace,
-retain an editable private spine and update the supplied printing representation.
-Outgoing drawing-state checks cover only the explicit stroke assignments; nib
-parameters remain local to their filter. Rendering and synchronized PDF remain
-host responsibilities. `tool/check_native_brush_lifecycle.dart` produces twelve
-complete descriptor saves for pinned independent parsing and page-preservation
-checks. This evidence does not certify Illustrator's brush rendering or editing.
-
-### Ordinary contour conversion to complete appearances
-
-`AiNativeAppearances.convertPathArtwork` changes one qualified ordinary contour
-into an editable private contour with an existing named style and host-supplied
-complete printing group. It retains the original metadata bytes, XML identity,
-point-count convention, parent and stacking slot. Supplied unpainted geometry,
-winding, locking and visibility replace the ordinary authoring geometry. Native
-and printing boundary state are restored separately for following artwork.
-Resource references belong to the existing style; this operation does not delete
-and recreate the source identity. Save with the same-revision host PDF.
-
-Stale handles, painted authoring inputs, private descendants, direct dynamic
-shapes, gradient owners, compound/clipping descendants and unresolved metadata
-or inherited state reject atomically. Those families retain their own authoring
-contracts. The host may rename the ordinary object before conversion and attach
-a mask to the resulting private carrier through the existing complete-owner API.
-
-### Named paints on private group children
-
-`AiNativeAppearancePathDefinition.styled` creates an unpainted private child with
-an existing immutable style name. The group writer emits a direct mode-zero
-application after the child's metadata. The complete outer group owns the
-printing representation; child paths do not acquire separate printing wrappers.
-
-`applyStyleToPaths` assigns a first named style to independent private group
-contours. It clears their direct paint role, retaining geometry, closure, point
-counts, metadata, XML identities and masks. Each selected outer body owner needs
-one complete host printing replacement. The transaction restores known native
-outputs and checks unresolved changes against following children and outer
-artwork. Stale handles, extra/missing printing owners, existing applications,
-compound contours, clipping contours and resource-local owners reject atomically.
-Use `applyStyle` with exact nested uses for subsequent selected style changes.
-
-`replaceArtworkContours` also accepts independently named private group children.
-Closure, visibility and locking changes retain their style application and mask
-carrier; child flag edits never change the whole printing group's flags. All
-selected children of one group share one host printing replacement. Geometry and
-printing/PDF composition remain host responsibilities.
-
-### Private appearance child lifecycle
-
-`replaceArtworkChildren` takes one complete `AiNativeAppearanceReplacement` and
-an ordered list of `AiNativeAppearanceTreeChild` plans. `retain` keeps an exact
-current path/group and its metadata, masks and direct style applications; an
-optional child plan replaces a retained ordinary group's children. `create`
-inserts a typed fresh subtree. `group` creates an empty typed group definition
-around separately planned retained or fresh children. Each retained source item
-occurs once and belongs to this complete owner. Omitted items are removed.
-
-Source-backed children can move between retained or fresh groups in that owner.
-Clipping contours remain attached to their original groups and do not appear in
-the replacement child lists. Compound subtrees remain complete units. Retained
-source slices preserve metadata and comments; literal inherited inputs are
-replayed before moved subtrees and both outgoing native/printing states are
-restored. Unknown inputs and unsafe following dependencies reject atomically.
-Deleted object or mask identities require the same document reference scope as
-complete-owner deletion. New identities cannot recycle even deleted source IDs.
-The complete result is requalified after bounded serialization.
-
-Ordinary private groups may now be empty, both in typed creation and after child
-removal. Their metadata and named style remain attached; compound and clipping
-groups retain their required contour structure. The host supplies the complete
-printing view and matching PDF, including for an empty group. This transaction
-does not release clips.
-
-`replaceArtworkTrees` accepts immutable `AiNativeAppearanceTreeChange` plans for
-several complete ordinary group owners. Every source and destination must be
-selected with its complete host printing replacement. Retained children may move
-between these owners, keeping their native identity, mask dictionaries and named
-style applications. An item occurs only once across the entire transaction;
-complete roots remain in place. Omitted children undergo deletion checks only
-after all plans are assembled, so a moved identifier remains a valid reference.
-Each owner restores its original outgoing native and printing state. Aggregate
-byte limits, retained source membership, uniqueness, references and final owner
-qualification are checked before returning the new snapshot. Unselected sources,
-duplicate children, recycled identities and nested complete roots reject atomically.
-
 ### Symbol instance inspection
 
 `AiNativeSymbols.decode(artworkResources: ...)` exposes saved `/SymbolInstance`
@@ -1754,41 +1550,6 @@ at `1a5f42a0b0407fc869e032420570682048810108`.
 synthetic source spans, names, matrices and conditional resolution independently;
 these fixtures do not establish Illustrator acceptance.
 
-### Heterogeneous private appearance leaves
-
-`AiNativeAppearanceGroupDefinition.leaf` supplies exactly one native payload in
-an otherwise childless ordinary wrapper. `AiNativeAppearanceRasterDefinition`
-retains process pixels and their placement, `AiNativeAppearanceMeshDefinition`
-retains complete mesh cells, and `AiNativeAppearanceShapeDefinition` couples
-live-shape parameters to the matching host-supplied contour. Names, identities,
-visibility, styles and opacity masks belong to the wrapper. Binary image samples
-are copied by counted extent, never line-prefixed or interpreted as commands.
-`AiNativeAppearanceArtwork.leaves` exposes only qualified payloads, with exact
-source handles; unrelated commands, mixed representations and ambiguous ownership
-do not become editable leaves.
-
-`AiNativeAppearanceTreeChild.retain(leaf:)` replaces a retained payload without
-replacing its wrapper identity, style or mask. `AiNativeAppearanceTreeChange.leaf`
-does the same for a complete root leaf. Typed creation, tree reordering, movement
-and deletion use the existing complete-owner transactions, restoring native and
-printing boundary state and checking live-shape counts. The host still supplies
-complete printing bytes and a same-revision PDF; AiKit adds no compositor.
-
-Text uses the existing global ATE namespace. `createStory(appearanceParent:)`
-accepts one frame in an empty qualified private wrapper. Content/frame changes
-and story removal retain its private representation and coherent global indices.
-Private text cannot be deleted or duplicated through generic appearance slicing:
-remove the global story first, or create a fresh wrapper and story for a clone.
-The host then refreshes the whole owner's printing/PDF. Unsupported text profiles
-and external reference owners retain their existing rejection policy.
-
-Opacity-mask Art can contain typed image, mesh and live-shape wrappers alongside
-ordinary paths and groups. This profile requires neutral payload blending and
-complete local ownership; global text references inside mask Art are not covered.
-It does not add arbitrary plugin objects, linked-image authoring, effects or new
-mesh/text engine profiles. See `FOCALE_INTEGRATION.md` for host editing limits and
-independent acceptance evidence.
-
 ### Static symbol instance authoring
 
 `AiNativeAppearanceSymbolDefinition` writes a literal `/SymbolInstance` with one
@@ -1812,6 +1573,37 @@ Inspection remains broader than this editing profile. Arbitrary registration
 rules, dynamic instance overrides, nested symbols and unknown fields remain
 preserved/unsupported. The relative matrix is still supplied in the producer's
 coordinate basis, without a package-side placement or rendering heuristic.
+
+### Brush descriptors and fixed calligraphic appearances
+
+`AiNativeBrushes` reads qualified calligraphic, art, pattern and bristle plug-in
+namespaces independently of brush-art declarations. Descriptor payloads preserve
+literal continuation bytes. `create`, `replaceUnused`, `remove` and `setOrder`
+update complete declarations and the native manager panel atomically. Creating
+art/pattern descriptors requires their referenced brush-art tiles. Names remain
+independent across plug-ins; panel membership uses its explicit delimiter grammar.
+Unlisted names may contain characters that cannot round-trip through that panel.
+
+Replacement and removal reject references from any retained style, including
+unused styles. Unknown or executable layouts, conditional ownership, stale
+handles, unresolved tiles and output limits retain explicit rejection policies.
+These APIs never synthesize brush geometry, raster samples or previews.
+
+`AiNativeCalligraphicPaint` supplies a fixed nib, its literal descriptor reference
+and the matching version-one descriptor payload. Diameter is in native points,
+roundness in percent and angle in degrees; the owned stroke width is a separate
+multiplier. Creating a `.calligraphic` appearance part supplies its ordinary paint
+and fixed nib together. The appearance parser distinguishes these qualified
+plug-in parts from generic `.effect` parts. The descriptor must match the local fixed nib; ambiguous overrides reject.
+Variable/device-dependent nib settings remain retained data and reject this fixed-nib editing contract.
+
+The existing complete appearance transactions qualify the descriptor namespace,
+retain an editable private spine and update the supplied printing representation.
+Outgoing drawing-state checks cover only the explicit stroke assignments; nib
+parameters remain local to their filter. Rendering and synchronized PDF remain
+host responsibilities. `tool/check_native_brush_lifecycle.dart` produces twelve
+complete descriptor saves for pinned independent parsing and page-preservation
+checks. This evidence does not certify Illustrator's brush rendering or editing.
 
 ### Fixed artistic and pattern brush applications
 
@@ -1839,6 +1631,214 @@ profile; there is no producer PatternOnPath application fixture in that corpus.
 Independent syntax, resource resolution and host-rendered round trips do not
 certify Adobe's interpretation of tile slots, fitting or native recomposition.
 Illustrator reopen/edit/resave acceptance remains required for both families.
+
+## Mesh data
+
+`AiNativeMeshes.decode(records:, bodyOnly:)` reads `/Mesh X!` packets through `/End X!`. The default includes resources; `bodyOnly: true` restricts the inventory to the drawing body. The supported schema is version 2, Cartesian topology. Other versions/topologies reject typed decoding while the source stays intact.
+
+Each mesh retains index axes, patches, source fields and cyclic node order, including `/N` corners, `/A` anchors and `/S` subdivision points. Positions, source-order handles, weights, opacity, unknown fields and intermediate nodes are preserved. Patch coverage and ranges are checked without allocating from an unchecked grid-size product. Unknown color spaces retain their declarations. Known gray/RGB/CMYK arities and normalized components are validated.
+
+Separation/NChannel `inks` preserve lexical declaration order and device alternatives. Corner `inkTints` pairs tints in component order, which reverses lexical ink order for NChannel. It does not convert spot inks to process colors. `mesh.vertices` groups each logical vertex's one, two or four corner occurrences; duplicated positions must agree exactly. Handles remain distinct.
+
+```dart
+final AiNativeMeshes meshes = AiNativeMeshes.decode(records: records);
+final AiNativeMesh mesh = meshes.meshes.first;
+final AiNativeMeshes painted = meshes.paintVertices(
+  mesh: mesh,
+  changes: [
+    AiNativeMeshVertexPaint(
+      vertex: mesh.vertices.first,
+      color: AiNativeMeshProcessColor(space: .rgb, components: [0.8, 0.2, 0.1]),
+      opacity: 0.7,
+    ),
+  ],
+);
+```
+
+`paintVertices` updates every selected corner occurrence atomically. It accepts process color, named-ink `tints`, opacity, or compatible combinations; `color` and `tints` are mutually exclusive. Tint edits require matching ordered inks and alternatives across all copies. Color switches stay local; unselected geometry, weights, colors and declarations remain intact.
+
+`editGeometry(mesh:, changes:, bounds:)` changes explicit node positions, first/second
+native handles and weights. Every occurrence of a moved shared corner must agree
+in the resulting transaction. Handles are not welded automatically. Intermediate
+anchors/subdivision points retain their separate seven-value layout. Numeric
+edits leave other tokens, color declarations, opacity and patch parameters intact.
+`transform(mesh:, transform:, bounds:)` maps every position and control point
+through one nonsingular affine basis while retaining weights and paint. Distinct
+source points cannot silently collapse through floating-point rounding.
+Transforms and full replacements require an explicit host `rotationRadians` when
+the source has `BBAccumRotation`; they cannot silently retain a stale frame angle.
+Local node edits retain the frame orientation unless a separate transform changes it.
+
+`replaceTopology(mesh:, definition:, bounds:)` accepts a complete
+`AiNativeMeshDefinition`: dimensions, uniquely indexed cells, cyclic nodes, colors,
+opacity and explicit weights. Four colored corners per cell and exact shared
+positions are required. `AiNativeMeshPatchDefinition.nativeParameters` carries an
+explicit numeric `/R` array, or null to omit it. AiKit does not assign an assumed
+rotation or subdivision meaning to those values. `fromSource` constructors retain
+qualified node data and named inks without converting their tints. Unknown fields,
+reference-valued parameters and ambiguous parameter ownership reject replacement.
+Focale supplies explicit source-cell lineage when subdividing imported cells,
+including inherited numeric arrays for both descendants; AiKit neither infers
+that mapping nor interprets those values. Variable vertex opacity and one-cell
+axes use this existing native schema, with composition owned by Focale.
+
+`drawing.meshArtwork` exposes complete independently owned packets with their
+optional terminator, name and identity. `createMeshArtwork` inserts an explicit
+`AiNativeMeshArtworkDefinition` into a qualified root, group or layer, even when the
+document has no existing mesh. `replaceMeshArtwork` changes geometry/topology and
+ordinary object flags while retaining metadata. `transparency` accepts the complete
+native blend/opacity/isolation/knockout/alpha-is-shape tuple independently of corner
+opacity; leave the normal `opacity` shorthand at its default when supplying it.
+`duplicateMeshArtwork` requires
+fresh identities for existing identified owners. Complete mesh handles participate
+in mixed layer reorder/move/removal, containing group/layer copies and artboard
+transactions. Native and printing scalar state are restored independently; mesh
+field declarations never become surrounding path paint assignments. These APIs
+do not certify a particular host's interpretation of the mesh surface.
+
+Editing is limited to direct printable body meshes with independent appearance
+ownership. Resource/private copies, unresolved parent/object dependencies, unknown
+mesh fields and incompatible color declarations reject edits. Lifecycle handles
+also exclude attached appearance bindings and clipped/compound parents. Callers
+supply complete ink bounds and regenerate the synchronized PDF/previews.
+Interpolation, tessellation and color management remain application responsibilities.
+The mesh editing fixtures compare serialized native controls/colors/opacity and
+original/reopened host PDF views independently; see
+[the mesh verifier](../tool/verify_focale_mesh_editing.py) and
+[the Focale profile](#focale-integration) for coverage and boundaries.
+
+## Images and linked files
+
+### Ordinary image attributes and mixed lifecycle
+
+`AiNativeRasters.updateAttributes` and `AiNativePlacements.updateAttributes` change
+object transparency, visibility, full locking, overprint and literal names on
+owned ordinary images. `opacity` changes only that scalar, retaining other native
+and printing flags independently. `transparency` instead replaces all five flags
+in both representations; supplying both arguments rejects. Distinct incoming
+native and printing states are restored afterwards. Names retain explicit String/UnicodeString
+encoding. Pixel planes, preview rows, file paths, XML identities and sample caches
+remain unchanged by attribute-only edits.
+
+`AiNativeLayers.rasters` and `placements` expose exact snapshot handles accepted
+by `reorderArtwork`, `moveArtwork` and `removeArtwork`, together with ordinary
+paths, complete groups and layers. Ordinary `AiNativeGroup` handles participate in
+mixed sibling ordering and removal, including nested groups and retained image,
+link, gradient and mesh children. `moveArtwork(group:)` appends into a qualified
+ordinary group; `parent:` remains the layer destination, and supplying both rejects.
+Group/layer/root moves retain native identities and independent native/printing
+boundary states. Changing group depth or inherited flags requires the existing
+`inheritParentFlags` acknowledgement. Native layers cannot be group children.
+Clipped, compound, private, conditional and applied-appearance group parents retain
+their separate contracts. Transactions require complete unconditional owners,
+qualified ancestors, explicit scalar dependencies and inspected references.
+Deletion removes unused DocumentFiles references after complete owner removal;
+shared references survive. Unknown metadata or clipped/private ownership rejects.
+
+`AiNativeDrawing.copyRaster` copies native sample bytes, bit depth, channels and
+qualified metadata under a required fresh artwork identity and fresh sample UUIDs.
+`copyPlacement` retains exact preview rows and external reference bytes under a
+fresh artwork identity. Both accept explicit placement/attributes and qualified
+root/group/layer destinations. Cross-document copies require the host to rebase
+relative paths. Generic subtree copying of image-bearing owners still rejects;
+hosts can author destination layers and copy their qualified children explicitly.
+See the [image corpus checks](../test/corpus/README.md#raster-data-and-linked-placements)
+for validation scope; they do not establish Adobe application acceptance.
+
+### Native image creation
+
+`AiNativeDrawing.createRaster(definition:, parent:, layer:)` inserts a complete
+`AiNativeRasterDefinition` into an ordinary group, layer or the global drawing.
+It writes bounded process samples, optional straight alpha, both placement
+matrices, fresh sample UUIDs and optional fresh XML identity/name. Stencils require
+an explicit process color. `AiNativeImageAttributes` supplies lock, visibility,
+normal opacity or complete `transparency`, and overprint. Keep `opacity` at its
+default when supplying the complete tuple. This also applies to `copyRaster` and
+`copyPlacement`; creation and copying never multiply sample alpha by object
+opacity. Placement bounds expand without moving artboards.
+
+`createPlacement` accepts `AiNativePlacementDefinition` with encoded path bytes,
+a local downward-y rectangle, affine matrix, optional relative directory and
+host-provided eight-bit RGB/alpha preview. It creates file-type-one CC placement
+syntax and updates DocumentFiles declarations atomically. Paths are never opened.
+The created link remains compatible with relink, placement and embedding APIs;
+shared file references survive embedding or relinking another user.
+
+Both operations append within the explicitly selected parent and preserve existing
+owners. Qualified image metadata and binary payloads establish independent object
+boundaries, allowing subsequent images and ordinary paths in the same paint order.
+Native and printing scalar states are restored independently. Unknown incoming
+attributes, conditional parents, private printing expansions, unqualified metadata,
+identity collisions, nonportable geometry and aggregate resource overruns reject.
+Creation does not attach an image to an existing opacity mask or appearance tree.
+The host still supplies the matching PDF and resolves actual linked pixels.
+
+The drawing reader retains qualified relative-directory strings as metadata, not
+operands of the following placement terminator. Two complete synthetic saves are
+checked independently for native samples/preview/placement, updated file references,
+PDF image/alpha resources and exact Poppler pixels. This is not Illustrator acceptance.
+
+### Embedded raster images
+
+`AiNativeRasters.decode(records:, bodyOnly:)` reads binary `XI` images in setup, body and private records. Samples are interleaved process colors followed by a separate alpha plane, with packed row padding preserved. Supported component depths are 1, 2, 4, 8 and 16 bits; 16-bit samples are big-endian. Width/height, bounds, producer flags, source spans and both `XI`/`Xh` matrices remain explicit. No profile conversion is performed.
+
+Binary boundaries come from validated image geometry, including alpha, before checking the exact DSC terminator. Recognized count variants are accepted only when that boundary matches. Sample bytes remain opaque even if they contain PostScript tokens or fake end markers. Corrupt/transcoded data is not repaired by searching for a later marker.
+
+`AiNativeRasters.validateSourceLayout(image:)` qualifies an exact owned handle's
+complete raster framing, process layout and literal object metadata without
+changing samples. Unknown cache fields and annotations reject. This checks the
+image itself; the host must also qualify its enclosing appearance, ownership and
+native/printing state. Ordinary contour edits can retain these qualified image
+neighbors byte-for-byte, including their metadata. This does not qualify image
+removal or arbitrary mixed-subtree lifecycle.
+
+Focale projects qualified embedded process images to a bounded RGBA8 display
+source while retaining the original native samples. Unchanged pixels preserve
+their source space, depth, row padding and cache identities through placement
+edits. Newly composed or replaced pixels use host RGB8 with optional alpha; the
+native placement accounts for changes in sample resolution. See the
+[Focale profile](#focale-integration) for connected image and link operations.
+
+| Operation | Behavior |
+| --- | --- |
+| `translate` | Updates both native matrices, retaining samples and metadata. |
+| `replacePixels` | Writes host-supplied `AiNativeRasterSamples`; adjusts dimensions, flags and matrices to retain the placed extent when resolution changes. |
+| `setPlacement` | Writes a host-supplied affine matrix and explicit frame-angle policy without resampling. |
+
+Replacement samples must contain complete rows. Changed planes/layouts renew existing sample UUIDs while stable object identities and unrelated images remain unchanged. Absent UUID fields stay absent. A retained source link is marked as modified. Legacy stencil layouts can retain/replace pixels but do not acquire invented alpha fields; alpha authoring requires qualified extended headers.
+
+For `[a, b, c, d, tx, ty]`, embedded pixels map to `(a*x - c*y + tx, b*x - d*y + ty)`. `rotationRadians` separately controls the editing-frame angle: a finite value updates/adds it; null preserves absence and rejects an existing field. It cannot be inferred uniquely from the matrix. Unknown cache/relationship fields, including unresolved mask/shear metadata, reject geometry edits. Enclosing clips, effects, groups, resources and artboards are separate dependencies. The host supplies matching appearances after edits.
+
+### Linked placements and previews
+
+`AiNativePlacements.decode` reads CC placement sections, retaining raw path bytes, relative directory, local bounds, affine matrix, file type, extensions, preview and object dictionary. Preview byte boundaries are checked from their headers; unknown bounded pixel layouts stay preserved. `preview.toSamples()` explicitly converts qualified format-17 straight ARGB into RGB and separate alpha. It never silently substitutes that preview for the full-resolution linked resource.
+
+Qualified raster edits require file type 1, extensions `4 4 0`, consistent paths and `IncludeFile` references, known versioned metadata and a nonsingular matrix. The kit never opens files, resolves URLs or selects image decoders.
+
+| Operation | Behavior |
+| --- | --- |
+| `translate` / `setPlacement` | Changes geometry while retaining link paths, preview data and local bounds. |
+| `embed(object:, samples:)` | Replaces a link with host-decoded native raster samples while retaining placed extent and qualified metadata. |
+| `relink(object:, pathBytes:, relativeDirectoryBytes:, preview:)` | Updates path operands, declarations, relative directory and explicitly supplied or removed preview. |
+
+Embedding removes an old file dependency only when no other native reference uses it. Relinking uses caller-selected path bytes and escapes native strings; ambiguous/control-containing paths and unresolved metadata reject. Null relative directory or preview arguments explicitly remove those records. New previews use qualified 8-bit RGB with optional alpha. Neither operation resamples pixels or changes catalog XMP automatically.
+
+Linked matrices map local coordinates to `(a*x + c*y + tx, b*x + d*y + ty)`; the local y axis points down. `rasterMatrix(width:, height:)` exposes the corresponding pixel-to-native transform; `validateRasterLayout()` checks the qualified layout independently. Frame-angle policy matches embedded rasters. External PDF/EPS artwork, older `XF` links and dependent effect caches remain unsupported for these edits.
+
+Newly authored linked preview blocks include an explicit empty
+`%AI17_Alternate_Content` branch, keeping following artwork visible to readers
+that expect both version branches. Existing qualified blocks without that empty
+branch remain readable and editable; their bytes are preserved when unchanged.
+
+## Catalog metadata
+
+`AiXmpMetadata.fromPdf(document:)` reads catalog XMP; `parse(source:)` reads a standalone UTF-8 packet. `resources` exposes current-document `xmpMM:Manifest` and `xmpMM:Ingredients` references using namespace URIs. History, pantry, `DerivedFrom`, other subjects and page/image metadata remain separate.
+
+`relink(resources:, filePath:, documentId:, instanceId:)` updates explicitly selected references, removes stale identifiers when null and clears alternate paths. Native placement identity is not inferred from inventory order or equal filenames. Managed, extended or part-specific references reject edits; unrelated packet text, comments, namespaces, padding and metadata remain exact.
+
+After the native/PDF save, `writeTo(document:)` installs the changed catalog packet without changing shared original page/image packets. Old unreferenced objects remain, so this is not redaction. PostScript-embedded XMP is not currently read or rewritten by these APIs. XML limits apply before tree construction; DTDs, undefined entities, non-UTF-8 declarations and ambiguous structures reject.
+
+## Effects and host authoring
 
 ### Literal geometric and appearance effects
 
@@ -1878,4 +1878,139 @@ mechanism. Even a harmless external PDF rewrite can invalidate the binding.
 Payload schema, rendering, resource resolution and fallback policy belong to the
 host. A snapshot does not authorize changing unknown native owners. Ordinary AI
 and PDF readers can still use the supplied developed artwork without understanding
-the host payload. See [the retained effect host contract](HOST.md#retained-host-effect-authoring).
+the host payload. See [the retained effect host contract](#retained-host-effect-authoring).
+
+## Supported data
+
+“Editable subset” means the named operations can serialize qualified native changes. “Preserved” means retained source, not semantic editing support. None of these statuses implies complete Illustrator compatibility.
+
+| Feature | Read | Write/edit | Main boundary |
+| --- | --- | --- | --- |
+| PDF-backed AI and legacy containers | Yes | Yes | PDF graphs are rewritten; unchanged legacy bytes remain exact. |
+| Plain/zlib/Zstandard native programs | Yes | Yes | Original compression and shared ownership retained. |
+| Layers, paths, groups and attached metadata | Yes | Editable subset | Qualified state/references; fresh copied IDs and explicit parent inheritance. |
+| Compound paths and clipping | Qualified topology | Editable subset | Explicit mask ownership and compound appearance; no Boolean geometry engine. |
+| Records, settings and artboards | Yes | Editable subset | Explicit crop, print and PDF-page policies; known retained dependencies. |
+| Source identities and version alternatives | Yes | Preserved by qualified edits | No target-version conversion or unknown plug-in reference resolution. |
+| Ordered appearances | Named trees and literal settings | Editable subset | Complete affected-user coverage and host-supplied printing groups. |
+| Geometric and appearance effects | Offset Path, Round Corners, Drop Shadow and Outer Glow | Typed literal descriptors, visibility and complete appearance transactions | Qualified modes and process colors only; host evaluation and printing/PDF composition. |
+| Host authoring snapshots | Bounded opaque application streams | Immutable read, attach, removal and canonical binding bytes | Host verifies content and digest; no Illustrator-native editability claim. |
+| CC live shapes | Five qualified families, including irregular-polygon parallelograms | Similarities, qualified affine changes, host-supplied parameter/contour transactions and complete-pair lifecycle | Host owns regeneration and printing; arbitrary effects and positional dependencies remain excluded. |
+| ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset and supplied layouts | Host composition; unresolved caches/shared dependencies reject. |
+| Gradients and palettes | Qualified resources, instances and cells | Creation/removal, ordered hard stops, exact application rebinding, named paints, focus and CC placement | Host ramps/printing; opaque references, ATE/color-book ink redefinition and unsupported caches remain excluded. |
+| Cartesian version-2 meshes | Yes | Paint, geometry, explicit topology and direct object lifecycle | Host interpolation and matching printing/PDF; no package tessellation or Illustrator certification. |
+| Embedded rasters and linked previews | Qualified layouts | Samples, affine placement, relink and embed | Host pixels/decoders; unresolved dependent caches reject. |
+| Setup pattern/symbol/brush artwork | Source-owned inventory | Create, replace/remove unused declarations; qualified appearance transactions and brush descriptors | Fixed calligraphic/art/pattern applications require qualified parameters and complete host-composed representations; arbitrary plug-in semantics remain excluded. |
+| Catalog XMP | Qualified references | Explicit selected-reference changes | No inferred native/XMP identity mapping. |
+| New AI documents | CC version 24 | Initial boards, layers, paths, text resources and images; host PDF packaging | Host-supplied printing/PDF required; Adobe acceptance is unverified and standalone AI7 creation is excluded. |
+| Other effects, resources and plug-ins | Source preserved where parsing permits | No general semantic writer | Recognition does not qualify dependent edits. |
+
+Unknown records and unsupported layouts are retained when safe; edits reject dependencies they cannot update coherently. Consult the relevant API's Dartdoc for exact arguments and guards, and [the host contract](#package-and-host-responsibilities) for derived-representation responsibilities.
+
+## Focale integration
+
+Focale uses AiKit for new AI exports and source-preserving edits of imported AI
+files. Its adapter supplies printing data and the compatibility PDF, then rebuilds
+bindings from the saved native snapshot. The table describes connected profiles;
+it does not extend the package contracts to every Illustrator producer or object.
+
+| Workflow | Connected profile and boundary |
+| --- | --- |
+| Documents, pages and hierarchy | New CC documents, artboard edits, ordinary layers/groups and qualified mixed lifecycle. Unsupported owners retain preservation or compatibility fallback. |
+| Contours and dynamic shapes | Geometry and appearance edits, translation, rotation, uniform and qualified nonuniform scale, reflection, shear and typed shape parameters. The host supplies regenerated contours and printing expansions. |
+| Text | Point text, rectangular frames, text on a path and multiple paragraphs; content/style edits and story/frame lifecycle with host-composed glyph views. Other ATE profiles and unresolved threaded-flow dependencies remain outside the qualified subset. |
+| Colors and gradients | Process/named paints, resource lifecycle, hard stops, exact application selection and qualified shared-color updates. Opaque references, color books and unsupported text dependencies still reject. |
+| Groups, appearances and masks | Complete native/printing owners, mixed private paths, shapes, embedded process images, meshes and qualified text. Opacity-mask artwork supports qualified paths, groups, shapes, images and meshes; text inside mask Art, private linked images and unknown owners remain excluded. |
+| Meshes | Smooth Cartesian tensor meshes: points, handles, process vertex colors/opacity and line/column insertion with retained source-cell lineage. Rational weights, intermediate nodes, named/mixed inks and other mesh profiles remain outside the host subset. |
+| Images and links | Embedded process samples, placement, pixel replacement, ordinary lifecycle, explicit linked refresh/incorporation and Save As path rebasing. Retained previews do not stand in for resolved full-resolution source pixels. |
+| Symbols | Static masters and affine instances, master changes, creation and dissociation for qualified artwork. Text masters, dynamic overrides and symbol instances inside opacity masks remain excluded. |
+| Brushes | Fixed calligraphic, artistic and five-tile pattern brushes with host-composed outlines. Pressure, unsupported colorization, segmented applications and arbitrary artwork warps remain excluded. The pattern application schema still needs an independent producer fixture. |
+| Native effects | Qualified Offset Path, Round Corners and a simple Drop Shadow or Outer Glow on paths/groups. Complete printing/PDF views accompany parameter, order and visibility changes. |
+| Other host effects | Guide bending and other geometry can be developed into contours. Unsupported appearance effects use developed page images plus a verified host snapshot, as described below. They do not gain equivalent Illustrator-native controls. |
+
+Complete appearance captures use Focale's compositor with bounded allocations and
+explicit resource release. Object blending remains separate from sample alpha.
+Deletion, stacking and reparenting treat the native/printing pair and its masks as
+one owner; private children and derived printing images are not ordinary peers.
+
+When native ownership is known but semantics are unsupported, Focale can retain
+locked printing subtrees while editing qualified neighbors. Unknown ownership or
+state requires compatibility fallback. Preserved opaque owners do not authorize
+page/topology edits, changes to their ancestors or whole-page rasterization.
+
+Local regressions and independent readers cover the admitted profiles; the
+[corpus guide](../test/corpus/README.md) identifies reproducible checks. Actual
+Illustrator reopening, editing, font/link resolution and successive Adobe saves
+remain unverified. Native editability and host-only restoration are separate
+outcomes.
+
+### Retained host effect authoring
+
+When the user accepts Focale-only effect controls, `AiHostSnapshot` can retain
+the complete host project beside developed AI/PDF artwork. Focale expands guide
+bending and other unqualified geometry through its existing geometry evaluator.
+For unsupported active layer styles or advanced blending, its existing exporter
+captures **every output page**, at three pixels per document unit, preserving
+backdrop interactions. Those pages are ordinary embedded native images with
+matching PDF content; they do not expose Illustrator-native effect controls.
+Focale restores the separate editable objects, source geometry, libraries and
+effect settings from the verified payload.
+
+The `FocaleEffects` payload is a bounded UTF-8 `.fvector` version-1 envelope.
+Focale binds both the payload and canonical native/PDF graph with SHA-256 before
+restoration. External edits or corrupt metadata fall back to current native/PDF
+artwork with an `AiOrigin.effectNotice`; stale host settings are never restored.
+An imported ordinary AI source is retained once as the editing baseline, avoiding
+nested snapshots on repeated saves. Project recovery preserves this baseline.
+Unchanged saves retain exact bytes. Source files imported only through PDF and
+page rasterization across preserved opaque native owners still reject.
+
+AiKit only stores the bounded opaque stream and supplies binding bytes. It gains
+no rendering engine, project schema or host dependency. This mode covers retained
+Focale authoring and supplied appearances, not Adobe execution of equivalent
+effects. See the [snapshot storage contract](#opaque-host-authoring-snapshots).
+
+## Safety and platform behavior
+
+AiKit has no Flutter or native rendering dependency. File access, resource resolution, interactive tools and persistence belong to the application. Parsers and edits use immutable snapshots and explicit resource limits:
+
+| Policy | Default ceilings |
+| --- | --- |
+| `AiLimits.pdf` | PdfCore policy, including a 128 MiB file ceiling and depth 128. |
+| DSC comments | 1 MiB per continued comment; 100,000 retained comments. |
+| `AiNativeLimits` | 128 MiB aggregate encoded/filtered envelopes and decoded programs; 32 MiB Zstandard window; 1,000,000 tokens; depth 128. |
+| Standalone tokenization | 128 MiB, 1,000,000 tokens, depth 128. |
+| Shared text-engine parsing | 128 MiB, 1,000,000 values, depth 64, 64 MiB per decoded string. |
+| `AiHostSnapshot` | 32 MiB decoded payload per application snapshot. |
+| `AiXmpLimits` | 8 MiB UTF-8 packet, 100,000 nodes/events including attributes, depth 64. |
+
+Limits are checked before relevant allocation/output growth; they are not a whole-process memory cap. Malformed structures raise `FormatException`; invalid arguments or foreign handles raise `ArgumentError`; unqualified semantic operations use `UnsupportedError`. Unknown containers are rejected, not treated as arbitrary raw AI. An edit's rejection leaves the original snapshot intact.
+
+## Corpus validation and compatibility
+
+Run the package's offline checks with `dart analyze`, `dart test` and `dart test --platform node`. The [external corpus guide](../test/corpus/README.md) contains the required generators, pinned fixture manifests and independent verification commands. Downloads and generated artwork remain ignored and excluded from publication; provenance and licensing stay in the manifests.
+
+Validation distinguishes native extraction, unchanged preservation, semantic edits and save/reopen behavior. Independent readers check source records and unselected data; external SVG rendering can additionally check qualified native geometry without adding a renderer to AiKit. Host-supplied PDF/native save tests check that both representations survive; they cannot prove visual equivalence.
+
+Adobe Illustrator reopening remains unverified. The [Focale profile](#focale-integration)
+describes locally exercised host workflows; fixture counts do not measure general
+format compatibility.
+
+## References
+
+- [Adobe Illustrator 7 file format specification (mirror)](https://13thmonkey.org/documentation/fonts/AI7FileFormat.pdf)
+- [Adobe SDK UID reference contract (documentation mirror)](https://ai-sdk-2020.84.nz/html/struct_a_i_u_i_d_r_e_f_suite)
+- [Adobe DSC specification (mirror)](https://web.mit.edu/PostScript/Adobe/Documents/5001.DSC_Spec.pdf)
+- [Adobe XMP resource references](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/XMPDataTypes/ResourceRef.md)
+- [Adobe XMP media-management properties](https://github.com/adobe/xmp-docs/blob/e2573ad7e7959e657b1aed704546e19319cb4f5d/XMPNamespaces/xmpMM.md)
+- [Native compression observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/compression.md)
+- [Native hierarchy observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/hierarchy.md)
+- [Native layer observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/layers.md)
+- [Native text observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/text_documents.md)
+- [Native document/artboard observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/document_data.md)
+- [Native live-shape observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/live_shapes.md)
+- [Native gradient observations](https://gitlab.com/inkscape/extras/extension-ai/-/blob/1a5f42a0b0407fc869e032420570682048810108/docs/specification_amendments/gradients.md)
+- [Inkscape extension-ai corpus](https://gitlab.com/inkscape/extras/extension-ai)
+- [PROOF native-record observations](https://github.com/vurglepuddle/PROOF/blob/d822dc5dea265675a0fd5dec550e3e0dcd5988f0/doc/PROOF-ai-native-records.md)
+- [Zstandard specification, RFC 8878](https://www.rfc-editor.org/rfc/rfc8878.html)
+- [PdfCore reference](../../PdfCore/docs/PDF.md)
