@@ -1379,9 +1379,9 @@ unchanged; all required device alternatives come from the host. Complete printin
 owners and gradient ramps must be supplied with the change. Unknown cross-references
 and unsupported text/color-book dependencies are explicitly rejected.
 
-This supplies the missing package operation for document-wide ink changes. Focale's
-named-color projection/resource-edit bridge remains to be connected; process-color
-editing already present in the adapter is unchanged.
+This supplies the package operation for document-wide ink changes. Focale's
+ordinary custom-color bridge below consumes it; further named-color families and
+resource-dependent printing still require host integration.
 
 Validation on 2026-11-02: all 1,459 AiKit tests pass on both Dart VM and Node,
 including 16 global-ink regressions. Analysis, formatting and the scoped fix check
@@ -1391,3 +1391,38 @@ paired gradient banks and ramps, mesh alternatives/controls, DSC caches, shared
 appearance printing and supplied PDF streams. Independent color, transparency and
 opacity-mask checks also pass. These checks establish stored representation and
 reference consistency, not native/PDF visual equivalence or Illustrator interchange.
+
+## Shared custom-color masters in Focale
+
+Focale projects literal `x`/`X` and `Xx`/`XX` CMYK/RGB custom colors into its
+existing document-color library. Byte-based identities are stable across saves;
+display labels do not identify native resources. PDF spot plates retain exact
+native name bytes, including legacy non-UTF8 names. Each admitted ink has a
+consistent device alternative; incompatible same-name alternatives reject native
+projection rather than collapse distinct appearances.
+
+The host maps the native paper-fraction operand to its ink fraction (`1 - tint`),
+following Adobe's AI7 file format specification, section 5.4, pages 60–61:
+[Adobe specification mirror](https://13thmonkey.org/documentation/fonts/AI7FileFormat.pdf).
+AiKit continues to preserve the native operand without interpreting it.
+
+Editing a shared master updates all admitted native references using `AiNativeInks`,
+reprojects the canonical device alternatives and regenerates the matching PDF spot
+plates. Subsequent geometric edits use this new immutable baseline, so a combined
+master/path change cannot accidentally detach each paint into a process color.
+Project persistence and repeated saves retain the shared identities.
+
+This bridge covers ordinary custom-color artwork in retained legacy and CC files.
+New native resource creation/deletion, renaming, local tint/paint changes, `Xs`/`Xz`
+semantics, and global revisions needing composed appearance, gradient or mesh
+representations remain additional work. Such mutations reject before saving.
+Native color alternatives are converted by Focale when needed, never by AiKit.
+
+Validation on 2026-11-02: the combined host campaign passes 275 cases; the final
+eight-case focused run additionally verifies CC artboard/object identity retention.
+Application analysis has no errors or warnings and retains the 550 existing
+informational lints. The pinned independent native reader, pypdf and Poppler pass
+38 complete saves, including four new CMYK/RGB shared-ink revisions. The new checks
+assert exact native alternatives and names, inverse native/PDF tints, PDF Separation
+functions and exact rendered pixels against the host reference PDFs. No Illustrator
+reopen/editability exchange is claimed.

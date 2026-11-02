@@ -15,6 +15,7 @@ import subprocess
 import sys
 
 from pypdf import PdfReader
+from pypdf.generic import ContentStream
 
 from corpus_support import REVISION, native_programs
 from verify_native_colors import operators
@@ -84,6 +85,51 @@ def verify_appearance_lifecycle(inkai, output):
                 assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
                 count += 1
     return count
+
+
+def verify_named_inks(inkai, output):
+    """Check inverse native/PDF tints, exact spot alternatives and page pixels."""
+    for family, count in (('cmyk', 4), ('rgb', 3)):
+        for revision in (1, 2):
+            stem = f'ink-{family}-{revision}'
+            native = (output / f'{stem}.ps').read_bytes()
+            document = inkai.parse(str(output / f'{stem}.ps'))
+            paints = [op for op in operators(document.trailer) if op.command in ('x', 'X', 'Xx', 'XX')]
+            expected = [.1 * revision, .3, .5] + ([.7] if count == 4 else [])
+            assert len(paints) == 2, stem
+            assert [float(op.tokens[count + 1]) for op in paints] == [.75, 0], stem
+            assert all(op.tokens[count] == b'Spot' for op in paints), stem
+            assert all(list(map(float, op.tokens[:count])) == expected for op in paints), stem
+            path = output / f'{stem}.ai'
+            assert native_programs(path) == [native], stem
+            pdf = PdfReader(path, strict=True)
+            assert len(pdf.pages) == 1, stem
+            tints = []
+
+            def inspect(stream, resources, depth=0):
+                """Follow painted forms, excluding unused inherited resources."""
+                assert depth < 16
+                spaces = {}
+                for operands, operator in ContentStream(stream, pdf).operations:
+                    if operator in (b'cs', b'CS'):
+                        spaces[operator == b'CS'] = resources['/ColorSpace'][operands[0]].get_object()
+                    elif operator in (b'scn', b'SCN'):
+                        space = spaces[operator == b'SCN']
+                        assert space[:3] == ['/Separation', '/Spot', '/DeviceCMYK' if count == 4 else '/DeviceRGB'], stem
+                        transform = space[3].get_object()
+                        assert transform['/FunctionType'] == 2 and transform['/N'] == 1, stem
+                        assert list(transform['/C0']) == [0 if count == 4 else 1] * count, stem
+                        assert list(transform['/C1']) == expected, stem
+                        tints.extend(map(float, operands))
+                    elif operator == b'Do':
+                        form = resources['/XObject'][operands[0]].get_object()
+                        if form.get('/Subtype') == '/Form':
+                            inspect(form, form.get('/Resources', resources), depth + 1)
+
+            inspect(pdf.pages[0].get_contents(), pdf.pages[0]['/Resources'])
+            assert sorted(tints) == [.25, 1], (stem, tints)
+            assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+    print('Verified four named-ink saves: shared CMYK/RGB alternatives, native/PDF tint inversion, spot plates and exact repeated-save PDF pixels.')
 
 
 def main():
@@ -292,6 +338,7 @@ def main():
     assert identities['boards-removed'] == [identities['boards-inserted'][i] for i in (1, 0)]
     assert page_references['boards-removed'] == [page_references['boards-inserted'][i] for i in (1, 0)]
     appearances = verify_appearance_lifecycle(inkai, args.output)
+    verify_named_inks(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 
