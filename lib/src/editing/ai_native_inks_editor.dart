@@ -94,9 +94,9 @@ List<double> _nativeInkComponents(AiColorSpace space, AiColor? cmyk, AiColor? rg
 }
 
 /// Rejects hidden same-name references outside qualified native color fields.
-void _nativeInkReferenceScope(AiNativeInks model, AiNativeInk ink) {
+_AiNativeInkDependencies _nativeInkReferenceScope(AiNativeInks model, AiNativeInk ink) {
   _paintResourceScope(model.records);
-  _nativeInkResourceDependencies(model, ink);
+  final _AiNativeInkDependencies dependencies = _nativeInkResourceDependencies(model, ink);
   final List<({int start, int end})> spans = [
     for (final AiNativeInstruction command in ink.paints) (start: command.start, end: command.end),
     for (final AiNativeGradientDefinition definition in ink.gradients) (start: definition.start, end: definition.end),
@@ -127,6 +127,7 @@ void _nativeInkReferenceScope(AiNativeInks model, AiNativeInk ink) {
       throw UnsupportedError('Global ink changes require qualified mesh color-space declarations.');
     }
   }
+  return dependencies;
 }
 
 /// Compares full authoritative stops before merging duplicate gradient banks.
@@ -156,11 +157,12 @@ AiNativeInks _redefineNativeInk(
   AiColor? gray,
   Map<AiNativeGradientDefinition, List<AiNativeGradientRamp>> ramps,
   List<AiNativeAppearanceReplacement> artwork,
+  List<AiNativeAppearanceArtwork> retainedArtwork,
 ) {
   if (!model.inks.contains(ink) || cmyk != null && cmyk.space != .cmyk || rgb != null && rgb.space != .rgb || gray != null && gray.space != .gray || cmyk == null && rgb == null && gray == null) {
     throw ArgumentError('Global ink changes require a current ink and correctly typed explicit device alternatives.');
   }
-  _nativeInkReferenceScope(model, ink);
+  final _AiNativeInkDependencies dependencies = _nativeInkReferenceScope(model, ink);
   final Map<String, AiNativeGradientDefinition> definitions = {};
   for (final AiNativeGradientDefinition definition in ink.gradients) {
     if (definition.fallbackStops.isNotEmpty &&
@@ -186,10 +188,17 @@ AiNativeInks _redefineNativeInk(
     throw ArgumentError('Every gradient using the ink requires freshly composed printing ramps.');
   }
   final List<AiNativeAppearanceArtwork> owners = model.printingOwners;
-  if (artwork.length != owners.length ||
-      artwork.map((value) => value.artwork.printingGroup).toSet().length != owners.length ||
-      artwork.any((value) => !identical(value.artwork._owner, model.appearances) || !owners.any((owner) => owner.printingGroup == value.artwork.printingGroup))) {
-    throw ArgumentError('Global ink changes require one current replacement for every complete printing owner.');
+  final List<AiNativeAppearanceArtwork> covered = [...artwork.map((replacement) => replacement.artwork), ...retainedArtwork];
+  if (covered.length != owners.length ||
+      covered.map((owner) => owner.printingGroup).toSet().length != owners.length ||
+      covered.any((value) => !identical(value._owner, model.appearances) || !owners.any((owner) => owner.printingGroup == value.printingGroup))) {
+    throw ArgumentError('Global ink changes require each complete printing owner to be replaced or explicitly retained.');
+  }
+  if (retainedArtwork.isNotEmpty) {
+    final Set<AiNativeGroup> affected = _nativeInkAffectedPrintingOwners(model, ink, dependencies: dependencies).map((owner) => owner.printingGroup).toSet();
+    if (retainedArtwork.any((owner) => affected.contains(owner.printingGroup))) {
+      throw ArgumentError('An ink-dependent printing owner requires a composed replacement.');
+    }
   }
   final AiNativeAppearances printed = _nativeAppearanceResult(model.appearances, _nativeAppearancePrintingEdits(model.appearances, artwork), owners.map((owner) => owner.use).toList());
   AiNativeInks current = AiNativeInks.decode(records: printed.structure.drawing.records);
@@ -350,12 +359,9 @@ List<AiSourceEdit> _nativeInkHeaderEdits(AiNativeRecords records, List<int> name
 }
 
 /// Propagates ink changes through resource/style edges before touching caches.
-void _nativeInkResourceDependencies(AiNativeInks model, AiNativeInk ink) {
+_AiNativeInkDependencies _nativeInkResourceDependencies(AiNativeInks model, AiNativeInk ink) {
   final AiNativeAppearances appearances = model.appearances;
   final List<AiNativeArtworkResource> resources = appearances.artworkResources.resources;
-  if (resources.isEmpty) {
-    return;
-  }
   final List<AiNativeInstruction> patternCommands = [
     ..._structureCommands(appearances.structure.drawing).where((command) => const {'p', 'P'}.contains(command.operator)),
     for (final AiNativeArtworkResource resource in resources) ...resource._drawing.items.whereType<AiNativeInstruction>().where((command) => const {'p', 'P'}.contains(command.operator)),
@@ -427,9 +433,78 @@ void _nativeInkResourceDependencies(AiNativeInks model, AiNativeInk ink) {
       }
     }
   } while (progress);
-  final AiNativeLayers layers = AiNativeLayers.decode(drawing: appearances.structure.drawing);
-  final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.where((resource) => resource.kind == .brush).map((resource) => latin1.decode(resource.nameBytes)).toSet());
-  if (changed.any((resource) => resource.kind == .symbol || resource.kind == .brush && brushes.artwork.contains(latin1.decode(resource.nameBytes)))) {
-    throw UnsupportedError('Changed symbol or referenced brush ink requires complete instance-cache replacement.');
+  if (resources.isNotEmpty) {
+    final AiNativeLayers layers = AiNativeLayers.decode(drawing: appearances.structure.drawing);
+    final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.where((resource) => resource.kind == .brush).map((resource) => latin1.decode(resource.nameBytes)).toSet());
+    if (changed.any((resource) => resource.kind == .symbol || resource.kind == .brush && brushes.artwork.contains(latin1.decode(resource.nameBytes)))) {
+      throw UnsupportedError('Changed symbol or referenced brush ink requires complete instance-cache replacement.');
+    }
   }
+  return (styles: styles, patterns: patterns, gradients: gradients);
+}
+
+/// Transitive resource names whose appearance can change with the selected ink.
+typedef _AiNativeInkDependencies = ({Set<String> styles, Set<String> patterns, Set<String> gradients});
+
+/// Proves independence through source intervals, resource edges and consumed state.
+List<AiNativeAppearanceArtwork> _nativeInkAffectedPrintingOwners(AiNativeInks model, AiNativeInk ink, {_AiNativeInkDependencies? dependencies}) {
+  if (!model.inks.contains(ink)) {
+    throw ArgumentError('Ink dependency inspection requires a current source handle.');
+  }
+  final _AiNativeInkDependencies related = dependencies ?? _nativeInkReferenceScope(model, ink);
+  final Map<AiNativeArtworkResource?, List<AiNativeAppearanceArtwork>> contexts = {};
+  for (final AiNativeAppearanceArtwork owner in model.printingOwners) {
+    (contexts[owner.resource] ??= []).add(owner);
+  }
+  final Set<AiNativeAppearanceArtwork> affected = {};
+  int work = 0;
+
+  /// Keeps cross-product source inspection bounded by the native token budget.
+  void charge() {
+    if (++work > model.records.program.limits.maxTokens) {
+      throw const AiLimitException(message: 'Ink printing dependencies exceed native inspection limits.');
+    }
+  }
+
+  /// Tests only validated literal color and resource operands.
+  bool usesInk(AiNativeInstruction command) {
+    charge();
+    final AiNativeNamedColor? named = AiNativeNamedColor.decode(instruction: command);
+    if (named != null) {
+      return _sameNativeBytes(named.nameBytes, ink.nameBytes);
+    }
+    return const {'p', 'P'}.contains(command.operator) && related.patterns.contains(latin1.decode(aiStringBytes(command.operands.first))) ||
+        command.operator == 'Bg' && related.gradients.contains(latin1.decode(aiStringBytes(command.operands[1])));
+  }
+
+  for (final MapEntry<AiNativeArtworkResource?, List<AiNativeAppearanceArtwork>> context in contexts.entries) {
+    final AiNativeDrawing drawing = context.key?._drawing ?? model.appearances.structure.drawing;
+    final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, context.value.map((owner) => owner.start), clipping: true, appearanceArtwork: context.value);
+    for (final AiNativeAppearanceArtwork owner in context.value) {
+      charge();
+      if (ink.paints.any((command) {
+            charge();
+            return command.start >= owner.start && command.end <= owner.end;
+          }) ||
+          [owner.use, ...owner.nestedUses].any((use) {
+            charge();
+            return related.styles.contains(latin1.decode(use.nameBytes));
+          }) ||
+          owner._commands.any(usesInk)) {
+        affected.add(owner);
+        continue;
+      }
+      final _NativeShapeAccess access = _nativeAppearanceArtworkAccess(drawing, owner, owner._commands);
+      final _NativeShapeInputs state = states[owner.start]!;
+      for (final (Set<String> reads, Map<String, AiNativeInstruction> inputs) in [(access.nativeReads, state.native), (access.printingReads, state.printing)]) {
+        for (final String key in reads.intersection({'fill', 'stroke'})) {
+          final AiNativeInstruction? incoming = inputs[key];
+          if (incoming == null || usesInk(incoming)) {
+            affected.add(owner);
+          }
+        }
+      }
+    }
+  }
+  return List.unmodifiable(model.printingOwners.where(affected.contains));
 }

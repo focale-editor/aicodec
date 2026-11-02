@@ -8,6 +8,7 @@ This verifies the qualified ordinary integration, not Adobe Illustrator acceptan
 
 import argparse
 import importlib
+import json
 import math
 import re
 from pathlib import Path
@@ -24,7 +25,7 @@ from verify_native_rasters import images, samples
 from verify_native_placements import preview_data
 from verify_native_mesh_geometry import read_packet
 from verify_native_group_lifecycle import inventory as group_inventory
-from verify_native_structure import native_values
+from verify_native_structure import native_values, parsed as parse_fragment
 
 
 def verify_appearance_lifecycle(inkai, output):
@@ -213,6 +214,63 @@ def verify_appearance_inks(inkai, output):
                 assert len(pdf.pages) == 1, stem
                 assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
     print('Verified eight private-ink saves: style/group paints, mask inks, exact alternatives, refreshed printing and PDF pixels.')
+
+
+def verify_mixed_inks(inkai, output):
+    """Bind preserved spans independently and check mixed ink revisions twice."""
+    from inkai.parser.hierarchy_objects import Mask
+
+    def preserved(stem):
+        """Validate host range metadata against the external compound inventory."""
+        native = (output / f'{stem}.ps').read_bytes()
+        ranges = json.loads((output / f'{stem}.json').read_text())
+        document = inkai.parse(str(output / f'{stem}.ps'))
+        _, groups, _ = group_inventory(document)
+        compound, = [group for group in groups if group['kind'] == '*u']
+        assert compound['private'], stem
+        start, end = ranges['owner']
+        assert 0 <= start < end <= len(native), stem
+        pieces = []
+        for key in ('authoring', 'printing'):
+            first, last = ranges[key]
+            assert start <= first < last <= end, (stem, key)
+            pieces.append(native[first:last])
+        authoring = [(op.command, tuple(op.tokens)) for op in operators(parse_fragment(pieces[0]))]
+        assert authoring == [(command, operands) for command, operands, _ in compound['commands'] if command is not None], stem
+        assert authoring[0][0] == '*u' and authoring[-1][0] == '*U', stem
+        printing = list(operators(parse_fragment(pieces[1])))
+        assert printing[0].command == 'u' and printing[-1].command == 'U', stem
+        values = list(native_values(document.trailer))
+        owner, = [value for value in values if isinstance(value, dict) and value.get('AIArtName') == 'Compound source']
+        assert 'AI10_ArtUID' in owner, stem
+        masks = [value for value in values if isinstance(value, Mask)]
+        assert len(masks) == int('-raster-' in stem), stem
+        styles = []
+        for first, last in ranges['styles']:
+            assert 0 <= first < last <= start, stem
+            fragment = native[first:last]
+            assert fragment.startswith(b'/KnownStyle') and b'/ActiveStyle' in fragment and b'/Execution' in fragment, stem
+            styles.append(fragment)
+        assert styles, stem
+        return native, native[start:end], pieces, styles, owner['AI10_ArtUID'], document
+
+    for printing in ('raster', 'vector'):
+        for neighbor in ('path', 'appearance'):
+            base = f'ink-mixed-{printing}-{neighbor}'
+            initial = preserved(f'{base}-initial')
+            for revision in (1, 2):
+                stem = f'{base}-{revision}'
+                native, owner, pieces, styles, identity, document = preserved(stem)
+                assert (owner, pieces, styles, identity) == initial[1:5], stem
+                paints = [op for section in (document.setup, document.trailer)
+                          for op in operators(section) if op.command in ('x', 'X')]
+                assert paints and all(op.tokens[4] == b'Authored' for op in paints), stem
+                assert all(list(map(float, op.tokens[:4])) == [.1 * revision, .3, .5, .2] for op in paints), stem
+                path = output / f'{stem}.ai'
+                assert native_programs(path) == [native], stem
+                assert len(PdfReader(path, strict=True).pages) == 1, stem
+                assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+    print('Verified eight mixed-ink saves: exact preserved compound/style/mask/printing bytes, editable ink alternatives and PDF pixels.')
 
 
 def main():
@@ -424,6 +482,7 @@ def main():
     verify_named_inks(inkai, args.output)
     verify_authored_inks(inkai, args.output)
     verify_appearance_inks(inkai, args.output)
+    verify_mixed_inks(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 

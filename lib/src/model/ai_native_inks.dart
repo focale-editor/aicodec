@@ -36,8 +36,8 @@ final class AiNativeInks {
   /// Complete printing owners required by a global redefinition.
   ///
   /// The global operation takes a complete printing revision so resource-driven
-  /// expansions cannot retain stale pixels. Unchanged owners may supply their
-  /// original printing bytes. Nested applications share their outer owner.
+  /// expansions cannot retain stale pixels. Independent owners may explicitly
+  /// retain their printing bytes. Nested applications share their outer owner.
   late final List<AiNativeAppearanceArtwork> printingOwners = List.unmodifiable(_nativeInkPrintingOwners(appearances));
 
   /// Inspects named references without converting alternatives or native tints.
@@ -46,6 +46,14 @@ final class AiNativeInks {
   /// Keeps graph handles and references in one immutable namespace.
   AiNativeInks._({required this.appearances, required List<AiNativeInk> inks}) : inks = List.unmodifiable(inks);
 
+  /// Identifies printing owners that may consume this ink directly or indirectly.
+  ///
+  /// Includes style/pattern/gradient dependencies and inherited paint consumed by
+  /// either source interpretation. Unresolved input cannot prove independence.
+  /// Returned handles belong to [printingOwners] in this immutable snapshot.
+  /// Unsupported global reference scopes throw before returning a partial result.
+  List<AiNativeAppearanceArtwork> affectedPrintingOwners({required AiNativeInk ink}) => _nativeInkAffectedPrintingOwners(this, ink);
+
   /// Redefines all qualified uses of one ink while retaining names and tints.
   ///
   /// Supply each device alternative used by the source; none is converted or
@@ -53,6 +61,8 @@ final class AiNativeInks {
   /// gradient name, covering all its printing/nonprinting banks. Artwork uses
   /// handles from [printingOwners]. The host supplies matching complete printing
   /// and PDF content; AiKit does not render or establish visual equivalence.
+  /// [retainedArtwork] may cover unaffected owners instead of replacements; their
+  /// complete source printing remains untouched. Affected owners cannot be retained.
   ///
   /// Unknown references, text-engine dependencies, color-book payloads,
   /// conditional ownership and unsupported mesh attachments reject atomically.
@@ -64,5 +74,6 @@ final class AiNativeInks {
     AiColor? gray,
     Map<AiNativeGradientDefinition, List<AiNativeGradientRamp>> ramps = const {},
     List<AiNativeAppearanceReplacement> artwork = const [],
-  }) => _redefineNativeInk(this, ink, cmyk, rgb, gray, ramps, artwork);
+    List<AiNativeAppearanceArtwork> retainedArtwork = const [],
+  }) => _redefineNativeInk(this, ink, cmyk, rgb, gray, ramps, artwork, retainedArtwork);
 }

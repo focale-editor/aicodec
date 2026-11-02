@@ -1115,7 +1115,7 @@ gradient stops and mesh Separation/NChannel declarations. A palette's display
 label remains independent of the ink identity. The inventory is not permission to
 edit opaque same-name references.
 
-`redefine(ink:, cmyk:, rgb:, gray:, ramps:, artwork:)` changes every qualified
+`redefine(ink:, cmyk:, rgb:, gray:, ramps:, artwork:, retainedArtwork:)` changes every qualified
 alternative of one ink atomically. Supply the device alternatives required by the
 source; AiKit does not convert between them. Original ink names, tint operands,
 mesh tint order, geometry, object identities and unrelated ink values remain
@@ -1125,10 +1125,18 @@ lines are synchronized without changing the document's ink-name list.
 Each affected gradient name requires one current definition key and freshly
 composed ramps; all its counted banks and both stop copies are updated together.
 Duplicate banks must agree on authoritative stops. Every complete appearance pair
-requires one host-supplied printing replacement using `printingOwners` handles;
-nested applications share their outer pair. Unchanged expansions may supply their
-original bytes. These complete inputs prevent forgotten resource-driven printing
-caches; their visual equivalence and the matching PDF remain host responsibilities.
+must be covered once using current `printingOwners` handles; nested applications
+share their outer pair. `affectedPrintingOwners(ink:)` identifies every pair that
+may consume the ink, following direct paints, masks, transitive style/pattern/
+gradient references and inherited fill/stroke read by native or printing content.
+Unresolved input is conservatively affected; unsupported global scopes reject.
+
+Affected pairs require host-supplied printing replacements. Independent pairs may
+instead be listed in `retainedArtwork`: their complete printing bytes remain
+untouched, without parsing and re-emitting a supplied fragment. Missing, duplicate,
+foreign or stale coverage and retained affected owners reject atomically. These
+complete inputs prevent forgotten resource-driven printing caches; visual
+equivalence and the matching PDF remain host responsibilities.
 
 Whole-source dependency qualification and same-name reference coverage precede the
 transaction. Unknown references, populated text-engine dependencies, unsupported

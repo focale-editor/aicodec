@@ -1475,7 +1475,7 @@ Global master revisions supply freshly composed printing for every editable
 appearance owner, including mask coverage, and then derive the compatibility PDF
 from the canonical native revision. Combined geometry/lifecycle edits are saved
 first, before ink-driven printing replacement can renumber native path handles.
-Unsupported preserved owners, named gradient/mesh composition and separation-aware
+Ink-dependent preserved owners, named gradient/mesh composition and separation-aware
 overprint captures retain explicit rejection. Illustrator exchange remains an
 external acceptance requirement.
 
@@ -1487,3 +1487,30 @@ warnings (550 existing informational lints). Independent readers and Poppler pas
 48 complete saves, including eight private-ink revisions with exact native
 alternatives, mask references, refreshed printing and reference PDF pixels.
 This remains local format/rendering evidence, without Illustrator certification.
+
+## Ink revisions in mixed documents
+
+A global custom-ink revision retains unrelated preserved appearance pairs after
+AiKit proves that neither their authoring nor printing interpretation consumes the
+ink, directly, through a style/resource, or through inherited paint. Their complete
+source bytes, masks and referenced style definitions remain exact. Focale composes
+only affected editable owners and the resulting compatibility PDF. An affected
+preserved owner still rejects the revision atomically.
+
+User changes to preserved proxies and ancestors are checked before any printing
+replacement can renumber projected paths. Reprojection then binds canonical native
+IDs; exact source checks remain mandatory. Regression cases cover vector/raster
+printing, optional editable appearances before the preserved pair, two revisions,
+a simultaneous neighbor translation, and rejection of ink in preserved authoring
+or mask Art. Independent checks bind the preserved compound through the external
+parser, compare all saved owner/style spans and render the final PDF against the
+host reference. Illustrator exchange remains a separate external acceptance gate.
+
+Validation on 2026-11-02: all 1,482 package tests pass on VM and Node, including
+seven dependency/retention regressions. Package analysis is clean. The 294
+AI/PDF/source/prepress/color host tests pass; full application analysis reports no
+errors or warnings (550 existing informational lints). Formatting and scoped fix
+checks pass. Independent native/PDF readers and Poppler validate 56 complete saves,
+including eight mixed-ink revisions with byte-exact owner/style/mask/printing
+preservation and matching reference PDF pixels. This is local evidence; no real
+Illustrator round trip has been performed.
