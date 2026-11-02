@@ -1547,3 +1547,31 @@ the next edit. Its companion Python verifier checks the native library with pinn
 inkai, the AI container with pypdf, and unchanged page pixels with Poppler. Unused
 library definitions do not appear on the PDF page: those checks establish native
 structure and page preservation, not Illustrator visual or editability acceptance.
+
+### Typed pattern paints and local vector declarations
+
+`AiNativePatternPaint` preserves the exact resource name, nine placement operands
+and six affine matrix entries of `p`/`P`. `AiNativePaintAssignment.pattern` exposes
+this layout without presenting it as a process color. A pattern can initialize a
+fill/stroke `AiNativeAppearancePartDefinition`; it is exclusive with process and
+named colors and must resolve to a qualified ordinary declaration. Existing
+selected/shared part transactions retain their full printing-coverage contract.
+Numeric paint edits reject pattern assignments rather than losing name/matrix data.
+
+The placement layout follows Adobe's [AI file format specification, section 5.4](https://13thmonkey.org/documentation/fonts/AI7FileFormat.pdf#page=62).
+The package retains decomposed placement literally; hosts interpret it. Focale's
+current bridge authors canonical placement with an explicit affine matrix.
+
+`AiNativeArtworkResources.encodeVectorArtwork` shares bounded local path/group
+serialization with opacity-mask Art without adding mask delimiters. Resource
+`artworkDrawing` exposes local inspection; `qualifiedArtwork` first checks the
+shared resource namespace and returns local geometry handles. They cannot be used
+as body mutation handles. Neither API renders tiles or synthesizes object identities.
+
+Identified body artwork can be removed while retaining fully qualified pattern,
+symbol and brush-art declarations and brush descriptors. Complete appearance
+pairs remain indivisible; retained styles, resources and their bytes are unchanged.
+Deletion rejects ambiguous object identities and retained resource/descriptor
+string literals equal to a removed identity, conservatively including label
+collisions. Unknown metadata, executable references and conditional resource
+ownership retain their rejection policy.

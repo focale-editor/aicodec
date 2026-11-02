@@ -139,7 +139,7 @@ void main() {
     }
   });
 
-  test('does not qualify metadata outside the pattern or lower artwork deletion guards', () {
+  test('rejects external metadata and retains independent patterns during artwork deletion', () {
     const String outside = '/ArtDictionary : 1 /Bool (AIPattern_Editor_AutoGrow) , ;\n';
     for (final String pattern in ['$outside$artboardPattern', '$artboardPattern$outside']) {
       final AiNativeArtboards before = artboardModel(patternArtboardSource(pattern: pattern));
@@ -148,7 +148,13 @@ void main() {
     final AiNativeArtboards before = artboardModel(patternArtboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'target')}'));
     _retained(before, before.reorder(artboards: before.artboards.reversed.toList(), cropBounds: null));
     final AiNativeDrawing drawing = AiNativeDrawing.decode(records: before.records);
-    check(() => drawing.removePaths(paths: drawing.paths)).throws<UnsupportedError>();
+    final AiNativeDrawing removed = drawing.removePaths(paths: drawing.paths);
+    check(removed.paths).isEmpty();
+    check(removed.records.program.bytes.sublist(0, removed.records.program.bodyStart)).deepEquals(before.records.program.bytes.sublist(0, before.records.program.bodyStart));
+    final AiNativeDrawing uncertain = AiNativeDrawing.decode(
+      records: artboardModel(patternArtboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'board-0')}')).records,
+    );
+    check(() => uncertain.removePaths(paths: uncertain.paths)).throws<UnsupportedError>();
   });
 
   test('bounds tile group nesting using the original program inspection policy', () {

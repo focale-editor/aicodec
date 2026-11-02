@@ -29,6 +29,9 @@ final class AiNativePaintChange {
   }) : values = List.unmodifiable(values),
        gradientDefinition = null,
        namedColor = null {
+    if (assignment.pattern != null) {
+      throw ArgumentError('Pattern changes require an explicit authored appearance part.');
+    }
     if (assignment.namedColor != null) {
       throw ArgumentError('Use the namedColor constructor for named ink assignments.');
     }

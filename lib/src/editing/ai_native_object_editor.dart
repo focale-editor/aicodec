@@ -85,7 +85,49 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
   if (identifiers.isEmpty) {
     return;
   }
-  _nativeReferenceScope(model, headers, bodyDictionaries: bodyDictionaries);
+  final _ArtboardResourceScope resources = _artboardResourceScope(model);
+  final _ArtboardBrushScope brushes = _artboardBrushScope(model, resources.brushes);
+  final bool bodyStyles =
+      bodyDictionaries == null &&
+      model.structure.resourceUses.any(
+        (use) => use.instruction.operator == 'XW' && !use.instruction.isPrivate && use.instruction.start >= model.drawing.records.program.bodyStart,
+      );
+  // Reject executable or reference-bearing definitions before decoding retained pairs.
+  if (bodyStyles) {
+    final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use};
+    for (final AiNativeContainer style in model.drawing.records.roots.where((record) => record.type == 'KnownStyle')) {
+      _artboardRetainedStyle(model, style, references, resources.patterns, brushes.names);
+    }
+  }
+  final List<AiNativeAppearanceArtwork> appearances = bodyStyles ? _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: model.structure)) : const [];
+  _nativeReferenceScope(
+    model,
+    headers,
+    bodyDictionaries:
+        bodyDictionaries ??
+        (appearances.isEmpty
+            ? null
+            : _nativeReferenceBody(
+                model,
+                headers,
+                inspect: _nativeAppearanceInterval,
+                qualifyShapeNeighbors: false,
+                clipping: true,
+                appearanceArtwork: appearances,
+                patterns: resources.patterns,
+              )),
+    retainedResources: resources,
+    retainedBrushes: brushes,
+  );
+  final Set<String> removed = {for (final AiNativeObjectIdentifier identity in identifiers) latin1.decode(identity.bytes)};
+  final List<({int start, int end})> retained = [...resources.ranges, ...brushes.ranges];
+  for (final AiToken token in model.drawing.records._projection.tokens) {
+    if (const {AiTokenKind.string, AiTokenKind.hexString}.contains(token.kind) &&
+        retained.any((range) => token.start >= range.start && token.end <= range.end) &&
+        removed.contains(latin1.decode(aiStringBytes(token)))) {
+      throw UnsupportedError('Retained artwork resources have uncertain references to removed object identities.');
+    }
+  }
   final Map<String, int> occurrences = {};
   for (final AiNativeObjectIdentifier identifier in model.structure.identifiers.where((identifier) => identifier.kind == .xmlArt)) {
     occurrences.update(latin1.decode(identifier.bytes), (count) => count + 1, ifAbsent: () => 1);
@@ -97,9 +139,9 @@ void _nativeRemovalReferences(AiNativeLayers model, List<AiNativeObjectIdentifie
 
 /// Qualifies references, optionally reusing an already checked immutable body.
 ///
-/// Appearance edits may supply fully inspected resource artwork and brushes,
-/// whose identities stay unchanged. Identity deletion retains its stricter
-/// resource boundary by omitting those scopes.
+/// Callers may supply fully inspected resource artwork and brushes, whose
+/// identities stay unchanged. Deletion additionally checks these retained
+/// namespaces for uncertain references to the selected object identities.
 void _nativeReferenceScope(
   AiNativeLayers model,
   Map<int, AiNativeLayer> headers, {

@@ -104,6 +104,9 @@ final class AiNativeArtworkResource {
   /// Local commands, records, images and version comments in source order.
   List<AiNativeItem> get items => _drawing.items;
 
+  /// Resource-local drawing for inspection, never a document mutation handle.
+  AiNativeDrawing get artworkDrawing => _drawing;
+
   /// Local paths, retaining separate native and printing representations.
   List<AiNativePath> get paths => _drawing.paths;
 
@@ -119,6 +122,26 @@ final class AiNativeArtworkResource {
 /// Names are not deduplicated or conflated across namespaces. Body ownership,
 /// resource instances and unknown dependency schemas remain separate contracts.
 final class AiNativeArtworkResources {
+  /// Encodes local paths and clipped groups for a resource declaration.
+  ///
+  /// Geometry, colors and bounds are host supplied. Named style applications and
+  /// object identities require the raw byte creation contract instead. No mask
+  /// envelope or rendering is generated; declaration creation qualifies references.
+  static Uint8List encodeVectorArtwork({required AiNativeRecords records, required List<AiNativeAppearanceElementDefinition> elements, bool private = true}) =>
+      _createdNativeLocalArtwork(records, elements, private);
+
+  /// Returns local artwork after validating resource geometry and dependencies.
+  ///
+  /// This qualifies the shared declaration namespace, including retained sibling
+  /// resources. Returned handles belong to the resource and cannot mutate the body.
+  AiNativeDrawing qualifiedArtwork({required AiNativeArtworkResource resource}) {
+    if (!resources.contains(resource)) {
+      throw ArgumentError('Resource qualification requires a current declaration handle.');
+    }
+    _artboardResourceScope(AiNativeLayers.decode(drawing: structure.drawing));
+    return resource.artworkDrawing;
+  }
+
   /// Original structure owning all reference handles and version branches.
   final AiNativeStructure structure;
 

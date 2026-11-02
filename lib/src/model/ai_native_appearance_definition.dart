@@ -38,6 +38,9 @@ final class AiNativeAppearancePartDefinition {
   /// Literal named paint, exclusive with process [colors].
   final AiNativeNamedColor? namedColor;
 
+  /// Literal pattern placement, exclusive with process and named colors.
+  final AiNativePatternPaint? pattern;
+
   /// Explicit overprint flag for a new fill or stroke.
   final bool overprint;
 
@@ -89,6 +92,7 @@ final class AiNativeAppearancePartDefinition {
     this.visible = true,
     List<AiColor> colors = const [],
     this.namedColor,
+    this.pattern,
     this.overprint = false,
     this.opacity = 1,
     this.transparency,
@@ -111,8 +115,9 @@ final class AiNativeAppearancePartDefinition {
     final bool compound = kind == .stack || kind == .chain;
     if (!paint && !compound && kind != .conduit && kind != .blend ||
         !compound && children.isNotEmpty ||
-        paint && (namedColor == null ? !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) : colors.isNotEmpty) ||
-        !paint && (colors.isNotEmpty || namedColor != null)) {
+        namedColor != null && pattern != null ||
+        paint && (namedColor == null && pattern == null ? !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) : colors.isNotEmpty) ||
+        !paint && (colors.isNotEmpty || namedColor != null || pattern != null)) {
       throw ArgumentError('New appearances require a supported part with its own paint or child payload.');
     }
     if (![opacity, strokeWidth, miterLimit, dashPhase, ...dash].every((value) => value.isFinite && value.abs() <= 9007199254740991) ||

@@ -146,12 +146,12 @@ void main() {
     }
   });
 
-  test('retains complete conditional cells during artboard edits without lowering deletion scope', () {
+  test('retains conditional palette cells and rejects uncertain resource identity references', () {
     final String palette = '%AI5_BeginPalette\n0 0 Pb\n${appearanceScopeVersion('0.3 g Pc')}PB\n%AI5_EndPalette\n';
     final AiNativeArtboards source = artboardModel(paletteArtboardSource(palette: palette));
     final AiNativeArtboards changed = source.reorder(artboards: source.artboards.reversed.toList(), cropBounds: null);
     check(latin1.decode(changed.records.program.bytes)).contains(palette);
-    final AiNativeArtboards resources = artboardModel(patternArtboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'target')}'));
+    final AiNativeArtboards resources = artboardModel(patternArtboardSource(body: '0 A 0 Xw 0.3 g 10 -10 m 30 -20 L f\n${objectDictionary(identifier: 'board-0')}'));
     final AiNativeDrawing drawing = AiNativeDrawing.decode(records: resources.records);
     check(() => drawing.removePaths(paths: drawing.paths)).throws<UnsupportedError>();
   });

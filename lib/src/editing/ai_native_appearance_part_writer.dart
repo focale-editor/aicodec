@@ -58,7 +58,10 @@ Uint8List _createdNativeAppearancePart(
       text('/Dictionary : /NotRecorded , 1 /Int (BSAdvStrokeDictionaryVersion) , ${adjust ? 1 : 0} /Bool (BSDashAdj) , ; (kAIBeautifulStrokesParamsDictKey) , ');
     }
     text('/${stroke ? 'StrokeStyle' : 'FillStyle'} : ${definition.overprint ? 1 : 0} ${stroke ? 'R' : 'O'} ');
-    if (definition.namedColor case final AiNativeNamedColor named) {
+    if (definition.pattern case final AiNativePatternPaint pattern) {
+      append(pattern._bytes(stroke: stroke, limit: limits.maxDecodedBytes));
+      text(' ');
+    } else if (definition.namedColor case final AiNativeNamedColor named) {
       append(named._bytes(stroke: stroke, limit: limits.maxDecodedBytes));
       text(' ');
     } else {

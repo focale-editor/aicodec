@@ -37,7 +37,7 @@ final class AiNativeOpacityMask {
     required AiNativeRecords records,
     required List<AiNativeAppearanceElementDefinition> elements,
     bool private = true,
-  }) => _createdNativeOpacityMaskArtwork(records, elements, private);
+  }) => _createdNativeLocalArtwork(records, elements, private, mask: true);
 
   /// Native source snapshot owning the mask and its exact source offsets.
   final AiNativeRecords records;

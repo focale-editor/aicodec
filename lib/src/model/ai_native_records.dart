@@ -170,6 +170,7 @@ part 'ai_native_inks.dart';
 part 'ai_native_objects.dart';
 part 'ai_native_opacity_masks.dart';
 part 'ai_native_paint_assignments.dart';
+part 'ai_native_pattern_paint.dart';
 part 'ai_native_path_definition.dart';
 part 'ai_native_path_topology.dart';
 part 'ai_native_placements.dart';

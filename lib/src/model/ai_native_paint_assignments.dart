@@ -77,13 +77,16 @@ final class AiNativePaintAssignment {
   /// Named color for this literal assignment, retaining its exact native layout.
   AiNativeNamedColor? get namedColor => AiNativeNamedColor.decode(instruction: instruction);
 
+  /// Literal pattern placement for this exact fill or stroke assignment.
+  AiNativePatternPaint? get pattern => AiNativePatternPaint.decode(instruction: instruction);
+
   /// Authored process colors, without choosing or converting dual alternatives.
   ///
   /// Seven-operand Xa/XA commands retain CMYK followed by RGB. Other settings
   /// return an empty list; named, pattern and gradient paints stay in the full
   /// command inventory or their typed assignment and are not relabeled as process colors.
   List<AiColor> get colors {
-    if (parameter != .fillColor && parameter != .strokeColor || namedColor != null) {
+    if (parameter != .fillColor && parameter != .strokeColor || namedColor != null || pattern != null) {
       return const [];
     }
     final List<double> values = instruction.numbers!;
@@ -122,8 +125,8 @@ List<AiNativePaintAssignment> _nativePaintAssignments(List<AiNativeInstruction> 
       continue;
     }
     final AiNativePaintParameter? parameter = switch (instruction.operator) {
-      'g' || 'k' || 'Xa' || 'x' || 'Xx' || 'Xs' || 'Xz' => .fillColor,
-      'G' || 'K' || 'XA' || 'X' || 'XX' || 'XS' || 'XZ' => .strokeColor,
+      'g' || 'k' || 'Xa' || 'x' || 'Xx' || 'Xs' || 'Xz' || 'p' => .fillColor,
+      'G' || 'K' || 'XA' || 'X' || 'XX' || 'XS' || 'XZ' || 'P' => .strokeColor,
       'O' => .fillOverprint,
       'R' => .strokeOverprint,
       'w' => .strokeWidth,
@@ -146,6 +149,8 @@ List<AiNativePaintAssignment> _nativePaintAssignments(List<AiNativeInstruction> 
       }
     } else if (parameter == .transparency) {
       _artboardRetainedOpacity(instruction);
+    } else if (const {'p', 'P'}.contains(instruction.operator)) {
+      AiNativePatternPaint.decode(instruction: instruction);
     } else {
       _nativeArtworkStateKey(instruction);
     }

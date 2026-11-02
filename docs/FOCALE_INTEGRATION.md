@@ -1587,3 +1587,36 @@ including 13 resource lifecycle regressions. Analysis and formatting are clean;
 `dart fix --dry-run` has no proposed fixes. The independent reader/container/pixel
 checks pass all nine successive saves. Focale's source and Git dependency pin are
 unchanged in this lot; no new host integration or Adobe acceptance is claimed.
+
+### Vector pattern applications in Focale
+
+The adapter connects typed pattern fill/stroke styles to complete private path
+owners. New files retain local tile vectors and affine placement independently
+of their host printing image. Reopening projects editable vector tiling paints;
+retained tile-color and placement edits replace the selected complete appearance.
+Byte-identical declarations are reused, and old referenced declarations/styles
+remain source-owned. Project persistence retains this editable scene data.
+
+Current qualification covers rectangular positive repeats matching tile bounds,
+literal local paths/groups/clips and canonical placement plus an affine matrix.
+Other repeat layouts, isolated tile groups, local image/text/nested-resource
+content, conversion of ordinary paths and private group children need broader
+connections. `ai_pattern_test.dart` covers creation, copying, reordering, deletion,
+shared tiles, successive edits and project persistence. It emits eight
+initial/edited/reopened PDF comparisons for `tool/verify_focale_patterns.py`.
+Independent native parsing does not render AI patterns and does not establish
+acceptance by Illustrator.
+
+Removing an identified owner qualifies retained resource namespaces instead of
+rejecting every file with a pattern bank. Retained literal references matching
+its identity still reject atomically, as do unknown or executable dependencies.
+The original style and independent resource declarations remain byte-preserved.
+
+Local validation passes 1,512 package tests on both VM and Node, including eight
+pattern/reference regressions, and 305 Focale AI/PDF/source/prepress/color tests.
+The 64 existing independent save checks and eight pattern comparisons pass; the
+latter inspect native tile colors/geometry, resource references, placement and
+original/reopened host PDF pixels. Package analysis is clean; host analysis has
+no errors or warnings (550 existing informational lints). Formatting and scoped
+fix checks pass. These results do not certify native rendering or editability
+in Illustrator.

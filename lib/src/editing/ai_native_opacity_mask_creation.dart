@@ -1,13 +1,15 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Serializes mask-local vector authoring without inventing resource identities.
-Uint8List _createdNativeOpacityMaskArtwork(AiNativeRecords records, List<AiNativeAppearanceElementDefinition> elements, bool private) {
+/// Serializes local vector authoring without inventing resource identities.
+Uint8List _createdNativeLocalArtwork(AiNativeRecords records, List<AiNativeAppearanceElementDefinition> elements, bool private, {bool mask = false}) {
   final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
   final AiNativeLimits limits = records.program.limits;
   final _NativeDocumentBytes output = _NativeDocumentBytes(maximum: limits.maxDecodedBytes);
   final String prefix = private ? '%_' : '';
   int nodes = 0;
-  output.text('X=\n');
+  if (mask) {
+    output.text('X=\n');
+  }
 
   /// Preserves escaped names while converting only the generated line prefixes.
   void lines(List<int> bytes) {
@@ -21,14 +23,14 @@ Uint8List _createdNativeOpacityMaskArtwork(AiNativeRecords records, List<AiNativ
   /// Applies the same byte/depth budget to masks and ordinary descendants.
   void enter(int depth) {
     if (++nodes > limits.maxTokens || depth > limits.maxDepth) {
-      throw const AiLimitException(message: 'Mask vector artwork exceeds native structure limits.');
+      throw const AiLimitException(message: 'Local vector artwork exceeds native structure limits.');
     }
   }
 
   /// Emits one path with its explicit paints or independent clipping role.
   void path(AiNativePathDefinition definition, {AiNativePathMask mask = .none}) {
     if (definition.identifierBytes != null) {
-      throw UnsupportedError('Mask authoring identities require reference-aware lifecycle changes.');
+      throw UnsupportedError('Local authoring identities require reference-aware lifecycle changes.');
     }
     lines(_createdNativePathBytes(drawing, definition, mask: mask));
   }
@@ -41,7 +43,7 @@ Uint8List _createdNativeOpacityMaskArtwork(AiNativeRecords records, List<AiNativ
         path(element.definition);
       case AiNativeAppearanceGroupDefinition():
         if (element.styleNameBytes != null || element.identifierBytes != null) {
-          throw UnsupportedError('Mask groups require local artwork without named styles or XML identities.');
+          throw UnsupportedError('Local groups require local artwork without named styles or XML identities.');
         }
         output.text('$prefix${element.locked ? 1 : 0} A\n$prefix${element.hidden ? 1 : 0} Xw\n$prefix${element.clip == null ? 'u' : 'q'}\n');
         if (element.clip case final AiNativeAppearanceClipDefinition clip) {
@@ -68,6 +70,8 @@ Uint8List _createdNativeOpacityMaskArtwork(AiNativeRecords records, List<AiNativ
   for (final AiNativeAppearanceElementDefinition element in elements) {
     write(element, 1);
   }
-  output.text('${prefix}X+');
+  if (mask) {
+    output.text('${prefix}X+');
+  }
   return output.takeBytes().asUnmodifiableView();
 }

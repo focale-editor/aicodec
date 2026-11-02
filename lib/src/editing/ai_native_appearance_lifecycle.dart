@@ -59,7 +59,7 @@ AiNativeAppearances _createNativeAppearanceStyle(AiNativeAppearances model, List
     throw const FormatException('A new unused style captured an existing native application.');
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: result.structure.drawing);
-  _artboardRetainedStyle(layers, added.resource.definition.source as AiNativeContainer, const {}, const {}, const {});
+  _artboardRetainedStyle(layers, added.resource.definition.source as AiNativeContainer, const {}, _nativeAppearancePatterns(result, added), const {});
   _nativeAppearanceStyleState(result, added);
   return result;
 }
