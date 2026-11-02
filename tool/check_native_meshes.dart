@@ -54,6 +54,22 @@ Future<void> main() async {
     await File('${output.path}/$name.painted.ps').writeAsBytes(painted.records.program.bytes);
     await File('${output.path}/$name.translucent.ps').writeAsBytes(translucent.records.program.bytes);
     await File('${output.path}/$name.inked.ps').writeAsBytes(inked.records.program.bytes);
+    final AiBoundingBox geometryBounds = AiBoundingBox(left: -8192, bottom: -8192, right: 8192, top: 8192);
+    final AiNativeMeshes transformed = source.transform(mesh: selected, transform: AiNativeAffineTransform(a: 1.1, b: .15, c: .2, d: .9, tx: 5, ty: -7), bounds: geometryBounds);
+    final AiNativeMeshes cropped = source.replaceTopology(
+      mesh: selected,
+      bounds: geometryBounds,
+      definition: AiNativeMeshDefinition(
+        firstSize: selected.size.first - 1,
+        secondSize: selected.size.second,
+        patches: [
+          for (final AiNativeMeshPatch patch in selected.patches)
+            if (patch.firstIndex < selected.size.first - 1) AiNativeMeshPatchDefinition.fromSource(patch: patch),
+        ],
+      ),
+    );
+    await File('${output.path}/$name.transformed.ps').writeAsBytes(transformed.records.program.bytes);
+    await File('${output.path}/$name.cropped.ps').writeAsBytes(cropped.records.program.bytes);
     report.add({
       'file': name,
       'meshes': [

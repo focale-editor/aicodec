@@ -51,11 +51,17 @@ enum AiNativeFeature {
   /// Ordered named appearance graphs and literal paint settings.
   appearance,
 
+  /// Native opacity-mask flags and preserved source artwork.
+  opacityMask,
+
   /// Gradient instance geometry.
   gradient,
 
   /// Shared gradient definition, stops and supplied printing ramps.
   gradientResource,
+
+  /// Source-owned palette cells and retained grouping.
+  palette,
 
   /// Mesh packet with native nodes and paint data.
   mesh,
@@ -111,8 +117,14 @@ enum AiNativeEditOperation {
   /// Replace ordinary path coordinates with qualified geometry.
   pathGeometry,
 
+  /// Replace an ordinary path's complete process appearance and geometry.
+  pathAppearance,
+
   /// Edit ordinary compound/clip contours and their local mask controls.
   pathTopology,
+
+  /// Transform qualified contours with fixed paints and explicit frame angles.
+  pathAffineTransform,
 
   /// Insert ordinary geometry using an existing path's paint and object flags.
   pathInsertion,
@@ -171,6 +183,12 @@ enum AiNativeEditOperation {
   /// Uniformly scale live-shape parameters and dependent geometry.
   liveShapeScaling,
 
+  /// Transform representable native shapes with host-composed CC printing groups.
+  liveShapeAffineTransform,
+
+  /// Save complete native parameters and host-composed dependent contours.
+  liveShapeParameters,
+
   /// Copy a complete bound authoring/printing pair with fresh saved identities.
   liveShapeDuplication,
 
@@ -195,14 +213,41 @@ enum AiNativeEditOperation {
   /// Isolate selected users with native part edits and supplied printing groups.
   selectedAppearance,
 
+  /// Change mask flags with a complete host-composed printing owner.
+  opacityMaskSettings,
+
+  /// Replace qualified mask artwork with synchronized printing.
+  opacityMaskArtwork,
+
   /// Edit a gradient's stops with host-supplied printing intervals.
   gradientStops,
+
+  /// Create a counted global gradient using host-supplied printing ramps.
+  gradientCreation,
+
+  /// Remove every unused same-name gradient declaration.
+  gradientRemoval,
+
+  /// Create a literal process, named or gradient palette cell.
+  swatchCreation,
+
+  /// Remove qualified palette cells without leaving named-ink dependencies.
+  swatchRemoval,
 
   /// Edit a radial gradient's native focus.
   gradientFocus,
 
   /// Change selected mesh vertex colors, inks or opacity.
   meshPaint,
+
+  /// Change native mesh coordinates, handles and weights as one coherent edit.
+  meshGeometry,
+
+  /// Transform every mesh position and handle without changing paint or weights.
+  meshAffineTransform,
+
+  /// Replace explicit Cartesian dimensions, cells and native patch data.
+  meshTopology,
 
   /// Replace embedded source sample planes.
   rasterPixels,

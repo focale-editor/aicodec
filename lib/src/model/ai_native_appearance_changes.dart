@@ -15,18 +15,63 @@ final class AiNativePaintChange {
   /// Required dash phase, absent for non-dash assignments.
   final double? dashPhase;
 
+  /// Existing target resource for a precise gradient application change.
+  final AiNativeGradientDefinition? gradientDefinition;
+
+  /// Replacement named paint retaining its source ink name and native layout.
+  final AiNativeNamedColor? namedColor;
+
   /// Owns replacement data before any source byte offsets change.
   AiNativePaintChange({
     required this.assignment,
     required List<double> values,
     this.dashPhase,
-  }) : values = List.unmodifiable(values) {
+  }) : values = List.unmodifiable(values),
+       gradientDefinition = null,
+       namedColor = null {
+    if (assignment.namedColor != null) {
+      throw ArgumentError('Use the namedColor constructor for named ink assignments.');
+    }
+    if (assignment.parameter == .gradient) {
+      throw ArgumentError('Use the gradient constructor for a gradient application.');
+    }
     if ((assignment.parameter == .dash) != (dashPhase != null) || [...values, ?dashPhase].any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
       throw ArgumentError('Paint changes require portable values and a phase only for dash assignments.');
     }
     if (assignment.parameter != .dash && values.length != assignment.numbers!.length) {
       throw ArgumentError('Paint changes must retain the source command operand layout.');
     }
+  }
+
+  /// Rebinds exactly one appearance gradient while retaining its placement.
+  ///
+  /// Use updateSelected to isolate explicitly selected applications of a shared
+  /// style, or updateShared with full use coverage. The target must already exist
+  /// in the same snapshot. Printing groups are supplied through that transaction.
+  AiNativePaintChange.gradient({required this.assignment, required AiNativeGradientDefinition definition}) : values = const [], dashPhase = null, gradientDefinition = definition, namedColor = null {
+    if (assignment.gradient == null) {
+      throw ArgumentError('A gradient change requires an exact gradient assignment.');
+    }
+  }
+
+  /// Replaces named ink alternatives/tint without renaming a document separation.
+  ///
+  /// Shared-style use coverage and host printing groups follow the same atomic
+  /// transaction as process paints. This does not redefine unrelated same-name
+  /// inks or interpret a native tint as opacity.
+  AiNativePaintChange.namedColor({required this.assignment, required AiNativeNamedColor value}) : values = const [], dashPhase = null, gradientDefinition = null, namedColor = value {
+    final AiNativeNamedColor? source = assignment.namedColor;
+    if (source == null || source.kind != value.kind || !_sameNativeBytes(source.nameBytes, value.nameBytes)) {
+      throw ArgumentError('Named paint changes retain the source representation and ink name.');
+    }
+  }
+
+  /// Replaces one exact transparency assignment using explicit host settings.
+  factory AiNativePaintChange.transparency({required AiNativePaintAssignment assignment, required AiNativeTransparency value}) {
+    if (assignment.parameter != .transparency) {
+      throw ArgumentError('A transparency change requires an owned Xy assignment.');
+    }
+    return AiNativePaintChange(assignment: assignment, values: value.operands);
   }
 }
 
@@ -90,6 +135,69 @@ final class AiNativeAppearancePartChange {
     }
     if (alignmentLabelBytes != null && (strokeAlignment == null || alignmentLabelBytes.any((byte) => byte < 0 || byte > 255))) {
       throw ArgumentError('An alignment label requires an alignment change and native byte data.');
+    }
+  }
+}
+
+/// Complete process paint and geometry for one retained private group child.
+final class AiNativeAppearancePathChange {
+  /// Current authoritative contour inside a complete appearance group.
+  final AiNativePath path;
+
+  /// Explicit geometry, closure, process colors and stroke/locking attributes.
+  final AiArtworkPath artwork;
+
+  /// Explicit opacity when no complete transparency tuple is supplied.
+  final double opacity;
+
+  /// Complete blending settings, with opacity kept at its default when supplied.
+  final AiNativeTransparency? transparency;
+
+  /// Visibility independent of ancestor visibility.
+  final bool hidden;
+
+  /// Whether the process fill overprints underlying artwork.
+  final bool fillOverprint;
+
+  /// Whether the process stroke overprints underlying artwork.
+  final bool strokeOverprint;
+
+  /// Retains immutable values without replacing names, identities or source frames.
+  AiNativeAppearancePathChange({required this.path, required this.artwork, this.opacity = 1, this.transparency, this.hidden = false, this.fillOverprint = false, this.strokeOverprint = false}) {
+    if (!opacity.isFinite || opacity < 0 || opacity > 1 || transparency != null && opacity != 1) {
+      throw ArgumentError('Private path paint requires valid opacity or an explicit transparency tuple.');
+    }
+  }
+}
+
+/// Complete geometry and flags for a standalone styled private contour.
+///
+/// Named paints, metadata, identities and opacity-mask artwork remain owned by
+/// the source. The host supplies replacement printing and the matching PDF.
+final class AiNativeAppearanceContourChange {
+  /// Current standalone authoring path obtained through its complete owner.
+  final AiNativePath path;
+
+  /// Complete new anchors, without an extra endpoint required only by counting.
+  final List<AiPathSegment> segments;
+
+  /// Explicit contour closure, serialized as the unpainted `n` or `N` role.
+  final bool closed;
+
+  /// Visibility of the native path and its complete printing owner.
+  final bool hidden;
+
+  /// Locking of the native path and its complete printing owner.
+  final bool locked;
+
+  /// Freezes one portable contour without changing its named paints or identity.
+  AiNativeAppearanceContourChange({required this.path, required List<AiPathSegment> segments, required this.closed, required this.hidden, required this.locked})
+    : segments = List.unmodifiable(segments) {
+    if (segments.isEmpty ||
+        segments.first.operator != 'm' ||
+        segments.skip(1).any((segment) => segment.operator == 'm') ||
+        segments.any((segment) => segment.coordinates.any((value) => value.abs() > 9007199254740991))) {
+      throw ArgumentError('Standalone appearance contours require one portable path with an initial moveto.');
     }
   }
 }

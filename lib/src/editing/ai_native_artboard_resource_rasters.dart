@@ -5,6 +5,9 @@ final class _ArtboardResourceInspection {
   /// Original document structure and parsing policy.
   final AiNativeLayers layers;
 
+  /// Whether this inspection is restricted to original setup resources.
+  final bool setupOnly;
+
   /// Resource and mask drawings awaiting common geometry/reference checks.
   final List<AiNativeDrawing> drawings = [];
 
@@ -12,7 +15,7 @@ final class _ArtboardResourceInspection {
   List<AiNativeRaster>? _rasters;
 
   /// Creates one inspection context for an immutable native program.
-  _ArtboardResourceInspection({required this.layers});
+  _ArtboardResourceInspection({required this.layers, this.setupOnly = true});
 
   /// Decodes each binary image once, retaining the original byte boundaries.
   List<AiNativeRaster> get rasters => _rasters ??= _readNativeRasters(layers.drawing.records, false);

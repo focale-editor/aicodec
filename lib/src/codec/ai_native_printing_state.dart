@@ -6,13 +6,18 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// replacement may only leave the same assignments. Complete gradient fills
 /// restore their path-rendering procedures at BB and retain external resources.
 Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group, {bool clipping = false}) {
-  if (group.opening.operator != 'u' || group.paths.isEmpty) {
+  final List<AiNativeRaster> images = _printingRasters(drawing, group);
+  if (group.opening.operator != 'u' || group.paths.isEmpty && images.isEmpty) {
     throw UnsupportedError('Printing replacement requires a nonempty ordinary outer group.');
   }
   if (group.paths.any((path) => path.geometry.skip(1).any((item) => item.operator == 'm'))) {
     throw const FormatException('Each native printing path requires exactly one initial moveto.');
   }
   final List<AiNativeInstruction> commands = _printingCommands(drawing, group, clipping: clipping);
+  final Set<int> rasterEndings = {
+    for (final AiNativeRaster image in images)
+      if (drawing.items.where((item) => item.start >= image.end).firstOrNull case final AiNativeInstruction item when item.operator == 'N' && item.operands.isEmpty && !item.isPrivate) item.start,
+  };
   final List<AiNativeGradient> gradients = drawing.gradients.where((gradient) => gradient.start >= group.start && gradient.end <= group.end).toList();
   final Set<AiNativeInstruction> gradientCommands = {};
   for (final AiNativeGradient gradient in gradients) {
@@ -44,6 +49,12 @@ Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group,
   bool expanded = false;
   for (final AiNativeInstruction item in commands) {
     final String operator = item.operator;
+    if (rasterEndings.contains(item.start) || images.any((image) => item.start >= image.start && item.end <= image.end)) {
+      if (expanded) {
+        throw UnsupportedError('A group-expansion flag cannot target a derived raster.');
+      }
+      continue;
+    }
     if (item.operands.any((operand) => operand.number != null && operand.number!.abs() > 9007199254740991)) {
       throw const FormatException('Printing coordinates and state exceed portable numeric limits.');
     }
@@ -95,6 +106,12 @@ Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group,
       }
     }
 
+    if (_nativeNamedColorOperators.contains(operator)) {
+      final AiNativeNamedColor color = AiNativeNamedColor.decode(instruction: item)!;
+      final bool stroke = _nativeNamedColorStroke(operator);
+      state[stroke ? 'stroke' : 'fill'] = latin1.decode(color._bytes(stroke: stroke, limit: drawing.records.program.limits.maxDecodedBytes));
+      continue;
+    }
     String key = operator;
     switch (operator) {
       case 'g' || 'G' || 'k' || 'K' || 'Xa' || 'XA':
@@ -113,7 +130,7 @@ Map<String, String> _printingState(AiNativeDrawing drawing, AiNativeGroup group,
       case 'w' || 'M':
         require(arity(1) && numbers!.single >= (operator == 'w' ? 0 : 1));
       case 'Xy':
-        require(arity(5) && numbers![0] == 0 && _gradientUnit(numbers[1]) && numbers.skip(2).every((value) => value == 0));
+        _artboardRetainedOpacity(item);
       case 'd':
         final List<AiToken> operands = item.operands;
         require(operands.length >= 3 && operands.first.kind == .arrayStart && operands[operands.length - 2].kind == .arrayEnd && operands.last.number != null);

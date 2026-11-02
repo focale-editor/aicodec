@@ -118,6 +118,9 @@ abstract final class AiNativeEditor {
       if (bounds.any((value) => !value.isFinite || value.abs() > 9007199254740991)) {
         throw ArgumentError('Drawing bounds exceed finite source-coordinate limits.');
       }
+      if (bounds[0] == previous.left && bounds[1] == previous.bottom && bounds[2] == previous.right && bounds[3] == previous.top) {
+        continue;
+      }
       final bool precise = match[1] == '%%HiResBoundingBox:';
       final List<String> fields = [
         for (int index = 0; index < bounds.length; index++)
@@ -204,7 +207,16 @@ abstract final class AiNativeEditor {
     if (printing != null) {
       flag(layer.begin.operands[3], printing);
     }
+    int? flagEnd = layer.header.where((command) => command.operator == 'AE').firstOrNull?.end;
     for (final AiInstruction instruction in layer.header) {
+      // Only the consecutive legacy flags immediately after AE belong to the
+      // layer. Later flags may belong to its first group or another child.
+      if (flagEnd != null && instruction.start >= flagEnd) {
+        if (!const {'A', 'Xw'}.contains(instruction.operator) || latin1.decode(program.bytes.sublist(flagEnd, instruction.start)).trim().isNotEmpty) {
+          break;
+        }
+        flagEnd = instruction.end;
+      }
       if (layer.header.any((header) => header.operator == 'AE') && instruction.operands.length == 1 && instruction.numbers != null) {
         if (instruction.operator == 'Xw' && visible != null) {
           flag(instruction.operands.single, !visible);

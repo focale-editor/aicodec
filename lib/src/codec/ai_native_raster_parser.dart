@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Associates each raster section with one explicit XI command and opaque body.
-List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly) {
+List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly, {int? start, int? end}) {
   final List<AiNativeRaster> images = [];
   final _NativeRecordProjection projection = records._projection;
   final _NativeCommandReader reader = _NativeCommandReader(maxDepth: records.program.limits.maxDepth);
@@ -17,6 +17,9 @@ List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly) 
   int embedded = 0;
   for (final (int, AiToken) item in projection.tokens.indexed) {
     final AiToken token = item.$2;
+    if (start != null && token.start < start || end != null && token.start >= end) {
+      continue;
+    }
     if (bodyOnly && (token.start < records.program.bodyStart || token.start >= records.program.bodyEnd)) {
       continue;
     }

@@ -105,6 +105,67 @@ PdfDocument hostCatalog(PdfDocument pdf, Map<String, PdfValue> values, {Set<Stri
 
 /// Checks page graph lifecycle, explicit artboard association and native ownership.
 void main() {
+  test('requires explicit catalog page ownership for removal and freezes declarations', () {
+    final AiPdfDocument fixture = mappedArtboardSource();
+    final PdfEditor originalEditor = PdfEditor(document: fixture.pdf);
+    for (int index = 0; index < fixture.pdf.pages.length; index++) {
+      originalEditor.setPageAttributes(pageIndex: index, remove: {'PieceInfo'});
+    }
+    final AiPdfDocument original = AiPdfDocument(pdf: originalEditor.document);
+    final AiNativeSource source = AiNativeData.extract(original).single;
+    final AiNativeArtboards before = nativeBoards(source);
+    final AiNativeArtboards changed = before.remove(artboards: [before.artboards.first], activeArtboard: null, cropBounds: null);
+    final PdfEditor host = PdfEditor(document: original.pdf)..removePage(pageIndex: 0);
+    final List<PdfReference> declarations = original.pdf.pages.map((page) => page.reference!).toList();
+    final AiNativePageReplacement mapping = changed.pageReplacement(
+      source: source,
+      pages: [
+        for (int index = 0; index < changed.artboards.length; index++) AiNativeArtboardPage(artboard: changed.artboards[index], page: host.document.pages[index].reference!, metadataOwner: null),
+      ],
+      catalogPages: declarations,
+    );
+    declarations.clear();
+    check(mapping.catalogPages).length.equals(3);
+    check(mapping.catalogPages.clear).throws<UnsupportedError>();
+    check(() => saveMapped(AiNativePageReplacement(replacement: mapping.replacement, pages: mapping.pages), host.document)).throws<ArgumentError>();
+    final AiPdfDocument saved = saveMapped(mapping, host.document);
+    check(AiNativeData.extract(saved).single.owners).deepEquals([null, 0, 1]);
+    check(nativeBoards(AiNativeData.extract(saved).single).artboards).length.equals(2);
+    for (final List<PdfReference> invalid in [
+      [mapping.catalogPages.first, mapping.catalogPages.first],
+      [const PdfReference(objectNumber: 999999)],
+    ]) {
+      check(() => saveMapped(AiNativePageReplacement(replacement: mapping.replacement, pages: mapping.pages, catalogPages: invalid), host.document)).throws<ArgumentError>();
+    }
+    check(() => saveMapped(AiNativePageReplacement(replacement: mapping.replacement, pages: [mapping.pages.first], catalogPages: mapping.catalogPages), host.document)).throws<ArgumentError>();
+    final PdfReference removed = original.pdf.pages.first.reference!;
+    final PdfEditor altered = PdfEditor(document: host.document)
+      ..replaceObject(
+        reference: removed,
+        value: host.document.dictionary(removed).copyWith(values: {'PieceInfo': PdfDictionary(values: {})}),
+      );
+    check(() => saveMapped(mapping, altered.document)).throws<ArgumentError>();
+    check(AiNativeData.extract(original).single.owners).deepEquals([null]);
+  });
+
+  test('cannot claim a separately owned native page through catalog declarations', () {
+    final AiPdfDocument original = mappedArtboardSource();
+    final AiNativeSource source = AiNativeData.extract(original).single;
+    final AiNativePageReplacement mapping = mappedArtboards(source, nativeBoards(source), original.pdf, [0, 1, 2]);
+    check(() => saveMapped(AiNativePageReplacement(replacement: mapping.replacement, pages: mapping.pages, catalogPages: [original.pdf.pages.first.reference!]), original.pdf)).throws<ArgumentError>();
+    final PdfEditor pagesOnly = PdfEditor(document: original.pdf)
+      ..replaceObject(
+        reference: original.pdf.trailer['Root']! as PdfReference,
+        value: original.pdf.catalog.copyWith(remove: {'PieceInfo'}),
+      )
+      ..setPageAttributes(pageIndex: 0, remove: {'PieceInfo'});
+    final AiPdfDocument withoutCatalog = AiPdfDocument(pdf: pagesOnly.document);
+    final AiNativeSource pageSource = AiNativeData.extract(withoutCatalog).single;
+    final AiNativePageReplacement pageMapping = mappedArtboards(pageSource, nativeBoards(pageSource), withoutCatalog.pdf, [1, 1, 2]);
+    check(() => saveMapped(AiNativePageReplacement(replacement: pageMapping.replacement, pages: pageMapping.pages, catalogPages: [withoutCatalog.pdf.pages.first.reference!]), withoutCatalog.pdf))
+        .throws<ArgumentError>();
+  });
+
   test('reorders native boards and host pages with exact per-owner metadata', () {
     final AiPdfDocument original = mappedArtboardSource();
     final AiNativeSource source = AiNativeData.extract(original).single;

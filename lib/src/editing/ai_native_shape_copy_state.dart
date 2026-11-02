@@ -34,7 +34,7 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
         (field.items[2] as AiNativeToken).token.number == 0,
   'Def' when owner.type == 'KnownStyle' => field.container?.type == 'ActiveStyle',
   'Def' => field.items.every((item) => item is AiNativeToken),
-  'Execution' => field.container?.type == 'CompoundFilter',
+  'Execution' => const {'CompoundFilter', 'BasicFilter'}.contains(field.container?.type),
   'Part' => const {'CompoundFilter', 'BasicFilter'}.contains(field.container?.type),
   'Dict' => field.container?.type == 'Dictionary',
   'FillStyle' || 'StrokeStyle' || 'BlendStyle' => field.container?.type == field.key,
@@ -120,7 +120,7 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
       writes.add(command.operator == 'p' ? 'fill' : 'stroke');
       continue;
     }
-    if (!_solidStyleCommands.contains(command.operator)) {
+    if (!_solidStyleCommands.contains(command.operator) && !_nativeNamedColorOperators.contains(command.operator)) {
       throw UnsupportedError('Simple appearance state requires qualified literal process paint.');
     }
     final String? key = _nativeArtworkStateKey(command);
@@ -140,10 +140,16 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
   AiNativeDrawing drawing,
   Iterable<int> boundaries, {
   bool clipping = false,
+  List<_NativeSubtreeSpan>? neutralSpans,
   Set<AiNativeContainer> retainedMetadata = const {},
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
   String? Function(AiNativeInstruction) stateKey = _nativeArtworkStateKey,
 }) {
+  neutralSpans ??= _nativeNeutralArtwork(drawing);
   final List<int> positions = boundaries.toSet().toList()..sort();
+  if (positions.isEmpty) {
+    return {};
+  }
   final Map<int, _NativeShapeInputs> result = {};
   final Map<String, AiNativeInstruction> printing = {};
   final Map<String, AiNativeInstruction> native = {};
@@ -151,28 +157,56 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
   final Map<String, int> nativeOrigins = Map.of(printingOrigins);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(AiNativeLayers.decode(drawing: drawing));
   final Set<AiNativeContainer> metadata = {};
+  final Map<int, ({Set<String> writes, Map<String, AiNativeInstruction> values})> appearanceStyles = {};
   final Map<int, AiLiveShape> styles = {};
   final Set<int> printingStyles = {};
   final Set<int> scopedGradients = {};
   final Set<int> versionComments = {};
+  final Set<int> privateScopes = {};
   final List<_NativeShapeInputs?> clips = [];
   int compoundDepth = 0;
+
+  for (final AiNativeAppearanceArtwork owner in appearanceArtwork) {
+    if (!identical(owner._owner.structure.drawing, drawing)) {
+      throw ArgumentError('Appearance state requires current complete artwork handles.');
+    }
+    metadata.addAll(owner.metadata);
+    privateScopes.addAll(owner._commands.where((command) => command.isPrivate && command.start >= owner.authoring.start && command.end <= owner.authoring.end).map((command) => command.start));
+    if (owner.liveShape != null) {
+      versionComments.addAll(drawing.items.whereType<AiNativeVersionComment>().where((comment) => comment.start >= owner.authoring.end && comment.end <= owner.end).map((comment) => comment.start));
+    }
+    for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) {
+      final AiNativeAppearance style = owner._owner.resolve(use: use)!;
+      final ({Set<String> reads, Set<String> writes}) state = _nativeAppearanceStyleState(owner._owner, style);
+      appearanceStyles[use.instruction.end] = (writes: state.writes, values: _nativeAppearanceScalarState(style, state.reads, colors: true));
+    }
+    printingStyles.addAll(owner._commands.where((command) => _marker(command, 6)).map((command) => command.start));
+    scopedGradients.addAll(
+      owner._commands
+          .where((command) => command.start >= owner.printingGroup.start && command.end <= owner.printingGroup.end && _gradientCommands.contains(command.operator))
+          .map((command) => command.start),
+    );
+  }
 
   /// Freezes source assignments and unknown-value provenance at one boundary.
   _NativeShapeInputs snapshot() => (printing: Map.of(printing), native: Map.of(native), printingOrigins: Map.of(printingOrigins), nativeOrigins: Map.of(nativeOrigins));
 
   /// Restores only actual contour attributes saved by ordinary clipping groups.
-  void restore(_NativeShapeInputs saved) {
+  void restore(_NativeShapeInputs saved, {bool private = false}) {
     for (final String key in _nativeClipStateKeys) {
-      printing.remove(key);
+      if (!private) {
+        printing.remove(key);
+      }
       native.remove(key);
-      if (saved.printing[key] case final AiNativeInstruction value) {
+      if (saved.printing[key] case final AiNativeInstruction value when !private) {
         printing[key] = value;
       }
       if (saved.native[key] case final AiNativeInstruction value) {
         native[key] = value;
       }
-      printingOrigins[key] = saved.printingOrigins[key]!;
+      if (!private) {
+        printingOrigins[key] = saved.printingOrigins[key]!;
+      }
       nativeOrigins[key] = saved.nativeOrigins[key]!;
     }
   }
@@ -225,9 +259,16 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
     }
   }
   int index = 0;
+  int neutralIndex = 0;
   for (final int position in positions) {
     while (index < drawing.items.length && drawing.items[index].end <= position) {
       final AiNativeItem item = drawing.items[index++];
+      while (neutralIndex < neutralSpans.length && neutralSpans[neutralIndex].end <= item.start) {
+        neutralIndex++;
+      }
+      if (neutralIndex < neutralSpans.length && item.start >= neutralSpans[neutralIndex].start && item.end <= neutralSpans[neutralIndex].end) {
+        continue;
+      }
       if (headers.containsKey(item.start) && (headers[item.start]!.bindingIssue == null || retainedMetadata.contains(headers[item.start]!.dictionary)) ||
           _ordinaryObjectAttachment(drawing, item) ||
           retainedMetadata.contains(drawing._objects._attachments[item.start]?.dictionary) ||
@@ -236,7 +277,7 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
         continue;
       }
       if (item is AiNativeInstruction) {
-        if (clipping && !item.isPrivate && item.operands.isEmpty) {
+        if (clipping && (!item.isPrivate || privateScopes.contains(item.start)) && item.operands.isEmpty) {
           switch (item.operator) {
             case '*u':
               compoundDepth++;
@@ -252,7 +293,7 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
                 throw const FormatException('Clipping state requires matched group boundaries.');
               }
               if (clips.removeLast() case final _NativeShapeInputs saved) {
-                restore(saved);
+                restore(saved, private: item.isPrivate);
               }
               continue;
             case 'h' || 'H' || 'W':
@@ -271,6 +312,14 @@ Map<int, _NativeShapeInputs> _shapeCopyInputs(
           if (!item.isPrivate) {
             printing[key] = item;
           }
+          continue;
+        }
+        if (appearanceStyles[item.end] case final ({Set<String> writes, Map<String, AiNativeInstruction> values}) style when _marker(item, 0) || _marker(item, 1)) {
+          native.removeWhere((key, _) => style.writes.contains(key));
+          for (final String key in style.writes) {
+            nativeOrigins[key] = item.start;
+          }
+          native.addAll(style.values);
           continue;
         }
         if (styles[item.end] case final AiLiveShape shape when _marker(item, 1)) {
@@ -324,7 +373,15 @@ Set<String> _shapeCopyReads(AiNativeDrawing drawing, AiNativePath path) => {
     'O',
     if (!drawing.gradients.any((gradient) => gradient.paths.contains(path))) 'fill',
   ],
-  if (const {'s', 'S', 'b', 'B'}.contains(path.paint.operator)) ...['stroke', 'R', 'J', 'j', 'w', 'M', 'd'],
+  if (const {'s', 'S', 'b', 'B'}.contains(path.paint.operator) || drawing.gradients.any((gradient) => gradient.paths.contains(path) && gradient.closing.numbers!.single != 0)) ...[
+    'stroke',
+    'R',
+    'J',
+    'j',
+    'w',
+    'M',
+    'd',
+  ],
 };
 
 /// Describes source dependencies without executing a pair's retained appearance.

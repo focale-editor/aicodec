@@ -317,4 +317,31 @@ final class AiNativeMeshes {
   /// This updates native authoring data. The host must regenerate PDF artwork
   /// and other previews before saving; [AiNativeMeshes] does not render meshes.
   AiNativeMeshes paintVertices({required AiNativeMesh mesh, required List<AiNativeMeshVertexPaint> changes}) => _paintMeshVertices(this, mesh, changes);
+
+  /// Edits explicit node positions, source-order handles and rational weights.
+  ///
+  /// Every changed shared position must agree across its corner occurrences in
+  /// the same transaction. Color declarations, intermediate nodes, parameters,
+  /// metadata and unrelated bytes survive. Supply complete host ink bounds and
+  /// regenerate matching PDF/previews before saving. No mesh is tessellated here.
+  AiNativeMeshes editGeometry({required AiNativeMesh mesh, required List<AiNativeMeshNodeGeometry> changes, required AiBoundingBox bounds}) => _editMeshGeometry(this, mesh, changes, bounds);
+
+  /// Maps all native positions and handles through one invertible affine basis.
+  ///
+  /// Paint, source weights, patch indices and parameters remain unchanged.
+  /// Distinct source points cannot silently collapse at numeric precision.
+  /// An existing frame angle requires explicit [rotationRadians] from the host.
+  AiNativeMeshes transform({required AiNativeMesh mesh, required AiNativeAffineTransform transform, required AiBoundingBox bounds, double? rotationRadians}) =>
+      _transformNativeMesh(this, mesh, transform, bounds, rotationRadians);
+
+  /// Replaces the complete Cartesian topology using explicit host-supplied data.
+  ///
+  /// New dimensions, cells, handles, weights, colors, opacity and numeric patch
+  /// parameters are supplied together. The source identity, external metadata
+  /// and neighboring artwork survive. Unknown fields, reference-valued patch
+  /// parameters and dependent/private/resource owners reject. This is native
+  /// serialization, not subdivision, interpolation or a conversion of inks.
+  /// An existing frame angle requires explicit [rotationRadians] from the host.
+  AiNativeMeshes replaceTopology({required AiNativeMesh mesh, required AiNativeMeshDefinition definition, required AiBoundingBox bounds, double? rotationRadians}) =>
+      _replaceMeshTopology(this, mesh, definition, bounds, rotationRadians);
 }

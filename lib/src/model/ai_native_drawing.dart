@@ -172,6 +172,22 @@ final class AiLiveShape {
   }) : appearancePaths = List.unmodifiable(appearancePaths),
        alternativeDictionaries = List.unmodifiable(alternativeDictionaries);
 
+  /// Parallelogram geometry for a qualified four-sided irregular native polygon.
+  ///
+  /// Returns null for other shapes, curved corners or non-parallelogram quads.
+  AiNativeParallelogram? get parallelogram {
+    if (handler != 'ai::Polygon' || parameters['ai::Polygon::NumSides']?.number != 4 || parameters['ai::Polygon::IsRegular']?.boolean != false || path == null) {
+      return null;
+    }
+    try {
+      return _parallelogramFromSegments(path!.segments);
+    } on UnsupportedError {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
+
   /// Whether both native geometry and any separate appearance have known owners.
   bool get isBound => bindingIssue == null;
 }
@@ -199,6 +215,21 @@ final class AiNativeDrawing {
   /// Lazily shares immutable object metadata across bounded lifecycle operations.
   late final AiNativeObjects _objects = _nativeObjects(this);
 
+  /// Shares qualified image framing across immutable state and lifecycle queries.
+  late final List<_NativeSubtreeSpan> _neutralImageSpans = List.unmodifiable(_readImageCreationNeutralSpans(this));
+
+  /// Shares complete ordinary image owners across reference and hierarchy checks.
+  late final List<_NativeImageOwner> _imageOwners = List.unmodifiable(_readNativeImageOwners(this));
+
+  /// Shares complete isolated text owners without treating opaque text as editable.
+  late final List<_NativeTextArtwork> _textArtwork = List.unmodifiable(_readNativeTextArtwork(this));
+
+  /// Complete direct gradient contours qualified for native lifecycle edits.
+  late final List<AiNativeGradientArtwork> gradientArtwork = List.unmodifiable(_readNativeGradientArtwork(this));
+
+  /// Complete Cartesian mesh packets qualified for native lifecycle edits.
+  late final List<AiNativeMeshArtwork> meshArtwork = List.unmodifiable(_readNativeMeshArtwork(this));
+
   /// Shares retained-body qualification across contour inspections and batches.
   late final ({AiNativeLayers layers, Set<AiNativePath> derived, Set<AiNativeContainer> dictionaries, Set<AiNativeContainer> retainedMetadata}) _pathTopologyScope = _nativePathTopologyScope(this);
 
@@ -219,6 +250,26 @@ final class AiNativeDrawing {
        gradients = List.unmodifiable(gradients),
        liveShapes = List.unmodifiable(liveShapes);
 
+  /// Creates one explicit native mesh in a qualified root, layer or group.
+  ///
+  /// The host supplies all native node data, ink bounds and the synchronized PDF.
+  /// Both outgoing scalar state views are restored after the new object.
+  AiNativeDrawing createMeshArtwork({required AiNativeMeshArtworkDefinition definition, AiNativeGroup? parent, AiLayer? layer}) => _createNativeMeshArtwork(this, definition, parent, layer);
+
+  /// Replaces a complete mesh and its flags while retaining source metadata.
+  ///
+  /// The definition must omit its name and identity. Unknown owners reject;
+  /// neighboring native and printing state is restored after the replacement.
+  /// Existing frame-angle metadata requires explicit [rotationRadians].
+  AiNativeDrawing replaceMeshArtwork({required AiNativeMeshArtwork artwork, required AiNativeMeshArtworkDefinition definition, double? rotationRadians}) =>
+      _replaceNativeMeshArtwork(this, artwork, definition, rotationRadians);
+
+  /// Copies complete mesh packets with fresh values for all existing identities.
+  ///
+  /// Shared inks remain literal native data. The copied geometry and attributes
+  /// retain their source values; no tessellation or interpolation is performed.
+  AiNativeDrawing duplicateMeshArtwork({required List<AiNativeMeshArtwork> artwork, Map<AiNativeItem, List<int>> identifiers = const {}}) => _duplicateNativeMeshArtwork(this, artwork, identifiers);
+
   /// Inspects an ordinary contour's compound, clip and point-count ownership.
   ///
   /// Private authoring, printable CC expansions and unresolved body dependencies
@@ -234,6 +285,104 @@ final class AiNativeDrawing {
   /// unselected source remain unchanged. [bounds] supplies the host-computed ink
   /// extent, including exposed artwork, independently of artboard rectangles.
   AiNativeDrawing editPaths({required List<AiNativePathEdit> edits, required AiBoundingBox bounds}) => _editNativePaths(this, edits, bounds);
+
+  /// Applies a nonuniform scale, reflection, shear or general affine contour map.
+  ///
+  /// Stroke widths, dashes and paint state remain unchanged. [bounds] is the
+  /// host-computed ink extent; this does not affine-expand strokes. Supply an
+  /// explicit resulting angle for every existing path frame-angle field through
+  /// [frameAngles]. Group/compound/clip topology is retained; transforming selected
+  /// masks changes their relationship to unselected artwork intentionally.
+  /// Live shapes and positional paints require their separate editing contracts.
+  AiNativeDrawing transformPaths({required List<AiNativePath> paths, required AiNativeAffineTransform transform, required AiBoundingBox bounds, Map<AiNativePath, double> frameAngles = const {}}) =>
+      _transformNativePaths(this, paths, transform, bounds, frameAngles);
+
+  /// Transforms representable live shapes with fixed stroke widths and dashes.
+  ///
+  /// Sharp rectangles become native irregular four-sided polygons when sheared;
+  /// [AiLiveShape.parallelogram] exposes their editable half-edge geometry.
+  /// Sharp polygons can become irregular; lines admit arbitrary invertible maps.
+  /// Ellipses require orthogonal transformed axes and no pie parameters. Rounded
+  /// nonuniform/reflected shapes and nonuniform stars require [replaceLiveShapes]
+  /// with host-regenerated geometry instead. Every separate CC expansion requires
+  /// a matching complete [printing] group, composed by the host with fixed stroke
+  /// widths. Gradients and unknown positional dependencies reject. The explicit
+  /// [bounds] must include all resulting ink. PDF and previews are supplied by
+  /// the host after this atomic native edit.
+  AiNativeDrawing transformLiveShapes({
+    required List<AiLiveShape> shapes,
+    required AiNativeAffineTransform transform,
+    required AiBoundingBox bounds,
+    Map<AiLiveShape, List<int>> printing = const {},
+  }) => _transformLiveShapes(this, shapes, transform, bounds, printing);
+
+  /// Saves native shape parameters and host-regenerated contours atomically.
+  ///
+  /// Every separate CC expansion requires a complete supplied printing group.
+  /// Shared process styles, identities and unselected artwork remain unchanged.
+  /// Source geometry is not regenerated from parameters by this package. The host
+  /// supplies matching outlines, ink bounds, PDF and previews. Unknown effects,
+  /// positional gradients and inconsistent redundant parameter copies reject.
+  AiNativeDrawing replaceLiveShapes({required List<AiNativeLiveShapeReplacement> replacements}) => _replaceNativeLiveShapes(this, replacements);
+
+  /// Creates a direct live shape from explicit host parameters and painted geometry.
+  ///
+  /// The host supplies the canvas-relative parameters, complete contour and ink
+  /// bounds. No shape geometry or printing appearance is generated by the kit.
+  /// The direct contour is its printable representation; supply the matching PDF
+  /// when saving. Native names, identities and outgoing scalar state are retained.
+  AiNativeDrawing createLiveShape({required AiNativePathDefinition definition, required AiNativeShapeParameters parameters, double? rotationRadians, AiNativeGroup? parent, AiLayer? layer}) =>
+      _createNativeLiveShape(this, definition, parameters, rotationRadians, parent, layer);
+
+  /// Attaches explicit live parameters to one qualified ordinary source contour.
+  ///
+  /// Metadata and identity are preserved. The caller certifies that the existing
+  /// contour and synchronized representations match these complete parameters.
+  AiNativeDrawing setPathLiveShape({required AiNativePath path, required AiNativeShapeParameters parameters, double? rotationRadians}) =>
+      _setNativePathLiveShape(this, path, parameters, rotationRadians);
+
+  /// Replaces a direct shape's parameters, geometry and ordinary process paints.
+  ///
+  /// Separate CC printing groups require [replaceLiveShapes]. The supplied
+  /// definition must omit name and identity, which remain source-owned.
+  AiNativeDrawing replaceDirectLiveShape({required AiLiveShape shape, required AiNativePathDefinition definition, required AiNativeShapeParameters parameters, double? rotationRadians}) =>
+      _replaceNativeDirectLiveShape(this, shape, definition, parameters, rotationRadians);
+
+  /// Renames qualified direct paths, shapes and groups without changing artwork.
+  ///
+  /// Keys are current native handles; values are literal display-name bytes.
+  /// Existing name aliases retain their scalar types and receive the same value.
+  /// Absent names acquire an `AIArtName` field. XML identities, geometry, paint
+  /// and unrelated metadata remain unchanged; no new rendered PDF is needed.
+  AiNativeDrawing renameObjects({required Map<AiNativeItem, List<int>> names}) => _renameNativeObjects(this, names);
+
+  /// Changes an ordinary group's own visibility and lock without rewriting children.
+  ///
+  /// Null arguments retain the original flags. Known native and printing state is
+  /// restored immediately after the opening group command, so child assignments
+  /// and following artwork remain unchanged. The host composes matching PDF
+  /// visibility. Group opacity, blending and masks require an appearance owner;
+  /// clipping, compound, private and conditional groups retain separate contracts.
+  AiNativeDrawing updateGroupAttributes({required AiNativeGroup group, bool? hidden, bool? locked}) => _updateNativeGroupAttributes(this, group, hidden, locked);
+
+  /// Replaces one ordinary path's geometry and complete process appearance.
+  ///
+  /// Retains its attached name, XML identity and qualified metadata. Explicit
+  /// flags apply only to the selected object; separate native and printing state
+  /// is restored for following artwork. Supply matching host ink bounds and PDF
+  /// artwork when saving. Private shapes, gradients, compounds and unresolved
+  /// metadata require their own contracts. All supplied attributes are complete,
+  /// rather than patches over inherited values.
+  AiNativeDrawing replacePathArtwork({
+    required AiNativePath path,
+    required AiArtworkPath artwork,
+    required AiBoundingBox bounds,
+    double opacity = 1,
+    AiNativeTransparency? transparency,
+    bool hidden = false,
+    bool fillOverprint = false,
+    bool strokeOverprint = false,
+  }) => _replaceNativePathArtwork(this, path, artwork, bounds, opacity, hidden, fillOverprint, strokeOverprint, transparency: transparency);
 
   /// Duplicates ordinary paths immediately after their original source objects.
   ///
@@ -253,10 +402,13 @@ final class AiNativeDrawing {
   /// the document root. Optional name bytes and a fresh XML identity create only
   /// the corresponding native metadata. Ancestor and current object flags are
   /// inherited; unknown or non-neutral object flags require [inheritParentFlags].
+  /// Optional [hidden] and [locked] override only the new group's own flags,
+  /// restoring both source states before its children. Parent inheritance still
+  /// requires the same explicit acknowledgement.
   /// Painting state, existing identities, layer headers and saved views stay
   /// unchanged. Private, compound, clipping and unresolved owners reject.
-  AiNativeDrawing createGroup({AiNativeGroup? parent, AiLayer? layer, List<int>? nameBytes, List<int>? identifierBytes, bool inheritParentFlags = false}) =>
-      _createNativeGroup(this, parent, layer, nameBytes, identifierBytes, inheritParentFlags);
+  AiNativeDrawing createGroup({AiNativeGroup? parent, AiLayer? layer, List<int>? nameBytes, List<int>? identifierBytes, bool inheritParentFlags = false, bool? hidden, bool? locked}) =>
+      _createNativeGroup(this, parent, layer, nameBytes, identifierBytes, inheritParentFlags, hidden, locked);
 
   /// Creates an ordinary path without requiring existing geometry or a sibling.
   ///
@@ -266,6 +418,83 @@ final class AiNativeDrawing {
   /// following artwork. Unresolved required state or ownership rejects atomically.
   /// Host-computed ink bounds expand drawing extents without changing artboards.
   AiNativeDrawing createPath({required AiNativePathDefinition definition, AiNativeGroup? parent, AiLayer? layer}) => _createNativePath(this, definition, parent, layer);
+
+  /// Creates a direct gradient fill from an existing resource and explicit geometry.
+  ///
+  /// The host supplies the resource's composed ramps and matching PDF. The path
+  /// definition supplies a process fallback and complete ink bounds. Its name and
+  /// fresh identity attach after the complete gradient application.
+  AiNativeDrawing createGradientArtwork({required AiNativePathDefinition definition, required AiNativeGradientFillDefinition gradient, AiNativeGroup? parent, AiLayer? layer}) =>
+      _createNativeGradientArtwork(this, definition, gradient, parent, layer);
+
+  /// Applies a gradient to an ordinary process path while keeping its identity.
+  ///
+  /// Supply complete geometry, fallback paint and ink bounds with no new metadata.
+  AiNativeDrawing setPathGradient({required AiNativePath path, required AiNativePathDefinition definition, required AiNativeGradientFillDefinition gradient}) =>
+      _setNativePathGradient(this, path, definition, gradient);
+
+  /// Replaces a gradient owner by ordinary process artwork without changing its ID.
+  ///
+  /// The shared resource remains until explicitly removed after its final user.
+  AiNativeDrawing clearGradientArtwork({required AiNativeGradientArtwork artwork, required AiNativePathDefinition definition}) => _clearNativeGradientArtwork(this, artwork, definition);
+
+  /// Copies complete gradient owners without duplicating their shared resources.
+  ///
+  /// Supply a fresh identifier keyed by each identified gradient artwork handle.
+  /// Anonymous source owners remain anonymous, matching ordinary path copies.
+  AiNativeDrawing duplicateGradientArtwork({required List<AiNativeGradientArtwork> artwork, Map<AiNativeItem, List<int>> identifiers = const {}}) =>
+      _duplicateNativeGradientArtwork(this, artwork, identifiers);
+
+  /// Replaces a complete gradient contour/application while retaining its identity.
+  ///
+  /// The supplied definition must omit names/identifiers. Move, reorder and remove
+  /// complete handles through `AiNativeLayers` rather than detaching their paths.
+  AiNativeDrawing replaceGradientArtwork({required AiNativeGradientArtwork artwork, required AiNativePathDefinition definition, required AiNativeGradientFillDefinition gradient}) =>
+      _replaceNativeGradientArtwork(this, artwork, definition, gradient);
+
+  /// Inserts embedded process samples with explicit placement and ordinary state.
+  ///
+  /// Appends to the selected ordinary group/layer, or to the drawing root.
+  /// The host supplies the matching PDF; no file decoding or rendering occurs.
+  /// Unknown inherited state and conditional/appearance-owned parents reject.
+  AiNativeDrawing createRaster({required AiNativeRasterDefinition definition, AiNativeGroup? parent, AiLayer? layer}) => _createNativeRaster(this, definition, parent, layer);
+
+  /// Inserts a copy of qualified native samples without display-pixel conversion.
+  ///
+  /// [source] owns [image], including when copying from an earlier snapshot.
+  /// Supply a fresh artwork identity in [attributes]. Sample identities are
+  /// renewed; original depth, planes, frame metadata and source filename survive.
+  /// Filename interpretation belongs to the host when the document base changes.
+  /// Explicit attributes and placement replace the source object's effective
+  /// attributes; source and destination neighbors retain their original state.
+  AiNativeDrawing copyRaster({
+    required AiNativeRasters source,
+    required AiNativeRaster image,
+    required List<double> matrix,
+    required AiNativeImageAttributes attributes,
+    AiNativeGroup? parent,
+    AiLayer? layer,
+  }) => _copyNativeRaster(this, source, image, matrix, attributes, parent, layer);
+
+  /// Inserts a raster link, its optional preview and document file dependency.
+  ///
+  /// Paths retain host-supplied bytes; AiKit never opens the external file.
+  /// Placement uses the local downward-y rectangle and native drawing points.
+  /// Parent selection and outgoing-state guarantees match [createRaster].
+  AiNativeDrawing createPlacement({required AiNativePlacementDefinition definition, AiNativeGroup? parent, AiLayer? layer}) => _createNativePlacement(this, definition, parent, layer);
+
+  /// Copies an owned raster link and preview with a fresh artwork identity.
+  ///
+  /// External path bytes and relative-directory hints are preserved verbatim.
+  /// The host must rebase links before copying between different file locations.
+  AiNativeDrawing copyPlacement({
+    required AiNativePlacements source,
+    required AiNativePlacedObject object,
+    required List<double> matrix,
+    required AiNativeImageAttributes attributes,
+    AiNativeGroup? parent,
+    AiLayer? layer,
+  }) => _copyNativePlacement(this, source, object, matrix, attributes, parent, layer);
 
   /// Copies complete bound CC authoring/printing pairs after their originals.
   ///

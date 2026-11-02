@@ -8,7 +8,7 @@ final class _GradientGeometryEditor {
   /// Last effective definition before all same-name definitions are rewritten.
   final AiNativeGradientDefinition definition;
 
-  /// New stops, already checked to have strictly increasing positions.
+  /// New stops, already checked to have nondecreasing positions.
   final List<AiNativeGradientStop> stops;
 
   /// Remaining bytes after the resource replacements, checked before expansion.
@@ -23,11 +23,6 @@ final class _GradientGeometryEditor {
     final List<double> next = stops.map((stop) => stop.position / 100).toList();
     if (definition.radial || previous.length == next.length && previous.indexed.every((entry) => entry.$2 == next[entry.$1])) {
       return [];
-    }
-    for (int index = 1; index < previous.length; index++) {
-      if (previous[index] <= previous[index - 1]) {
-        throw UnsupportedError('Coincident source stops require explicit printing discontinuities.');
-      }
     }
     final List<AiSourceEdit> result = [];
     for (final AiNativeGradient instance in _readGradientInstances(resources.records)) {
@@ -45,6 +40,9 @@ final class _GradientGeometryEditor {
     final List<AiNativeInstruction> caps = instance.imagingMatrices.where((matrix) => matrix.operator == 'Bc').toList();
     if (strips.isEmpty && caps.isEmpty) {
       return [];
+    }
+    if ([previous, next].any((positions) => positions.toSet().length != positions.length)) {
+      throw UnsupportedError('Linear hard stops require host-composed printing artwork without cached interval strips.');
     }
     if (instance.highlight != null || overall.length > 1 || strips.length != previous.length - 1 || caps.length > 2) {
       throw UnsupportedError('Unsupported linear gradient printing interval layout.');

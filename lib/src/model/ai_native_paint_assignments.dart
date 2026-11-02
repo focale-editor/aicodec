@@ -2,10 +2,13 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Literal native paint settings whose scalar layouts are qualified.
 enum AiNativePaintParameter {
-  /// Process fill color, retaining both alternatives when explicitly present.
+  /// Process or named fill color, retaining authored alternatives.
   fillColor,
 
-  /// Process stroke color, retaining both alternatives when explicitly present.
+  /// One exact fill or stroke gradient application, including its source geometry.
+  gradient,
+
+  /// Process or named stroke color, retaining authored alternatives.
   strokeColor,
 
   /// Fill overprint flag.
@@ -34,6 +37,9 @@ enum AiNativePaintParameter {
 
   /// Both native Xd flags in their saved order.
   fillStrokeFlags,
+
+  /// Literal opacity, blend mode, isolation, knockout and alpha-shape settings.
+  transparency,
 }
 
 /// A literal dash pattern without normalization, scaling or inherited defaults.
@@ -56,19 +62,28 @@ final class AiNativePaintAssignment {
   /// Exact source command and operands.
   final AiNativeInstruction instruction;
 
-  /// Retains the assignment after validating its specific operand grammar.
-  const AiNativePaintAssignment._({required this.parameter, required this.instruction});
+  /// Complete source gradient for an exact application assignment.
+  final AiNativeGradient? gradient;
 
-  /// Numeric operands in native order, or null for an array-valued dash command.
+  /// Retains the assignment after validating its specific operand grammar.
+  const AiNativePaintAssignment._({required this.parameter, required this.instruction, this.gradient});
+
+  /// Numeric operands in native order, or null for named colors and dash arrays.
   List<double>? get numbers => instruction.numbers;
+
+  /// Explicit transparency for this assignment, or null for other parameters.
+  AiNativeTransparency? get transparency => parameter == .transparency ? AiNativeTransparency.decode(instruction: instruction) : null;
+
+  /// Named color for this literal assignment, retaining its exact native layout.
+  AiNativeNamedColor? get namedColor => AiNativeNamedColor.decode(instruction: instruction);
 
   /// Authored process colors, without choosing or converting dual alternatives.
   ///
   /// Seven-operand Xa/XA commands retain CMYK followed by RGB. Other settings
   /// return an empty list; named, pattern and gradient paints stay in the full
-  /// command inventory and are not relabeled as process colors.
+  /// command inventory or their typed assignment and are not relabeled as process colors.
   List<AiColor> get colors {
-    if (parameter != .fillColor && parameter != .strokeColor) {
+    if (parameter != .fillColor && parameter != .strokeColor || namedColor != null) {
       return const [];
     }
     final List<double> values = instruction.numbers!;
@@ -98,12 +113,17 @@ final class AiNativePaintAssignment {
 }
 
 /// Reads local literal assignments without executing unknown intervening commands.
-List<AiNativePaintAssignment> _nativePaintAssignments(List<AiNativeInstruction> instructions) {
+List<AiNativePaintAssignment> _nativePaintAssignments(List<AiNativeInstruction> instructions, {List<AiNativeGradient> gradients = const []}) {
+  final Map<int, AiNativeGradient> applications = {for (final AiNativeGradient gradient in gradients) gradient.opening.start: gradient};
   final List<AiNativePaintAssignment> assignments = [];
   for (final AiNativeInstruction instruction in instructions) {
+    if (applications[instruction.start] case final AiNativeGradient gradient) {
+      assignments.add(AiNativePaintAssignment._(parameter: .gradient, instruction: instruction, gradient: gradient));
+      continue;
+    }
     final AiNativePaintParameter? parameter = switch (instruction.operator) {
-      'g' || 'k' || 'Xa' => .fillColor,
-      'G' || 'K' || 'XA' => .strokeColor,
+      'g' || 'k' || 'Xa' || 'x' || 'Xx' || 'Xs' || 'Xz' => .fillColor,
+      'G' || 'K' || 'XA' || 'X' || 'XX' || 'XS' || 'XZ' => .strokeColor,
       'O' => .fillOverprint,
       'R' => .strokeOverprint,
       'w' => .strokeWidth,
@@ -113,6 +133,7 @@ List<AiNativePaintAssignment> _nativePaintAssignments(List<AiNativeInstruction> 
       'd' => .dash,
       'XR' => .evenOdd,
       'Xd' => .fillStrokeFlags,
+      'Xy' => .transparency,
       _ => null,
     };
     if (parameter == null) {
@@ -123,6 +144,8 @@ List<AiNativePaintAssignment> _nativePaintAssignments(List<AiNativeInstruction> 
       if (values?.length != 2 || values!.any((value) => value != 0 && value != 1)) {
         throw const FormatException('Invalid native paint display flags.');
       }
+    } else if (parameter == .transparency) {
+      _artboardRetainedOpacity(instruction);
     } else {
       _nativeArtworkStateKey(instruction);
     }

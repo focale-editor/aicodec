@@ -41,6 +41,12 @@ final class AiNativeAppearancePartDefinition {
   /// Normal-blend paint opacity, between zero and one.
   final double opacity;
 
+  /// Complete blending for a fill, stroke or whole-object blend part.
+  ///
+  /// When supplied, opacity must retain its default to avoid conflicting inputs.
+  /// A blend part requires this value; no inherited settings are invented.
+  final AiNativeTransparency? transparency;
+
   /// Explicit winding rule for a fill or stroke paint.
   final bool evenOdd;
 
@@ -81,6 +87,7 @@ final class AiNativeAppearancePartDefinition {
     List<AiColor> colors = const [],
     this.overprint = false,
     this.opacity = 1,
+    this.transparency,
     this.evenOdd = false,
     this.strokeWidth = 1,
     this.lineCap = 0,
@@ -98,7 +105,7 @@ final class AiNativeAppearancePartDefinition {
        children = List.unmodifiable(children) {
     final bool paint = kind == .fill || kind == .stroke;
     final bool compound = kind == .stack || kind == .chain;
-    if (!paint && !compound && kind != .conduit ||
+    if (!paint && !compound && kind != .conduit && kind != .blend ||
         !compound && children.isNotEmpty ||
         paint && !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) ||
         !paint && colors.isNotEmpty) {
@@ -120,7 +127,9 @@ final class AiNativeAppearancePartDefinition {
     if ((kind == .stroke && strokeAlignment != .center) != (alignmentLabelBytes != null) ||
         alignmentLabelBytes?.any((byte) => byte < 0 || byte > 255) == true ||
         kind != .stroke && (adjustDashes != null || strokeAlignment != .center || strokeWidth != 1 || lineCap != 0 || lineJoin != 0 || miterLimit != 4 || dash.isNotEmpty || dashPhase != 0) ||
-        !paint && (overprint || opacity != 1 || evenOdd)) {
+        !paint && (overprint || opacity != 1 || evenOdd) ||
+        kind == .blend && transparency == null ||
+        transparency != null && (!paint && kind != .blend || opacity != 1)) {
       throw ArgumentError('Appearance settings must belong to their selected part; offset strokes require host label bytes.');
     }
   }

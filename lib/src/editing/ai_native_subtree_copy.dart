@@ -10,6 +10,9 @@ List<AiSourceEdit> _subtreeCopyEdits(
   Set<String>? reserved,
   int? maxBytes,
 }) {
+  if (_nativeImageOwners(drawing).any((owner) => spans.any((span) => owner.span.start >= span.start && owner.span.end <= span.end))) {
+    throw UnsupportedError('Copies containing raster images require fresh image and sample identities.');
+  }
   final List<AiNativeObjectIdentifier> saved = drawing._objects.structure.identifiers
       .where((identifier) => spans.any((span) => identifier.field.owner.start >= span.start && identifier.field.owner.end <= span.end))
       .toList();
@@ -19,6 +22,12 @@ List<AiSourceEdit> _subtreeCopyEdits(
   final Map<AiNativeItem, AiNativeObjectIdentifier> expected = {
     for (final AiNativeObject object in _selectedNativeObjects(drawing, sources))
       if (object.identifier != null && !pairs.any((pair) => object.source.start >= pair.start && object.source.end <= pair.shape.end)) object.source: object.identifier!,
+    for (final AiNativeGradientArtwork owner in drawing.gradientArtwork)
+      if (owner.identifierBytes != null && spans.any((span) => owner.start >= span.start && owner.end <= span.end))
+        owner: saved.singleWhere((identifier) => identical(identifier.field.owner.source, owner.dictionary)),
+    for (final AiNativeMeshArtwork owner in drawing.meshArtwork)
+      if (owner.identifierBytes != null && spans.any((span) => owner.start >= span.start && owner.end <= span.end))
+        owner: saved.singleWhere((identifier) => identical(identifier.field.owner.source, owner.dictionary)),
     for (final AiNativeObjectIdentifier identifier in saved)
       if (pairs.any((pair) => identifier.field.owner.start >= pair.start && identifier.field.owner.end <= pair.shape.end)) identifier.field.owner.source as AiNativeContainer: identifier,
   };
@@ -44,6 +53,7 @@ _NativeShapeAccess _subtreeCopyAccess(AiNativeDrawing drawing, List<AiNativeInst
   final List<AiNativeInstruction> commands = [...ordinary, for (final _NativeShapeBundle pair in pairs) ...pair.commands]..sort((first, second) => first.start.compareTo(second.start));
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, _NativeShapeBundle> styles = {for (final _NativeShapeBundle pair in pairs) pair.shape.end: pair};
+  late final Map<int, AiNativeItem> images = {for (final _NativeImageOwner owner in _nativeImageOwners(drawing)) owner.instruction.start: owner.image};
   final Set<String> nativeWrites = {};
   final Set<String> printingWrites = {};
   final Set<String> nativeReads = {};
@@ -61,6 +71,10 @@ _NativeShapeAccess _subtreeCopyAccess(AiNativeDrawing drawing, List<AiNativeInst
     final _NativeShapeBundle? style = styles[command.end];
     final Set<String> reads = paths.containsKey(command.start)
         ? _shapeCopyReads(drawing, paths[command.start]!)
+        : const {'aikit:text', 'aikit:mesh'}.contains(command.operator)
+        ? _nativeArtworkStateKeys
+        : const {'XI', '`'}.contains(command.operator)
+        ? _nativeImageReads(images[command.start] ?? (throw UnsupportedError('Subtree image reads require qualified raster ownership.')))
         : const {'u', '*u'}.contains(command.operator)
         ? {'A', 'Xw'}
         : _marker(command, 6)
@@ -91,6 +105,9 @@ List<AiSourceEdit> _copiedNativeSubtrees(
   bool groups = false,
 }) {
   final AiNativeDrawing drawing = model.drawing;
+  if (drawing.records.containers.any((record) => record.type == 'AI11Text' && spans.any((span) => record.start >= span.start && record.end <= span.end))) {
+    throw UnsupportedError('Copies containing text require fresh stories and frame resources.');
+  }
   final Map<int, _NativeShapeInputs> inputs = _shapeCopyInputs(drawing, [...spans.map((span) => span.start), ...pairs.map((pair) => pair.shape.end)]);
   final List<AiSourceEdit> edits = [];
   int remaining = drawing.records.program.limits.maxDecodedBytes;

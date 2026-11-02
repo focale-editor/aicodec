@@ -12,10 +12,15 @@ Map<int, AiNativeLayer> _layerHeaderItems(AiNativeLayers model) => {
 };
 
 /// Refuses unresolved metadata that precedes and may belong to a selected layer.
-void _layerLifecyclePrefix(AiNativeLayers model, AiNativeLayer layer, Map<int, AiNativeLayer> headers, {bool privateState = false}) {
+void _layerLifecyclePrefix(AiNativeLayers model, AiNativeLayer layer, Map<int, AiNativeLayer> headers, {bool privateState = false, List<AiNativeAppearanceArtwork> appearanceArtwork = const []}) {
   int start = privateState
       ? model.drawing.liveShapes.where((shape) => shape.isBound && shape.end <= layer.start).fold(model.drawing.records.program.bodyStart, (end, shape) => max(end, shape.end))
       : model.drawing.records.program.bodyStart;
+  start = appearanceArtwork.where((owner) => owner.end <= layer.start).fold(start, (end, owner) => max(end, owner.end));
+  start = max(start, _nativeImageOwners(model.drawing).where((owner) => owner.span.end <= layer.start).lastOrNull?.span.end ?? start);
+  start = max(start, model.drawing.gradientArtwork.where((owner) => owner.end <= layer.start).lastOrNull?.end ?? start);
+  start = max(start, model.drawing.meshArtwork.where((owner) => owner.end <= layer.start).lastOrNull?.end ?? start);
+  start = max(start, model.drawing._textArtwork.where((owner) => owner.span.end <= layer.start).lastOrNull?.span.end ?? start);
   for (int index = _pathOffset(model.drawing.items, layer.start, (item) => item.start) - 1; index >= 0 && model.drawing.items[index].end > start; index--) {
     final AiNativeItem item = model.drawing.items[index];
     if (item is AiNativeInstruction && (_nativePaint.contains(item.operator) || const {'u', 'U', 'Lb', 'LB'}.contains(item.operator))) {
@@ -33,19 +38,69 @@ List<AiNativeInstruction> _layerInterval(
   int end,
   Map<int, AiNativeLayer> headers, {
   bool privateState = false,
+  bool retainImages = false,
   List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
   final AiNativeDrawing drawing = model.drawing;
-  final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).toList();
+  final List<AiNativeGradientArtwork> gradients = drawing.gradientArtwork;
+  final List<AiNativeMeshArtwork> meshes = drawing.meshArtwork;
+  int meshIndex = 0;
+  final Set<AiNativePath> gradientPaths = gradients.map((owner) => owner.path).toSet();
+  final List<AiNativePath> paths = _pathInterval(drawing.paths, start, end, (path) => path.start).where((path) => !gradientPaths.contains(path)).toList();
   final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: model.structure, appearanceArtwork: appearanceArtwork);
   final Set<AiNativeInstruction> geometry = {
     for (final AiNativePath path in paths) ...[...path.geometry, path.paint],
     ...counts.values.whereType<AiNativeInstruction>(),
   };
   final List<AiNativeInstruction> commands = [];
+  final List<_NativeImageOwner> images = retainImages ? _nativeImageOwners(drawing) : [];
+  int imageIndex = 0;
+  int gradientIndex = 0;
+  late final Map<int, _NativeTextArtwork> text = {
+    for (final _NativeTextArtwork owner in drawing._textArtwork) ...{owner.record.start: owner, if (owner.metadata != null) owner.metadata!.start: owner},
+  };
   for (final AiNativeItem item in _pathInterval(drawing.items, start, end, (item) => item.start)) {
     if (item.end > end) {
       throw UnsupportedError('The layer edit crosses an unfinished native object.');
+    }
+    while (meshIndex < meshes.length && meshes[meshIndex].end <= item.start) {
+      meshIndex++;
+    }
+    if (meshIndex < meshes.length && meshes[meshIndex].start <= item.start) {
+      final AiNativeMeshArtwork owner = meshes[meshIndex];
+      if (owner.start < start || owner.end > end || item.end > owner.end) {
+        throw UnsupportedError('Artwork cannot split a complete mesh owner.');
+      }
+      if (item.start == owner.start) {
+        commands.add(owner._access);
+      }
+      continue;
+    }
+    while (gradientIndex < gradients.length && gradients[gradientIndex].end <= item.start) {
+      gradientIndex++;
+    }
+    if (gradientIndex < gradients.length && gradients[gradientIndex].start <= item.start) {
+      final AiNativeGradientArtwork owner = gradients[gradientIndex];
+      if (owner.start < start || owner.end > end || item.end > owner.end) {
+        throw UnsupportedError('Layer artwork cannot split a complete gradient owner.');
+      }
+      if (item.start == owner.path.start) {
+        commands.add(owner.path.geometry.first);
+      }
+      continue;
+    }
+    while (imageIndex < images.length && images[imageIndex].span.end <= item.start) {
+      imageIndex++;
+    }
+    if (imageIndex < images.length && images[imageIndex].span.start <= item.start) {
+      final _NativeImageOwner owner = images[imageIndex];
+      if (owner.span.start < start || owner.span.end > end || item.end > owner.span.end) {
+        throw UnsupportedError('Layer artwork cannot split a retained image owner.');
+      }
+      if (item.start == owner.instruction.start) {
+        commands.add(owner.instruction);
+      }
+      continue;
     }
     if (headers[item.start] case final AiNativeLayer owner) {
       if (owner.bindingIssue case final String issue) {
@@ -54,6 +109,16 @@ List<AiNativeInstruction> _layerInterval(
       continue;
     }
     if (_ordinaryObjectAttachment(drawing, item)) {
+      continue;
+    }
+    if (item is AiNativeContainer && text.containsKey(item.start)) {
+      final _NativeTextArtwork owner = text[item.start]!;
+      if (owner.span.start < start || owner.span.end > end) {
+        throw UnsupportedError('Layer artwork cannot split a retained text owner.');
+      }
+      if (identical(item, owner.record)) {
+        commands.add(owner.access);
+      }
       continue;
     }
     if (item is! AiNativeInstruction || item.isPrivate && !(privateState && _nativeArtworkStateKey(item) != null)) {
@@ -76,9 +141,30 @@ List<AiNativeInstruction> _layerInterval(
       if (layer.closingComment != null) layer.closingComment!.start,
     ],
   };
-  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any(
-    (token) => token.kind == .data || token.kind == .comment && !wrappers.contains(token.start) && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')),
-  )) {
+  imageIndex = 0;
+  gradientIndex = 0;
+  meshIndex = 0;
+  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any((token) {
+    while (meshIndex < meshes.length && meshes[meshIndex].end <= token.start) {
+      meshIndex++;
+    }
+    if (meshIndex < meshes.length && meshes[meshIndex].start <= token.start && token.end <= meshes[meshIndex].end) {
+      return false;
+    }
+    while (gradientIndex < gradients.length && gradients[gradientIndex].end <= token.start) {
+      gradientIndex++;
+    }
+    if (gradientIndex < gradients.length && gradients[gradientIndex].start <= token.start && token.end <= gradients[gradientIndex].end) {
+      return false;
+    }
+    while (imageIndex < images.length && images[imageIndex].span.end <= token.start) {
+      imageIndex++;
+    }
+    if (imageIndex < images.length && images[imageIndex].span.start <= token.start && token.end <= images[imageIndex].span.end) {
+      return false;
+    }
+    return token.kind == .data || token.kind == .comment && !wrappers.contains(token.start) && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%'));
+  })) {
     throw UnsupportedError('Layer lifecycle edits require ownership of all attached native metadata.');
   }
   return commands;
@@ -147,9 +233,9 @@ AiNativeLayers _reorderNativeLayers(AiNativeLayers model, List<AiNativeLayer> la
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
   for (final AiNativeLayer layer in layers) {
-    _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
+    _layerLifecyclePrefix(model, layer, headers, privateState: (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty));
   }
-  if (pairs.isNotEmpty) {
+  if ((pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty) || _containsNativeText(model.drawing, spans)) {
     return _layerLifecycleResult(
       model,
       [..._layerDeclarations(model, model.rootCount, discardViewState), ..._reorderedNativeSubtrees(model, spans, pairs)],
@@ -198,8 +284,8 @@ AiNativeLayers _moveNativeLayer(AiNativeLayers model, AiNativeLayer layer, AiNat
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
   final _NativeSubtreeSpan span = (start: layer.start, end: layer.end);
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, [span]);
-  _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
-  if (pairs.isNotEmpty) {
+  _layerLifecyclePrefix(model, layer, headers, privateState: (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty));
+  if ((pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty) || _containsNativeText(model.drawing, [span])) {
     edits.addAll(
       _relocatedNativeSubtree(
         model,
@@ -276,12 +362,15 @@ AiNativeLayers _duplicateNativeLayers(
 ) {
   final List<AiNativeLayer> selected = _selectedLayers(model, layers);
   final List<_NativeSubtreeSpan> spans = [for (final AiNativeLayer layer in selected) (start: layer.start, end: layer.end)];
+  if (_containsNativeText(model.drawing, spans)) {
+    throw UnsupportedError('Copies containing text require fresh stories and frame resources.');
+  }
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
   final List<AiNativeLayer> descendants = _layerDescendants(model, selected);
   final Set<String> reserved = identifiers.isEmpty && artworkIdentifiers.isEmpty ? {} : _nativeIdentityNames(model.structure);
   final List<AiSourceEdit> replacements = _layerCopyEdits(model, descendants, identifiers, names, reserved);
   replacements.addAll(
-    pairs.isNotEmpty
+    (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty)
         ? _subtreeCopyEdits(
             model.drawing,
             selected,
@@ -302,11 +391,13 @@ AiNativeLayers _duplicateNativeLayers(
   final int roots = model.rootCount + selected.where((layer) => layer.parentIndex == null).length;
   final List<AiSourceEdit> edits = _layerDeclarations(model, roots, discardViewState);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
-  final Map<int, _NativeArtworkState> states = _layerStates(model, selected.expand((layer) => [layer.start, layer.end]), headers);
+  final Map<int, _NativeArtworkState> states = pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty
+      ? {}
+      : _layerStates(model, selected.expand((layer) => [layer.start, layer.end]), headers);
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in selected) {
-    _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
-    if (pairs.isNotEmpty) {
+    _layerLifecyclePrefix(model, layer, headers, privateState: (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty));
+    if (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty) {
       continue;
     }
     final List<int> bytes = _placedLayer(
@@ -322,7 +413,7 @@ AiNativeLayers _duplicateNativeLayers(
     edits.add(AiSourceEdit(start: layer.end, end: layer.end, bytes: [10, ...bytes]));
     remaining -= bytes.length + 1;
   }
-  if (pairs.isNotEmpty) {
+  if (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty) {
     edits.addAll(_copiedNativeSubtrees(model, spans, pairs, replacements));
   }
   final ({int paths, int groups}) count = _layerArtworkCounts(model, selected);
@@ -341,10 +432,13 @@ AiNativeLayers _duplicateNativeLayers(
 AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> layers, bool discardViewState) {
   final List<AiNativeLayer> selected = _selectedLayers(model, layers);
   final List<_NativeSubtreeSpan> spans = [for (final AiNativeLayer layer in selected) (start: layer.start, end: layer.end)];
+  if (_containsNativeText(model.drawing, spans)) {
+    throw UnsupportedError('Remove text stories or frames before deleting their containing layers.');
+  }
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
   final List<AiNativeLayer> descendants = _layerDescendants(model, selected);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
-  if (pairs.isEmpty) {
+  if (pairs.isEmpty && model.drawing.gradientArtwork.isEmpty && model.drawing.meshArtwork.isEmpty) {
     _nativeRemovalReferences(model, [
       for (final AiNativeLayer layer in descendants) ?layer.identifier,
       for (final AiNativeObject object in _selectedNativeObjects(model.drawing, selected)) ?object.identifier,
@@ -354,8 +448,8 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
   final List<AiSourceEdit> edits = _layerDeclarations(model, roots, discardViewState);
   int remaining = model.drawing.records.program.limits.maxDecodedBytes;
   for (final AiNativeLayer layer in selected) {
-    _layerLifecyclePrefix(model, layer, headers, privateState: pairs.isNotEmpty);
-    if (pairs.isNotEmpty) {
+    _layerLifecyclePrefix(model, layer, headers, privateState: (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty));
+    if (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty) {
       continue;
     }
     final List<AiNativeInstruction> commands = _layerInterval(model, layer.start, layer.end, headers);
@@ -366,7 +460,7 @@ AiNativeLayers _removeNativeLayers(AiNativeLayers model, List<AiNativeLayer> lay
     edits.add(AiSourceEdit(start: layer.start, end: layer.end, bytes: [10, ...state]));
     remaining -= state.length + 1;
   }
-  if (pairs.isNotEmpty) {
+  if (pairs.isNotEmpty || model.drawing.gradientArtwork.isNotEmpty || model.drawing.meshArtwork.isNotEmpty) {
     edits.addAll(_removedNativeSubtrees(model, spans, pairs));
   }
   final ({int paths, int groups}) count = _layerArtworkCounts(model, selected);

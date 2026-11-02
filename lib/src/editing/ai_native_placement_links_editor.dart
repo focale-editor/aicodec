@@ -7,21 +7,8 @@ AiNativePlacements _relinkNativePlacement(AiNativePlacements source, AiNativePla
   }
   object.validateRasterLayout();
   final int maxBytes = source.records.program.limits.maxDecodedBytes;
-  if (pathBytes.isEmpty ||
-      pathBytes.length > maxBytes ~/ 4 ||
-      pathBytes.any((byte) => byte < 32 || byte > 255 || byte == 127) ||
-      pathBytes.first == 32 ||
-      pathBytes.last == 32 ||
-      relativeDirectoryBytes != null && (relativeDirectoryBytes.length > maxBytes ~/ 4 || relativeDirectoryBytes.any((byte) => byte <= 0 || byte > 255))) {
-    throw ArgumentError('Placed paths require bounded encoded bytes and an unambiguous single-line filename.');
-  }
+  _validatePlacedLinkInputs(pathBytes, relativeDirectoryBytes, preview, maxBytes);
   final String path = latin1.decode(pathBytes);
-  if (path == '(atend)') {
-    throw ArgumentError('The deferred DSC marker cannot be used as a placed filename.');
-  }
-  if (preview != null && (preview.bitsPerComponent != 8 || preview.components != 3 || preview.imageMask)) {
-    throw ArgumentError('Placed previews require eight-bit RGB with optional straight alpha.');
-  }
   final bool samePath = _samePlacedBytes(pathBytes, object.pathBytes);
   if (samePath && _samePlacedBytes(relativeDirectoryBytes, object.relativeDirectoryBytes) && _samePlacedPreview(object.preview, preview)) {
     return source;
@@ -30,7 +17,7 @@ AiNativePlacements _relinkNativePlacement(AiNativePlacements source, AiNativePla
   final AiToken pathToken = object.instruction.operands.last;
   final List<AiSourceEdit> edits = [
     if (!samePath) AiSourceEdit(start: pathToken.start, end: pathToken.end, bytes: latin1.encode(_placedPathString(pathBytes))),
-    AiSourceEdit(start: include.start, end: object.closing.start, bytes: _placedLinkMetadata(object, path, relativeDirectoryBytes, preview, maxBytes)),
+    AiSourceEdit(start: include.start, end: object.closing.start, bytes: _placedLinkMetadata(object.instruction.isPrivate ? '%_' : '', path, relativeDirectoryBytes, preview, maxBytes)),
     ..._placedFileEdits(source, object, replacement: path),
   ];
   final AiNativePlacements result = AiNativePlacements.decode(
@@ -74,8 +61,7 @@ bool _samePlacedPreview(AiNativePlacedPreview? old, AiNativeRasterSamples? repla
 }
 
 /// Authors the observed CC relative-path and counted straight-ARGB sections.
-Uint8List _placedLinkMetadata(AiNativePlacedObject object, String path, List<int>? relative, AiNativeRasterSamples? preview, int maxBytes) {
-  final String prefix = object.instruction.isPrivate ? '%_' : '';
+Uint8List _placedLinkMetadata(String prefix, String path, List<int>? relative, AiNativeRasterSamples? preview, int maxBytes) {
   final StringBuffer header = StringBuffer('%%IncludeFile:$path\n');
   if (relative != null) {
     header.write('''$prefix%AI17_Begin_Content_if_version_gt:24 12
@@ -91,7 +77,7 @@ $prefix%AI17_End_Versioned_Content
 $prefix%AI26_BeginPlacedObjectPreview
 ${preview.width} ${preview.height} ${preview.width * 4} 32 17 ''');
   }
-  final String footer = preview == null ? prefix : '\n$prefix%AI26_EndPlacedObjectPreview\n$prefix%AI17_End_Versioned_Content\n$prefix';
+  final String footer = preview == null ? prefix : '\n$prefix%AI26_EndPlacedObjectPreview\n$prefix%AI17_Alternate_Content\n$prefix%AI17_End_Versioned_Content\n$prefix';
   final int pixelBytes = preview == null ? 0 : preview.width * preview.height * 4;
   if (header.length + pixelBytes + footer.length > maxBytes) {
     throw const FormatException('Placed preview metadata exceeds the native byte limit.');
@@ -106,4 +92,23 @@ ${preview.width} ${preview.height} ${preview.width * 4} 32 17 ''');
     result.add(pixels);
   }
   return (result..add(latin1.encode(footer))).takeBytes();
+}
+
+/// Validates bounded link bytes and host-provided preview samples.
+void _validatePlacedLinkInputs(List<int> pathBytes, List<int>? relativeDirectoryBytes, AiNativeRasterSamples? preview, int maxBytes) {
+  if (pathBytes.isEmpty ||
+      pathBytes.length > maxBytes ~/ 4 ||
+      pathBytes.any((byte) => byte < 32 || byte > 255 || byte == 127) ||
+      pathBytes.first == 32 ||
+      pathBytes.last == 32 ||
+      relativeDirectoryBytes != null && (relativeDirectoryBytes.length > maxBytes ~/ 4 || relativeDirectoryBytes.any((byte) => byte <= 0 || byte > 255))) {
+    throw ArgumentError('Placed paths require bounded encoded bytes and an unambiguous single-line filename.');
+  }
+  final String path = latin1.decode(pathBytes);
+  if (path == '(atend)') {
+    throw ArgumentError('The deferred DSC marker cannot be used as a placed filename.');
+  }
+  if (preview != null && (preview.bitsPerComponent != 8 || preview.components != 3 || preview.imageMask)) {
+    throw ArgumentError('Placed previews require eight-bit RGB with optional straight alpha.');
+  }
 }

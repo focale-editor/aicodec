@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:aikit/src/codec/ai_postscript.dart';
+import 'package:aikit/src/model/ai_document.dart';
 import 'package:aikit/src/model/ai_native_records.dart';
 import 'package:aikit/src/model/ai_program.dart';
 import 'package:pscore/pscore.dart';
@@ -15,6 +16,9 @@ part 'ai_native_text_changes.dart';
 part 'ai_native_text_composition.dart';
 part 'ai_native_text_fonts.dart';
 part 'ai_native_text_frames.dart';
+part 'ai_native_text_lifecycle.dart';
+part 'ai_native_text_save.dart';
+part 'ai_native_text_creation.dart';
 
 /// The resource table supplying an Illustrator text style.
 enum AiNativeTextStyleKind {
@@ -267,6 +271,27 @@ final class AiNativeTextDocument {
 
   /// Drawing references, including any unresolved references reported below.
   final List<AiNativeTextObject> objects;
+
+  /// Initializes compact ATE 7 typography in a program without native text data.
+  ///
+  /// Creates the font, normal character/paragraph styles, empty frame/story
+  /// tables and an independent empty undo-free snapshot. Coordinates use the
+  /// explicitly supplied native text ruler origin. No glyphs or font bytes are
+  /// synthesized; create stories and supply their actual composition afterward.
+  /// Optional style changes override initial plain filled-text defaults. They
+  /// must not refer to a foreign font or request inherited values without a parent.
+  factory AiNativeTextDocument.create({
+    required AiNativeRecords records,
+    required AiNativeFontDefinition font,
+    required double fontSize,
+    required AiNativeTextProcessColor fillColor,
+    required List<double> rulerOrigin,
+    AiNativeCharacterChanges? characterStyle,
+    AiNativeParagraphChanges? paragraphStyle,
+    String characterStyleName = 'Normal',
+    String paragraphStyleName = 'Normal',
+    PsEngineLimits limits = const PsEngineLimits(),
+  }) => _createNativeTextDocument(records, font, fontSize, fillColor, rulerOrigin, characterStyle, paragraphStyle, characterStyleName, paragraphStyleName, limits);
 
   /// Decodes one selected native text document with explicit resource bounds.
   factory AiNativeTextDocument.decode({required AiNativeRecords records, AiNativeContainer? container, PsEngineLimits limits = const PsEngineLimits()}) {

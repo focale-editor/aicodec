@@ -13,7 +13,13 @@ AiNativeObject _ordinaryObject(AiNativeDrawing drawing, AiNativeItem source) {
 }
 
 /// Checks successors after the complete object and its qualified metadata.
-void _ordinaryObjectFollowing(AiNativeDrawing drawing, AiNativeItem source, {bool clipping = false}) => _ordinaryPathFollowing(drawing.items, _ordinaryObject(drawing, source).end, clipping: clipping);
+void _ordinaryObjectFollowing(AiNativeDrawing drawing, AiNativeItem source, {bool clipping = false}) => _ordinaryArtworkFollowing(drawing, _ordinaryObject(drawing, source).end, clipping: clipping);
+
+/// Stops postfix inspection at the next independently owned raster boundary.
+void _ordinaryArtworkFollowing(AiNativeDrawing drawing, int end, {bool clipping = false}) {
+  final int next = _nativeNeutralArtwork(drawing).where((owner) => owner.start >= end).firstOrNull?.start ?? drawing.records.program.bodyEnd;
+  _ordinaryPathFollowing(_pathInterval(drawing.items, end, next, (item) => item.start).toList(), end, clipping: clipping);
+}
 
 /// Recognizes qualified dictionary, panel and constant group-style attachments.
 bool _ordinaryObjectAttachment(AiNativeDrawing drawing, AiNativeItem item) => drawing._objects._attachments[item.start]?.bindingIssue == null && drawing._objects._attachments.containsKey(item.start);
@@ -29,7 +35,9 @@ bool _ordinaryMetadataPrefix(AiNativeDrawing drawing, int start, int end, {bool 
       metadata |= ordinary && !identical(owner.expansion, item);
       continue;
     }
-    if (item is AiNativeInstruction && !item.isPrivate && (_nativeArtworkStateKey(item) != null || const {'u', 'U'}.contains(item.operator) && item.operands.isEmpty || item.operator == 'As')) {
+    if (item is AiNativeInstruction &&
+        ((_nativeArtworkStateKey(item) != null && (!item.isPrivate || allowStateOnly)) ||
+            !item.isPrivate && (const {'u', 'U'}.contains(item.operator) && item.operands.isEmpty || item.operator == 'As'))) {
       continue;
     }
     headers ??= _layerHeaderItems(AiNativeLayers.decode(drawing: drawing));
@@ -55,6 +63,10 @@ String? _nativeArtworkStateKey(AiNativeInstruction item) {
     }
   }
 
+  if (_nativeNamedColorOperators.contains(operator)) {
+    AiNativeNamedColor.decode(instruction: item);
+    return _nativeNamedColorStroke(operator) ? 'stroke' : 'fill';
+  }
   switch (operator) {
     case 'g' || 'G' || 'k' || 'K' || 'Xa' || 'XA':
       require(
@@ -67,10 +79,15 @@ String? _nativeArtworkStateKey(AiNativeInstruction item) {
       );
       return const {'g', 'k', 'Xa'}.contains(operator) ? 'fill' : 'stroke';
     case 'Xy':
-      if (!arity(5) || numbers!.first != 0 || numbers.skip(2).any((value) => value != 0)) {
+      if (!arity(5)) {
         return null;
       }
-      require(_gradientUnit(numbers[1]));
+      require(_gradientUnit(numbers![1]));
+      try {
+        _artboardRetainedOpacity(item);
+      } on UnsupportedError {
+        return null;
+      }
       return operator;
     case 'A' || 'Xw' || 'O' || 'R' || 'XR' || 'D' || 'Ap':
       require(arity(1) && const {0, 1}.contains(numbers!.single));

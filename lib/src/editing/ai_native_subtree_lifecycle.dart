@@ -24,14 +24,23 @@ List<_NativeShapeBundle> _subtreeShapeBundles(AiNativeDrawing drawing, List<_Nat
 }
 
 /// Visits ordinary intervals around complete pairs without flattening their data.
-List<AiNativeInstruction> _subtreeOrdinaryCommands(AiNativeLayers model, int start, int end, List<_NativeShapeBundle> pairs, {bool groups = false}) {
+List<AiNativeInstruction> _subtreeOrdinaryCommands(
+  AiNativeLayers model,
+  int start,
+  int end,
+  List<_NativeShapeBundle> pairs, {
+  bool groups = false,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
+}) {
   final List<AiNativeInstruction> commands = [];
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(model);
 
   /// Keeps private scalar replay separate from private geometry and opaque owners.
   void interval(int first, int last) {
     commands.addAll(
-      groups ? _groupInterval(model.drawing, first, last, privateState: true) : _layerInterval(model, first, last, headers, privateState: true),
+      groups
+          ? _groupInterval(model.drawing, first, last, privateState: true, retainImages: true)
+          : _layerInterval(model, first, last, headers, privateState: true, retainImages: true, appearanceArtwork: appearanceArtwork),
     );
   }
 

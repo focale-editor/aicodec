@@ -1,5 +1,42 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// Writes supplied samples while restoring every observable source assignment.
+AiNativeAppearanceReplacement _nativeRasterAppearanceReplacement(
+  AiNativeAppearanceArtwork artwork,
+  AiNativeRasterSamples samples,
+  List<double> matrix,
+  AiNativeTransparency transparency,
+  AiBoundingBox bounds,
+) {
+  if (artwork.resource != null || artwork.liveShape != null || samples.imageMask) {
+    throw UnsupportedError('Raster appearance replacements require process pixels and an ordinary body owner.');
+  }
+  final AiNativeDrawing drawing = artwork._owner.structure.drawing;
+  final AiNativeLimits limits = drawing.records.program.limits;
+  final Set<String> keys = {..._printingState(drawing, artwork.printingGroup, clipping: true).keys, 'Xy'};
+  final _NativeShapeInputs state = _shapeCopyInputs(
+    drawing,
+    [artwork.printingGroup.end],
+    clipping: true,
+    appearanceArtwork: _nativeBodyAppearanceArtwork(artwork._owner),
+  )[artwork.printingGroup.end]!;
+  final StringBuffer suffix = StringBuffer('\n');
+  for (final String key in keys) {
+    final AiNativeInstruction? value = state.printing[key];
+    if (value == null) {
+      throw UnsupportedError('Raster appearance replacement cannot restore unknown printing $key state.');
+    }
+    suffix.write(_shapeStateText(value, private: false));
+  }
+  suffix.write('U');
+  final List<int> prefix = latin1.encode('u\n${transparency.operands.join(' ')} Xy\n');
+  final Uint8List image = samples.encodePrintingArtwork(matrix: matrix, limits: limits);
+  if (prefix.length + image.length + suffix.length > limits.maxDecodedBytes) {
+    throw const AiLimitException(message: 'Composed raster printing exceeds native byte limits.');
+  }
+  return AiNativeAppearanceReplacement(artwork: artwork, bytes: [...prefix, ...image, ...latin1.encode(suffix.toString())], bounds: bounds);
+}
+
 /// Attaches complete derived groups without changing resources or outgoing state.
 AiNativeDrawing _replaceNativePrintingGroups(AiNativeDrawing drawing, List<AiNativePrintingGroupReplacement> replacements) {
   final AiNativeDrawing result = AiNativeDrawing.decode(
@@ -44,12 +81,19 @@ List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({Ai
     final AiNativeGroup group = supplied.groups.last;
     final Map<String, String> before = _printingState(drawing, source, clipping: true);
     final Map<String, String> after = _printingState(supplied, group, clipping: true);
-    if (before.length != after.length || before.entries.any((entry) => after[entry.key] != entry.value)) {
-      throw UnsupportedError('Supplied printing artwork changes the outgoing paint state; preserve the source group boundary.');
+    final Map<String, AiNativeInstruction> incoming = source.start >= program.bodyStart ? _shapeCopyInputs(drawing, [source.start], clipping: true)[source.start]!.printing : const {};
+    for (final String key in {...before.keys, ...after.keys}) {
+      final AiNativeInstruction? command = incoming[key];
+      final String? inherited = command == null ? null : '${command.operator} ${command.operands.map((operand) => operand.number?.toDouble().toString() ?? operand.lexeme).join(' ')}';
+      if ((before[key] ?? inherited) != (after[key] ?? inherited)) {
+        throw UnsupportedError('Supplied printing artwork changes the outgoing paint state; preserve the source group boundary.');
+      }
     }
     final Map<AiNativePath, AiNativeInstruction> oldCounts = _printingPointCounts(drawing, source);
     final Map<AiNativePath, AiNativeInstruction> newCounts = _printingPointCounts(supplied, group);
-    if (oldCounts.isEmpty != newCounts.isEmpty || oldCounts.isNotEmpty && (oldCounts.length != source.paths.length || newCounts.length != group.paths.length)) {
+    if (source.paths.isNotEmpty && group.paths.isNotEmpty && oldCounts.isEmpty != newCounts.isEmpty ||
+        oldCounts.isNotEmpty && oldCounts.length != source.paths.length ||
+        newCounts.isNotEmpty && newCounts.length != group.paths.length) {
       throw UnsupportedError('Supplied printing artwork must retain the source point-count convention.');
     }
     final List<AiNativeGradient> gradients = [
@@ -87,8 +131,14 @@ List<AiSourceEdit> _nativePrintingSourceEdits(AiNativeDrawing drawing, List<({Ai
 /// Parses one bounded group without letting fragment comments redefine its body.
 AiNativeDrawing _printingFragment(List<int> bytes, AiNativeLimits limits) {
   final List<AiToken> tokens = AiPostScript.tokenize(bytes, maxBytes: limits.maxDecodedBytes, maxTokens: limits.maxTokens, maxDepth: limits.maxDepth);
-  if (tokens.any((token) => token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%') || token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%_')))) {
-    throw UnsupportedError('A printing group cannot contain document boundaries, private metadata or opaque payloads.');
+  if (tokens.any(
+    (token) =>
+        token.kind == .comment &&
+        (token.lexeme.startsWith('%_') ||
+            token.lexeme.startsWith('%%') && !token.lexeme.startsWith('%%BeginData:') && token.lexeme != '%%EndData' ||
+            token.lexeme.startsWith('%AI') && !const {'%AI5_BeginRaster', '%AI5_EndRaster'}.contains(token.lexeme)),
+  )) {
+    throw UnsupportedError('A printing group cannot contain document boundaries or private metadata.');
   }
   final List<AiToken> body = tokens.where((token) => token.kind != .comment).toList();
   if (body.isEmpty || body.first.lexeme != 'u' || body.last.lexeme != 'U') {
@@ -107,6 +157,7 @@ AiNativeDrawing _printingFragment(List<int> bytes, AiNativeLimits limits) {
   if (drawing.groups.isEmpty || drawing.groups.last.start != header.length + body.first.start || drawing.groups.last.end != header.length + body.last.end) {
     throw const FormatException('Supplied printing artwork contains multiple root objects.');
   }
+  _printingCommands(drawing, drawing.groups.last, clipping: true);
   return drawing;
 }
 

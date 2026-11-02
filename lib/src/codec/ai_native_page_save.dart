@@ -31,16 +31,26 @@ List<List<_NativeSaveTarget>> _mappedNativeTargets(
   final Map<PdfReference, int> oldIndices = _nativePageIndices(before);
   final Map<PdfReference, int> newIndices = _nativePageIndices(after);
   final Set<int?> selected = {};
+  final Set<PdfReference> catalogPages = {};
   for (final AiNativePageReplacement entry in replacements) {
     for (final int? owner in entry.replacement.source.owners) {
       if (!selected.add(owner)) {
         throw ArgumentError('Mapped native replacements overlap source owners.');
       }
     }
+    for (final PdfReference page in entry.catalogPages) {
+      final int? index = oldIndices[page];
+      if (!entry.replacement.source.owners.contains(null) || index == null || owners.any((owner) => owner.pageIndex == index) || !catalogPages.add(page)) {
+        throw ArgumentError('Catalog page declarations require distinct original pages without separate native ownership and an owned catalog source.');
+      }
+      if (newIndices.containsKey(page) && !entry.pages.any((binding) => binding.page == page)) {
+        throw ArgumentError('Retained declared catalog pages must bind to the same replacement.');
+      }
+    }
   }
   final Set<PdfReference> removed = oldIndices.keys.where((reference) => !newIndices.containsKey(reference)).toSet();
   for (final PdfReference reference in removed) {
-    if (!selected.contains(oldIndices[reference]) || synchronized.objects[reference] is! PdfDictionary) {
+    if ((!selected.contains(oldIndices[reference]) && !catalogPages.contains(reference)) || synchronized.objects[reference] is! PdfDictionary) {
       throw ArgumentError('Removed pages must belong to selected native programs and retain their unreachable page objects.');
     }
   }
@@ -51,6 +61,12 @@ List<List<_NativeSaveTarget>> _mappedNativeTargets(
   }
   for (final PdfReference reference in removed) {
     final PdfDictionary page = synchronized.dictionary(reference);
+    if (catalogPages.contains(reference)) {
+      if (!identical(page['PieceInfo'], before[oldIndices[reference]!].dictionary['PieceInfo'])) {
+        throw ArgumentError('Removed catalog-governed pages must retain their original page metadata.');
+      }
+      continue;
+    }
     final PdfValue? pieces = page['PieceInfo'];
     final PdfValue? illustratorValue = pieces == null || pieces is PdfNull ? null : synchronized.dictionary(pieces)['Illustrator'];
     if (illustratorValue == null || illustratorValue is PdfNull) {

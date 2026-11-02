@@ -26,6 +26,7 @@ void _validateRasterPlacement(AiNativePlacedObject object) {
       '%AI17_Begin_Content_if_version_gt:24 5',
       '%AI26_BeginPlacedObjectPreview',
       '%AI26_EndPlacedObjectPreview',
+      if (object.comments.any((token) => token.lexeme == '%AI17_Alternate_Content' && token.start >= object.preview!.end)) '%AI17_Alternate_Content',
       '%AI17_End_Versioned_Content',
     ],
   ];
@@ -73,39 +74,13 @@ AiNativeRasters _embedNativePlacement(AiNativePlacements source, AiNativePlacedO
     throw ArgumentError('The placed object belongs to another native snapshot.');
   }
   final List<double> rasterMatrix = object.rasterMatrix(width: samples.width, height: samples.height);
-  final int length = samples.colorSamples.length + (samples.alphaSamples?.length ?? 0);
-  if (length > source.records.program.limits.maxDecodedBytes) {
-    throw const FormatException('Embedded samples exceed the native decoded byte limit.');
-  }
-  final String prefix = object.instruction.isPrivate ? '%_' : '';
-  final String matrixText = '[ ${rasterMatrix.join(' ')} ]';
-  final int flags =
-      (switch (samples.components) {
-        1 => 0,
-        3 => 1,
-        _ => 2,
-      }) +
-      (samples.alphaSamples == null ? 0 : 16);
-  final String colorSpace = switch (samples.components) {
-    1 => 'Gray',
-    3 => 'RGB',
-    _ => 'CMYK',
-  };
-  final BytesBuilder replacement = BytesBuilder(copy: false)
-    ..add(
-      latin1.encode('''%AI5_BeginRaster
-$prefix() 1 XG
-$prefix/Device$colorSpace XN
-$prefix$matrixText ${samples.width} ${samples.height} 0 Xh
-$prefix$matrixText 0 0 ${samples.width} ${samples.height} ${samples.width} ${samples.height} ${samples.bitsPerComponent} ${samples.components} ${samples.alphaSamples == null ? 0 : 1} $flags 1 ${samples.imageMask ? 1 : 0} 4 4 0 0
-$prefix%%BeginData: ${length + 3} Binary Bytes
-XI
-'''),
-    )
-    ..add(samples.colorSamples)
-    ..add(samples.alphaSamples ?? [])
-    ..add(latin1.encode('\n$prefix%%EndData\n${prefix}XH\n$prefix%AI5_EndRaster\n${prefix}N'));
-  final List<AiSourceEdit> edits = [AiSourceEdit(start: object.start, end: object.end, bytes: replacement.takeBytes()), ..._placedFileEdits(source, object)];
+  final Uint8List replacement = _nativeRasterBytes(samples, rasterMatrix, object.instruction.isPrivate ? '%_' : '', source.records.program.limits.maxDecodedBytes);
+  final AiNativeItem? following = AiNativeDrawing.decode(records: source.records).items.where((item) => item.start >= object.end).firstOrNull;
+  final int end = following is AiNativeInstruction && following.operator == 'N' && following.operands.isEmpty && following.isPrivate == object.instruction.isPrivate ? following.end : object.end;
+  final List<AiSourceEdit> edits = [
+    AiSourceEdit(start: object.start, end: end, bytes: [...replacement, 10]),
+    ..._placedFileEdits(source, object),
+  ];
   final AiNativeRasters result = AiNativeRasters.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: source.records.program, edits: edits),
@@ -130,19 +105,52 @@ double _placedRasterOrigin(double value) {
 /// Trims DSC separator bytes without treating non-ASCII path bytes as whitespace.
 String _placedFileName(String value) => value.replaceFirst(RegExp(r'^[ \t]*'), '').replaceFirst(RegExp(r'[ \t]*$'), '');
 
+/// Qualifies literal DSC file inventories independently of artwork identities.
+Set<int> _nativeFileDeclarationComments(AiNativeRecords records) {
+  final Set<int> result = {};
+  final List<AiToken> tokens = records._projection.tokens;
+  for (int index = 0; index < tokens.length; index++) {
+    final AiToken token = tokens[index];
+    if (token.kind != .comment || !token.lexeme.startsWith('%%DocumentFiles:')) {
+      continue;
+    }
+    final String first = _placedFileName(token.lexeme.substring('%%DocumentFiles:'.length));
+    if (first.isEmpty || first.codeUnits.any((byte) => byte < 32 || byte == 127)) {
+      throw UnsupportedError('Native file declarations require literal filenames.');
+    }
+    result.add(token.start);
+    while (index + 1 < tokens.length && tokens[index + 1].kind == .comment && tokens[index + 1].lexeme.startsWith('%%+')) {
+      final AiToken continuation = tokens[++index];
+      final String path = _placedFileName(continuation.lexeme.substring(3));
+      if (first == '(atend)' || path.isEmpty || path == '(atend)' || path.codeUnits.any((byte) => byte < 32 || byte == 127)) {
+        throw UnsupportedError('Native file continuations require concrete filenames.');
+      }
+      result.add(continuation.start);
+    }
+  }
+  return result;
+}
+
 /// Updates declared dependencies while preserving shared native file references.
-List<AiSourceEdit> _placedFileEdits(AiNativePlacements source, AiNativePlacedObject object, {String? replacement}) {
-  final String path = latin1.decode(object.pathBytes);
+List<AiSourceEdit> _placedFileEdits(AiNativePlacements source, AiNativePlacedObject? object, {String? replacement}) {
+  final String? path = object == null ? null : latin1.decode(object.pathBytes);
+  return _placedFilePathEdits(source, path, replacement: replacement, ignored: object == null ? null : (start: object.start, end: object.end));
+}
+
+/// Updates file declarations after a selected owner changes or has been removed.
+List<AiSourceEdit> _placedFilePathEdits(AiNativePlacements source, String? path, {String? replacement, _NativeSubtreeSpan? ignored}) {
   if (replacement == path) {
     return [];
   }
   final List<AiToken> projected = source.records._projection.tokens;
-  final bool shared = projected.any(
-    (token) =>
-        (token.start < object.start || token.start >= object.end) &&
-        ((token.kind == .string || token.kind == .hexString) && latin1.decode(aiStringBytes(token)) == path ||
-            token.kind == .comment && token.lexeme.startsWith('%%IncludeFile:') && _placedFileName(token.lexeme.substring('%%IncludeFile:'.length)) == path),
-  );
+  final bool shared =
+      path != null &&
+      projected.any(
+        (token) =>
+            (ignored == null || token.start < ignored.start || token.start >= ignored.end) &&
+            ((token.kind == .string || token.kind == .hexString) && latin1.decode(aiStringBytes(token)) == path ||
+                token.kind == .comment && token.lexeme.startsWith('%%IncludeFile:') && _placedFileName(token.lexeme.substring('%%IncludeFile:'.length)) == path),
+      );
   if (shared && replacement == null) {
     return [];
   }
@@ -241,4 +249,43 @@ List<AiSourceEdit> _placedFileEdits(AiNativePlacements source, AiNativePlacedObj
     edits.addAll(deferred.map((token) => AiSourceEdit(start: token.start, end: token.end, bytes: [])));
   }
   return edits;
+}
+
+/// Writes one bounded process raster for insertion or linked-image embedding.
+Uint8List _nativeRasterBytes(AiNativeRasterSamples samples, List<double> matrix, String prefix, int maxBytes) {
+  final int length = samples.colorSamples.length + (samples.alphaSamples?.length ?? 0);
+  if (length > maxBytes) {
+    throw const FormatException('Embedded samples exceed the native decoded byte limit.');
+  }
+  final String matrixText = '[ ${matrix.join(' ')} ]';
+  final int flags =
+      (switch (samples.components) {
+        1 => 0,
+        3 => 1,
+        _ => 2,
+      }) +
+      (samples.alphaSamples == null ? 0 : 16);
+  final String colorSpace = switch (samples.components) {
+    1 => 'Gray',
+    3 => 'RGB',
+    _ => 'CMYK',
+  };
+  final BytesBuilder replacement = BytesBuilder(copy: false)
+    ..add(
+      latin1.encode('''%AI5_BeginRaster
+$prefix() 1 XG
+$prefix/Device$colorSpace XN
+$prefix$matrixText ${samples.width} ${samples.height} 0 Xh
+$prefix$matrixText 0 0 ${samples.width} ${samples.height} ${samples.width} ${samples.height} ${samples.bitsPerComponent} ${samples.components} ${samples.alphaSamples == null ? 0 : 1} $flags 1 ${samples.imageMask ? 1 : 0} 4 4 0 0
+$prefix%%BeginData: ${length + 3} Binary Bytes
+XI
+'''),
+    )
+    ..add(samples.colorSamples)
+    ..add(samples.alphaSamples ?? [])
+    ..add(latin1.encode('\n$prefix%%EndData\n${prefix}XH\n$prefix%AI5_EndRaster\n${prefix}N'));
+  if (replacement.length > maxBytes) {
+    throw const AiLimitException(message: 'Embedded raster exceeds the native byte limit.');
+  }
+  return replacement.takeBytes();
 }

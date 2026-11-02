@@ -124,30 +124,31 @@ void _validateMeshTintSpaces(AiNativeMeshVertex vertex) {
 }
 
 /// Rejects unqualified native copies, extensions and dependent appearance data.
-void _validateMeshPaintOwner(AiNativeRecords records, AiNativeMesh mesh) {
+void _validateMeshPaintOwner(AiNativeRecords records, AiNativeMesh mesh, {AiNativeDrawing? drawing}) {
   if (mesh.isPrivate || mesh.start < records.program.bodyStart || mesh.end > records.program.bodyEnd || records.containers.any((record) => record.start < mesh.start && record.end > mesh.end)) {
     throw UnsupportedError('Mesh paint editing requires direct printable body artwork.');
   }
   if (mesh.fields.any((field) => !const {'Version', 'Type', 'Size', 'Data', 'P', 'R', 'CS', 'N', 'A', 'S', 'E'}.contains(field.key))) {
     throw UnsupportedError('Mesh paint cannot synchronize unknown native fields.');
   }
-  final AiNativeDrawing drawing = AiNativeDrawing.decode(records: records);
-  if (drawing.items.any((item) => item is AiNativeVersionComment)) {
+  final AiNativeDrawing source = drawing ?? AiNativeDrawing.decode(records: records);
+  if (AiNativeVersions.decode(records: records).memberships(start: mesh.start, end: mesh.end).isNotEmpty) {
     throw UnsupportedError('Mesh paint requires resolved version-dependent artwork.');
   }
 
   /// Checks the immediately attached dictionary and style binding.
   void following(int end, {bool parent = false}) {
-    final List<AiNativeItem> items = drawing.items.where((item) => item.start >= end).take(3).toList();
+    final List<AiNativeItem> items = source.items.skip(_pathOffset(source.items, end, (item) => item.start)).take(3).toList();
     int index = 0;
     if (items.firstOrNull case final AiNativeInstruction command when command.operator == 'N' && command.operands.isEmpty) {
       index++;
     }
     if (index < items.length && items[index] is AiNativeContainer) {
       final AiNativeContainer dictionary = items[index++] as AiNativeContainer;
-      if (parent || dictionary.type != 'ArtDictionary' || dictionary.entries.any((entry) => !const {'BBAccumRotation', 'AI10_ArtUID', 'AIArtName', 'Object name'}.contains(entry.key))) {
+      if (dictionary.type != 'ArtDictionary' || dictionary.entries.any((entry) => !const {'BBAccumRotation', 'AI10_ArtUID', 'AIArtName', 'Object name'}.contains(entry.key))) {
         throw UnsupportedError('Mesh paint cannot synchronize dependent artwork metadata.');
       }
+      _gradientArtworkMetadata(dictionary, numericRotation: true);
     }
     final AiNativeItem? next = index < items.length ? items[index] : null;
     if (next case final AiNativeInstruction command when command.operator == 'XW') {
@@ -162,7 +163,7 @@ void _validateMeshPaintOwner(AiNativeRecords records, AiNativeMesh mesh) {
   }
 
   following(mesh.end);
-  for (final AiNativeGroup group in drawing.groups.where((group) => group.start < mesh.start && group.end > mesh.end)) {
+  for (final AiNativeGroup group in source.groups.where((group) => group.start < mesh.start && group.end > mesh.end)) {
     following(group.end, parent: true);
   }
 }

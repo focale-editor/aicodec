@@ -104,7 +104,7 @@ final class AiNativePaintStyle {
   ///
   /// These are source assignments, not composed or inherited appearance values.
   /// Unknown commands remain in [instructions]; no defaults are synthesized.
-  late final List<AiNativePaintAssignment> assignments = _nativePaintAssignments(instructions);
+  late final List<AiNativePaintAssignment> assignments = _nativePaintAssignments(instructions, gradients: gradients);
 
   /// Reads one paint style from an existing immutable records snapshot.
   factory AiNativePaintStyle.decode({required AiNativeRecords records, required AiNativeContainer record}) {

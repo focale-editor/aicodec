@@ -3,8 +3,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Explicit ordinary geometry and process paints for source-native path creation.
 ///
 /// [artwork] supplies immutable geometry, fill/stroke, winding, lock and line
-/// attributes. It is a data value here; creation does not invoke the standalone
-/// AI7 document writer. Advanced appearances, guides and private CC shape
+/// attributes. Advanced appearances, guides and private CC shape
 /// parameters require their separate native contracts.
 final class AiNativePathDefinition {
   /// Geometry and independent process paints to serialize without conversion.
@@ -21,6 +20,11 @@ final class AiNativePathDefinition {
 
   /// Object opacity using the qualified `0 opacity 0 0 0 Xy` layout.
   final double opacity;
+
+  /// Complete object blending, replacing the normal-opacity shorthand when set.
+  ///
+  /// Keep [opacity] at its default when supplying this explicit native tuple.
+  final AiNativeTransparency? transparency;
 
   /// Whether the supplied process fill overprints underlying artwork.
   final bool fillOverprint;
@@ -41,14 +45,15 @@ final class AiNativePathDefinition {
     this.counted = true,
     this.hidden = false,
     this.opacity = 1,
+    this.transparency,
     this.fillOverprint = false,
     this.strokeOverprint = false,
     List<int>? nameBytes,
     List<int>? identifierBytes,
   }) : nameBytes = nameBytes == null ? null : List.unmodifiable(nameBytes),
        identifierBytes = identifierBytes == null ? null : List.unmodifiable(identifierBytes) {
-    if (!opacity.isFinite || opacity < 0 || opacity > 1) {
-      throw ArgumentError('Native path opacity must be finite and between zero and one.');
+    if (!opacity.isFinite || opacity < 0 || opacity > 1 || transparency != null && opacity != 1) {
+      throw ArgumentError('Native paths require valid opacity or explicit transparency, without conflicting inputs.');
     }
     if ([
       bounds.left,

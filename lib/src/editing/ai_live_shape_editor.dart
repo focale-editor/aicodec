@@ -223,9 +223,16 @@ final class _LiveShapeEditor {
   }
 
   /// Checks native metadata whose positions are updated with the shape outline.
-  void _checkDictionary(AiNativeContainer dictionary, String handler) {
-    if (dictionary.entries.any((entry) => !const {'ai::LiveShape', 'BBAccumRotation', 'AI10_ArtUID', 'Adobe_AI9_ArtStyle_Dictionary', 'PATH_IS_KAPPA_CURVE'}.contains(entry.key))) {
+  void _checkDictionary(AiNativeContainer dictionary, String handler, {bool opacityMasks = false}) {
+    if (dictionary.entries.any(
+      (entry) =>
+          !(opacityMasks && entry.key == 'AI9_Mask') &&
+          !const {'ai::LiveShape', 'BBAccumRotation', 'AI10_ArtUID', 'AIArtName', 'Object name', 'Adobe_AI9_ArtStyle_Dictionary', 'PATH_IS_KAPPA_CURVE'}.contains(entry.key),
+    )) {
       throw UnsupportedError('Native transformation cannot synchronize unknown native artwork metadata.');
+    }
+    if (dictionary.entries.any((entry) => const {'AIArtName', 'Object name'}.contains(entry.key) && (!const {'String', 'UnicodeString'}.contains(entry.type) || entry.stringBytes == null))) {
+      throw UnsupportedError('Native shape names require literal string metadata.');
     }
     final AiNativeEntry? curve = dictionary['PATH_IS_KAPPA_CURVE'];
     if (curve != null && (curve.type != 'Bool' || !const {0, 1}.contains(curve.number))) {

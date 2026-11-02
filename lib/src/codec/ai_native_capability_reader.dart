@@ -94,7 +94,7 @@ final class _NativeCapabilityReader {
   AiNativeCapabilityReport read() {
     inspect(.program, 0, source.bytes.length, () {
       final AiProgram program = AiProgram.decode(bytes: source.bytes, limits: limits);
-      add(.program, 0, source.bytes.length, .preserved, 'Original program retained; findings do not imply complete semantic coverage.');
+      add(.program, 0, source.bytes.length, .preserved, 'Original program retained; findings do not imply complete semantic coverage.', edits: conditional([.gradientCreation, .swatchCreation]));
       for (final AiLayer layer in program.layers) {
         add(
           .layer,
@@ -133,7 +133,9 @@ final class _NativeCapabilityReader {
                   : (counted ? 'Native point-count ownership and closed endpoints require validation.' : 'Plain source geometry is isolated under the current editor contract.'),
             ),
             for (final AiNativeEditOperation operation in [
+              AiNativeEditOperation.pathAppearance,
               AiNativeEditOperation.pathTopology,
+              AiNativeEditOperation.pathAffineTransform,
               AiNativeEditOperation.pathInsertion,
               AiNativeEditOperation.pathDuplication,
               AiNativeEditOperation.pathRemoval,
@@ -194,14 +196,46 @@ final class _NativeCapabilityReader {
       }
     });
     inspect(.group, records.program.bodyStart, records.program.bodyEnd, () => drawing(AiNativeDrawing.decode(records: records)));
+    for (final AiNativeContainer record in records.containers.where((record) => record.type == 'Mask')) {
+      inspect(.opacityMask, record.start, record.end, () {
+        AiNativeOpacityMask.decode(records: records, record: record);
+        add(
+          .opacityMask,
+          record.start,
+          record.end,
+          .typed,
+          'Literal mask flags and preserved artwork; native ownership, command coverage and printing synchronization require validation.',
+          edits: conditional([.opacityMaskSettings, .opacityMaskArtwork]),
+        );
+      });
+    }
     inspect(.gradientResource, 0, source.bytes.length, () {
       for (final AiNativeGradientDefinition definition in AiNativeGradientResources.decode(records: records).definitions) {
-        add(.gradientResource, definition.start, definition.end, .typed, 'Native gradient stops and printing intervals.', edits: conditional([.gradientStops, if (definition.radial) .gradientFocus]));
+        add(
+          .gradientResource,
+          definition.start,
+          definition.end,
+          .typed,
+          'Native gradient stops and printing intervals.',
+          edits: conditional([.gradientStops, .gradientRemoval, if (definition.radial) .gradientFocus]),
+        );
+      }
+    });
+    inspect(.palette, 0, source.bytes.length, () {
+      for (final AiNativePalette palette in AiNativeSwatches.decode(records: records).palettes) {
+        add(
+          .palette,
+          palette.start,
+          palette.end,
+          .typed,
+          'Native palette cells and authored grouping.',
+          edits: conditional([.swatchCreation, .swatchRemoval], issue: palette.conditional ? 'Palette lifecycle requires unconditional cells.' : null),
+        );
       }
     });
     inspect(.mesh, 0, source.bytes.length, () {
       for (final AiNativeMesh mesh in AiNativeMeshes.decode(records: records).meshes) {
-        add(.mesh, mesh.start, mesh.end, .typed, 'Native mesh fields; geometry is not interpolated.', edits: conditional([.meshPaint]));
+        add(.mesh, mesh.start, mesh.end, .typed, 'Native mesh fields; geometry is not interpolated.', edits: conditional([.meshPaint, .meshGeometry, .meshAffineTransform, .meshTopology]));
       }
     });
     inspect(.raster, 0, source.bytes.length, () {
@@ -269,7 +303,7 @@ final class _NativeCapabilityReader {
         .typed,
         'Native ${shape.handler} parameters and source associations.',
         edits: [
-          ...conditional([.liveShapeTranslation, .liveShapeRotation, .liveShapeScaling], issue: shape.bindingIssue),
+          ...conditional([.liveShapeTranslation, .liveShapeRotation, .liveShapeScaling, .liveShapeAffineTransform, .liveShapeParameters], issue: shape.bindingIssue),
           ...conditional([
             .liveShapeDuplication,
             .liveShapeRemoval,

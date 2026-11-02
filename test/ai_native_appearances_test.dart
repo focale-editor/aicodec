@@ -171,7 +171,8 @@ void main() {
       check(() => _paint(commands).assignments).throws<FormatException>();
     }
     final AiNativePaintStyle named = _paint('0 0 0 1 (Spot) 0.5 Xs');
-    check(named.assignments).isEmpty();
+    check(named.assignments.single.namedColor!.tint).equals(0.5);
+    check(named.assignments.single.colors).isEmpty();
     check(named.instructions.single.operator).equals('Xs');
   });
 

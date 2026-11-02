@@ -28,6 +28,7 @@ Uint8List _createdNativeAppearancePart(
     .fill => 'Fill Style Filter',
     .stroke => offset ? 'Adobe Stroke Offset' : 'Stroke Style Filter',
     .conduit => 'Conduit Filter',
+    .blend => 'Blend Style Filter',
     _ => throw ArgumentError('Unsupported created appearance part.'),
   };
   text('/${compound ? 'CompoundFilter' : 'BasicFilter'} : ($filter) ${offset ? 1 : 0} 0 /Filter , ${definition.visible ? 1 : 0} /Visible , ');
@@ -36,6 +37,8 @@ Uint8List _createdNativeAppearancePart(
       append(childBytes(child));
       text(' /Part ,\n${private ? '%_' : ''}');
     }
+  } else if (definition.kind == .blend) {
+    text('/Dictionary : /NotRecorded , /BlendStyle : ${definition.transparency!.operands.join(' ')} Xy /Def ; (BlendStyle) , ; /Dict , ');
   } else if (definition.kind != .conduit) {
     final bool stroke = definition.kind == .stroke;
     if (stroke) {
@@ -63,7 +66,8 @@ Uint8List _createdNativeAppearancePart(
             .rgb => stroke ? 'XA' : 'Xa',
             .cmyk => stroke ? 'K' : 'k',
           };
-    text('$color $operator 0 ${definition.opacity} 0 0 0 Xy ${definition.evenOdd ? 1 : 0} XR ');
+    final String transparency = definition.transparency?.operands.join(' ') ?? '0 ${definition.opacity} 0 0 0';
+    text('$color $operator $transparency Xy ${definition.evenOdd ? 1 : 0} XR ');
     if (stroke) {
       if (definition.dash.length > limits.maxTokens || definition.dash.length > limits.maxDecodedBytes ~/ 2) {
         throw const AiLimitException(message: 'Created appearance dash operands exceed native limits.');

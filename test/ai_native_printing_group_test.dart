@@ -38,6 +38,14 @@ List<int> _following(AiNativeDrawing drawing, int shapeIndex) => drawing.records
 
 /// Qualifies full-group ownership, outgoing state and supplied resource use.
 void main() {
+  test('restores known inherited paint after introducing local printing assignments', () {
+    final AiNativeDrawing source = printingFixture(group: '0 g\nu\n0 0 m 10 0 L 10 10 L f\nU');
+    final AiNativeDrawing changed = source.withPrintingGroups(replacements: [_replacement(source.liveShapes.first, group: 'u\n1 g\n0 0 m 10 0 L 10 10 L f\n0 g\nU')]);
+    check(changed.liveShapes).length.equals(source.liveShapes.length);
+    check(_following(changed, 0)).deepEquals(_following(source, 0));
+    check(() => source.withPrintingGroups(replacements: [_replacement(source.liveShapes.first, group: 'u\n1 g\n0 0 m 10 0 L 10 10 L f\nU')])).throws<UnsupportedError>();
+  });
+
   test('replaces topology and paints while retaining all authoring and unselected bytes', () {
     final AiNativeDrawing source = printingFixture();
     final List<int> original = source.records.program.bytes.toList();

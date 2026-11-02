@@ -22,13 +22,16 @@ final class _NativeShapeBundle {
 }
 
 /// Validates metadata without admitting unknown references into copied objects.
-void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeContainer dictionary) {
+void _shapeCopyDictionary(AiNativeDrawing drawing, AiLiveShape shape, AiNativeContainer dictionary, {void Function(AiNativeContainer)? opacityMask}) {
   if (!_shapeParameters.containsKey(shape.handler)) {
     throw UnsupportedError('Shape copies require a known native parameter schema.');
   }
-  _LiveShapeEditor(drawing: drawing, shapes: [shape])._checkDictionary(dictionary, shape.handler);
+  _LiveShapeEditor(drawing: drawing, shapes: [shape])._checkDictionary(dictionary, shape.handler, opacityMasks: opacityMask != null);
   if (dictionary.entries.any((entry) => entry.key == 'Adobe_AI9_ArtStyle_Dictionary') || dictionary.entries.map((entry) => entry.key).toSet().length != dictionary.entries.length) {
     throw UnsupportedError('Shape copies require qualified distinct metadata fields.');
+  }
+  if (dictionary['AI9_Mask'] case final AiNativeEntry field) {
+    opacityMask!(_referenceRecord(field, 'Mask'));
   }
   final AiNativeContainer? definition = dictionary['ai::LiveShape']?.container;
   if (definition != null) {
@@ -67,6 +70,7 @@ _NativeShapeBundle _shapeBundle(
   bool clipping = false,
   AiNativeDrawing? document,
   Set<String> patterns = const {},
+  void Function(AiNativeContainer)? opacityMask,
 }) {
   final AiNativeGroup group = _printingShapeGroup(drawing, shape, clipping: clipping);
   if (!_shapeParameters.containsKey(shape.handler)) {
@@ -130,8 +134,22 @@ _NativeShapeBundle _shapeBundle(
     throw UnsupportedError('A copied shape requires one authoritative contour.');
   }
   final Set<AiNativeContainer> dictionaries = {shape.appearanceDictionary!, shape.dictionary, ...shape.alternativeDictionaries};
+  final List<AiNativeContainer> masks = [];
   for (final AiNativeContainer dictionary in dictionaries) {
-    _shapeCopyDictionary(drawing, shape, dictionary);
+    _shapeCopyDictionary(
+      drawing,
+      shape,
+      dictionary,
+      opacityMask: opacityMask == null
+          ? null
+          : (mask) {
+              if (!identical(dictionary, shape.dictionary)) {
+                throw UnsupportedError('Live-shape masks require authoritative metadata without printing or alternate mask copies.');
+              }
+              opacityMask(mask);
+              masks.add(mask);
+            },
+    );
   }
   final Set<int> versionComments = {
     for (final AiNativeVersionBlock block in structure.versions.blocks.where((block) => block.start >= shape.path!.end && block.end < shape.end)) ...[
@@ -141,7 +159,9 @@ _NativeShapeBundle _shapeBundle(
     ],
   };
   if (_pathInterval(drawing.records._projection.tokens, start, shape.end, (token) => token.start).any(
-    (token) => token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%') || token.lexeme.startsWith('%AI')) && !versionComments.contains(token.start),
+    (token) =>
+        !masks.any((mask) => token.start >= mask.start && token.end <= mask.end) &&
+        (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%') || token.lexeme.startsWith('%AI')) && !versionComments.contains(token.start)),
   )) {
     throw UnsupportedError('Shape copies require ownership of all local comments and payloads.');
   }

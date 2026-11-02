@@ -125,7 +125,10 @@ void _artboardStylePaint(AiNativeLayers layers, AiNativeContainer record, String
   for (final AiNativeToken item in entry.items.cast<AiNativeToken>()) {
     final AiNativeInstruction? command = reader.add(item.token, isPrivate: layers.drawing.records._projection.isPrivate(item.start));
     if (command != null) {
-      if (!_solidStyleCommands.contains(command.operator) && !_gradientCommands.contains(command.operator) && !const {'p', 'P', 'Xs', 'XS', 'Xz', 'XZ'}.contains(command.operator)) {
+      if (!_solidStyleCommands.contains(command.operator) &&
+          !_gradientCommands.contains(command.operator) &&
+          !const {'p', 'P'}.contains(command.operator) &&
+          !_nativeNamedColorOperators.contains(command.operator)) {
         throw UnsupportedError('Retained paints cannot execute ${command.operator}.');
       }
       commands.add(command);

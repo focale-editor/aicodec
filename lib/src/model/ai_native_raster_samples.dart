@@ -76,4 +76,22 @@ final class AiNativeRasterSamples {
     required this.colorSamples,
     required this.alphaSamples,
   });
+
+  /// Serializes host-composed samples as one public native printing image.
+  ///
+  /// The affine matrix uses Illustrator's pixel placement convention, matching
+  /// `AiNativeRasterDefinition`. The returned section has no object identity,
+  /// cache metadata or paint assignments. Enclose it in a complete printing
+  /// group, supply its ink bounds and preserve the owner's outgoing state.
+  /// Alpha remains a separate plane; no rendering or color conversion occurs.
+  Uint8List encodePrintingArtwork({required List<double> matrix, AiNativeLimits limits = const AiNativeLimits()}) {
+    limits.validate();
+    _nativeImageBounds(matrix, [0, -height.toDouble(), width.toDouble(), 0]);
+    if (colorSamples.length + (alphaSamples?.length ?? 0) > limits.maxDecodedBytes) {
+      throw const AiLimitException(message: 'Printing raster samples exceed native byte limits.');
+    }
+    final Uint8List bytes = _nativeRasterBytes(this, matrix, '', limits.maxDecodedBytes);
+    AiPostScript.tokenize(bytes, maxBytes: limits.maxDecodedBytes, maxTokens: limits.maxTokens, maxDepth: limits.maxDepth);
+    return bytes.asUnmodifiableView();
+  }
 }

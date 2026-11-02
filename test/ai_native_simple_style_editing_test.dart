@@ -137,7 +137,7 @@ void main() {
   test('rejects unknown simple paint schemas and conditional or repeated owners', () {
     for (final String text in [
       simpleAppearanceSource(commands: '0.2 g 7 FuturePaint'),
-      simpleAppearanceSource(commands: '0.2 g 0 0 0 1 (Spot) 0.5 Xs'),
+      simpleAppearanceSource(commands: '0.2 g 0 0 0 1 (Spot) 0.5 FutureInk'),
       simpleAppearanceSource().replaceFirst('/Paint ;', '/Paint , 1 /FutureCache ;'),
       simpleAppearanceSource().replaceFirst('/Paint ;', '/Paint , 0 g /Paint ;'),
       simpleAppearanceSource().replaceFirst('/KnownStyle', '%AI17_Begin_Content_if_version_gt:24 4\n/KnownStyle').replaceFirst('%%EndSetup', '%AI17_End_Versioned_Content\n%%EndSetup'),

@@ -123,7 +123,12 @@ AiNativeAppearances _editNativeAppearance(
   }
   final Set<String> changedState = {
     for (final AiNativePaintChange change in paints)
-      if (_nativeArtworkStateKey(change.assignment.instruction) case final String key) key else ...state.writes,
+      if (change.assignment.gradient case final AiNativeGradient gradient)
+        if (gradient.onStroke) 'stroke' else 'fill'
+      else if (_nativeArtworkStateKey(change.assignment.instruction) case final String key)
+        key
+      else
+        ...state.writes,
     if (parts.isNotEmpty) ...{...state.writes, 'XR'},
   };
   final AiNativeAppearances updated = _nativeAppearanceResult(model, edits, owners);
@@ -197,6 +202,9 @@ AiNativeAppearances _editNativeAppearance(
 /// Rebinds supplied owners after bounded serialization, including state replays.
 AiNativeAppearances _nativeAppearanceResult(AiNativeAppearances model, List<AiSourceEdit> edits, List<AiNativeResourceUse> owners) {
   final AiNativeDrawing drawing = model.structure.drawing;
+  if (drawing.records.program.bytes.length + edits.fold<int>(0, (size, edit) => size + edit.bytes.length - (edit.end - edit.start)) > drawing.records.program.limits.maxDecodedBytes) {
+    throw const AiLimitException(message: 'Appearance transaction exceeds the native byte limit.');
+  }
   final AiNativeDrawing result = AiNativeDrawing.decode(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(program: drawing.records.program, edits: edits),
@@ -257,7 +265,7 @@ List<AiSourceEdit> _nativeAppearanceChanges(AiNativeAppearances model, AiNativeA
     if (tokens > model.structure.drawing.records.program.limits.maxTokens) {
       throw const AiLimitException(message: 'The appearance change batch exceeds native token limits.');
     }
-    edits.addAll(_nativeAppearancePaintEdits(change, model.structure.drawing.records.program.limits));
+    edits.addAll(_nativeAppearancePaintEdits(change, model.structure.drawing.records));
   }
   for (final AiNativeAppearancePartChange change in parts) {
     final AiNativeAppearancePart part = change.part;
@@ -318,7 +326,19 @@ List<AiSourceEdit> _nativeAppearanceChanges(AiNativeAppearances model, AiNativeA
 }
 
 /// Reuses the literal operand grammar and retains comments between source tokens.
-List<AiSourceEdit> _nativeAppearancePaintEdits(AiNativePaintChange change, AiNativeLimits limits) {
+List<AiSourceEdit> _nativeAppearancePaintEdits(AiNativePaintChange change, AiNativeRecords records) {
+  final AiNativeLimits limits = records.program.limits;
+  if (change.namedColor case final AiNativeNamedColor color) {
+    final AiNativeInstruction source = change.assignment.instruction;
+    return [
+      for (final (int index, AiToken token) in source.operands.take(color.components.length).indexed)
+        AiSourceEdit(start: token.start, end: token.end, bytes: latin1.encode('${color.components[index]}')),
+      AiSourceEdit(start: source.operands[color.components.length + 1].start, end: source.operands[color.components.length + 1].end, bytes: latin1.encode('${color.tint}')),
+    ];
+  }
+  if (change.gradientDefinition case final AiNativeGradientDefinition target) {
+    return _nativeGradientApplicationEdits(records, change.assignment.gradient!, target);
+  }
   if (change.values.length + 5 > limits.maxTokens || change.values.length > limits.maxDecodedBytes ~/ 2) {
     throw const AiLimitException(message: 'Replacement paint operands exceed native limits.');
   }

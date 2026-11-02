@@ -31,15 +31,18 @@ String _nativeArtboardLineEnding(AiProgram program) {
 
 /// Writes one ordinary private CC dictionary with bounded escaped strings.
 Uint8List _newNativeArtboard(AiNativeArtboards model, AiNativeArtboardDefinition definition) {
-  final int maximum = model.records.program.limits.maxDecodedBytes;
   final String identifier = latin1.decode(definition.identifierBytes).toLowerCase();
   if (model.records.containers.any((record) => record['ArtboardUUID']?.text()?.toLowerCase() == identifier)) {
     throw ArgumentError('The new artboard UUID already belongs to the source.');
   }
+  return _nativeArtboardDefinitionBytes(definition, model.records.program.limits.maxDecodedBytes, _nativeArtboardLineEnding(model.records.program));
+}
+
+/// Shares explicit artboard serialization between initial creation and insertion.
+Uint8List _nativeArtboardDefinitionBytes(AiNativeArtboardDefinition definition, int maximum, String newline) {
   final List<int> name = _nativeLiteralString(definition.nameBytes, maximum);
   final List<int> uuid = _nativeLiteralString(definition.identifierBytes, maximum - name.length);
   final AiBoundingBox bounds = definition.bounds;
-  final String newline = _nativeArtboardLineEnding(model.records.program);
   final List<String> lines = [
     '/Dictionary :',
     '${latin1.decode(name)} /UnicodeString (Name) ,',

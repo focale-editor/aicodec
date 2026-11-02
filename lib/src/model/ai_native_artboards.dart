@@ -170,7 +170,10 @@ final class AiNativeArtboards {
   /// that order against the supplied PDF graph. It does not equate PDF boxes
   /// with native rectangles or render their contents. Stale/foreign handles and
   /// incomplete mappings reject before any PDF mutation.
-  AiNativePageReplacement pageReplacement({required AiNativeSource source, required List<AiNativeArtboardPage> pages}) {
+  ///
+  /// [catalogPages] explicitly declares original PDF pages governed solely by
+  /// this source's catalog owner; mapped saving validates their ownership.
+  AiNativePageReplacement pageReplacement({required AiNativeSource source, required List<AiNativeArtboardPage> pages, List<PdfReference> catalogPages = const []}) {
     if (source.document is! AiPdfDocument || source.owners.isEmpty || records.roots.where((root) => root.type == 'Document').length != 1 || pages.length != artboards.length) {
       throw ArgumentError('Artboard page mapping requires a PDF source, one native Document and every current board.');
     }
@@ -186,6 +189,7 @@ final class AiNativeArtboards {
     return AiNativePageReplacement(
       replacement: AiNativeReplacement(source: source, program: records.program.bytes),
       pages: [for (int index = 0; index < artboards.length; index++) bindings[index]!],
+      catalogPages: catalogPages,
     );
   }
 }

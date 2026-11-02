@@ -31,7 +31,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       if (owner == null || count != null || panel || !drawing.records._projection.isPrivate(item.start) || !_sameNativeObjectOwner(structure.nodeFor(owner), structure.nodeFor(item))) {
         throw UnsupportedError('Grouped appearance metadata requires direct private ownership.');
       }
-      _nativeAppearanceDictionary(item);
+      _nativeAppearanceDictionary(item, appearances: model);
       metadata.add(item);
       metadataOwners[item] = owner;
       continue;

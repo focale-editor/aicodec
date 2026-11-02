@@ -97,9 +97,7 @@ def expected(data, row, mode='fill', shared=False):
         edits.append((color, color + len(WHITE), CYAN))
     for start, end, value in sorted(edits, reverse=True):
         data = data[:start] + value + data[end:]
-    # The bounds writer retains the same values with its canonical float spelling.
-    data, count = re.subn(rb'(?m)^(%%HiResBoundingBox:[^\r\n]*) -149(?=\r?$)', rb'\1 -149.0', data)
-    assert count == 1
+    # Unchanged bounds retain their original lexical representation.
     return data
 
 

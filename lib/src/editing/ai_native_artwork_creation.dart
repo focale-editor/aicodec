@@ -1,5 +1,15 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
+/// Resolves appearance boundaries before admitting independent following artwork.
+List<AiNativeAppearanceArtwork> _nativeCreationAppearances(AiNativeDrawing drawing) => _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: drawing._objects.structure));
+
+/// Finds the latest complete neutral or appearance owner before an insertion.
+int _nativeCreationBoundary(AiNativeDrawing drawing, int position, List<AiNativeAppearanceArtwork> appearances) => [
+  drawing.records.program.bodyStart,
+  ..._nativeNeutralArtwork(drawing).where((span) => span.end <= position).map((span) => span.end),
+  ...appearances.where((owner) => owner.end <= position).map((owner) => owner.end),
+].reduce(max);
+
 /// Qualifies one append boundary without requiring an existing sibling.
 int _nativeCreationPosition(AiNativeDrawing drawing, AiNativeGroup? parent, AiLayer? layer) {
   if (parent != null && layer != null) {
@@ -39,7 +49,16 @@ List<int> _createdNativeMetadata(AiNativeDrawing drawing, List<int>? nameBytes, 
 }
 
 /// Appends an empty ordinary owner without changing any persistent drawing state.
-AiNativeDrawing _createNativeGroup(AiNativeDrawing drawing, AiNativeGroup? parent, AiLayer? layer, List<int>? nameBytes, List<int>? identifierBytes, bool inheritParentFlags) {
+AiNativeDrawing _createNativeGroup(
+  AiNativeDrawing drawing,
+  AiNativeGroup? parent,
+  AiLayer? layer,
+  List<int>? nameBytes,
+  List<int>? identifierBytes,
+  bool inheritParentFlags,
+  bool? hidden,
+  bool? locked,
+) {
   final int position = _nativeCreationPosition(drawing, parent, layer);
   _nativeGroupingFlags(drawing, [position], inheritParentFlags);
   final AiProgram program = drawing.records.program;
@@ -60,5 +79,5 @@ AiNativeDrawing _createNativeGroup(AiNativeDrawing drawing, AiNativeGroup? paren
   }
   final AiNativeStructure structure = result._objects.structure;
   _sourceMovementParents(result, _artworkParents(structure, structure.nodeFor(created)));
-  return result;
+  return hidden == null && locked == null ? result : _updateNativeGroupAttributes(result, created, hidden, locked);
 }

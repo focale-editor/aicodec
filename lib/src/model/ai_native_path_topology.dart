@@ -51,7 +51,10 @@ final class AiNativePathTopology {
   AiNativeGroup? get clippingGroup => groups.takeWhile((group) => !group.compound).where((group) => group.opening.operator == 'q').lastOrNull;
 }
 
-/// An immutable geometry or mask change to one authoritative ordinary path.
+/// An immutable geometry or mask change to one authoritative path.
+///
+/// Ordinary paths use `AiNativeDrawing.editPaths`; private appearance contours
+/// require `AiNativeAppearances.editArtworkPaths` and complete printing coverage.
 final class AiNativePathEdit {
   /// Owned path to change in the original drawing snapshot.
   final AiNativePath path;

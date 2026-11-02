@@ -270,13 +270,24 @@ void main() {
   });
 
   test('refuses unqualified opacity layouts and invalid known numeric values', () {
-    for (final String state in ['-1 -- 0 0 0 Xy', '1 0.5 0 0 0 Xy', '0 0.5 1 0 0 Xy', '0 0.5 Xy']) {
+    for (final String state in ['-1 -- 0 0 0 Xy', '16 0.5 0 0 0 Xy', '0 0.5 2 0 0 Xy', '0 0.5 Xy']) {
       final AiNativeDrawing source = _drawing(objectSource('u $state ${movementPath(10)} U'));
       check(() => source.duplicateGroups(groups: source.groups)).throws<UnsupportedError>();
     }
     for (final String state in ['0 -0.1 0 0 0 Xy', '0 1.1 0 0 0 Xy']) {
       final AiNativeDrawing source = _drawing(objectSource('u $state ${movementPath(10)} U'));
       check(() => source.removeGroups(groups: source.groups)).throws<FormatException>();
+    }
+  });
+
+  test('copies literal blend isolation and knockout settings with their group', () {
+    for (final String state in ['1 0.5 0 0 0 Xy', '0 0.5 1 0 0 Xy', '15 0.5 1 2 1 Xy']) {
+      final AiNativeDrawing source = _drawing(objectSource('u $state ${movementPath(10)} U'));
+      final AiNativeDrawing changed = source.duplicateGroups(groups: source.groups);
+      check(changed.groups).length.equals(2);
+      for (final AiNativeGroup group in changed.groups) {
+        check(changed.records.program.bytes.sublist(group.start, group.end)).deepEquals(source.records.program.bytes.sublist(source.groups.single.start, source.groups.single.end));
+      }
     }
   });
 

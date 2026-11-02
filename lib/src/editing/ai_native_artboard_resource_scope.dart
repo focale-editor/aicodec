@@ -164,6 +164,6 @@ void _artboardSymbolMetadata(_ArtboardResourceInspection scope, AiNativeContaine
       },
     },
   );
-  _artboardSetupRecord(scope.layers, record, checked: checked);
+  _artboardSetupRecord(scope.layers, record, checked: checked, setupOnly: scope.setupOnly);
   _artboardResourceRotation(record);
 }

@@ -2,14 +2,10 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Rewrites a complete global resource without leaving stale ramp alternatives.
 AiNativeGradientResources _replaceGradientStops(AiNativeGradientResources resources, AiNativeGradientDefinition definition, List<AiNativeGradientStop> stops, List<AiNativeGradientRamp> ramps) {
-  if (!resources.definitions.contains(definition) || stops.length < 2 || ramps.length != stops.length - 1) {
-    throw ArgumentError('Expected an owned gradient, at least two stops and one ramp per interval.');
+  if (!resources.definitions.contains(definition)) {
+    throw ArgumentError('Gradient replacement requires an owned definition.');
   }
-  for (int index = 1; index < stops.length; index++) {
-    if (stops[index].position <= stops[index - 1].position) {
-      throw ArgumentError('Gradient stops must have strictly increasing positions.');
-    }
-  }
+  _validateGradientStops(stops, ramps);
   final List<AiNativeGradientDefinition> targets = resources.definitions.where((candidate) => _gradientBytesEqual(candidate.nameBytes, definition.nameBytes)).toList();
   if (targets.any((target) => target.radial != definition.radial)) {
     throw const FormatException('Same-name native gradients have ambiguous linear/radial kinds.');

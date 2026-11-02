@@ -6,13 +6,14 @@ List<AiSourceEdit> _reorderedNativeSubtrees(
   List<_NativeSubtreeSpan> sources,
   List<_NativeShapeBundle> pairs, {
   bool groups = false,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
   final AiNativeDrawing drawing = model.drawing;
   final List<_NativeSubtreeSpan> slots = [...sources]..sort((first, second) => first.start.compareTo(second.start));
   final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, [
     ...sources.expand((span) => [span.start, span.end]),
     ...pairs.map((pair) => pair.shape.end),
-  ]);
+  ], appearanceArtwork: appearanceArtwork);
   final List<AiSourceEdit> edits = [];
   final Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements = {};
   int remaining = drawing.records.program.limits.maxDecodedBytes;
@@ -23,7 +24,7 @@ List<AiSourceEdit> _reorderedNativeSubtrees(
       continue;
     }
     final List<_NativeShapeBundle> selected = pairs.where((pair) => pair.start >= source.start && pair.shape.end <= source.end).toList();
-    final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, source.start, source.end, selected, groups: groups);
+    final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, source.start, source.end, selected, groups: groups, appearanceArtwork: appearanceArtwork);
     final List<AiNativeInstruction> commands = [...ordinary, for (final _NativeShapeBundle pair in selected) ...pair.commands]..sort((first, second) => first.start.compareTo(second.start));
     final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
       drawing,
@@ -41,6 +42,6 @@ List<AiSourceEdit> _reorderedNativeSubtrees(
     replacements[slot] = placed.replacement;
     remaining -= placed.bytes.length;
   }
-  _sourceFollowingDependencies(drawing, replacements);
+  _sourceFollowingDependencies(drawing, replacements, retainedArtwork: appearanceArtwork);
   return edits;
 }

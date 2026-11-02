@@ -26,9 +26,12 @@ PRODUCERS = {
 PARAMETERS = {
     'g': 'fillColor', 'k': 'fillColor', 'Xa': 'fillColor',
     'G': 'strokeColor', 'K': 'strokeColor', 'XA': 'strokeColor',
+    'x': 'fillColor', 'Xx': 'fillColor', 'Xs': 'fillColor', 'Xz': 'fillColor',
+    'X': 'strokeColor', 'XX': 'strokeColor', 'XS': 'strokeColor', 'XZ': 'strokeColor',
+    'Bb': 'gradient',
     'O': 'fillOverprint', 'R': 'strokeOverprint', 'w': 'strokeWidth',
     'J': 'lineCap', 'j': 'lineJoin', 'M': 'miterLimit', 'd': 'dash',
-    'XR': 'evenOdd', 'Xd': 'fillStrokeFlags',
+    'XR': 'evenOdd', 'Xd': 'fillStrokeFlags', 'Xy': 'transparency',
 }
 
 
@@ -48,9 +51,9 @@ def check_paint(data, paint, row):
     for index, item in enumerate(instructions):
         if item.command not in PARAMETERS:
             continue
-        values = None if item.command == 'd' else list(map(float, item.tokens))
+        values = None if item.command in ('d', 'x', 'Xx', 'Xs', 'Xz', 'X', 'XX', 'XS', 'XZ') else list(map(float, item.tokens))
         colors = []
-        if PARAMETERS[item.command] in ('fillColor', 'strokeColor'):
+        if values is not None and PARAMETERS[item.command] in ('fillColor', 'strokeColor'):
             colors = [dict(space='cmyk', channels=values[:4]), dict(space='rgb', channels=values[4:])] if len(values) == 7 else [dict(space={1: 'gray', 3: 'rgb', 4: 'cmyk'}[len(values)], channels=values)]
         expected.append(dict(instruction=index, parameter=PARAMETERS[item.command], numbers=values, colors=colors, dash=dict(lengths=item.dashes, phase=item.phase) if item.command == 'd' else None))
     assert row['assignments'] == expected

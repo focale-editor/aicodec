@@ -117,7 +117,7 @@ final class AiNativePlacedObject extends AiNativeItem {
   /// Checks the qualified CC raster link and its appearance-related metadata.
   void validateRasterLayout() {
     _validateRasterPlacement(this);
-    if (dictionary?.entries.any((entry) => !const {'BBAccumRotation', 'Raster Art Original Scale', 'AI10_ArtUID', 'AIArtName'}.contains(entry.key)) ?? false) {
+    if (dictionary?.entries.any((entry) => !const {'BBAccumRotation', 'Raster Art Original Scale', 'AI10_ArtUID', 'AIArtName', 'Object name'}.contains(entry.key)) ?? false) {
       throw UnsupportedError('Raster placement requires qualified object dictionary fields.');
     }
   }
@@ -169,6 +169,31 @@ final class AiNativePlacements {
 
   /// Retains source ownership and immutable ordered objects.
   AiNativePlacements._({required this.records, required List<AiNativePlacedObject> objects}) : objects = List.unmodifiable(objects);
+
+  /// Changes ordinary object attributes without rewriting links or saved previews.
+  ///
+  /// The selected handle must belong to this snapshot. Scalar changes restore
+  /// following native and printing state independently; unknown owners reject.
+  /// [transparency] replaces all five flags in both representations, whereas
+  /// [opacity] retains the other flags. Supply at most one of these arguments.
+  /// Visual edits require a matching host PDF before serialization.
+  AiNativePlacements updateAttributes({
+    required AiNativePlacedObject object,
+    double? opacity,
+    AiNativeTransparency? transparency,
+    bool? hidden,
+    bool? locked,
+    bool? overprint,
+    List<int>? nameBytes,
+    bool unicodeName = false,
+  }) {
+    if (!objects.contains(object)) {
+      throw ArgumentError('The placed object belongs to another native snapshot.');
+    }
+    object.validateRasterLayout();
+    final AiNativeRecords updated = _updateNativeImageAttributes(records, object, opacity, transparency, hidden, locked, overprint, nameBytes, unicodeName);
+    return identical(updated, records) ? this : AiNativePlacements.decode(records: updated);
+  }
 
   /// Moves placements without changing file references or cached sample rows.
   AiNativePlacements translate({required List<AiNativePlacedObject> objects, required double deltaX, required double deltaY}) => _translateNativePlacements(this, objects, deltaX, deltaY);

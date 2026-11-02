@@ -14,10 +14,13 @@ void _qualifiedLayerHeader(AiNativeLayers model, AiNativeLayer layer) {
     if (current.bindingIssue case final String issue) {
       throw UnsupportedError(issue);
     }
-    _ordinaryPathFollowing(model.drawing.items, current.source.end.end);
-    int following = model.drawing.records.program.bodyEnd;
+    _ordinaryArtworkFollowing(model.drawing, current.source.end.end);
+    int following = _nativeImageOwners(model.drawing).where((owner) => owner.span.start >= current!.end).firstOrNull?.span.start ?? model.drawing.records.program.bodyEnd;
     for (int index = _pathOffset(model.drawing.items, current.end, (item) => item.start); index < model.drawing.items.length; index++) {
       final AiNativeItem item = model.drawing.items[index];
+      if (item.start >= following) {
+        break;
+      }
       if (item is AiNativeInstruction && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator)) {
         following = item.start;
         if (item.operator == 'Lb') {

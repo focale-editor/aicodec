@@ -70,8 +70,9 @@ void _nativeContourInheritance(
   Iterable<List<AiNativeStructureNode>> parents,
   List<AiNativeStructureNode> targetParents,
   Map<int, _NativeShapeInputs> states,
-  bool inheritParentFlags,
-) {
+  bool inheritParentFlags, {
+  String inheritanceOption = 'inheritParentFlags',
+}) {
   final List<AiNativeGroup> targetGroups = targetParents.map((node) => node.source).whereType<AiNativeGroup>().toList();
   if (!inheritParentFlags) {
     final AiNativeStructureNode? targetLayer = targetParents.where((node) => node.kind == .layer).firstOrNull;
@@ -89,7 +90,7 @@ void _nativeContourInheritance(
                   !_sameShapeAttribute(source.native, source.nativeOrigins, destination.native, destination.nativeOrigins, key),
             );
           })) {
-        throw UnsupportedError('Changing contour ancestor flags, depth or layers requires explicit inheritParentFlags.');
+        throw UnsupportedError('Changing ancestor flags, depth or layers requires explicit $inheritanceOption.');
       }
     }
   }

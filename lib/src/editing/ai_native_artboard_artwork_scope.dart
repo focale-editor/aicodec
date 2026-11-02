@@ -11,17 +11,34 @@ void _artboardArtworkInterval(
   Set<AiNativeContainer> retainedMetadata = const {},
   Set<AiNativeInstruction> retainedGradients = const {},
   bool retainTransparency = false,
+  List<_NativeSubtreeSpan> retainedImages = const [],
 }) {
   final AiNativeDrawing drawing = layers.drawing;
+  final List<_NativeSubtreeSpan> retainedArtwork = {
+    ...retainedImages,
+    for (final AiNativeGradientArtwork owner in drawing.gradientArtwork) (start: owner.start, end: owner.end),
+    for (final AiNativeMeshArtwork owner in drawing.meshArtwork) (start: owner.start, end: owner.end),
+  }.toList()..sort((first, second) => first.start.compareTo(second.start));
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in _pathInterval(drawing.paths, start, end, (path) => path.start)) path.start: path};
   final Map<int, AiNativeGroup> groups = {for (final AiNativeGroup group in drawing.groups.where((group) => group.start >= start && group.start < end)) group.start: group};
   final Set<AiNativeInstruction> endings = {for (final AiNativeGroup group in drawing.groups) group.closing};
   final List<AiNativeItem> items = _pathInterval(drawing.items, start, end, (item) => item.start).toList();
   AiNativeInstruction? count;
+  int imageIndex = 0;
   for (int index = 0; index < items.length; index++) {
     final AiNativeItem item = items[index];
     if (item.end > end) {
       throw UnsupportedError('Artboard dependency inspection crosses an unfinished native object.');
+    }
+    while (imageIndex < retainedArtwork.length && retainedArtwork[imageIndex].end <= item.start) {
+      imageIndex++;
+    }
+    if (imageIndex < retainedArtwork.length && retainedArtwork[imageIndex].start <= item.start) {
+      final _NativeSubtreeSpan image = retainedArtwork[imageIndex];
+      if (count != null || image.start < start || image.end > end || item.end > image.end) {
+        throw UnsupportedError('Retained images require complete boundaries without pending point counts.');
+      }
+      continue;
     }
     if (paths[item.start] case final AiNativePath path) {
       if (path.isPrivate || path.end > end || layers.structure.nodeFor(path).versions.isNotEmpty) {
@@ -95,9 +112,16 @@ void _artboardArtworkInterval(
       if (layer.closingComment != null) layer.closingComment!.start,
     ],
   };
-  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any(
-    (token) => token.kind == .data || token.kind == .comment && !wrappers.contains(token.start) && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')),
-  )) {
+  imageIndex = 0;
+  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any((token) {
+    while (imageIndex < retainedArtwork.length && retainedArtwork[imageIndex].end <= token.start) {
+      imageIndex++;
+    }
+    if (imageIndex < retainedArtwork.length && retainedArtwork[imageIndex].start <= token.start && token.end <= retainedArtwork[imageIndex].end) {
+      return false;
+    }
+    return token.kind == .data || token.kind == .comment && !wrappers.contains(token.start) && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%'));
+  })) {
     throw UnsupportedError('Retained artwork contains unresolved annotations or opaque payloads.');
   }
 }

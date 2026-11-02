@@ -1,5 +1,37 @@
 part of 'ai_native_text.dart';
 
+/// One actual font glyph positioned by the host, without package-side shaping.
+final class AiNativeTextGlyphLayout {
+  /// Current source-owned font that supplied [glyphId].
+  final AiNativeTextFont font;
+
+  /// Font-specific glyph index, including actual whitespace glyphs.
+  final int glyphId;
+
+  /// Baseline origin relative to its segment, in native points with y down.
+  final double x;
+
+  /// Downward baseline displacement relative to its segment.
+  final double y;
+
+  /// Host-measured local bounds `[left, top, right, bottom]`.
+  final List<double> bounds;
+
+  /// Whether this is the nonprinting space glyph representing a paragraph mark.
+  ///
+  /// The host must supply the real space glyph from [font]; this does not select
+  /// a glyph or guess a font's whitespace index.
+  final bool paragraphMark;
+
+  /// Retains checked original glyph identity and compositor geometry.
+  AiNativeTextGlyphLayout({required this.font, required this.glyphId, required this.x, required this.y, required List<double> bounds, this.paragraphMark = false})
+    : bounds = List.unmodifiable(bounds) {
+    if (glyphId < 0 || glyphId > 65535 || !x.isFinite || !y.isFinite || bounds.length != 4 || bounds.any((value) => !value.isFinite) || bounds[0] > bounds[2] || bounds[1] > bounds[3]) {
+      throw ArgumentError('Invalid host-composed Illustrator glyph.');
+    }
+  }
+}
+
 /// One positioned source segment supplied by the host's text compositor.
 ///
 /// Coordinates are native points with y down, relative to the line origin.
@@ -23,8 +55,16 @@ final class AiNativeTextSegmentLayout {
   /// Whether composition inserts a visible terminal hyphen outside the model text.
   final bool automaticHyphen;
 
+  /// Actual glyphs for one logical shaping cluster, used by `withGlyphLayout`.
+  ///
+  /// Empty for position-only layout. A cluster may contract several UTF-16 units
+  /// to one glyph or expand one unit into several glyphs. More general mappings
+  /// require the explicit native view API rather than an inferred mapping.
+  final List<AiNativeTextGlyphLayout> glyphs;
+
   /// Creates a source range and position without inventing glyphs or advances.
-  AiNativeTextSegmentLayout({required this.start, required this.end, this.x = 0, this.y = 0, this.rightToLeft = false, this.automaticHyphen = false}) {
+  AiNativeTextSegmentLayout({required this.start, required this.end, this.x = 0, this.y = 0, this.rightToLeft = false, this.automaticHyphen = false, List<AiNativeTextGlyphLayout> glyphs = const []})
+    : glyphs = List.unmodifiable(glyphs) {
     if (start < 0 || end <= start || !x.isFinite || !y.isFinite) {
       throw ArgumentError('Invalid composed Illustrator text segment.');
     }
@@ -94,6 +134,57 @@ final class AiNativeTextFrameLayout {
 
 /// Writes host-composed source positions into native ATE layout records.
 extension AiNativeTextComposition on AiNativeTextDocument {
+  /// Attaches actual host glyphs with checked source clusters and font ownership.
+  ///
+  /// Each segment describes one shaping cluster. Positions are explicit, so
+  /// kerning and tracking do not have to be reconstructed from glyph advances.
+  /// The final CR uses a real host-supplied space glyph marked [AiNativeTextGlyphLayout.paragraphMark].
+  /// Compact CC point/area frames are supported. Complex many-to-many cluster
+  /// maps, automatic hyphens and named CS glyph caches use [withComposedText].
+  AiNativeTextDocument withGlyphLayout({required AiNativeTextStory story, required List<AiNativeTextFrameLayout> frames, required AiBoundingBox bounds, int? overflowStart}) {
+    if (!stories.contains(story)) {
+      throw ArgumentError('Invalid or foreign Illustrator text story.');
+    }
+    if (story.record.values.containsKey('View')) {
+      throw UnsupportedError('Typed glyph composition requires compact CC field names.');
+    }
+    if (frames.length != story.frameIndices.length) {
+      throw ArgumentError('Composed Illustrator frames must match the complete story frame list.');
+    }
+    int remaining = engine.limits.maxNodes ~/ 40;
+    for (final AiNativeTextFrameLayout frame in frames) {
+      for (final AiNativeTextLineLayout line in frame.lines) {
+        for (final AiNativeTextSegmentLayout segment in line.segments) {
+          remaining -= segment.glyphs.length;
+          if (remaining < 0) {
+            throw const FormatException('Composed Illustrator glyphs exceed the engine node limit.');
+          }
+          final int count = segment.end - segment.start;
+          if (segment.glyphs.isEmpty || segment.automaticHyphen || count > 1 && segment.glyphs.length > 1) {
+            throw UnsupportedError('Glyph segments require one qualified shaping cluster without automatic insertions.');
+          }
+          for (final AiNativeTextGlyphLayout glyph in segment.glyphs) {
+            if (!(frame.x + line.x + segment.x + glyph.x).isFinite || !(frame.y + line.y + segment.y + glyph.y).isFinite) {
+              throw ArgumentError('Composed Illustrator glyph origin overflows its frame.');
+            }
+            if (!fonts.contains(glyph.font)) {
+              throw ArgumentError('Composed glyphs require fonts from this snapshot.');
+            }
+            if (glyph.paragraphMark && (count != 1 || segment.end > story.modelText.length || story.modelText.codeUnitAt(segment.start) != 13)) {
+              throw ArgumentError('A paragraph-mark glyph must cover exactly one native CR.');
+            }
+          }
+          if (segment.end <= story.modelText.length && story.modelText.substring(segment.start, segment.end).contains('\r') && (segment.glyphs.length != 1 || !segment.glyphs.single.paragraphMark)) {
+            throw ArgumentError('Native CR coverage requires an explicit paragraph-mark glyph.');
+          }
+        }
+      }
+    }
+    final AiNativeTextDocument positioned = _withTextLayout(story: story, frames: frames, overflowStart: overflowStart, glyphs: true);
+    final AiNativeTextStory changed = positioned.stories[story.index];
+    return positioned.withComposedText(story: changed, view: _dictionary(changed.view), bounds: bounds, overflowStart: overflowStart);
+  }
+
   /// Invalidates one story's composed layout without changing its native model.
   ///
   /// Use this when an external dependency, such as a resolved font, changes.
@@ -126,7 +217,11 @@ extension AiNativeTextComposition on AiNativeTextDocument {
   /// caches and does not fabricate GlyphStrike IDs or font metrics. The host must
   /// shape text and synchronize printable/PDF artwork from the same composition.
   /// Text-on-path requires additional per-glyph geometry and is rejected here.
-  AiNativeTextDocument withTextLayout({required AiNativeTextStory story, required List<AiNativeTextFrameLayout> frames, int? overflowStart}) {
+  AiNativeTextDocument withTextLayout({required AiNativeTextStory story, required List<AiNativeTextFrameLayout> frames, int? overflowStart}) =>
+      _withTextLayout(story: story, frames: frames, overflowStart: overflowStart, glyphs: false);
+
+  /// Shares logical coverage checks between positioned and glyph-bearing views.
+  AiNativeTextDocument _withTextLayout({required AiNativeTextStory story, required List<AiNativeTextFrameLayout> frames, required bool glyphs, int? overflowStart}) {
     if (!stories.contains(story)) {
       throw ArgumentError('Invalid or foreign Illustrator text story.');
     }
@@ -138,7 +233,7 @@ extension AiNativeTextComposition on AiNativeTextDocument {
     if (frames.length != story.frameIndices.length) {
       throw ArgumentError('Composed Illustrator frames must match the complete story frame list.');
     }
-    final _TextCompositionWriter writer = _TextCompositionWriter(named: story.record.values.containsKey('View'), maxNodes: engine.limits.maxNodes);
+    final _TextCompositionWriter writer = _TextCompositionWriter(named: story.record.values.containsKey('View'), maxNodes: engine.limits.maxNodes, glyphs: glyphs);
     int next = 0;
     final List<PsEngineValue> frameNodes = [];
     for (int index = 0; index < frames.length; index++) {
@@ -158,6 +253,9 @@ extension AiNativeTextComposition on AiNativeTextDocument {
         final List<AiNativeTextSegmentLayout> ordered = [];
         for (final AiNativeTextSegmentLayout segment in line.segments) {
           writer.reserve(20);
+          if (glyphs) {
+            writer.reserve(segment.glyphs.length * 40);
+          }
           if (writer.named && (segment.rightToLeft || segment.automaticHyphen)) {
             throw UnsupportedError('Named CS reordered or automatically hyphenated mappings are not yet supported.');
           }
@@ -217,11 +315,14 @@ final class _TextCompositionWriter {
   /// Whether the destination story uses the original CS field names.
   final bool named;
 
+  /// Whether actual font glyphs accompany the checked source positions.
+  final bool glyphs;
+
   /// Remaining conservative allocation budget for the newly authored tree.
   int _remaining;
 
   /// Starts a writer bounded by the owning engine's node policy.
-  _TextCompositionWriter({required this.named, required int maxNodes}) : _remaining = maxNodes;
+  _TextCompositionWriter({required this.named, required int maxNodes, required this.glyphs}) : _remaining = maxNodes;
 
   /// Bounds allocations before retaining line/segment lists and dictionaries.
   void reserve(int count) {
@@ -238,7 +339,7 @@ final class _TextCompositionWriter {
   PsEngineArray coordinates(List<double> values) => PsEngineArray(values: [for (final double value in values) PsEngineNumber(value: value)]);
 
   /// Creates a tagged node using the established transform/child wrappers.
-  PsEngineDictionary node(String tag, String name, {List<PsEngineValue>? children, int procession = 1, double? x, double? y, Map<String, PsEngineValue> fields = const {}}) => PsEngineDictionary(
+  PsEngineDictionary node(String tag, String name, {List<PsEngineValue>? children, int? procession, double? x, double? y, Map<String, PsEngineValue> fields = const {}}) => PsEngineDictionary(
     values: {
       key('99', 'StreamTag'): PsEngineName(value: named ? name : tag),
       if (x != null && y != null)
@@ -247,7 +348,7 @@ final class _TextCompositionWriter {
             key('0', 'Origin'): coordinates([x, y]),
           },
         ),
-      key('5', 'ChildProcession'): PsEngineNumber(value: procession),
+      if (procession != null) key('5', 'Procession'): PsEngineNumber(value: procession),
       if (children != null) key('6', 'Children'): PsEngineArray(values: children),
       ...fields,
     },
@@ -284,11 +385,24 @@ final class _TextCompositionWriter {
           'Segment',
           x: segment.x,
           y: segment.y,
+          children: glyphs ? [for (final AiNativeTextGlyphLayout glyph in segment.glyphs) this.glyph(glyph)] : null,
           fields: {
             key('20', 'FirstCharacterIndexInSegment'): PsEngineNumber(value: segment.start),
             key('15', 'Mapping'): PsEngineDictionary(
               values: {
                 key('0', 'CharacterCount'): PsEngineNumber(value: segment.end - segment.start),
+                if (glyphs && (segment.end - segment.start != 1 || segment.glyphs.length != 1))
+                  '1': PsEngineArray(
+                    values: [
+                      PsEngineDictionary(
+                        values: {
+                          '0': PsEngineNumber(value: segment.glyphs.length == 1 ? 1 : 2),
+                          '1': PsEngineNumber(value: 0),
+                          '2': PsEngineNumber(value: segment.glyphs.length == 1 ? segment.end - segment.start : segment.glyphs.length),
+                        },
+                      ),
+                    ],
+                  ),
                 if (segment.automaticHyphen)
                   '1': PsEngineArray(
                     values: [
@@ -301,7 +415,13 @@ final class _TextCompositionWriter {
                       ),
                     ],
                   ),
-                key('2', 'GlyphCount'): PsEngineNumber(value: segment.automaticHyphen ? 1 : 0),
+                key('2', 'GlyphCount'): PsEngineNumber(
+                  value: segment.automaticHyphen
+                      ? 1
+                      : glyphs && segment.glyphs.length > 1
+                      ? segment.glyphs.length - 1
+                      : 0,
+                ),
                 key('5', 'WRValid'): PsEngineBoolean(value: segment.rightToLeft),
                 if (segment.rightToLeft) '7': PsEngineDictionary(values: {'0': PsEngineNumber(value: segment.end - segment.start)}),
               },
@@ -309,5 +429,37 @@ final class _TextCompositionWriter {
           },
         ),
     ],
+  );
+
+  /// Encodes one explicit origin so native readers need not infer advances.
+  PsEngineDictionary glyph(AiNativeTextGlyphLayout glyph) => node(
+    'G',
+    'GlyphStrike',
+    x: glyph.x,
+    y: glyph.y,
+    fields: {
+      '1': coordinates(glyph.bounds),
+      '5': PsEngineArray(values: [PsEngineNumber(value: glyph.glyphId)]),
+      '10': PsEngineDictionary(
+        values: {
+          '0': PsEngineArray(
+            values: [
+              PsEngineDictionary(
+                values: {
+                  '4': PsEngineNumber(value: glyph.font.index),
+                  '9': PsEngineNumber(value: 0),
+                  '10': PsEngineNumber(value: 0),
+                },
+              ),
+            ],
+          ),
+          '1': PsEngineArray(values: [PsEngineNumber(value: 1)]),
+        },
+      ),
+      if (glyph.paragraphMark) '11': const PsEngineBoolean(value: true),
+      '12': PsEngineNumber(value: glyph.bounds[1]),
+      '13': PsEngineNumber(value: glyph.bounds[3]),
+      '20': PsEngineNumber(value: 0),
+    },
   );
 }

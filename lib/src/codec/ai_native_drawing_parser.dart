@@ -15,6 +15,16 @@ final class _NativeDrawingReader {
     final List<AiNativeContainer> roots = records.roots.where((root) => root.start >= program.bodyStart && root.end <= program.bodyEnd).toList();
     final List<AiNativeItem> items = [];
     final _NativeCommandReader reader = _NativeCommandReader(maxDepth: program.limits.maxDepth);
+    // Relative directories are metadata strings, not operands of the following
+    // placement terminator. Their section reader checks ownership and framing.
+    final Set<AiToken> directories = {};
+    if (projection.tokens.any((token) => token.kind == .comment && token.lexeme == '%AI28_BeginPlacedRelativePath')) {
+      try {
+        directories.addAll(_readNativePlacements(records, true).map((object) => object.relativeDirectory).whereType<AiToken>());
+      } on UnsupportedError {
+        // Preserve unqualified producer layouts as unresolved drawing syntax.
+      }
+    }
     int rootIndex = 0;
     int embedded = 0;
     for (final AiToken token in projection.tokens) {
@@ -45,6 +55,13 @@ final class _NativeDrawingReader {
         continue;
       }
       if (embedded != 0 || token.kind == .data) {
+        continue;
+      }
+      if (directories.contains(token)) {
+        if (!reader.isEmpty) {
+          throw const FormatException('Placed directory interrupts native drawing operands.');
+        }
+        items.add(AiNativeToken._(token: token));
         continue;
       }
       // XI itself stays unprefixed inside DSC data, even for private operands.

@@ -183,6 +183,20 @@ final class AiNativeRasters {
   /// Retains an immutable source-backed raster inventory.
   AiNativeRasters._({required this.records, required List<AiNativeRaster> images}) : images = List.unmodifiable(images);
 
+  /// Validates ordinary source framing, process samples and literal image metadata.
+  ///
+  /// Unlike sample-layout inspection alone, this rejects unknown annotations,
+  /// malformed identities and unsupported dependent object-cache fields. The
+  /// caller still qualifies enclosing ownership, paint state and representations.
+  /// Exact handles from this snapshot are required; no bytes are changed.
+  void validateSourceLayout({required AiNativeRaster image}) {
+    if (!images.contains(image)) {
+      throw ArgumentError('Image validation requires an owned current raster.');
+    }
+    _artboardResourceRaster(records, image);
+    _validateNativeImageMetadata(records, image.end, image.dictionary, raster: true);
+  }
+
   /// Translates embedded images and their redundant placement matrices together.
   ///
   /// Samples, source links, pixel identities, rotation and scale metadata stay
@@ -210,4 +224,26 @@ final class AiNativeRasters {
   /// planes, and XG marks the embedded copy as modified. Unknown raster layouts
   /// reject editing. The host must regenerate matching PDF artwork before saving.
   AiNativeRasters replacePixels({required AiNativeRaster image, required AiNativeRasterSamples samples}) => _replaceNativeRasterSamples(this, image, samples);
+
+  /// Changes ordinary body-image attributes while preserving samples and identities.
+  ///
+  /// Null values retain the source. Opacity changes preserve the other literal
+  /// transparency flags independently in native and printing state. Known state
+  /// is restored after the image, so following artwork remains unchanged.
+  /// [transparency] replaces all five flags in both representations; it cannot
+  /// be combined with [opacity]. The host supplies matching PDF compositing.
+  /// [nameBytes] replaces all existing name fields, or creates `AIArtName`;
+  /// [unicodeName] selects UTF-16 big-endian bytes instead of a native String.
+  /// Private, conditional, clipped and appearance-owned images require separate
+  /// contracts. Visual edits require a matching host PDF before serialization.
+  AiNativeRasters updateAttributes({
+    required AiNativeRaster image,
+    double? opacity,
+    AiNativeTransparency? transparency,
+    bool? hidden,
+    bool? locked,
+    bool? overprint,
+    List<int>? nameBytes,
+    bool unicodeName = false,
+  }) => _updateNativeRasterAttributes(this, image, opacity, transparency, hidden, locked, overprint, nameBytes, unicodeName);
 }

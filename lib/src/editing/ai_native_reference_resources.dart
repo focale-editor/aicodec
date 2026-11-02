@@ -43,11 +43,14 @@ List<({int start, int end})> _referenceGradientRanges(AiNativeLayers model, {Lis
 void _referenceArtworkInterval(AiNativeLayers model, int start, int end, Map<int, AiNativeLayer> headers, {List<AiNativeAppearanceArtwork> appearanceArtwork = const []}) {
   int position = start;
   for (final AiNativeInstruction item in _pathInterval(model.drawing.items, start, end, (item) => item.start).whereType<AiNativeInstruction>().where((item) => item.isPrivate)) {
+    if (model.drawing.meshArtwork.any((owner) => item.start >= owner.start && item.end <= owner.end)) {
+      continue;
+    }
     if (_nativeArtworkStateKey(item) == null) {
       throw UnsupportedError('Private artwork outside a complete pair has unresolved reference ownership.');
     }
-    _layerInterval(model, position, item.start, headers, appearanceArtwork: appearanceArtwork);
+    _layerInterval(model, position, item.start, headers, appearanceArtwork: appearanceArtwork, retainImages: true);
     position = item.end;
   }
-  _layerInterval(model, position, end, headers, appearanceArtwork: appearanceArtwork);
+  _layerInterval(model, position, end, headers, appearanceArtwork: appearanceArtwork, retainImages: true);
 }

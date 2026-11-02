@@ -31,6 +31,9 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
       clipping: true,
       document: model.structure.drawing,
       patterns: _nativeAppearancePatterns(model, style),
+      opacityMask: (mask) {
+        _qualifiedAppearanceMask(model, mask);
+      },
     );
     _nativeAppearanceParents(structure, bundle.start, shape.end, shape.appearanceGroup!, resource: resource);
     return AiNativeAppearanceArtwork._(
@@ -112,13 +115,19 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   }
   _printingState(drawing, group, clipping: true);
   _printingPointCounts(drawing, group);
+  final List<AiNativeRaster> images = _printingRasters(drawing, group);
   final AiNativeStructureNode owner = structure.nodeFor(group);
   for (final AiNativeItem item in [authoring, instruction, ?dictionary, ?printingDictionary]) {
     if (!_sameNativeObjectOwner(owner, structure.nodeFor(item))) {
       throw UnsupportedError('Appearance artwork cannot cross lexical owners or version branches.');
     }
   }
-  [?dictionary, ?printingDictionary].forEach(_nativeAppearanceDictionary);
+  if (printingDictionary?['AI9_Mask'] != null) {
+    throw UnsupportedError('Printing metadata masks require a separate synchronized metadata contract.');
+  }
+  for (final AiNativeContainer record in [?dictionary, ?printingDictionary]) {
+    _nativeAppearanceDictionary(record, appearances: model);
+  }
   final AiNativeInstruction? expansion = drawing._objects.forSource(group).expansion;
   if (expansion != null &&
       (expansion.isPrivate || expansion.numbers?.length != 1 || !const {0, 1}.contains(expansion.numbers!.single) || !_sameNativeObjectOwner(owner, structure.nodeFor(expansion)))) {
@@ -126,7 +135,11 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   }
   final int start = expansion?.start ?? group.start;
   _nativeAppearanceParents(structure, start, use.instruction.end, group, resource: resource);
-  if (_nativeObjectMetadataComments(drawing, start, use.instruction.end)) {
+  final List<AiNativeContainer> masks = [
+    for (final AiNativeContainer record in [?dictionary, ?printingDictionary, ...metadata])
+      if (record['AI9_Mask']?.container case final AiNativeContainer mask) mask,
+  ];
+  if (_nativeAppearanceMetadataComments(drawing, start, use.instruction.end, masks, rasters: images)) {
     throw UnsupportedError('Appearance artwork contains unresolved structured comments or payloads.');
   }
   final List<AiNativeInstruction> commands = [];
@@ -135,6 +148,9 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
   };
   for (final AiNativeItem item in _pathInterval(items, start, use.instruction.end, (item) => item.start)) {
     if (identical(item, dictionary) || identical(item, printingDictionary) || metadata.contains(item)) {
+      continue;
+    }
+    if (item is! AiNativeInstruction && images.any((image) => item.start >= image.start && item.end <= image.end)) {
       continue;
     }
     if (item is! AiNativeInstruction || path != null && item.start >= path.start && item.end <= path.end && !geometry.contains(item)) {
@@ -165,11 +181,15 @@ AiNativeAppearanceArtwork _nativeAppearanceArtwork(AiNativeAppearances model, Ai
 }
 
 /// Retains inert object labels and identities without accepting appearance caches.
-void _nativeAppearanceDictionary(AiNativeContainer dictionary) {
+void _nativeAppearanceDictionary(AiNativeContainer dictionary, {AiNativeAppearances? appearances}) {
   if (dictionary.type != 'ArtDictionary' || dictionary.notRecorded || dictionary.entries.map((field) => field.key).toSet().length != dictionary.entries.length) {
     throw UnsupportedError('Appearance metadata requires one recorded dictionary with distinct fields.');
   }
   for (final AiNativeEntry field in dictionary.entries) {
+    if (field.key == 'AI9_Mask' && appearances != null) {
+      _qualifiedAppearanceMask(appearances, _referenceRecord(field, 'Mask'));
+      continue;
+    }
     final double? angle = field.key == 'BBAccumRotation' ? double.tryParse(field.text() ?? '') : null;
     final bool valid = switch (field.key) {
       'AIArtName' || 'Object name' => const {'String', 'UnicodeString'}.contains(field.type) && (field.items.isEmpty || field.stringBytes != null),

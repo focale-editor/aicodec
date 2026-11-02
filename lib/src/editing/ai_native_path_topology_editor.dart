@@ -5,7 +5,9 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
   final Set<AiNativeContainer> retainedMetadata = _nativeContourMetadata(layers);
   final Set<AiNativeInstruction> retainedGradients = _nativeContourGradientCommands(layers);
-  final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
+  final List<_NativeSubtreeSpan> retainedImages = _imageCreationNeutralSpans(drawing);
+  final List<AiNativeAppearanceArtwork> appearances = _nativeCreationAppearances(drawing);
+  final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects, bool empty}) text = _artboardTextScope(layers);
   final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
     layers,
     _layerHeaderItems(layers),
@@ -19,10 +21,13 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       retainedMetadata: retainedMetadata,
       retainedGradients: retainedGradients,
       retainTransparency: true,
+      retainedImages: retainedImages,
     ),
     qualifyShapeNeighbors: false,
+    appearanceArtwork: appearances,
   );
   final Set<AiNativePath> derived = {
+    for (final AiNativeAppearanceArtwork owner in appearances) ...drawing.paths.where((path) => path.start >= owner.start && path.end <= owner.end),
     for (final AiLiveShape shape in drawing.liveShapes) ...[?shape.path, ...shape.appearancePaths],
     for (final AiNativeGradient gradient in drawing.gradients) ...gradient.paths,
   };

@@ -103,6 +103,8 @@ void main() {
       check(added.objects.single.instruction.isPrivate).equals(private);
       check(added.objects.single.relativeDirectoryBytes!).deepEquals(latin1.encode('Links/'));
       check(added.objects.single.preview!.toSamples().alphaSamples!).deepEquals([32, 0]);
+      check(added.objects.single.comments.where((token) => token.lexeme == '%AI17_Alternate_Content')).length.equals(2);
+      check(added.translate(objects: added.objects, deltaX: 1, deltaY: 2).objects.single.matrix[4]).equals(added.objects.single.matrix[4] + 1);
       final AiNativePlacements removed = _relink(added, path: latin1.encode('third.png'));
       check(removed.objects.single.preview).isNull();
       check(removed.objects.single.relativeDirectory).isNull();

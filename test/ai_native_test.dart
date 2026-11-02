@@ -199,6 +199,14 @@ void main() {
     check(AiProgram.decode(bytes: sources[1].bytes).layers.single.name).equals('Independent');
   });
 
+  test('updating layer flags preserves a first child with private metadata', () {
+    final AiProgram program = AiProgram.decode(bytes: latin1.encode(programText.replaceFirst('0 A\n0 Xw', '%_/ArtDictionary : (Group) /String (AIArtName) , ;\n1 Xw\n1 A')));
+    final AiProgram changed = AiNativeEditor.updateLayer(program: program, layer: program.layers.single, visible: true, locked: false);
+    check(changed.layers.single.visible).isTrue();
+    check(changed.layers.single.locked).isFalse();
+    check(latin1.decode(changed.bytes)).contains('1 Xw\n1 A');
+  });
+
   test('parses nested and hidden layers with original extended attributes', () {
     final String nested = programText.replaceFirst('1 Ap', '0 1 0 1 0 0 1 5 79 255 255 0 50 0 Lb\n(Child) Ln\n1 A\n1 Xw\nLB\n1 Ap');
     final AiProgram program = AiProgram.decode(bytes: latin1.encode(nested));

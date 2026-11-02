@@ -111,13 +111,29 @@ extension AiNativeTextFontEditing on AiNativeTextDocument {
           ),
       },
     );
-    return _withEngine(
+    final AiNativeTextDocument appended = _withEngine(
       engine.replaceValues(
         replacements: {
           if (previous != null) previous: changed else resources: PsEngineDictionary(values: {...resources.values, _featureKey(resources, '1', 'FontSet', named): changed}),
         },
       ),
     );
+    final AiProgram program = appended.records.program;
+    final List<AiToken> tokens = AiPostScript.tokenize(program.bytes, maxBytes: program.limits.maxDecodedBytes, maxTokens: program.limits.maxTokens, maxDepth: program.limits.maxDepth);
+    // Complete document producers declare every newly required face. Fragments
+    // without a DSC header retain their existing namespace-only behavior.
+    if (!tokens.any((token) => token.kind == .comment && token.lexeme == '%%EndComments' && token.start < program.bodyStart)) {
+      return appended;
+    }
+    final List<AiSourceEdit> headers = _initialTextFontHeaders(tokens, font.postScriptName, program.bodyStart);
+    return headers.isEmpty
+        ? appended
+        : AiNativeTextDocument.decode(
+            records: AiNativeRecords.decode(
+              program: AiNativeEditor.apply(program: program, edits: headers),
+            ),
+            limits: engine.limits,
+          );
   }
 }
 

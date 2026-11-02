@@ -3,35 +3,23 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Checks flags and owned mask artwork without changing its linked coordinates.
 void _artboardOpacityMask(_ArtboardResourceInspection scope, AiNativeContainer source) {
   final AiNativeRecords records = scope.layers.drawing.records;
+  final List<AiNativeVersionMembership> versions = scope.layers.structure.nodeFor(source).versions;
+  final bool authoritativeShape =
+      !scope.setupOnly &&
+      scope.layers.drawing.liveShapes.any(
+        (shape) =>
+            shape.isBound &&
+            shape.dictionary.start < source.start &&
+            shape.dictionary.end >= source.end &&
+            versions.every((version) => version.branch == .newer && version.block.start >= shape.path!.end && version.block.end < shape.end),
+      );
   if (source.hasBinary ||
-      source.end > records.program.bodyStart ||
-      scope.layers.structure.nodeFor(source).versions.isNotEmpty ||
+      scope.setupOnly && source.end > records.program.bodyStart ||
+      versions.isNotEmpty && !authoritativeShape ||
       source.entries.any((entry) => entry.key != null || entry.type != null || entry.isQualifier || entry.items.isEmpty)) {
     throw UnsupportedError('Retained opacity masks require unconditional literal setup fields.');
   }
-  // Mask uses dictionary suffixes, but generic inspection preserves its raw entries.
-  final AiNativeContainer mask = AiNativeContainer._(
-    start: source.start,
-    end: source.end,
-    type: source.type,
-    entries: source.entries.map((entry) => _NativeRecordReader._entry(type: 'Dictionary', items: entry.items)).toList(),
-  );
-  _referenceFields(
-    mask,
-    {
-      'Bool': {'Linked', 'Disabled', 'Clipping', 'Inverted'},
-    },
-    nested: {
-      'Art': (entry) {
-        if (entry.type != null || entry.items.isEmpty) {
-          throw const FormatException('A retained opacity mask requires a complete artwork field.');
-        }
-      },
-    },
-  );
-  if (mask.entries.length != 5 || mask['Art'] == null) {
-    throw UnsupportedError('Retained opacity masks require explicit artwork and all four flags.');
-  }
+  final AiNativeContainer mask = _nativeOpacityMaskFields(source);
   final AiNativeEntry art = mask['Art']!;
   final List<AiNativeRaster> rasters = _pathInterval(scope.rasters, source.start, source.end, (image) => image.start).toList();
   final Map<AiNativeContainer, AiNativeRaster> metadata = {};

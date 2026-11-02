@@ -21,6 +21,7 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(
   final List<AiLiveShape> bound = drawing.liveShapes.where((shape) => shape.isBound).toList()..sort((a, b) => a.end.compareTo(b.end));
   final Map<AiNativePath, int> previousEnds = {};
   final Set<AiNativeStructureNode> checkedParents = {};
+  late final List<_NativeSubtreeSpan> imageOwners = _nativeNeutralArtwork(drawing);
   int previousEnd = drawing.records.program.bodyStart;
   int shapeIndex = 0;
   int shapeEnd = 0;
@@ -57,7 +58,7 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(
         }
         _ordinaryObjectFollowing(drawing, group);
       } else if (parent.source case final AiLayer layer) {
-        _ordinaryPathFollowing(items, layer.end.end);
+        _ordinaryArtworkFollowing(drawing, layer.end.end);
       }
       parent = structure.parentOf(parent);
     }
@@ -79,11 +80,9 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(
       final int index = _pathOffset(bound, path.start + 1, (shape) => shape.end);
       final int? shapeEnd = index == 0 ? null : bound[index - 1].end;
       final int? artworkEnd = appearanceArtwork.where((artwork) => artwork.end <= path.start).map((artwork) => artwork.end).fold<int?>(null, (end, value) => end == null ? value : max(end, value));
-      final int? preceding = shapeEnd == null
-          ? artworkEnd
-          : artworkEnd == null
-          ? shapeEnd
-          : max(shapeEnd, artworkEnd);
+      final int? imageEnd = imageOwners.where((owner) => owner.end <= path.start).lastOrNull?.end;
+      final List<int> precedingOwners = [?shapeEnd, ?artworkEnd, ?imageEnd];
+      final int? preceding = precedingOwners.isEmpty ? null : precedingOwners.reduce(max);
       if (!_ordinaryMetadataPrefix(drawing, previousEnds[path]!, path.start, allowStateOnly: drawing._objects.forSource(path).liveShape != null) &&
           (preceding == null ||
               _pathInterval(items, preceding, path.start, (item) => item.start).any((item) => item is! AiNativeInstruction || !_ordinaryPathSuccessors.contains(item.operator)) &&
@@ -93,6 +92,7 @@ Map<AiNativePath, AiNativeInstruction?> _ordinaryPathCounts(
       // Mode-one XW ends the preceding qualified appearance owner. Its resolved postfix style
       // does not turn a later ordinary path into a private printing expansion.
       // Qualified layer headers may separate these independent native owners.
+      // Qualified image sections likewise own their image operators and metadata.
       // A direct shape's own qualified dictionary also sets the plain flag;
       // its prefix must still contain only resolved metadata and ordinary state.
     }

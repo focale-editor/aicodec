@@ -1,9 +1,54 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
 /// Qualifies complete state/geometry intervals without evaluating opaque records.
-List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int end, {bool nested = true, bool privateState = false}) {
+List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int end, {bool nested = true, bool privateState = false, bool retainImages = false}) {
   final List<AiNativeInstruction> commands = [];
+  final List<AiNativeGradientArtwork> gradients = drawing.gradientArtwork;
+  final List<AiNativeMeshArtwork> meshes = drawing.meshArtwork;
+  int meshIndex = 0;
+  int gradientIndex = 0;
+  final List<_NativeImageOwner> images = retainImages ? _nativeImageOwners(drawing) : [];
+  int imageIndex = 0;
   for (final AiNativeItem item in _pathInterval(drawing.items, start, end, (item) => item.start)) {
+    while (meshIndex < meshes.length && meshes[meshIndex].end <= item.start) {
+      meshIndex++;
+    }
+    if (meshIndex < meshes.length && meshes[meshIndex].start <= item.start) {
+      final AiNativeMeshArtwork owner = meshes[meshIndex];
+      if (owner.start < start || owner.end > end || item.end > owner.end) {
+        throw UnsupportedError('Artwork cannot split a complete mesh owner.');
+      }
+      if (item.start == owner.start) {
+        commands.add(owner._access);
+      }
+      continue;
+    }
+    while (gradientIndex < gradients.length && gradients[gradientIndex].end <= item.start) {
+      gradientIndex++;
+    }
+    if (gradientIndex < gradients.length && gradients[gradientIndex].start <= item.start) {
+      final AiNativeGradientArtwork owner = gradients[gradientIndex];
+      if (owner.start < start || owner.end > end || item.end > owner.end) {
+        throw UnsupportedError('Group artwork cannot split a complete gradient owner.');
+      }
+      if (item.start == owner.path.start) {
+        commands.add(owner.path.geometry.first);
+      }
+      continue;
+    }
+    while (imageIndex < images.length && images[imageIndex].span.end <= item.start) {
+      imageIndex++;
+    }
+    if (imageIndex < images.length && images[imageIndex].span.start <= item.start) {
+      final _NativeImageOwner owner = images[imageIndex];
+      if (owner.span.start < start || owner.span.end > end || item.end > owner.span.end) {
+        throw UnsupportedError('Group artwork cannot split a retained image owner.');
+      }
+      if (item.start == owner.instruction.start) {
+        commands.add(owner.instruction);
+      }
+      continue;
+    }
     if (_ordinaryObjectAttachment(drawing, item) && item.end <= end) {
       continue;
     }
@@ -19,9 +64,30 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
     }
     commands.add(item);
   }
-  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any(
-    (token) => token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%')),
-  )) {
+  imageIndex = 0;
+  gradientIndex = 0;
+  meshIndex = 0;
+  if (_pathInterval(drawing.records._projection.tokens, start, end, (token) => token.start).any((token) {
+    while (meshIndex < meshes.length && meshes[meshIndex].end <= token.start) {
+      meshIndex++;
+    }
+    if (meshIndex < meshes.length && meshes[meshIndex].start <= token.start && token.end <= meshes[meshIndex].end) {
+      return false;
+    }
+    while (gradientIndex < gradients.length && gradients[gradientIndex].end <= token.start) {
+      gradientIndex++;
+    }
+    if (gradientIndex < gradients.length && gradients[gradientIndex].start <= token.start && token.end <= gradients[gradientIndex].end) {
+      return false;
+    }
+    while (imageIndex < images.length && images[imageIndex].span.end <= token.start) {
+      imageIndex++;
+    }
+    if (imageIndex < images.length && images[imageIndex].span.start <= token.start && token.end <= images[imageIndex].span.end) {
+      return false;
+    }
+    return token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%AI') || token.lexeme.startsWith('%%'));
+  })) {
     throw UnsupportedError('Ordinary group edits cannot reinterpret native metadata or opaque data.');
   }
   return commands;
@@ -31,14 +97,22 @@ List<AiNativeInstruction> _groupInterval(AiNativeDrawing drawing, int start, int
 ///
 /// Private scalar prefixes require a caller that validates native state separately.
 void _ordinaryGroupPrefix(AiNativeDrawing drawing, AiNativeGroup group, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders, {bool privateState = false}) {
-  _ordinaryArtworkPrefix(drawing, _ordinaryObject(drawing, group).start, bound, layerHeaders, privateState: privateState);
+  final int start = _ordinaryObject(drawing, group).start;
+  _ordinaryArtworkPrefix(
+    drawing,
+    start,
+    bound,
+    layerHeaders,
+    privateState: privateState,
+    resolvedBoundary: _nativeCreationBoundary(drawing, start, _nativeCreationAppearances(drawing)),
+  );
 }
 
 /// Qualifies an artwork boundary without capturing unknown prefixes or metadata.
-void _ordinaryArtworkPrefix(AiNativeDrawing drawing, int start, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders, {bool privateState = false}) {
+void _ordinaryArtworkPrefix(AiNativeDrawing drawing, int start, List<AiLiveShape> bound, Map<int, AiNativeLayer> layerHeaders, {bool privateState = false, int? resolvedBoundary}) {
   final List<AiNativeItem> items = drawing.items;
   final int preceding = _pathOffset(bound, start + 1, (shape) => shape.end);
-  final int resolved = preceding == 0 ? drawing.records.program.bodyStart : bound[preceding - 1].end;
+  final int resolved = max(resolvedBoundary ?? drawing.records.program.bodyStart, preceding == 0 ? drawing.records.program.bodyStart : bound[preceding - 1].end);
   int boundary = resolved;
   for (int index = _pathOffset(items, start, (item) => item.start) - 1; index >= 0 && items[index].end > resolved; index--) {
     final AiNativeItem item = items[index];
@@ -79,12 +153,21 @@ void _ordinaryGroupMetadata(AiNativeDrawing drawing, int start, int end) {
 /// Checks trailing metadata before the following object or enclosing boundary.
 void _ordinaryGroupPostfix(AiNativeDrawing drawing, AiNativeGroup group) {
   final int start = _ordinaryObject(drawing, group).end;
-  int end = drawing.records.program.bodyEnd;
+  int end = _nativeNeutralArtwork(drawing).where((owner) => owner.start >= start).firstOrNull?.start ?? drawing.records.program.bodyEnd;
   for (int index = _pathOffset(drawing.items, start, (item) => item.start); index < drawing.items.length; index++) {
     final AiNativeItem item = drawing.items[index];
+    if (item.start >= end) {
+      break;
+    }
     if (item is AiNativeInstruction && const {'m', 'u', 'U', 'Lb', 'LB'}.contains(item.operator)) {
       end = item.start;
       break;
+    }
+  }
+  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  for (final AiNativeLayer layer in layers.layers) {
+    if (layer.bindingIssue == null && layer.start >= start && layer.start < end) {
+      end = layer.start;
     }
   }
   _ordinaryGroupMetadata(drawing, start, end);
@@ -118,10 +201,12 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
   }
   final Set<AiNativePath> pairedPaths = {
     for (final _NativeShapeBundle pair in pairs) ...[pair.shape.path!, ...pair.shape.appearancePaths],
+    ...drawing.gradientArtwork.map((owner) => owner.path),
   };
   final List<AiNativePath> paths = [for (final AiNativeGroup group in groups) ...group.paths.where((path) => !pairedPaths.contains(path))];
   final Map<AiNativePath, AiNativeInstruction?> counts = paths.isEmpty ? {} : _ordinaryPathCounts(drawing, paths, ownership: ownership);
   final Set<AiNativeInstruction> pathCommands = {
+    for (final AiNativeGradientArtwork owner in drawing.gradientArtwork) owner.path.geometry.first,
     for (final AiNativePath path in paths) ...[...path.geometry, path.paint],
     ...counts.values.whereType<AiNativeInstruction>(),
   };
@@ -135,7 +220,7 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
       if (checked.add(node)) {
         if (node.source case final AiNativeGroup owner) {
           _ordinaryObjectFollowing(drawing, owner);
-          _ordinaryGroupPrefix(drawing, owner, bound, layerHeaders, privateState: pairs.isNotEmpty);
+          _ordinaryGroupPrefix(drawing, owner, bound, layerHeaders, privateState: (pairs.isNotEmpty || drawing.gradientArtwork.isNotEmpty || drawing.meshArtwork.isNotEmpty));
           _ordinaryGroupPostfix(drawing, owner);
         } else {
           _ordinaryPathFollowing(drawing.items, node.end);
@@ -143,7 +228,9 @@ AiNativeStructure _ordinaryGroups(AiNativeDrawing drawing, List<AiNativeGroup> g
       }
       node = ownership.parentOf(node);
     }
-    final List<AiNativeInstruction> commands = pairs.isEmpty ? _groupInterval(drawing, group.start, group.end) : _subtreeOrdinaryCommands(layers, group.start, group.end, pairs, groups: true);
+    final List<AiNativeInstruction> commands = (pairs.isEmpty && drawing.gradientArtwork.isEmpty && drawing.meshArtwork.isEmpty)
+        ? _groupInterval(drawing, group.start, group.end)
+        : _subtreeOrdinaryCommands(layers, group.start, group.end, pairs, groups: true);
     for (final AiNativeInstruction command in commands) {
       if ((_nativeGeometry.contains(command.operator) || _nativePaint.contains(command.operator) || command.operator == 'As') && !pathCommands.contains(command)) {
         throw UnsupportedError('The selected group contains unowned geometry or point counts.');
@@ -214,7 +301,7 @@ AiNativeDrawing _duplicateNativeGroups(AiNativeDrawing drawing, List<AiNativeGro
   final List<_NativeSubtreeSpan> spans = [for (final AiNativeGroup group in groups) (start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)];
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
   _ordinaryGroups(drawing, groups, pairs: pairs);
-  if (pairs.isNotEmpty) {
+  if (pairs.isNotEmpty || drawing.gradientArtwork.isNotEmpty || drawing.meshArtwork.isNotEmpty) {
     final List<AiSourceEdit> replacements = _subtreeCopyEdits(drawing, groups, spans, pairs, identifiers);
     return _groupLifecycleResult(
       drawing,
@@ -259,7 +346,7 @@ AiNativeDrawing _removeNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup>
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
   _ordinaryGroups(drawing, groups, pairs: pairs);
   final List<AiSourceEdit> edits;
-  if (pairs.isEmpty) {
+  if (pairs.isEmpty && drawing.gradientArtwork.isEmpty && drawing.meshArtwork.isEmpty) {
     _ordinaryObjectRemoval(drawing, groups);
     edits = [for (final AiNativeGroup group in groups) AiSourceEdit(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end, bytes: _removedGroupState(drawing, group))];
   } else {
@@ -287,7 +374,7 @@ AiNativeDrawing _reorderNativeGroups(AiNativeDrawing drawing, List<AiNativeGroup
   if (slots.indexed.every((entry) => identical(entry.$2, groups[entry.$1]))) {
     return drawing;
   }
-  if (pairs.isNotEmpty) {
+  if (pairs.isNotEmpty || drawing.gradientArtwork.isNotEmpty || drawing.meshArtwork.isNotEmpty) {
     return _groupLifecycleResult(
       drawing,
       _reorderedNativeSubtrees(AiNativeLayers.decode(drawing: drawing), spans, pairs, groups: true),
@@ -323,7 +410,7 @@ AiNativeDrawing _moveNativeGroup(AiNativeDrawing drawing, AiNativeGroup group, A
   ];
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, spans);
   final AiNativeStructure ownership = _ordinaryGroups(drawing, [group, after], pairs: pairs);
-  if (pairs.isNotEmpty) {
+  if (pairs.isNotEmpty || drawing.gradientArtwork.isNotEmpty || drawing.meshArtwork.isNotEmpty) {
     return _moveNativeGroupSubtree(drawing, group, _ordinaryObject(drawing, after).end, ownership.parentOf(ownership.nodeFor(after)), inheritParentFlags);
   }
   final Map<int, _NativeArtworkState> states = _artworkMovementStates(
@@ -343,7 +430,7 @@ AiNativeDrawing _moveNativeGroupToLayer(AiNativeDrawing drawing, AiNativeGroup g
   final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(drawing, [(start: _ordinaryObject(drawing, group).start, end: _ordinaryObject(drawing, group).end)]);
   final AiNativeStructure ownership = _ordinaryGroups(drawing, [group], pairs: pairs);
   final int position = layer.end.start;
-  if (pairs.isNotEmpty) {
+  if (pairs.isNotEmpty || drawing.gradientArtwork.isNotEmpty || drawing.meshArtwork.isNotEmpty) {
     return _moveNativeGroupSubtree(drawing, group, position, ownership.nodeFor(layer), inheritParentFlags);
   }
   final Map<int, _NativeArtworkState> states = _artworkMovementStates(

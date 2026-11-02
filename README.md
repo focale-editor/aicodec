@@ -7,13 +7,13 @@
 AiKit reads and writes Adobe Illustrator containers in pure Dart. PdfCore handles
 the PDF representation; ZCodec opens compressed native authoring programs and
 PsCore supplies the Adobe text-engine grammar shared with PsdKit.
-Source-backed edits preserve unknown records, and typed artwork can be written
-as self-contained AI7 PostScript.
+Source-backed edits preserve unknown records while serializing native changes.
 
 Like PsdKit, AiKit owns editable format data and serialization. Focale owns
 editing tools, rendering and derived representations. AiKit saves the PDF
 appearance supplied by its host; it does not render native Illustrator artwork.
-Focale integration is deferred. See the [host contract](docs/HOST.md).
+Focale integration is partial. See the [host contract](docs/HOST.md) and
+[integration status](docs/FOCALE_INTEGRATION.md).
 
 ## Supported data
 
@@ -71,8 +71,6 @@ Focale integration is deferred. See the [host contract](docs/HOST.md).
   removed previews, retaining geometry and shared file dependencies.
 - Save host-supplied PDF appearances together with native data, retaining shared
   owners, metadata and other producers; remove stale native thumbnails.
-- AI7 creation with editable layers, groups, Bézier paths, process colors,
-  fills, strokes, dashes and winding rules.
 - Exact preservation of legacy source bytes, binary blocks and DOS EPS previews.
 - DSC titles, creators, bounding boxes, continuation lines and trailer metadata.
 - PostScript numbers, names, strings, arrays, dictionaries, procedures and comments.
@@ -117,8 +115,8 @@ final List<int> preserved = const AiCodec().encode(document);
 
 `AiCodec` implements `Codec<AiDocument, List<int>>`, with `AiDecoder` and
 `AiEncoder` converters. Direct encoding returns `Uint8List`. See the runnable
-[example](example/aikit_example.dart) for native artwork creation, layer editing
-and explicit PDF interchange.
+[example](example/aikit_example.dart) for inspecting an existing PDF-backed AI,
+renaming a native layer and saving its preserved PDF appearance.
 
 Native text is available independently of the PDF appearance:
 
@@ -196,8 +194,18 @@ ink declarations retain their exact source fields. Selected logical vertices
 support process-color, named-ink tint and opacity edits across every neighboring
 corner copy. `inkTints` pairs NChannel components with their correct ink names;
 tint edits preserve the original declarations and device alternatives.
-Mesh interpolation, color management and rendering belong to the host. Mesh
-geometry editing and additional native layouts remain unfinished.
+Explicit geometry edits, affine transforms and complete Cartesian topology
+replacement retain native paint and shared-corner consistency. Direct mesh
+creation, replacement and lifecycle APIs preserve identities and surrounding
+state. Mesh interpolation, color management and rendering belong to the host;
+additional native layouts remain open. Validation of these new geometry and
+lifecycle APIs is recorded in [the integration validation](docs/FOCALE_INTEGRATION.md).
+
+Gradient resources and palette cells support qualified creation/removal. Ordered
+hard stops, exact appearance-gradient selection and named-paint edits retain native
+alternatives and require matching host-composed printing data. See the
+[color and gradient contracts](docs/AI.md#gradients-and-paint-styles) for reference,
+cache and ink-identity boundaries.
 
 ## Scope
 
@@ -211,10 +219,17 @@ composition, cached layouts and matching appearances after editing. Plug-ins,
 effects, meshes, gradient and raster authoring semantics are preserved but not
 fully modeled. Live rectangles, ellipses,
 polygons, stars and lines support translation, rotation and uniform scaling with
-solid and CC linear/radial gradient appearances; nonuniform resizing, shearing and
-parameter-driven regeneration remain unfinished. Geometry edits
-with unresolved private appearance dependencies are rejected. AI7 creation is an
-explicit legacy target, not a reconstruction of CC editing records.
+solid and CC linear/radial gradient appearances. Qualified affine operations add
+nonuniform resizing, reflection and shear with fixed strokes and host-composed CC
+printing groups. Sharp sheared rectangles become editable native irregular-polygon
+parallelograms. Typed parameter transactions save matching host-regenerated
+contours and metadata together. Unsupported positional and appearance dependencies
+still reject; see the [affine contract](docs/AI.md#affine-contours-and-dynamic-shape-parameters).
+New CC documents can be authored with `AiNativeDocument.create` and packaged with
+`createPdf` using explicit host-supplied PDF pages; see the
+[new-document example](example/create_document.dart) and
+[creation contract](docs/AI.md#new-native-cc-documents). Standalone AI7 document
+creation is outside the Focale contract.
 No Adobe Illustrator reopening validation has been performed.
 
 See [docs/AI.md](docs/AI.md) for editing policies and

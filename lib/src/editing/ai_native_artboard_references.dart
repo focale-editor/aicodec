@@ -5,14 +5,15 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: model.records));
   final _ArtboardResourceScope resources = _artboardResourceScope(layers);
   final _ArtboardBrushScope brushes = _artboardBrushScope(layers, resources.brushes);
-  final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) text = _artboardTextScope(layers);
+  final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects, bool empty}) text = _artboardTextScope(layers);
   final Map<AiNativeInstruction, AiNativeResourceUse> styles = {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction: use};
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in styles.values) use.instruction.start: use};
+  final List<_NativeSubtreeSpan> images = _nativeImageOwners(layers.drawing).map((owner) => owner.span).toList();
   // The retained-body checker owns every interval outside each complete pair.
   final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
     layers,
     _layerHeaderItems(layers),
-    inspect: (model, start, end, headers) => _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: styles),
+    inspect: (model, start, end, headers) => _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: styles, retainedImages: images),
     qualifyShapeNeighbors: false,
   )..addAll({...text.objects, ...resources.objects});
   final List<_NativeFontEncoding> fonts = [];
@@ -45,9 +46,9 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
 }
 
 /// Refuses conditional ownership and annotations outside a checked binary span.
-void _artboardSetupRecord(AiNativeLayers layers, AiNativeContainer record, {List<({int start, int end})> checked = const []}) {
+void _artboardSetupRecord(AiNativeLayers layers, AiNativeContainer record, {List<({int start, int end})> checked = const [], bool setupOnly = true}) {
   final AiNativeRecords records = layers.drawing.records;
-  if (record.end > records.program.bodyStart || layers.structure.nodeFor(record).versions.isNotEmpty) {
+  if (setupOnly && record.end > records.program.bodyStart || layers.structure.nodeFor(record).versions.isNotEmpty) {
     throw UnsupportedError('Artboard dependency qualification requires unconditional setup records.');
   }
   for (final AiToken token in _pathInterval(records._projection.tokens, record.start, record.end, (token) => token.start)) {

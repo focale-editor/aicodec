@@ -23,6 +23,36 @@ envelopes independently. To verify downloads without network access or writes:
 python3 tool/fetch_corpus.py --verify-only
 ```
 
+## Color resources and exact applications
+
+```sh
+dart run tool/check_native_colors.dart
+python3 tool/verify_native_colors.py --reference /tmp/extension-ai
+```
+
+The unchanged pinned reader verifies four synthetic native snapshots and complete
+compressed AI saves: ordered hard-stop copies, one selected gradient application,
+shared named-paint alternatives/tints, process/named/gradient palette cells and
+counted resource deletion. The independent PDF reader checks both pages and all
+aliased native payloads. Output stays under ignored `output/colors`. These checks
+establish stored-data coherence, not Adobe reopening or visual equivalence.
+
+## Affine shapes and parallelograms
+
+```sh
+dart run tool/check_native_affine.dart
+python3 tool/verify_native_affine.py --reference /tmp/extension-ai
+```
+
+Use the unchanged pinned reader and Python dependencies described below. The
+verifier checks the producer irregular-polygon profile in `simple_shapes.ai`
+and `simple_shapes_cc.ai`, then independently reads four synthetic direct/CC
+shear and parameter-change saves. It checks native contours, private/printing
+classification, counts, parameter copies, unchanged neighboring geometry, aliased
+compressed native payloads and the corresponding two-page host PDF content.
+Outputs stay under ignored `output/affine`. This establishes structural
+serialization evidence, not Adobe reopening or visual fidelity.
+
 ## Ordered native appearances
 
 ```sh
@@ -1570,6 +1600,73 @@ dart run tool/check_native_page_saves.dart
 python3 tool/verify_native_page_saves.py --inkai-source /tmp/extension-ai
 ```
 
+## Transparency and opacity-mask editing
+
+Six explicit ordinary CC carriers cover paths, groups, child objects, synthetic
+raster masks and both exact masks copied from pinned `simple_v2020.ai`. The pinned
+unmodified native reader verifies all outer flags, unchanged vector/raster payloads
+and every byte outside the prescribed mask/printing/bounds edits. It also reads
+new blend, fill and stroke parts with their complete transparency tuples. A seventh
+complete save covers an active native mask and its explicit PDF luminosity form.
+pypdf checks saved native owners and supplied PDF ExtGState/content/SMask. The two
+producer payloads retain manifest provenance/checksums; the carriers themselves
+are synthetic. This does not certify original-document mask editing or rendering.
+
+```sh
+dart run tool/check_native_opacity_masks.dart
+python3 tool/verify_native_opacity_masks.py --inkai-source /tmp/extension-ai
+```
+
+## New CC documents without a source AI
+
+Four entirely synthetic RGB/CMYK blank and two-page documents exercise initial
+native construction and first-save packaging. Four further saves add a layer
+through the ordinary edit/save API. No producer template or artwork is copied.
+The unmodified pinned inkai reader checks Document fields, native board identities
+and positions, nested layers, root counts, path geometry and process colors.
+pypdf verifies all shared private owners, Zstandard data, current full header
+caches and supplied PDF pages/resources/content. Poppler renders every page of
+all eight saves and requires exact pixels against the independent host PDFs.
+This validates serialization; it does not certify Adobe reopening or Focale export.
+
+```sh
+dart run tool/check_native_documents.dart
+python3 tool/verify_native_documents.py --reference /tmp/extension-ai
+```
+
+### Initial text resources without a source text engine
+
+Five entirely new compact ATE snapshots initialize actual font identification,
+normal styles and independent undo-free resources, then create, duplicate and
+remove stories while retaining unrelated native layer identities. The pinned
+independent native/ATE reader checks the saved fonts, styles, text, frame tables
+and unchanged auxiliary namespace. Two complete AI saves contain the resulting
+empty documents and matching blank host PDFs with current font header caches.
+Intermediate stories remain uncomposed and are not presented as visually valid
+complete saves. Actual glyph composition and Illustrator reopening require their
+own application acceptance.
+
+```sh
+dart run tool/check_native_text_creation.dart
+python3 tool/verify_native_text_creation.py --reference /tmp/extension-ai
+```
+
+### New native images without source artwork
+
+Two generated AI saves contain newly created embedded/linked RGB images with
+straight alpha, a relative link and a matching preview. The second save embeds
+the link without changing its appearance. Pinned inkai checks exact native samples
+and preview rows; pypdf checks image/alpha resources and cached native headers;
+Poppler checks exact host/AI pixels and expected red/translucent green patches.
+The independent reader does not fully model link metadata, so its preview checks
+are supplemented by explicit source reference/placement assertions. No external
+file is opened and no Adobe editing acceptance is implied.
+
+```sh
+dart run tool/check_native_image_creation.dart
+python3 tool/verify_native_image_creation.py --reference /tmp/extension-ai
+```
+
 ## Catalog XMP preservation
 
 `xmp_manifest.json` pins Adobe's CS2 `BlueSquare.ai` and ExifTool's `XMP3.xmp`.
@@ -1587,3 +1684,33 @@ python3 tool/verify_xmp_metadata.py
 These checks establish the documented native data contracts only. Adobe
 Illustrator reopening, complete effect fidelity and Focale integration remain
 separate acceptance work. See [the technical reference](../../docs/AI.md).
+
+### Focale ordinary CC integration
+
+From the sibling Focale checkout, with its local AiKit dependency override, run:
+
+```sh
+FOCALE_AI_NEW_OUTPUT=/tmp/focale-ai-new-validation flutter test test/features/documents/ai_new_document_test.dart test/features/documents/ai_path_appearance_test.dart test/features/documents/ai_object_lifecycle_test.dart test/features/documents/ai_artboard_lifecycle_test.dart test/features/documents/ai_embedded_image_test.dart
+```
+
+Then run `tool/verify_focale_documents.py --reference <pinned-inkai-checkout>
+--output /tmp/focale-ai-new-validation` with the Python corpus environment.
+The checker verifies newly authored ordinary native paths, two repeated
+multi-artboard edits, shared owners, cached headers and exact Poppler page pixels
+against host-composed references. The appearance suite also supplies a fourth
+output with changed fill, dashed stroke, opacity and overprint, while its neighboring
+path retains its source appearance. A fifth lifecycle output contains inserted and
+duplicated paths among retained nested layers; native coordinates and complete PDF
+pixels match an independently composed reference. Four further outputs cover board
+resize/rename, insertion/order, later removal and a new painted page. The independent
+reader checks rectangles, Unicode names, active/history fields and retained UUIDs;
+pypdf verifies page identities across saved revisions and Poppler compares all page
+pixels. A tenth output exercises catalog-only source metadata with explicit page
+ownership and synchronized catalog/page native blocks after removal and insertion.
+Two image outputs bring the total to twelve: initial embedded RGB/alpha authoring
+among paths and replacement at a different pixel resolution. The independent
+reader checks sample planes, dimensions and affine matrices; Poppler compares the
+complete saved PDF with separately composed host references. These cases do not
+establish image lifecycle, linked-image integration or Adobe editing acceptance.
+Generated artwork remains outside publication.
+This is bounded application integration evidence, not Adobe Illustrator acceptance.

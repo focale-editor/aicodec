@@ -202,6 +202,7 @@ bool _referenceHeaderComment(String comment, AiNativeLimits limits) {
 /// Qualifies source sections outside artwork and checked reference-free records.
 void _referenceProgram(AiNativeLayers model, List<({int start, int end})> independent) {
   final AiProgram program = model.drawing.records.program;
+  final Set<int> fileDeclarations = _nativeFileDeclarationComments(model.drawing.records);
   final Set<int> declarations = {if (model.rootCountHeader != null) model.rootCountHeader!.token.start, ...model.viewComments.map((token) => token.start)};
   final Set<int> versionMarkers = {
     for (final AiNativeVersionBlock block in model.structure.versions.blocks)
@@ -226,7 +227,7 @@ void _referenceProgram(AiNativeLayers model, List<({int start, int end})> indepe
         trailer.add(token.lexeme);
         continue;
       }
-      throw UnsupportedError('Deleting identified artwork requires declarative sections outside its ordinary body.');
+      throw UnsupportedError('Deleting identified artwork requires declarative sections outside its ordinary body: ${token.lexeme} at ${token.start}.');
     }
     if (const {'%%EndComments', '%%BeginProlog', '%%BeginSetup'}.contains(token.lexeme)) {
       initial = false;
@@ -246,7 +247,11 @@ void _referenceProgram(AiNativeLayers model, List<({int start, int end})> indepe
       nonPrinting = opening;
       continue;
     }
-    if (declarations.contains(token.start) || initial && versionMarkers.contains(token.start) || markers.contains(token.lexeme) || fields.contains(token.lexeme.split(':').first)) {
+    if (declarations.contains(token.start) ||
+        fileDeclarations.contains(token.start) ||
+        initial && versionMarkers.contains(token.start) ||
+        markers.contains(token.lexeme) ||
+        fields.contains(token.lexeme.split(':').first)) {
       continue;
     }
     if (RegExp(r'^%{1,2}AI').hasMatch(token.lexeme) || token.lexeme.startsWith('%%')) {

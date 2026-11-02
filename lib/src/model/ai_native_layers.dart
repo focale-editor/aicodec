@@ -117,11 +117,23 @@ final class AiNativeLayer extends AiNativeItem {
 /// A qualified header does not qualify its child artwork. Saved XML identifiers
 /// remain separate from display names; duplicate identifiers are not merged.
 final class AiNativeLayers {
+  /// Complete qualified drawing text references in source order.
+  ///
+  /// These handles support relocation and ordering without changing ATE indices.
+  /// Use the text document's story/frame lifecycle for deletion or duplication.
+  List<AiNativeContainer> get textArtwork => List.unmodifiable(drawing._textArtwork.map((owner) => owner.record));
+
   /// Source snapshot owning the native commands and returned layer handles.
   final AiNativeDrawing drawing;
 
   /// Structural ownership and references shared with other native model views.
   final AiNativeStructure structure;
+
+  /// Embedded raster handles owned by this mixed-artwork snapshot.
+  late final AiNativeRasters rasters = AiNativeRasters.decode(records: drawing.records);
+
+  /// Owned linked image handles for mixed artwork transactions.
+  late final AiNativePlacements placements = AiNativePlacements.decode(records: drawing.records);
 
   /// All layers in source order, including nested and hidden owners.
   final List<AiNativeLayer> layers;
@@ -188,6 +200,40 @@ final class AiNativeLayers {
   /// separately at each slot and wherever following artwork reads changed state.
   /// Saved view data requires explicit [discardViewState], as for insertion.
   AiNativeLayers reorder({required List<AiNativeLayer> layers, bool discardViewState = false}) => _reorderNativeLayers(this, layers, discardViewState);
+
+  /// Permutes sibling paths, gradients, meshes, images, text, groups and layers.
+  ///
+  /// Supply exact [AiNativePath] or [AiNativeLayer] handles from this inventory's
+  /// drawing, image handles from [rasters]/[placements], or records from
+  /// [textArtwork], or complete [AiNativeGradientArtwork]/[AiNativeMeshArtwork]
+  /// handles from the drawing, or complete ordinary [AiNativeGroup] handles.
+  /// Selected owners share one root, layer or ordinary group parent.
+  /// Names, identities, metadata and both outgoing states remain intact. Layer
+  /// view declarations require explicit [discardViewState] when layers move.
+  AiNativeLayers reorderArtwork({required List<AiNativeItem> artwork, bool discardViewState = false}) => _reorderNativeLayerArtwork(this, artwork, discardViewState);
+
+  /// Appends one complete artwork owner under a group, layer or global root.
+  ///
+  /// Supply either [parent] or [group], or neither for the global document root.
+  /// Native layers cannot be children of ordinary groups. Changing ancestry requires
+  /// [inheritParentFlags]; the host supplies geometry changes and matching PDF
+  /// artwork separately. Root-layer counts update with the relocation. Source
+  /// identities and native/printing state are retained; descendants cannot be
+  /// their own destination. Reorder siblings afterward for an exact mixed slot.
+  /// Text moves retain ATE frame/story indices and composition; moving its canvas
+  /// geometry remains a separate text-frame operation.
+  AiNativeLayers moveArtwork({required AiNativeItem artwork, AiNativeLayer? parent, AiNativeGroup? group, bool inheritParentFlags = false, bool discardViewState = false}) =>
+      _moveNativeLayerArtwork(this, artwork, parent, group, inheritParentFlags, discardViewState);
+
+  /// Removes disjoint path, gradient, mesh, image, group or layer owners and descendants.
+  ///
+  /// Text references and layers still containing text require prior story/frame
+  /// removal through `AiNativeTextDocument`, so no orphan engine resources remain.
+  ///
+  /// Image handles come from [rasters] or [placements]. All saved identities require a complete
+  /// reference check; persistent scalar state remains at each removed position.
+  /// Root counts and optional saved-view invalidation follow layer lifecycle.
+  AiNativeLayers removeArtwork({required List<AiNativeItem> artwork, bool discardViewState = false}) => _removeNativeLayerArtwork(this, artwork, discardViewState);
 
   /// Moves a complete subtree after another layer, retaining its saved identities.
   ///

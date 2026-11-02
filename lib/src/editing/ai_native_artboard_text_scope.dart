@@ -7,7 +7,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 /// Artwork identity deletion additionally requires empty frame/story namespaces;
 /// retaining populated text beside board edits does not qualify its hyperlinks.
 /// ATE 11 snapshots currently require empty namespaces for every caller.
-({List<({int start, int end})> ranges, Set<AiNativeContainer> objects}) _artboardTextScope(AiNativeLayers layers, {bool requireEmpty = false}) {
+({List<({int start, int end})> ranges, Set<AiNativeContainer> objects, bool empty}) _artboardTextScope(AiNativeLayers layers, {bool requireEmpty = false, bool requireEmptyUndo = false}) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiNativeContainer> main = records.roots.where((record) => record.type == 'AI11TextDocument').toList();
   final List<AiNativeContainer> undo = records.roots.where((record) => record.type == 'AI11UndoFreeTextDocument').toList();
@@ -15,7 +15,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
     if (records.containers.any((record) => record.type == 'AI11Text')) {
       throw const FormatException('Native drawing text has no text document.');
     }
-    return (ranges: [], objects: {});
+    return (ranges: [], objects: {}, empty: true);
   }
   if (main.length != 1 || undo.length > 1) {
     throw UnsupportedError('Artboard text isolation requires one main document and at most one undo-free snapshot.');
@@ -41,7 +41,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       limits: PsEngineLimits(maxBytes: bytesRemaining, maxNodes: nodesRemaining, maxDepth: records.program.limits.maxDepth, maxStringBytes: bytesRemaining),
     );
     final _ArtboardTextSnapshot snapshot = _artboardTextEngine(engine);
-    if (requireEmpty && (snapshot.frames.isNotEmpty || snapshot.stories.isNotEmpty)) {
+    if ((requireEmpty || requireEmptyUndo && !primary) && (snapshot.frames.isNotEmpty || snapshot.stories.isNotEmpty)) {
       throw UnsupportedError('Artwork identity deletion requires separate qualification of populated text references.');
     }
     snapshots.add(snapshot);
@@ -51,7 +51,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   final Set<AiNativeContainer> objects = _artboardTextObjects(layers, snapshots);
   final List<AiToken> wrappers = records._projection.tokens.where((token) => token.kind == .comment && const {'%AI11_BeginTextDocument', '%AI11_EndTextDocument'}.contains(token.lexeme)).toList();
   if (wrappers.isEmpty) {
-    return (ranges: [], objects: objects);
+    return (ranges: [], objects: objects, empty: snapshots.first.frames.isEmpty && snapshots.first.stories.isEmpty);
   }
   final AiNativeContainer last = undo.isEmpty ? main.single : undo.single;
   if (wrappers.length != 2 ||
@@ -64,7 +64,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
       wrappers.any((token) => layers.structure.versions.memberships(start: token.start, end: token.end).isNotEmpty)) {
     throw UnsupportedError('Artboard text isolation requires one unconditional ordered text wrapper.');
   }
-  return (ranges: [for (final AiToken token in wrappers) (start: token.start, end: token.end)], objects: objects);
+  return (ranges: [for (final AiToken token in wrappers) (start: token.start, end: token.end)], objects: objects, empty: snapshots.first.frames.isEmpty && snapshots.first.stories.isEmpty);
 }
 
 /// Requires a known compact ATE dictionary boundary rather than guessing aliases.

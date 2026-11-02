@@ -112,16 +112,44 @@ AiNativeGroup _printingShapeGroup(AiNativeDrawing drawing, AiLiveShape shape, {b
   return group;
 }
 
-/// Rejects hidden payloads and returns the exact local declarative commands.
+/// Qualifies complete embedded samples without giving them native object IDs.
+List<AiNativeRaster> _printingRasters(AiNativeDrawing drawing, AiNativeGroup group) {
+  final List<AiNativeRaster> images = _readNativeRasters(drawing.records, false, start: group.start, end: group.end);
+  for (final AiNativeRaster image in images) {
+    _artboardResourceRaster(drawing.records, image);
+    if (image.instruction.isPrivate || image.end > group.end || image.dictionary != null) {
+      throw UnsupportedError('Derived rasters require complete public samples without authoring metadata.');
+    }
+    if (drawing.groups.any((nested) => nested.compound && nested.start < image.start && nested.end > image.end)) {
+      throw UnsupportedError('Derived rasters cannot participate in compound contour painting.');
+    }
+  }
+  return images;
+}
+
+/// Rejects hidden payloads except for independently qualified embedded samples.
 List<AiNativeInstruction> _printingCommands(AiNativeDrawing drawing, AiNativeGroup group, {bool clipping = false}) {
+  final List<AiNativeRaster> images = _printingRasters(drawing, group);
   if (drawing.records._projection.tokens.any(
-    (token) => token.start < group.end && token.end > group.start && (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%BeginDocument') || token.lexeme.startsWith('%AI'))),
+    (token) =>
+        token.start < group.end &&
+        token.end > group.start &&
+        !images.any((image) => token.start >= image.start && token.end <= image.end) &&
+        (token.kind == .data || token.kind == .comment && (token.lexeme.startsWith('%%') || token.lexeme.startsWith('%AI'))),
   )) {
     throw UnsupportedError('Printing replacement requires resolved local data and embedded-document dependencies.');
   }
   final List<AiNativeInstruction> result = [];
   for (final AiNativeItem item in drawing.items.where((item) => item.start >= group.start && item.end <= group.end)) {
-    if (item is! AiNativeInstruction || item.isPrivate || !(_printingGeometryControls.contains(item.operator) || clipping && const {'h', 'H', 'W'}.contains(item.operator))) {
+    if (images.any((image) => item.start >= image.start && item.end <= image.end)) {
+      if (item is AiNativeInstruction) {
+        result.add(item);
+      }
+      continue;
+    }
+    if (item is! AiNativeInstruction ||
+        item.isPrivate ||
+        !(_printingGeometryControls.contains(item.operator) || _nativeNamedColorOperators.contains(item.operator) || clipping && const {'h', 'H', 'W'}.contains(item.operator))) {
       throw UnsupportedError('Printing replacement requires resolved local commands and no nested authoring metadata.');
     }
     result.add(item);
@@ -164,7 +192,7 @@ Map<AiNativePath, AiNativeInstruction> _printingPointCounts(AiNativeDrawing draw
       }
     } else if (identical(item, current?.paint)) {
       current = null;
-    } else if (pending != null && const {'u', 'U', '*u', '*U', 'q', 'Q'}.contains(item.operator)) {
+    } else if (pending != null && const {'u', 'U', '*u', '*U', 'q', 'Q', 'XI'}.contains(item.operator)) {
       throw UnsupportedError('A printing point count crosses an object boundary.');
     }
   }

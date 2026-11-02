@@ -43,8 +43,18 @@ final class AiNativePageReplacement {
   /// Native page order, using current PDF references and original metadata owners.
   final List<AiNativePageBinding> pages;
 
+  /// Original pages explicitly governed by this source's catalog metadata.
+  ///
+  /// Use only for pages without their own native owner, notably before removing
+  /// them. The source must own catalog metadata; foreign, repeated or separately
+  /// owned pages reject. Retained declared pages must bind to this replacement.
+  /// Omission never infers ownership from page order or a catalog attachment.
+  final List<PdfReference> catalogPages;
+
   /// Freezes one explicit mapping; any original catalog alias remains attached.
-  AiNativePageReplacement({required this.replacement, required List<AiNativePageBinding> pages}) : pages = List.unmodifiable(pages);
+  AiNativePageReplacement({required this.replacement, required List<AiNativePageBinding> pages, List<PdfReference> catalogPages = const []})
+    : pages = List.unmodifiable(pages),
+      catalogPages = List.unmodifiable(catalogPages);
 }
 
 /// Compression inside Illustrator's private PDF streams, after PDF filtering.

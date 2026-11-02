@@ -219,8 +219,9 @@ final class AiNativeGradientResources {
 
   /// Replaces a global gradient's stops and all its native printing intervals.
   ///
-  /// Stops are supplied in strictly increasing position order; ramps are in the
-  /// same interval order. Native linear stops are written in descending order,
+  /// Stops are supplied in nondecreasing position order; equal positions retain
+  /// their caller order and define a hard transition. At least one interval must
+  /// have positive width. Ramps follow the same adjacent-pair order. Native linear stops are written in descending order,
   /// radial stops in ascending order. Every definition with the same byte name
   /// changes in one transaction. Linear printing strips and exterior caps follow
   /// the new positions in drawing, styles, patterns and swatches; the complete
@@ -228,6 +229,8 @@ final class AiNativeGradientResources {
   /// notes stay intact. Paired compatibility records are regenerated.
   ///
   /// Inconsistent or incomplete printing geometry rejects positional changes.
+  /// Changed hard edges in cached linear strips require host-composed printing
+  /// artwork; this method does not invent zero-width imaging matrices.
   /// Legacy strips without `Xm` must identify one consistent whole axis. Moving
   /// an endpoint requires its existing exterior cap, whose outer edge stays
   /// fixed. Command-local whitespace/comments may be regenerated; unrelated
@@ -240,6 +243,21 @@ final class AiNativeGradientResources {
   /// colors with style codes zero through four.
   AiNativeGradientResources replaceStops({required AiNativeGradientDefinition definition, required List<AiNativeGradientStop> stops, required List<AiNativeGradientRamp> ramps}) =>
       _replaceGradientStops(this, definition, stops, ramps);
+
+  /// Creates a fresh global resource in every existing printing/swatch bank.
+  ///
+  /// A document without banks receives its first counted bank at the end of
+  /// setup. Names must be unused, including by unresolved native applications.
+  /// Unknown reference owners reject. The host supplies one ramp per adjacent
+  /// stop pair, including zero-width pairs at hard stops; no sampling is inferred.
+  AiNativeGradientResources create({required List<int> nameBytes, required bool radial, required List<AiNativeGradientStop> stops, required List<AiNativeGradientRamp> ramps}) =>
+      _createNativeGradient(this, nameBytes, radial, stops, ramps);
+
+  /// Removes every same-name declaration after proving the resource unused.
+  ///
+  /// Rebind/remove artwork, styles and palette applications first. Unknown or
+  /// conditional reference ownership rejects rather than leaving dangling names.
+  AiNativeGradientResources remove({required AiNativeGradientDefinition definition}) => _removeNativeGradient(this, definition);
 
   /// Sets the normalized focus of every instance of a named radial gradient.
   ///

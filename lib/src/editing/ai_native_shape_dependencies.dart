@@ -10,6 +10,9 @@ typedef _NativeShapeReplacement = ({
   bool discard,
 });
 
+/// Explicit private path writes, actual reads and unrestorable outgoing values.
+typedef _NativePrivatePathStateChange = ({Set<String> writes, Set<String> reads, Set<String> unresolved});
+
 /// A complete qualified source interval with its replay and unresolved effects.
 typedef _NativeSourceReplacement = ({
   List<AiNativeInstruction> commands,
@@ -58,6 +61,7 @@ void _sourceFollowingDependencies(
   List<AiNativeAppearanceArtwork> retainedArtwork = const [],
   bool clipping = false,
   Map<int, Set<String>> styleChanges = const {},
+  Map<AiNativePath, _NativePrivatePathStateChange> pathChanges = const {},
   Map<int, Map<String, AiNativeInstruction>> styleRestorations = const {},
   AiNativeLayers? document,
   AiNativeArtworkResource? resource,
@@ -71,9 +75,15 @@ void _sourceFollowingDependencies(
   final AiNativeLayers layers = document ?? AiNativeLayers.decode(drawing: drawing);
   final Map<int, AiNativeLayer> headers = _layerHeaderItems(layers);
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
+  late final Map<int, AiNativeItem> images = {for (final _NativeImageOwner owner in _nativeImageOwners(drawing)) owner.instruction.start: owner.image};
+  late final Map<int, AiNativeRaster> printingImages = {
+    for (final AiNativeAppearanceArtwork owner in retainedArtwork)
+      for (final AiNativeRaster image in owner.printingRasters) image.instruction.start: image,
+  };
   final Map<int, AiNativeGroup> endings = {for (final AiNativeGroup group in drawing.groups) group.closing.start: group};
   final List<({Set<String> native, Set<String> printing})?> clips = [];
   int compoundDepth = 0;
+  final Map<int, _NativePrivatePathStateChange> pathEndings = {for (final MapEntry<AiNativePath, _NativePrivatePathStateChange> entry in pathChanges.entries) entry.key.end: entry.value};
   final List<int> positions = insertions.keys.toList()..sort();
   int inserted = 0;
 
@@ -103,7 +113,20 @@ void _sourceFollowingDependencies(
       return;
     }
     if (paths[item.start] case final AiNativePath path) {
-      read(compoundDepth == 0 ? _shapeCopyReads(drawing, path) : _nativeContourFlags, private: nativeOnly);
+      final _NativePrivatePathStateChange? change = pathChanges[path];
+      if (change != null) {
+        if (!nativeOnly || compoundDepth != 0) {
+          throw ArgumentError('Private path state changes require independent authoritative contours.');
+        }
+        unresolved.removeAll(change.writes);
+      }
+      read(change?.reads ?? (compoundDepth == 0 ? _shapeCopyReads(drawing, path) : _nativeContourFlags), private: nativeOnly);
+    } else if (item.operator == 'aikit:mesh') {
+      read(_nativeArtworkStateKeys, private: false);
+    } else if (item.operator == 'aikit:text') {
+      read(_nativeArtworkStateKeys, private: true);
+    } else if (const {'XI', '`'}.contains(item.operator)) {
+      read(_nativeImageReads(printingImages[item.start] ?? images[item.start] ?? (throw UnsupportedError('Following image reads require qualified raster ownership.'))), private: nativeOnly);
     } else if (const {'u', '*u', 'q'}.contains(item.operator)) {
       read({'A', 'Xw'}, private: nativeOnly);
     } else if (_marker(item, 6)) {
@@ -143,6 +166,7 @@ void _sourceFollowingDependencies(
           }
         }
     }
+    unresolved.addAll(pathEndings[item.end]?.unresolved ?? const {});
   }
 
   /// Qualifies ordinary intervening artwork only while state may still differ.
@@ -170,14 +194,17 @@ void _sourceFollowingDependencies(
     }
     int position = start;
     for (final AiNativeInstruction item in _pathInterval(drawing.items, start, end, (item) => item.start).whereType<AiNativeInstruction>().where((item) => item.isPrivate)) {
+      if (drawing.meshArtwork.any((owner) => item.start >= owner.start && item.end <= owner.end)) {
+        continue;
+      }
       if (_nativeArtworkStateKey(item) == null) {
         throw UnsupportedError('Following private artwork requires a separate native state contract.');
       }
-      _layerInterval(layers, position, item.start, headers, appearanceArtwork: retainedArtwork).forEach(command);
+      _layerInterval(layers, position, item.start, headers, appearanceArtwork: retainedArtwork, retainImages: true).forEach(command);
       command(item);
       position = item.end;
     }
-    _layerInterval(layers, position, end, headers, appearanceArtwork: retainedArtwork).forEach(command);
+    _layerInterval(layers, position, end, headers, appearanceArtwork: retainedArtwork, retainImages: true).forEach(command);
   }
 
   /// Checks inserted or replacing artwork before publishing its remaining effects.
@@ -224,10 +251,11 @@ void _sourceFollowingDependencies(
   }
   final Map<_NativeSubtreeSpan, AiLiveShape> retained = {
     for (final AiLiveShape shape in drawing.liveShapes.where((shape) => shape.isBound && shape.appearanceGroup != null && shape.path?.isPrivate == true && shape.end > position))
-      if (!spans.any((span) => shape.start >= span.start && shape.end <= span.end)) (start: drawing._objects.forSource(shape.appearanceGroup!).expansion?.start ?? shape.start, end: shape.end): shape,
+      if (!spans.any((span) => shape.start >= span.start && shape.end <= span.end) && !retainedArtwork.any((owner) => identical(owner.liveShape, shape)))
+        (start: drawing._objects.forSource(shape.appearanceGroup!).expansion?.start ?? shape.start, end: shape.end): shape,
   };
   final Map<_NativeSubtreeSpan, AiNativeAppearanceArtwork> artwork = {
-    for (final AiNativeAppearanceArtwork item in retainedArtwork.where((item) => item.end > position && item.liveShape == null))
+    for (final AiNativeAppearanceArtwork item in retainedArtwork.where((item) => item.end > position))
       if (!spans.any((span) => item.start >= span.start && item.end <= span.end)) (start: item.start, end: item.end): item,
   };
   final List<_NativeSubtreeSpan> owners = [...spans, ...retained.keys, ...artwork.keys]..sort((first, second) => first.start.compareTo(second.start));

@@ -108,9 +108,11 @@ void _nativeReferenceScope(
   _ArtboardBrushScope? retainedBrushes,
   List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
+  final ({List<({int start, int end})> ranges, Set<AiNativeContainer> objects, bool empty}) text = _artboardTextScope(model, requireEmptyUndo: true);
   final Set<AiNativeContainer> dictionaries = {
     ...bodyDictionaries ?? _nativeReferenceBody(model, headers, appearanceArtwork: appearanceArtwork, qualifyShapeNeighbors: appearanceArtwork.isEmpty),
     ...?retainedResources?.objects,
+    if (!text.empty) ...validateTextArtworkReferences(model.drawing.records),
   };
   final List<_NativeFontEncoding> fonts = [];
   final List<({int start, int end})> independent = _referenceGradientRanges(model, fontDeclarations: fonts)
@@ -119,7 +121,7 @@ void _nativeReferenceScope(
     ..addAll(retainedResources?.ranges ?? [])
     ..addAll(retainedBrushes?.ranges ?? [])
     ..addAll(_artboardSetupRanges(model, patternNames: retainedResources?.patterns ?? {}, symbolNames: retainedResources?.symbols ?? {}))
-    ..addAll(_artboardTextScope(model, requireEmpty: true).ranges);
+    ..addAll(text.ranges);
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use};
   for (final AiNativeContainer record in model.drawing.records.roots.where((record) => !dictionaries.contains(record))) {
     if (record.type == 'KnownStyle') {
@@ -130,7 +132,8 @@ void _nativeReferenceScope(
       // Complete filter declarations contain only filter-local dependencies.
       continue;
     } else if (const {'AI11TextDocument', 'AI11UndoFreeTextDocument'}.contains(record.type)) {
-      // Both snapshots were checked above; neither owns stories or frames.
+      // Main references were qualified through the text lifecycle above. The
+      // independent undo snapshot retains its original identities and bytes.
     } else {
       throw UnsupportedError('Native structural edits require qualification of document, resource and opaque reference owners.');
     }
@@ -149,11 +152,15 @@ Set<AiNativeContainer> _nativeReferenceBody(
   List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
   Set<String> patterns = const {},
 }) {
+  if (appearanceArtwork.any((owner) => owner.resource != null || !identical(owner._owner.structure.drawing, model.drawing))) {
+    throw ArgumentError('Body reference inspection requires current body appearance owners.');
+  }
   final void Function(AiNativeLayers, int, int, Map<int, AiNativeLayer>) inspectInterval =
       inspect ?? (model, start, end, headers) => _referenceArtworkInterval(model, start, end, headers, appearanceArtwork: appearanceArtwork);
   final List<_NativeShapeBundle> shapes = [
     for (final AiLiveShape shape in model.drawing.liveShapes.where((shape) => shape.appearanceGroup != null || shape.path?.isPrivate == true))
-      _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors, clipping: clipping, patterns: patterns),
+      if (!appearanceArtwork.any((owner) => identical(owner.liveShape, shape)))
+        _shapeBundle(model.drawing, shape, model.structure, qualifyNeighbors: qualifyShapeNeighbors, clipping: clipping, patterns: patterns),
   ];
   final Set<AiNativeContainer> dictionaries = {
     for (final AiNativeAppearanceArtwork item in appearanceArtwork) ...item.metadata,
@@ -162,12 +169,15 @@ Set<AiNativeContainer> _nativeReferenceBody(
       if (layer.dictionary != null && layer.bindingIssue == null) layer.dictionary!,
     for (final AiNativeObject object in model.drawing._objects.objects)
       if (object.dictionary != null && object.bindingIssue == null) object.dictionary!,
+    for (final _NativeImageOwner owner in _nativeImageOwners(model.drawing)) ?owner.dictionary,
+    for (final AiNativeGradientArtwork owner in model.drawing.gradientArtwork) ?owner.dictionary,
+    for (final AiNativeMeshArtwork owner in model.drawing.meshArtwork) ?owner.dictionary,
   };
   final AiProgram program = model.drawing.records.program;
   int position = program.bodyStart;
   final List<_NativeSubtreeSpan> owners = [
     for (final _NativeShapeBundle bundle in shapes) (start: bundle.start, end: bundle.shape.end),
-    for (final AiNativeAppearanceArtwork item in appearanceArtwork.where((item) => item.liveShape == null)) (start: item.start, end: item.end),
+    for (final AiNativeAppearanceArtwork item in appearanceArtwork) (start: item.start, end: item.end),
   ]..sort((first, second) => first.start.compareTo(second.start));
   for (final _NativeSubtreeSpan owner in owners) {
     if (owner.start < position) {

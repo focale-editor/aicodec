@@ -54,7 +54,8 @@ List<({int start, int end})> _artboardFontSetupRanges(AiNativeLayers layers, Lis
         maxTokens: records.program.limits.maxTokens,
         maxDepth: records.program.limits.maxDepth,
       );
-      if (names.isEmpty || names.any((name) => name.kind != .executableName)) {
+      final bool none = names.length == 1 && names.single.kind == .string && latin1.decode(aiStringBytes(names.single)) == 'none';
+      if (!none && (names.isEmpty || names.any((name) => name.kind != .executableName))) {
         throw UnsupportedError('Retained font headers require literal font-name inventories.');
       }
     } else if (!setup || token.lexeme != '%AI55J_Tsume: None') {
