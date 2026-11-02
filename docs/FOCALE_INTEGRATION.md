@@ -1689,8 +1689,7 @@ Named child closure, visibility and locking edits retain their own masks and
 identities without changing parent flags. Shared tile and brush resources are
 reused or retained for other applications.
 
-The same tile/nib qualification applies as for standalone contours. New native
-private child topology, dynamic shape children, other brush families and broader
+The same tile/nib qualification applies as for standalone contours. Cross-owner child transfers, dynamic shape children, other brush families and broader
 effects still require their authoring contracts. Acceptance tooling inspects
 nested applications, references, identities, masks and original/reopened host
 PDF pixels. It does not execute Illustrator's native brush/pattern engines.
@@ -1714,3 +1713,38 @@ Formatting and scoped fix checks pass.
 The complete independent host verifier passes 92 native/container/PDF comparisons,
 including eight grouped-paint views; the 13 existing independent group lifecycle
 variants also pass. Illustrator rendering and editability remain unverified.
+
+### Creating, removing and moving private appearance children
+
+Focale now plans private hierarchy changes inside a retained complete owner.
+Existing paths/groups keep their native source bindings while new subtrees use
+the shared typed writer and resource installation. A fresh group can wrap retained
+children without changing their identities. Selected attribute/geometry/style
+edits consume the original routes before the final hierarchy transaction, so
+simultaneous paint edits, renaming, reordering and reparenting remain coherent.
+New child/group masks attach to their freshly authored native identities.
+
+Removing a child removes its owned masks and applications after reference checks;
+independent styles, tiles and brush descriptors remain available to other users.
+The last child may leave an empty ordinary group with its original identity.
+Clipping contours remain attached to their source groups. Transfers between
+independent complete owners, dynamic shape children and other unconnected
+families retain their explicit guards; they are not silently recreated.
+
+`ai_group_topology_test.dart` covers fresh groups around existing masked children,
+new painted/masked paths, selected brush and label edits, successive saved child
+removal/reordering, empty groups and atomic rejection of unbound transfers.
+`verify_focale_group_topology.py` checks actual nested source order, masks, resource
+references and retained identities, then compares original/reopened PDF views
+with exact Poppler pixels at 144 dpi and Ghostscript pixels at 72 dpi. The original
+same-revision view also retains its exact Poppler comparison at 72 dpi. Native
+Illustrator rendering and editability remain unverified.
+
+Local validation passes 1,542 package tests on both VM and Node and 324 Focale
+AI/PDF/source/prepress/color tests. Eight package regressions cover retained and
+fresh groups, masks/identities, clipping, inherited boundary state, unknown
+references, empty owners, byte budgets and atomic invalid-plan rejection. Six
+new independent topology views join the previous 92 native/container/PDF
+comparisons. Package analysis is clean; host analysis retains 550 existing
+informational lints with no errors or warnings. Formatting and scoped fix checks
+pass. These checks do not establish Illustrator rendering or editability.

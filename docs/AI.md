@@ -1645,3 +1645,29 @@ Closure, visibility and locking changes retain their style application and mask
 carrier; child flag edits never change the whole printing group's flags. All
 selected children of one group share one host printing replacement. Geometry and
 printing/PDF composition remain host responsibilities.
+
+### Private appearance child lifecycle
+
+`replaceArtworkChildren` takes one complete `AiNativeAppearanceReplacement` and
+an ordered list of `AiNativeAppearanceTreeChild` plans. `retain` keeps an exact
+current path/group and its metadata, masks and direct style applications; an
+optional child plan replaces a retained ordinary group's children. `create`
+inserts a typed fresh subtree. `group` creates an empty typed group definition
+around separately planned retained or fresh children. Each retained source item
+occurs once and belongs to this complete owner. Omitted items are removed.
+
+Source-backed children can move between retained or fresh groups in that owner.
+Clipping contours remain attached to their original groups and do not appear in
+the replacement child lists. Compound subtrees remain complete units. Retained
+source slices preserve metadata and comments; literal inherited inputs are
+replayed before moved subtrees and both outgoing native/printing states are
+restored. Unknown inputs and unsafe following dependencies reject atomically.
+Deleted object or mask identities require the same document reference scope as
+complete-owner deletion. New identities cannot recycle even deleted source IDs.
+The complete result is requalified after bounded serialization.
+
+Ordinary private groups may now be empty, both in typed creation and after child
+removal. Their metadata and named style remain attached; compound and clipping
+groups retain their required contour structure. The host supplies the complete
+printing view and matching PDF, including for an empty group. This transaction
+does not move children across independent complete owners or release clips.

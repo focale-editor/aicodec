@@ -103,8 +103,49 @@ final class AiNativeAppearanceGroupDefinition extends AiNativeAppearanceElementD
        styleNameBytes = styleNameBytes == null ? null : List.unmodifiable(styleNameBytes),
        nameBytes = nameBytes == null ? null : List.unmodifiable(nameBytes),
        identifierBytes = identifierBytes == null ? null : List.unmodifiable(identifierBytes) {
-    if (children.isEmpty || [styleNameBytes, nameBytes, identifierBytes].whereType<List<int>>().any((bytes) => bytes.any((byte) => byte < 0 || byte > 255)) || styleNameBytes?.isEmpty == true) {
-      throw ArgumentError('Appearance trees require nonempty groups and literal byte names.');
+    if ([styleNameBytes, nameBytes, identifierBytes].whereType<List<int>>().any((bytes) => bytes.any((byte) => byte < 0 || byte > 255)) || styleNameBytes?.isEmpty == true) {
+      throw ArgumentError('Appearance trees require literal byte names and nonempty style names.');
+    }
+  }
+}
+
+/// One retained or newly authored child in a complete appearance tree revision.
+final class AiNativeAppearanceTreeChild {
+  /// Current path or group retained with its exact metadata and style uses.
+  final AiNativeItem? source;
+
+  /// New typed subtree with fresh identities and already declared styles.
+  final AiNativeAppearanceElementDefinition? definition;
+
+  /// Planned children of a retained or newly created group, excluding its clip.
+  ///
+  /// Null keeps the entire subtree. Omitted children are removed, and retained
+  /// children may move between groups inside the same complete appearance owner.
+  final List<AiNativeAppearanceTreeChild>? children;
+
+  /// Retains source data and optionally changes the children of a retained group.
+  AiNativeAppearanceTreeChild.retain({required AiNativeItem source, List<AiNativeAppearanceTreeChild>? children})
+    : source = source,
+      definition = null,
+      children = children == null ? null : List.unmodifiable(children) {
+    if (source is! AiNativePath && source is! AiNativeGroup || children != null && source is! AiNativeGroup) {
+      throw ArgumentError('Retained appearance children require paths or groups; only groups have replacement children.');
+    }
+  }
+
+  /// Inserts independently authored data instead of borrowing an existing identity.
+  const AiNativeAppearanceTreeChild.create({required AiNativeAppearanceElementDefinition this.definition}) : source = null, children = null;
+
+  /// Creates a fresh group around retained or new children from the same owner.
+  ///
+  /// The group definition supplies metadata, clipping and its optional style;
+  /// its typed children must be empty because this plan supplies their ownership.
+  AiNativeAppearanceTreeChild.group({required AiNativeAppearanceGroupDefinition definition, required List<AiNativeAppearanceTreeChild> children})
+    : definition = definition,
+      source = null,
+      children = List.unmodifiable(children) {
+    if (definition.children.isNotEmpty) {
+      throw ArgumentError('A new group child plan supplies its children separately from its metadata definition.');
     }
   }
 }

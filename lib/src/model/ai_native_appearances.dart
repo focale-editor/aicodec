@@ -298,6 +298,18 @@ final class AiNativeAppearances {
   AiNativeAppearances applyStyleToPaths({required AiNativeAppearance appearance, required List<AiNativePath> paths, required List<AiNativeAppearanceReplacement> artwork}) =>
       _applyNativeAppearanceChildStyle(this, appearance, paths, artwork);
 
+  /// Replaces private group children while retaining selected source subtrees.
+  ///
+  /// Supply the complete owner's printing replacement and an ordered child plan.
+  /// Retained handles occur once and belong to this owner; nested group plans may
+  /// reparent them. Clipping contours remain attached to their original groups.
+  /// Omitted children and their masks leave together after reference validation.
+  /// Fresh typed subtrees require fresh identities and declared named styles.
+  /// Source metadata, known inherited inputs and outgoing scalar state remain
+  /// preserved. The host supplies matching PDF content on save.
+  AiNativeAppearances replaceArtworkChildren({required AiNativeAppearanceReplacement artwork, required List<AiNativeAppearanceTreeChild> children}) =>
+      _replaceNativeAppearanceChildren(this, artwork, children);
+
   /// Inserts a complete host-authored native/printing appearance pair.
   ///
   /// Bytes contain optional explicit scalar state, one printing group, its

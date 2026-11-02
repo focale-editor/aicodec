@@ -43,6 +43,7 @@ part '../editing/ai_live_shape_similarity_editor.dart';
 part '../editing/ai_native_affine_editor.dart';
 part '../editing/ai_native_appearance_application.dart';
 part '../editing/ai_native_appearance_child_style.dart';
+part '../editing/ai_native_appearance_child_tree.dart';
 part '../editing/ai_native_appearance_conversion.dart';
 part '../editing/ai_native_appearance_creation.dart';
 part '../editing/ai_native_appearance_duplication.dart';

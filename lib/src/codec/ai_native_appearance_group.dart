@@ -6,8 +6,8 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   AiNativeStructure structure,
   AiNativeGroup group,
 ) {
-  if (!group.opening.isPrivate || !const {'u', '*u', 'q'}.contains(group.opening.operator) || group.paths.isEmpty) {
-    throw UnsupportedError('Grouped appearances require a nonempty private ordinary, compound or clipping group.');
+  if (!group.opening.isPrivate || !const {'u', '*u', 'q'}.contains(group.opening.operator) || group.paths.isEmpty && group.opening.operator != 'u') {
+    throw UnsupportedError('Grouped appearances require private ordinary groups or nonempty compound/clipping groups.');
   }
   final AiNativeDrawing drawing = structure.drawing;
   final List<AiNativePathTopology> contours = _nativeGroupContours(drawing, group);

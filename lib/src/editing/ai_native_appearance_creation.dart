@@ -58,6 +58,20 @@ AiNativeAppearances _createNativeAppearanceTree(
   bytes.text('${definition.locked ? 1 : 0} A\n${definition.hidden ? 1 : 0} Xw\n');
   bytes.add(printingBytes);
   bytes.text('\n6 () XW\n');
+  _writeNativeAppearanceElement(bytes, drawing, definition, bounds, root: true);
+  return model.createArtwork(bytes: bytes.takeBytes(), bounds: bounds, parent: parent, layer: layer);
+}
+
+/// Writes a bounded typed subtree for creation and retained topology changes.
+void _writeNativeAppearanceElement(
+  _NativeDocumentBytes bytes,
+  AiNativeDrawing drawing,
+  AiNativeAppearanceElementDefinition definition,
+  AiBoundingBox bounds, {
+  bool root = false,
+  void Function()? writeChildren,
+}) {
+  final AiNativeLimits limits = drawing.records.program.limits;
   int nodes = 0;
 
   /// Bounds recursion and writes private state without reinterpreting string data.
@@ -92,8 +106,12 @@ AiNativeAppearances _createNativeAppearanceTree(
             mask: clip.mask,
           );
         }
-        for (final AiNativeAppearanceElementDefinition child in element.children) {
-          write(child, depth + 1);
+        if (depth == 1 && writeChildren != null) {
+          writeChildren();
+        } else {
+          for (final AiNativeAppearanceElementDefinition child in element.children) {
+            write(child, depth + 1);
+          }
         }
         bytes.text('%_${element.clip == null ? 'U' : 'Q'}\n');
         bytes.add(_createdNativeMetadata(drawing, element.nameBytes, element.identifierBytes, '\n'));
@@ -105,8 +123,7 @@ AiNativeAppearances _createNativeAppearanceTree(
     }
   }
 
-  write(definition, 1, root: true);
-  return model.createArtwork(bytes: bytes.takeBytes(), bounds: bounds, parent: parent, layer: layer);
+  write(definition, 1, root: root);
 }
 
 /// Collects independently qualified body owners; opaque neighbors keep barriers.

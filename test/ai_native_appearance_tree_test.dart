@@ -172,8 +172,9 @@ void main() {
     check(model.structure.drawing.records.program.bytes).deepEquals(before);
   });
 
-  test('requires a root style and nonempty group without inventing authoring children', () {
-    check(() => AiNativeAppearanceGroupDefinition(children: [])).throws<ArgumentError>();
+  test('retains empty ordinary groups and requires a root style', () {
+    final AiNativeAppearances empty = _create(_model(), AiNativeAppearanceGroupDefinition(children: [], styleNameBytes: ascii.encode('Outer')));
+    check(empty.artworkFor(use: empty.uses.single).group!.children).isEmpty();
     check(() => _create(_model(), AiNativeAppearanceGroupDefinition(children: [AiNativeAppearancePathDefinition(definition: newDocumentPath(0))]))).throws<ArgumentError>();
   });
 
