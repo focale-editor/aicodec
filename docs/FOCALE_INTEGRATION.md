@@ -1539,3 +1539,34 @@ regressions. Package analysis is clean; application analysis has no errors or
 warnings (550 existing informational lints). Formatting and scoped fixes pass.
 Independent native/PDF readers and Poppler verify 60 complete saves, including four
 new mixed-lifecycle revisions. Actual Illustrator exchange remains unverified.
+
+## Artboards in mixed documents
+
+Mixed documents now use the existing artboard lifecycle without freezing every
+page rectangle. Focale can resize, rename, add, duplicate, reorder and remove pages
+while retaining the single shared native drawing. New page backgrounds and children
+remain ordinary native artwork; deleting a page does not discard that shared art.
+
+The page transaction checks complete preserved owner/style bytes after both artwork
+and artboard edits and before encoding the synchronized PDF. Preserved proxies and
+their ancestor chains remain protected. Existing page geometry, identity, minimum
+page count and native metadata guards still apply. Regressions combine vector/
+raster printing with two repeated page transactions, fresh background/child
+artwork, supported neighbor changes and project recovery. Independent readers
+check stable retained native/PDF page identities, current headers, one shared
+native program, exact preserved bytes and rendered pixels on every output page.
+
+AiKit's mixed-container lifecycle now retains complete qualified appearance
+children when moving or reordering ordinary groups/layers. Removing a complete
+container removes its owned pairs while keeping shared styles and restoring both
+boundary states. Source byte spans, nested style dependencies and native clipping
+scopes remain distinct from ordinary children; partial representation selections
+continue to reject. Regressions cover both container families, clipped authoring,
+separate inherited native/printing paints and atomic partial-selection rejection.
+
+Local validation passes 1,491 package tests on both VM and Node, 300 Focale
+AI/PDF/source/prepress/color tests, and 64 independent complete-save checks. The
+four new mixed-page outputs retain page/board identities and exact preserved data
+with matching per-page Poppler pixels. Package analysis is clean; host analysis
+has no errors or warnings (550 existing informational lints). Formatting and
+scoped fix checks pass. Actual Illustrator exchange remains unverified.

@@ -96,7 +96,7 @@ AiNativeLayers _reorderNativeLayerArtwork(AiNativeLayers model, List<AiNativeIte
   if (spans.indexed.every((entry) => entry.$2 == sorted[entry.$1])) {
     return model;
   }
-  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans, appearanceArtwork: retained);
   return _layerLifecycleResult(model, [
     if (artwork.any((item) => item is AiNativeLayer)) ..._layerDeclarations(model, model.rootCount, discardViewState),
     ..._reorderedNativeSubtrees(model, spans, pairs, appearanceArtwork: retained),
@@ -141,7 +141,7 @@ AiNativeLayers _moveNativeLayerArtwork(AiNativeLayers model, AiNativeItem artwor
       model,
       owner.node,
       owner.span,
-      _subtreeShapeBundles(model.drawing, [owner.span]),
+      _subtreeShapeBundles(model.drawing, [owner.span], appearanceArtwork: retained),
       position,
       destination,
       inheritParentFlags,
@@ -170,7 +170,7 @@ AiNativeLayers _removeNativeLayerArtwork(AiNativeLayers model, List<AiNativeItem
 
   final List<AiNativeLayer> layers = model.layers.where(removed).toList();
   final int roots = model.rootCount - layers.where((layer) => layer.parentIndex == null).length;
-  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans);
+  final List<_NativeShapeBundle> pairs = _subtreeShapeBundles(model.drawing, spans, appearanceArtwork: retained);
   final AiNativeLayers result = _layerLifecycleResult(
     model,
     [

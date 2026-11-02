@@ -9,12 +9,17 @@ void _nativeArtboardReferenceScope(AiNativeArtboards model) {
   final Map<AiNativeInstruction, AiNativeResourceUse> styles = {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction: use};
   final Map<int, AiNativeResourceUse> references = {for (final AiNativeResourceUse use in styles.values) use.instruction.start: use};
   final List<_NativeSubtreeSpan> images = _nativeImageOwners(layers.drawing).map((owner) => owner.span).toList();
+  final bool bodyStyles = styles.values.any((use) => use.instruction.operator == 'XW' && !use.instruction.isPrivate && use.instruction.start >= model.records.program.bodyStart);
+  final List<AiNativeAppearanceArtwork> appearances = bodyStyles ? _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: layers.structure)) : [];
   // The retained-body checker owns every interval outside each complete pair.
   final Set<AiNativeContainer> dictionaries = _nativeReferenceBody(
     layers,
     _layerHeaderItems(layers),
     inspect: (model, start, end, headers) => _artboardArtworkInterval(model, start, end, headers, textOwners: text.objects, styles: styles, retainedImages: images),
     qualifyShapeNeighbors: false,
+    appearanceArtwork: appearances,
+    clipping: true,
+    patterns: resources.patterns,
   )..addAll({...text.objects, ...resources.objects});
   final List<_NativeFontEncoding> fonts = [];
   final List<({int start, int end})> independent = _referenceGradientRanges(layers, fontDeclarations: fonts);

@@ -69,18 +69,29 @@ List<AiSourceEdit> _removedNativeSubtrees(
             appearanceArtwork: appearanceArtwork,
           ),
   );
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, pairs.map((pair) => pair.shape.end), appearanceArtwork: appearanceArtwork);
+  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(
+    drawing,
+    [
+      ...pairs.map((pair) => pair.shape.end),
+      ...spans.expand((span) => [span.start, span.end]),
+    ],
+    appearanceArtwork: appearanceArtwork,
+    clipping: appearanceArtwork.isNotEmpty,
+  );
   final List<AiSourceEdit> edits = [];
   final Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements = {};
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final _NativeSubtreeSpan span in spans) {
     final List<_NativeShapeBundle> selected = pairs.where((pair) => pair.start >= span.start && pair.shape.end <= span.end).toList();
     final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, selected, groups: groups, appearanceArtwork: appearanceArtwork);
-    final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = _retainedSubtreeState(ordinary, selected, states, remaining);
+    final List<AiNativeAppearanceArtwork> appearances = _subtreeAppearances(appearanceArtwork, span.start, span.end);
+    final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = appearances.isEmpty
+        ? _retainedSubtreeState(ordinary, selected, states, remaining)
+        : _removedAppearanceState(_subtreeCopyAccess(drawing, ordinary, selected, states, appearanceArtwork: appearances), states[span.start]!, states[span.end]!, remaining);
     edits.add(AiSourceEdit(start: span.start, end: span.end, bytes: retained.bytes));
     replacements[span] = retained.replacement;
     remaining -= retained.bytes.length;
   }
-  _sourceFollowingDependencies(drawing, replacements, retainedArtwork: appearanceArtwork);
+  _sourceFollowingDependencies(drawing, replacements, retainedArtwork: appearanceArtwork, clipping: appearanceArtwork.isNotEmpty);
   return edits;
 }

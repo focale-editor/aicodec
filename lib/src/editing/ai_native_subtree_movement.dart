@@ -27,20 +27,25 @@ List<AiSourceEdit> _relocatedNativeSubtree(
     appearanceArtwork: appearanceArtwork,
   );
   final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, pairs, groups: groups, appearanceArtwork: appearanceArtwork);
-  final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = _retainedSubtreeState(ordinary, pairs, states, drawing.records.program.limits.maxDecodedBytes);
-  final List<AiNativeInstruction> commands = [...ordinary, for (final _NativeShapeBundle pair in pairs) ...pair.commands]..sort((first, second) => first.start.compareTo(second.start));
+  final List<AiNativeAppearanceArtwork> appearances = _subtreeAppearances(appearanceArtwork, span.start, span.end);
+  final _NativeShapeAccess access = _subtreeCopyAccess(drawing, ordinary, pairs, states, appearanceArtwork: appearances);
+  final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = appearances.isEmpty
+      ? _retainedSubtreeState(ordinary, pairs, states, drawing.records.program.limits.maxDecodedBytes)
+      : _removedAppearanceState(access, states[span.start]!, states[span.end]!, drawing.records.program.limits.maxDecodedBytes);
+  final List<AiNativeInstruction> commands = _subtreeCommands(ordinary, pairs, appearances);
   final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
     drawing,
     span,
     commands,
     {for (final _NativeShapeBundle pair in pairs) pair.shape.end: pair},
-    _subtreeCopyAccess(drawing, ordinary, pairs, states),
+    access,
     states[span.start]!,
     states[span.end]!,
     states[position]!,
     states[position]!,
     maxBytes: drawing.records.program.limits.maxDecodedBytes - retained.bytes.length,
+    appearanceStyleReads: {for (final AiNativeAppearanceArtwork owner in appearances) ...owner._styleReads},
   );
-  _sourceFollowingDependencies(drawing, {span: retained.replacement}, insertions: {position: placed.replacement}, retainedArtwork: appearanceArtwork);
+  _sourceFollowingDependencies(drawing, {span: retained.replacement}, insertions: {position: placed.replacement}, retainedArtwork: appearanceArtwork, clipping: appearanceArtwork.isNotEmpty);
   return [AiSourceEdit(start: span.start, end: span.end, bytes: retained.bytes), AiSourceEdit(start: position, end: position, bytes: placed.bytes)];
 }

@@ -49,7 +49,20 @@ List<AiSourceEdit> _subtreeCopyEdits(
 }
 
 /// Tracks each stream's input reads and possible output changes across a subtree.
-_NativeShapeAccess _subtreeCopyAccess(AiNativeDrawing drawing, List<AiNativeInstruction> ordinary, List<_NativeShapeBundle> pairs, Map<int, _NativeShapeInputs> states) {
+_NativeShapeAccess _subtreeCopyAccess(
+  AiNativeDrawing drawing,
+  List<AiNativeInstruction> ordinary,
+  List<_NativeShapeBundle> pairs,
+  Map<int, _NativeShapeInputs> states, {
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
+}) {
+  if (appearanceArtwork.isNotEmpty) {
+    return _nativeArtworkCommandsAccess(drawing, _subtreeCommands(ordinary, pairs, appearanceArtwork), {
+      for (final _NativeShapeBundle pair in pairs) pair.shape.end: (reads: pair.styleReads, writes: pair.styleWrites, assigned: _restoredShapeStyle(pair, states[pair.shape.end]!).keys.toSet()),
+      for (final AiNativeAppearanceArtwork owner in appearanceArtwork)
+        for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) use.instruction.end: _nativeAppearanceAccessStyle(owner, use),
+    }, printingImages: appearanceArtwork.expand((owner) => owner.printingRasters));
+  }
   final List<AiNativeInstruction> commands = [...ordinary, for (final _NativeShapeBundle pair in pairs) ...pair.commands]..sort((first, second) => first.start.compareTo(second.start));
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
   final Map<int, _NativeShapeBundle> styles = {for (final _NativeShapeBundle pair in pairs) pair.shape.end: pair};

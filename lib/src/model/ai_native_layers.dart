@@ -207,7 +207,9 @@ final class AiNativeLayers {
   /// drawing, image handles from [rasters]/[placements], or records from
   /// [textArtwork], or complete [AiNativeGradientArtwork]/[AiNativeMeshArtwork]
   /// handles from the drawing, or complete ordinary [AiNativeGroup] handles.
-  /// Selected owners share one root, layer or ordinary group parent.
+  /// Selected owners share one root, layer or ordinary group parent. Containers
+  /// retain complete qualified appearance pairs, including nested styles and
+  /// clipping scopes; individual private or printing children cannot be selected.
   /// Names, identities, metadata and both outgoing states remain intact. Layer
   /// view declarations require explicit [discardViewState] when layers move.
   AiNativeLayers reorderArtwork({required List<AiNativeItem> artwork, bool discardViewState = false}) => _reorderNativeLayerArtwork(this, artwork, discardViewState);
@@ -220,6 +222,7 @@ final class AiNativeLayers {
   /// artwork separately. Root-layer counts update with the relocation. Source
   /// identities and native/printing state are retained; descendants cannot be
   /// their own destination. Reorder siblings afterward for an exact mixed slot.
+  /// Complete appearance descendants retain both representations and masks.
   /// Text moves retain ATE frame/story indices and composition; moving its canvas
   /// geometry remains a separate text-frame operation.
   AiNativeLayers moveArtwork({required AiNativeItem artwork, AiNativeLayer? parent, AiNativeGroup? group, bool inheritParentFlags = false, bool discardViewState = false}) =>
@@ -232,6 +235,7 @@ final class AiNativeLayers {
   ///
   /// Image handles come from [rasters] or [placements]. All saved identities require a complete
   /// reference check; persistent scalar state remains at each removed position.
+  /// Complete appearance descendants leave with their container; shared styles remain.
   /// Root counts and optional saved-view invalidation follow layer lifecycle.
   AiNativeLayers removeArtwork({required List<AiNativeItem> artwork, bool discardViewState = false}) => _removeNativeLayerArtwork(this, artwork, discardViewState);
 

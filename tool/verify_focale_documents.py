@@ -297,6 +297,51 @@ def verify_mixed_lifecycle(inkai, output):
     print('Verified four mixed-lifecycle saves: created/removed/moved neighbors, reordered native pairs and exact preserved source/PDF pixels.')
 
 
+def verify_mixed_pages(inkai, output):
+    """Check shared preserved art across native/PDF page identity transactions."""
+    def boards(document):
+        """Read the actual native document record through the external parser."""
+        setup = [value.asdict() if hasattr(value, 'asdict') else value for value in document.setup.children]
+        record, = [value for value in setup if isinstance(value, dict) and value.get('_type') == 'Document']
+        return record['Recorded']
+
+    for printing in ('raster', 'vector'):
+        base = f'mixed-pages-{printing}'
+        initial = preserved_parts(inkai, output, f'{base}-initial')
+        identity = boards(initial[-1])['ArtboardArray'][0]['ArtboardUUID']
+        original_page = PdfReader(output / f'{base}-initial.ai', strict=True).pages[0].indirect_reference.idnum
+        previous_added = None
+        for revision in (1, 2):
+            stem = f'{base}-{revision}'
+            native, owner, pieces, styles, preserved_identity, document = preserved_parts(inkai, output, stem)
+            assert (owner, pieces, styles, preserved_identity) == initial[1:5], stem
+            recorded = boards(document)
+            actual = recorded['ArtboardArray']
+            retained_index = int(revision == 1)
+            assert len(actual) == 2 and actual[retained_index]['ArtboardUUID'] == identity, stem
+            assert len({board['ArtboardUUID'] for board in actual}) == 2, stem
+            assert recorded['CropAreaActive'] == retained_index, stem
+            expected = [(220, -30, 320, -110), (-20, 10, 180, -130)] if revision == 1 else [(-20, 10, 180, -130)] * 2
+            assert [tuple(board['PositionPoint1']) + tuple(board['PositionPoint2']) for board in actual] == expected, stem
+            names = [board['Name'].encode('latin-1').decode('utf-16-be') for board in actual]
+            assert names == (['Added sheet', 'Retained sheet'] if revision == 1 else ['Retained sheet', 'Duplicate sheet']), stem
+            if revision == 1:
+                previous_added = actual[0]['ArtboardUUID']
+            else:
+                assert previous_added not in {board['ArtboardUUID'] for board in actual}, stem
+            path = output / f'{stem}.ai'
+            assert native_programs(path) == [native, native], stem
+            pdf = PdfReader(path, strict=True)
+            assert len(pdf.pages) == 2 and pdf.pages[retained_index].indirect_reference.idnum == original_page, stem
+            owners = [page['/PieceInfo']['/Illustrator']['/Private'].raw_get('/AIPrivateData1') for page in pdf.pages]
+            assert owners[0] == owners[1], stem
+            for page in pdf.pages:
+                header = page['/PieceInfo']['/Illustrator']['/Private']['/AIMetaData'].get_data()
+                assert header == native[:native.index(b'%%EndComments\n') + len(b'%%EndComments\n')], stem
+            assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+    print('Verified four mixed-page saves: stable retained page/board identities, shared native owners, exact preserved data and per-page PDF pixels.')
+
+
 def main():
     """Verify shared native owners, edited geometry, caches and exact page pixels."""
     if not __debug__:
@@ -508,6 +553,7 @@ def main():
     verify_appearance_inks(inkai, args.output)
     verify_mixed_inks(inkai, args.output)
     verify_mixed_lifecycle(inkai, args.output)
+    verify_mixed_pages(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 

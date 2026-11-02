@@ -8,10 +8,10 @@ int _subtreeLiveShapeCount(AiNativeDrawing drawing, List<_NativeSubtreeSpan> spa
     drawing.liveShapes.where((shape) => spans.any((span) => shape.start >= span.start && shape.end <= span.end)).length;
 
 /// Qualifies every intersecting nonordinary shape without cutting either view.
-List<_NativeShapeBundle> _subtreeShapeBundles(AiNativeDrawing drawing, List<_NativeSubtreeSpan> spans) {
+List<_NativeShapeBundle> _subtreeShapeBundles(AiNativeDrawing drawing, List<_NativeSubtreeSpan> spans, {List<AiNativeAppearanceArtwork> appearanceArtwork = const []}) {
   final List<_NativeShapeBundle> result = [];
   for (final AiLiveShape shape in drawing.liveShapes.where((shape) => _directNativeShapeIssue(shape) != null)) {
-    if (!spans.any((span) => shape.start < span.end && shape.end > span.start)) {
+    if (appearanceArtwork.any((owner) => identical(owner.liveShape, shape)) || !spans.any((span) => shape.start < span.end && shape.end > span.start)) {
       continue;
     }
     final _NativeShapeBundle bundle = _shapeBundle(drawing, shape, drawing._objects.structure);
@@ -44,11 +44,40 @@ List<AiNativeInstruction> _subtreeOrdinaryCommands(
     );
   }
 
+  final List<_NativeSubtreeSpan> owned = [
+    for (final _NativeShapeBundle pair in pairs.where((pair) => pair.start >= start && pair.shape.end <= end)) (start: pair.start, end: pair.shape.end),
+    for (final AiNativeAppearanceArtwork owner in _subtreeAppearances(appearanceArtwork, start, end)) (start: owner.start, end: owner.end),
+  ]..sort((first, second) => first.start.compareTo(second.start));
   int position = start;
-  for (final _NativeShapeBundle pair in pairs.where((pair) => pair.start >= start && pair.shape.end <= end)) {
+  for (final _NativeSubtreeSpan pair in owned) {
+    if (pair.start < position) {
+      throw UnsupportedError('Subtree appearance owners cannot overlap.');
+    }
     interval(position, pair.start);
-    position = pair.shape.end;
+    position = pair.end;
   }
   interval(position, end);
   return commands;
 }
+
+/// Selects whole appearance pairs and rejects partial representation ownership.
+List<AiNativeAppearanceArtwork> _subtreeAppearances(List<AiNativeAppearanceArtwork> artwork, int start, int end) {
+  final List<AiNativeAppearanceArtwork> selected = [];
+  for (final AiNativeAppearanceArtwork owner in artwork) {
+    if (owner.start >= end || owner.end <= start) {
+      continue;
+    }
+    if (owner.start < start || owner.end > end) {
+      throw UnsupportedError('A subtree operation cannot split a complete appearance pair.');
+    }
+    selected.add(owner);
+  }
+  return selected;
+}
+
+/// Combines qualified commands without changing source bytes or private scopes.
+List<AiNativeInstruction> _subtreeCommands(List<AiNativeInstruction> ordinary, List<_NativeShapeBundle> pairs, List<AiNativeAppearanceArtwork> artwork) => [
+  ...ordinary,
+  for (final _NativeShapeBundle pair in pairs) ...pair.commands,
+  for (final AiNativeAppearanceArtwork owner in artwork) ...owner._commands,
+]..sort((first, second) => first.start.compareTo(second.start));

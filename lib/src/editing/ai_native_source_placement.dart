@@ -14,6 +14,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
   required int maxBytes,
   List<_NativeSubtreeSpan>? sourceSpans,
   List<AiSourceEdit> sourceEdits = const [],
+  Map<int, Set<String>> appearanceStyleReads = const {},
   String? Function(AiNativeInstruction) stateKey = _nativeArtworkStateKey,
 }) {
   final Map<String, AiNativeInstruction> printing = Map.of(incoming.printing);
@@ -119,7 +120,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
     bytes: bytes.takeBytes(),
     replacement: (
       commands: commands,
-      styles: styles.map((offset, bundle) => MapEntry(offset, bundle.styleReads)),
+      styles: {...styles.map((offset, bundle) => MapEntry(offset, bundle.styleReads)), ...appearanceStyleReads},
       prefix: prefix,
       suffix: suffix,
       unresolved: unresolved,

@@ -125,13 +125,28 @@ List<AiNativeAppearanceArtwork> _nativeBodyAppearanceArtwork(AiNativeAppearances
 }
 
 /// Tracks literal reads/writes and private style effects without executing them.
-_NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNativeAppearanceArtwork owner, List<AiNativeInstruction> commands) {
+_NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNativeAppearanceArtwork owner, List<AiNativeInstruction> commands) => _nativeArtworkCommandsAccess(drawing, commands, {
+  for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) use.instruction.end: _nativeAppearanceAccessStyle(owner, use),
+}, printingImages: owner.printingRasters);
+
+/// Resolves definite assignments separately from potential style writes.
+({Set<String> reads, Set<String> writes, Set<String> assigned}) _nativeAppearanceAccessStyle(AiNativeAppearanceArtwork owner, AiNativeResourceUse use) {
+  final AiNativeAppearance style = owner._owner.resolve(use: use)!;
+  final ({Set<String> reads, Set<String> writes}) state = _nativeAppearanceStyleState(owner._owner, style);
+  return (reads: state.reads, writes: state.writes, assigned: _nativeAppearanceScalarState(style, state.reads, colors: true).keys.toSet());
+}
+
+/// Tracks qualified complete commands, including compound and clipping scopes.
+_NativeShapeAccess _nativeArtworkCommandsAccess(
+  AiNativeDrawing drawing,
+  List<AiNativeInstruction> commands,
+  Map<int, ({Set<String> reads, Set<String> writes, Set<String> assigned})> styles, {
+  Iterable<AiNativeRaster> printingImages = const [],
+}) {
   final Map<int, AiNativePath> paths = {for (final AiNativePath path in drawing.paths) path.start: path};
-  final Map<int, AiNativeRaster> images = {for (final AiNativeRaster image in owner.printingRasters) image.instruction.start: image};
+  final Map<int, AiNativeRaster> images = {for (final AiNativeRaster image in printingImages) image.instruction.start: image};
+  late final Map<int, AiNativeItem> ordinaryImages = {for (final _NativeImageOwner owner in _nativeImageOwners(drawing)) owner.instruction.start: owner.image};
   final Map<int, AiNativeGroup> endings = {for (final AiNativeGroup group in drawing.groups) group.closing.start: group};
-  final Map<int, AiNativeResourceUse> uses = {
-    for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) use.instruction.end: use,
-  };
   final Set<String> nativeAssigned = {};
   final Set<String> printingAssigned = {};
   final Set<String> nativeWrites = {};
@@ -151,10 +166,12 @@ _NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNat
       }
       continue;
     }
-    final AiNativeResourceUse? use = uses[command.end];
+    final ({Set<String> reads, Set<String> writes, Set<String> assigned})? style = styles[command.end];
     final AiNativePath? path = paths[command.start];
-    final Set<String> reads = images.containsKey(command.start)
-        ? _nativeImageReads(images[command.start]!)
+    final Set<String> reads = const {'XI', '`'}.contains(command.operator)
+        ? _nativeImageReads(images[command.start] ?? ordinaryImages[command.start] ?? (throw UnsupportedError('Artwork state requires qualified image ownership.')))
+        : const {'aikit:text', 'aikit:mesh'}.contains(command.operator)
+        ? _nativeArtworkStateKeys
         : path != null
         ? compoundDepth == 0
               ? _shapeCopyReads(drawing, path)
@@ -163,8 +180,8 @@ _NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNat
         ? {'A', 'Xw'}
         : _marker(command, 6)
         ? {'Xy'}
-        : use != null
-        ? owner._styleReads[use.instruction.end]!
+        : style != null
+        ? style.reads
         : {};
     if (endings[command.start] case final AiNativeGroup group when command.operator == '*U' && group.paths.isNotEmpty) {
       reads.addAll(_shapeCopyReads(drawing, group.paths.last)..removeAll(_nativeContourFlags));
@@ -173,11 +190,9 @@ _NativeShapeAccess _nativeAppearanceArtworkAccess(AiNativeDrawing drawing, AiNat
     if (!command.isPrivate && command.operator != 'XW') {
       printingReads.addAll(reads.difference(printingAssigned));
     }
-    if (use != null) {
-      final AiNativeAppearance style = owner._owner.resolve(use: use)!;
-      final ({Set<String> reads, Set<String> writes}) state = _nativeAppearanceStyleState(owner._owner, style);
-      nativeWrites.addAll(state.writes);
-      nativeAssigned.addAll(_nativeAppearanceScalarState(style, state.reads, colors: true).keys);
+    if (style != null) {
+      nativeWrites.addAll(style.writes);
+      nativeAssigned.addAll(style.assigned);
     }
     switch (command.operator) {
       case '*u':

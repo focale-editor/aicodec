@@ -52,14 +52,19 @@ Map<int, _NativeShapeInputs> _sourceMovementStates(
   }
   final List<AiNativeStructureNode> sourceGroups = sourceParents.takeWhile((node) => node.kind == .group).toList();
   final List<AiNativeStructureNode> targetGroups = targetParents.takeWhile((node) => node.kind == .group).toList();
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, [
-    span.start,
-    span.end,
-    ...boundaries,
-    position,
-    ...sourceGroups.map((node) => node.start),
-    ...targetGroups.map((node) => node.start),
-  ], appearanceArtwork: appearanceArtwork);
+  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(
+    drawing,
+    [
+      span.start,
+      span.end,
+      ...boundaries,
+      position,
+      ...sourceGroups.map((node) => node.start),
+      ...targetGroups.map((node) => node.start),
+    ],
+    appearanceArtwork: appearanceArtwork,
+    clipping: appearanceArtwork.isNotEmpty,
+  );
   if (!inheritParentFlags &&
       (sourceGroups.length != targetGroups.length ||
           sourceGroups.indexed.any((entry) {

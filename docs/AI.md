@@ -927,6 +927,15 @@ the moved bytes in each interpretation. Unresolved effects must not reach a
 following read, and required changed unknown inputs reject. The transaction checks
 the entire removal/insertion before applying edits under the original limits.
 
+Mixed `AiNativeLayers.reorderArtwork`, `moveArtwork` and `removeArtwork` also
+accept ordinary groups and layers containing complete qualified appearance pairs.
+The container owns both representations, their metadata, nested style applications
+and clipping scopes. Placement restores independent native and printing inputs and
+outputs; deletion retains boundary state and checks identified references before
+removing descendants. Shared styles remain. Partial private or printing selections,
+unknown appearance owners and unresolved following dependencies are rejected.
+This does not extend ordinary subtree duplication to appearance authoring.
+
 Ordinary `AiNativeLayers.reorderArtwork` permutations can retain qualified
 appearance pairs between their selected slots. Their state contributes to the
 native/printing dependency checks without making their descendants independent
