@@ -90,8 +90,173 @@ Map<String, List<int>> _metadata(AiNativeAppearances model) => {
     if (object.identifier != null) latin1.decode(object.identifier!.bytes): model.structure.drawing.records.program.bytes.sublist(object.dictionary!.start, object.dictionary!.end),
 };
 
+/// Adds a second independent owner for transfers without regenerating identities.
+AiNativeAppearances _twoOwners() {
+  final AiNativeAppearances source = _model();
+  return source.createGroupArtwork(
+    definition: AiNativeAppearanceGroupDefinition(
+      styleNameBytes: ascii.encode('Group'),
+      identifierBytes: ascii.encode('second-root'),
+      children: [_path('d'), _path('e')],
+    ),
+    printingBytes: _printing(),
+    bounds: _bounds,
+    layer: source.structure.drawing.records.program.layers.single,
+  );
+}
+
+/// Current complete owners in source order, excluding child style uses.
+List<AiNativeAppearanceArtwork> _owners(AiNativeAppearances model) => [
+  for (final AiNativeResourceUse use in model.uses.where((use) => !use.instruction.isPrivate)) model.artworkFor(use: use),
+];
+
+/// A complete replacement bound to an independently selected owner.
+AiNativeAppearanceReplacement _printOwner(AiNativeAppearanceArtwork owner) => AiNativeAppearanceReplacement(artwork: owner, bytes: _printing(), bounds: _bounds);
+
 /// Exercises source-preserving private topology and its atomic rejection rules.
 void main() {
+  test('transfers masked paths and nested groups atomically between complete owners', () {
+    final AiNativeAppearances source = _twoOwners();
+    final List<AiNativeAppearanceArtwork> owners = _owners(source);
+    final AiNativeGroup first = owners[0].group!;
+    final AiNativeGroup second = owners[1].group!;
+    final AiNativeAppearances after = source.replaceArtworkTrees(
+      changes: [
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners[1]),
+          children: [
+            AiNativeAppearanceTreeChild.retain(source: first.children.last),
+            AiNativeAppearanceTreeChild.retain(source: first.children.first),
+            AiNativeAppearanceTreeChild.retain(source: second.children.last),
+          ],
+        ),
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners[0]),
+          children: [AiNativeAppearanceTreeChild.retain(source: second.children.first)],
+        ),
+      ],
+    );
+    final List<AiNativeAppearanceArtwork> revised = _owners(after);
+    check(revised.first.group!.children).length.equals(1);
+    check(revised.first.opacityMasks).isEmpty();
+    check(revised.last.group!.children).length.equals(3);
+    check(revised.last.opacityMasks).length.equals(1);
+    check(revised.last.authoringForMask(mask: revised.last.opacityMasks.single)).identicalTo(revised.last.group!.children[1]);
+    check(_metadata(after)).deepEquals(_metadata(source));
+    check(after.styles).length.equals(source.styles.length);
+    final AiPdfDocument saved = newDocumentSave(after.structure.drawing.records, newDocumentPdf(blank: true));
+    final AiNativeAppearances reopened = appearanceEditingModel(source: latin1.decode(AiNativeData.extract(saved).single.bytes));
+    check(_metadata(reopened)).deepEquals(_metadata(source));
+    // Move the mask back while emptying its old owner, retaining the same UID.
+    final AiNativeAppearances returned = after.replaceArtworkTrees(
+      changes: [
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(revised.first),
+          children: [
+            ...revised.first.group!.children.map((child) => AiNativeAppearanceTreeChild.retain(source: child)),
+            ...revised.last.group!.children.map((child) => AiNativeAppearanceTreeChild.retain(source: child)),
+          ],
+        ),
+        AiNativeAppearanceTreeChange(artwork: _printOwner(revised.last), children: []),
+      ],
+    );
+    check(_owners(returned).last.group!.children).isEmpty();
+    check(_owners(returned).first.opacityMasks).length.equals(1);
+    check(_metadata(returned)).deepEquals(_metadata(source));
+  });
+
+  test('transfers referenced identities while rejecting actual unsafe deletions', () {
+    const String reference = '/Dictionary : /XMLUID : (a) ; (FutureReference) , ;\n';
+    final String text = latin1.decode(_twoOwners().structure.drawing.records.program.bytes).replaceFirst('%%EndSetup', '$reference%%EndSetup');
+    final AiNativeAppearances source = appearanceEditingModel(source: text);
+    final List<AiNativeAppearanceArtwork> owners = _owners(source);
+    final AiNativeAppearances after = source.replaceArtworkTrees(
+      changes: [
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.first),
+          children: [AiNativeAppearanceTreeChild.retain(source: owners.first.group!.children.last)],
+        ),
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.last),
+          children: [
+            AiNativeAppearanceTreeChild.retain(source: owners.first.group!.children.first),
+            ...owners.last.group!.children.map((child) => AiNativeAppearanceTreeChild.retain(source: child)),
+          ],
+        ),
+      ],
+    );
+    check(latin1.decode(after.structure.drawing.records.program.bytes)).contains(reference);
+    check(_metadata(after)).deepEquals(_metadata(source));
+    check(
+      () => source.replaceArtworkTrees(
+        changes: [
+          for (final AiNativeAppearanceArtwork owner in owners) AiNativeAppearanceTreeChange(artwork: _printOwner(owner), children: []),
+        ],
+      ),
+    ).throws<UnsupportedError>();
+    check(latin1.decode(source.structure.drawing.records.program.bytes)).equals(text);
+  });
+
+  test('rejects unselected sources duplicated children and duplicated or nested roots atomically', () {
+    final AiNativeAppearances source = _twoOwners();
+    final List<int> bytes = source.structure.drawing.records.program.bytes.toList();
+    final List<AiNativeAppearanceArtwork> owners = _owners(source);
+    final AiNativeAppearanceTreeChange keepFirst = AiNativeAppearanceTreeChange(
+      artwork: _printOwner(owners.first),
+      children: [
+        ...owners.first.group!.children.map((child) => AiNativeAppearanceTreeChild.retain(source: child)),
+      ],
+    );
+    for (final List<AiNativeAppearanceTreeChange> plan in [
+      <AiNativeAppearanceTreeChange>[],
+      [keepFirst, keepFirst],
+      [
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.last),
+          children: [AiNativeAppearanceTreeChild.retain(source: owners.first.group!.children.first)],
+        ),
+      ],
+      [
+        keepFirst,
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.last),
+          children: [AiNativeAppearanceTreeChild.retain(source: owners.first.group!.children.first)],
+        ),
+      ],
+      [
+        keepFirst,
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.last),
+          children: [AiNativeAppearanceTreeChild.retain(source: owners.first.group!)],
+        ),
+      ],
+    ]) {
+      check(() => source.replaceArtworkTrees(changes: plan)).throws<Object>();
+      check(source.structure.drawing.records.program.bytes).deepEquals(bytes);
+    }
+  });
+
+  test('restores both outgoing states across transfers and untouched following artwork', () {
+    final String text = latin1.decode(_twoOwners().structure.drawing.records.program.bytes).replaceFirst('%%PageTrailer', '0 0 m 5 0 L 5 5 L f\n%%PageTrailer');
+    final AiNativeAppearances source = appearanceEditingModel(source: text);
+    final List<AiNativeAppearanceArtwork> owners = _owners(source);
+    final AiNativeAppearances after = source.replaceArtworkTrees(
+      changes: [
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.first),
+          children: owners.last.group!.children.map((child) => AiNativeAppearanceTreeChild.retain(source: child)).toList(),
+        ),
+        AiNativeAppearanceTreeChange(
+          artwork: _printOwner(owners.last),
+          children: owners.first.group!.children.map((child) => AiNativeAppearanceTreeChild.retain(source: child)).toList(),
+        ),
+      ],
+    );
+    for (final bool native in [false, true]) {
+      check(artworkStates(after.structure.drawing, native: native).last).deepEquals(artworkStates(source.structure.drawing, native: native).last);
+    }
+  });
+
   test('inserts removes reparents and reorders children while retaining masks and metadata', () {
     final AiNativeAppearances source = _model();
     final AiNativeAppearanceArtwork owner = _owner(source);

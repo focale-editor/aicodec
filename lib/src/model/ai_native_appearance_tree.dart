@@ -120,7 +120,7 @@ final class AiNativeAppearanceTreeChild {
   /// Planned children of a retained or newly created group, excluding its clip.
   ///
   /// Null keeps the entire subtree. Omitted children are removed, and retained
-  /// children may move between groups inside the same complete appearance owner.
+  /// children may move between groups among the complete owners selected in the transaction.
   final List<AiNativeAppearanceTreeChild>? children;
 
   /// Retains source data and optionally changes the children of a retained group.
@@ -136,7 +136,7 @@ final class AiNativeAppearanceTreeChild {
   /// Inserts independently authored data instead of borrowing an existing identity.
   const AiNativeAppearanceTreeChild.create({required AiNativeAppearanceElementDefinition this.definition}) : source = null, children = null;
 
-  /// Creates a fresh group around retained or new children from the same owner.
+  /// Creates a fresh group around retained or new children from the selected owners.
   ///
   /// The group definition supplies metadata, clipping and its optional style;
   /// its typed children must be empty because this plan supplies their ownership.
@@ -148,4 +148,16 @@ final class AiNativeAppearanceTreeChild {
       throw ArgumentError('A new group child plan supplies its children separately from its metadata definition.');
     }
   }
+}
+
+/// One complete printing owner and its final ordered private child hierarchy.
+final class AiNativeAppearanceTreeChange {
+  /// Current complete group with host-supplied printing and final ink bounds.
+  final AiNativeAppearanceReplacement artwork;
+
+  /// Retained or fresh children, excluding the root's attached clipping contour.
+  final List<AiNativeAppearanceTreeChild> children;
+
+  /// Freezes a child plan for an atomic multi-owner topology transaction.
+  AiNativeAppearanceTreeChange({required this.artwork, required List<AiNativeAppearanceTreeChild> children}) : children = List.unmodifiable(children);
 }

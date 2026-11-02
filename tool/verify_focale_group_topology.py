@@ -92,3 +92,62 @@ def verify_group_topology(inkai, output):
             assert ghostscript_renders(path) == ghostscript_renders(reference), stem
             print(stem, 'passed', flush=True)
     print('Verified six private-topology comparisons with retained identities, nested masks, ordered and empty groups, and exact original/reopened PDF pixels.')
+
+
+def verify_group_transfers(inkai, output):
+    """Check owner-to-owner masked transfers and exact host appearance on reopen."""
+    first_labels = None
+    for base in ('group-transfer-first', 'group-transfer-returned', 'group-transfer-deleted'):
+        for reopened in (False, True):
+            stem = base + ('-reopened' if reopened else '')
+            path, source = output / f'{stem}.ai', output / f'{stem}.ps'
+            assert native_programs(path) == [source.read_bytes()], stem
+            document = inkai.parse(str(source))
+            owners = [value for value in native_values(document.trailer)
+                      if isinstance(value, dict) and 'AI10_ArtUID' in value]
+            identities = [value['AI10_ArtUID'] for value in owners]
+            assert len(set(identities)) == len(identities), stem
+            labels = {value['AIArtName']: value for value in owners if 'AIArtName' in value}
+            children = named_children(document)
+            returned = base.endswith('returned')
+            deleted = base.endswith('deleted')
+            pattern = 'Returned pattern' if returned else 'Pattern'
+            if deleted:
+                assert 'Topology' not in labels and 'Transfer wrapper' not in labels, stem
+                assert children['Other'] == ['Other child', 'Pattern', 'Inner'], stem
+            else:
+                assert children['Topology'] == (['Transfer wrapper', 'Inner', 'Other child'] if returned else ['Other child']), stem
+                assert children['Other'] == ([] if returned else ['Inner', 'Transfer wrapper']), stem
+            assert children['Inner'] == ['Brush', 'Neighbor'], stem
+            if not deleted:
+                assert children['Transfer wrapper'] == [pattern], stem
+            assert 'AI9_Mask' in labels[pattern], stem
+            assert sum('AI9_Mask' in value for value in owners) == 1, stem
+            if not returned and not deleted:
+                first_labels = labels
+            elif returned:
+                for label, value in labels.items():
+                    old = 'Pattern' if label == pattern else label
+                    assert value['AI10_ArtUID'] == first_labels[old]['AI10_ArtUID'], (stem, label)
+            _, groups, paths = inventory(document)
+            assert len([group for group in groups if group['private']]) == (2 if deleted else 4), stem
+            assert len([path for path in paths if path['private']]) == 4, stem
+            applications = [item for item in walk_body(document.trailer)
+                            if getattr(item, 'command', None) == 'XW' and item.tokens[0] in (b'0', b'1')]
+            assert len(applications) == (4 if deleted else 6), stem
+            styles = [value for value in native_values(document.setup) if type(value).__name__ == 'KnownStyle']
+            names = [style.Name.encode('latin1') for style in styles]
+            assert len(names) == len(set(names)) and all(use.tokens[1] in names for use in applications), stem
+            assert descriptor_state(document)['references'], stem
+            tiles = list(document.setup.all_subsections_of_type_recursive(b'%AI3_BeginPattern:'))
+            assert len(tiles) == 1, stem
+            reference = output / f'{stem}-reference.pdf'
+            saved, host = PdfReader(path, strict=True), PdfReader(reference, strict=True)
+            assert len(saved.pages) == len(host.pages) == 1, stem
+            assert saved.pages[0].mediabox == host.pages[0].mediabox, stem
+            if not reopened:
+                assert renders(path) == renders(reference), stem
+            assert renders(path, dpi=144) == renders(reference, dpi=144), stem
+            assert ghostscript_renders(path) == ghostscript_renders(reference), stem
+            print(stem, 'passed', flush=True)
+    print('Verified six private-transfer comparisons with distinct complete owners, retained identities, moved masks and exact original/reopened PDF pixels.')

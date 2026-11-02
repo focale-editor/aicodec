@@ -307,8 +307,19 @@ final class AiNativeAppearances {
   /// Fresh typed subtrees require fresh identities and declared named styles.
   /// Source metadata, known inherited inputs and outgoing scalar state remain
   /// preserved. The host supplies matching PDF content on save.
-  AiNativeAppearances replaceArtworkChildren({required AiNativeAppearanceReplacement artwork, required List<AiNativeAppearanceTreeChild> children}) =>
-      _replaceNativeAppearanceChildren(this, artwork, children);
+  AiNativeAppearances replaceArtworkChildren({required AiNativeAppearanceReplacement artwork, required List<AiNativeAppearanceTreeChild> children}) => replaceArtworkTrees(
+    changes: [AiNativeAppearanceTreeChange(artwork: artwork, children: children)],
+  );
+
+  /// Revises complete group trees together, allowing retained children to move.
+  ///
+  /// Each source and destination owner must have one complete printing replacement.
+  /// Retained children occur once across all plans; source metadata, styles, masks
+  /// and identities travel with them. Omitted children are deleted only after
+  /// document-wide reference checks. Complete roots and clipping contours retain
+  /// their ownership. All changes either succeed together or leave this snapshot
+  /// unchanged. Supply a matching host-composed compatibility PDF when saving.
+  AiNativeAppearances replaceArtworkTrees({required List<AiNativeAppearanceTreeChange> changes}) => _replaceNativeAppearanceTrees(this, changes);
 
   /// Inserts a complete host-authored native/printing appearance pair.
   ///

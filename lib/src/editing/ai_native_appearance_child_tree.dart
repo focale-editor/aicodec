@@ -1,15 +1,19 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Revises a complete private tree with retained source and explicit new children.
-AiNativeAppearances _replaceNativeAppearanceChildren(
+/// Revises complete private trees with retained source and explicit new children.
+AiNativeAppearances _replaceNativeAppearanceTrees(
   AiNativeAppearances model,
-  AiNativeAppearanceReplacement printing,
-  List<AiNativeAppearanceTreeChild> children,
+  List<AiNativeAppearanceTreeChange> changes,
 ) {
-  final AiNativeAppearanceArtwork owner = _selectedBodyAppearanceArtwork(model, [printing.artwork]).single;
-  final AiNativeGroup? root = owner.group;
-  if (root == null || owner.liveShape != null || printing.uses.length != 1 || !identical(printing.uses.single, owner.use)) {
-    throw ArgumentError('Child topology requires one complete ordinary group printing owner.');
+  if (changes.isEmpty) {
+    throw ArgumentError('Private topology requires at least one complete owner.');
+  }
+  final List<AiNativeAppearanceArtwork> owners = _selectedBodyAppearanceArtwork(model, changes.map((change) => change.artwork.artwork).toList());
+  for (final AiNativeAppearanceTreeChange change in changes) {
+    final AiNativeAppearanceArtwork owner = change.artwork.artwork;
+    if (owner.group == null || owner.liveShape != null || change.artwork.uses.length != 1 || !identical(change.artwork.uses.single, owner.use)) {
+      throw ArgumentError('Child topology requires complete ordinary group printing owners.');
+    }
   }
   final AiNativeDrawing drawing = model.structure.drawing;
   final AiProgram program = drawing.records.program;
@@ -17,28 +21,43 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
   final List<AiNativeAppearanceArtwork> retained = _nativeBodyAppearanceArtwork(model);
   final Map<AiNativeItem, _NativeSubtreeSpan> spans = {};
   final Map<AiNativeItem, AiNativeResourceUse> applications = {
-    for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) owner.authoringFor(use: use): use,
+    for (final AiNativeAppearanceArtwork owner in owners)
+      for (final AiNativeResourceUse use in [owner.use, ...owner.nestedUses]) owner.authoringFor(use: use): use,
   };
-  final Set<AiNativePath> clips = {for (final AiNativePathTopology contour in owner.groupContours.where((contour) => contour.mask != .none)) contour.path};
+  final Set<AiNativePath> clips = {
+    for (final AiNativeAppearanceArtwork owner in owners)
+      for (final AiNativePathTopology contour in owner.groupContours.where((contour) => contour.mask != .none)) contour.path,
+  };
+  final Map<AiNativeItem, AiNativeAppearanceArtwork> sourceOwners = {};
 
   /// Includes counts, panel metadata and direct style applications in each slot.
-  void locate(AiNativeItem item) {
+  void locate(AiNativeItem item, AiNativeAppearanceArtwork owner) {
+    sourceOwners[item] = owner;
     final AiNativeObject object = objects.forSource(item);
     final AiNativeInstruction? count = item is AiNativePath ? owner.groupContours.singleWhere((contour) => identical(contour.path, item)).pointCount : null;
     spans[item] = (start: min(object.start, count?.start ?? object.start), end: max(object.end, applications[item]?.instruction.end ?? object.end));
     if (item is AiNativeGroup) {
-      item.children.forEach(locate);
+      for (final AiNativeItem child in item.children) {
+        locate(child, owner);
+      }
     }
   }
 
-  locate(root);
+  for (final AiNativeAppearanceArtwork owner in owners) {
+    locate(owner.group!, owner);
+  }
   final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(
     drawing,
-    [owner.start, owner.end, ...spans.values.map((span) => span.start), ...spans.keys.whereType<AiNativeGroup>().map((group) => group.closing.start)],
+    [
+      for (final AiNativeAppearanceArtwork owner in owners) ...[owner.start, owner.end],
+      ...spans.values.map((span) => span.start),
+      ...spans.keys.whereType<AiNativeGroup>().map((group) => group.closing.start),
+    ],
     clipping: true,
     appearanceArtwork: retained,
   );
-  final _NativeDocumentBytes bytes = _NativeDocumentBytes(maximum: program.limits.maxDecodedBytes);
+  late _NativeDocumentBytes bytes;
+  late AiBoundingBox bounds;
   final List<_NativeSubtreeSpan> preserved = [];
   final Set<AiNativeItem> used = {};
   int nodes = 0;
@@ -67,7 +86,7 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
   /// Retains each source descendant once, including unchanged nested subtrees.
   void reserve(AiNativeItem item, {required bool subtree}) {
     if (!spans.containsKey(item) || !used.add(item)) {
-      throw ArgumentError('Private topology requires distinct current children from the same complete owner.');
+      throw ArgumentError('Private topology requires distinct current children from the selected complete owners.');
     }
     if (subtree && item is AiNativeGroup) {
       for (final AiNativeItem child in item.children) {
@@ -88,7 +107,7 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
         bytes,
         drawing,
         child.definition!,
-        printing.bounds,
+        bounds,
         writeChildren: child.children == null
             ? null
             : () {
@@ -103,6 +122,7 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
       throw UnsupportedError('Private clipping contours stay attached to their original groups.');
     }
     reserve(item, subtree: child.children == null);
+    final AiNativeAppearanceArtwork owner = sourceOwners[item]!;
     final _NativeSubtreeSpan span = spans[item]!;
     final List<AiNativeInstruction> commands = owner._commands.where((command) => command.start >= span.start && command.end <= span.end).toList();
     final _NativeShapeAccess access = _nativeAppearanceArtworkAccess(drawing, owner, commands);
@@ -145,16 +165,29 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
     bytes.text('\n');
   }
 
-  final List<AiSourceEdit> printingEdits = _nativeAppearancePrintingEdits(model, [printing]);
-  final AiSourceEdit printable = printingEdits.singleWhere((edit) => edit.start == owner.printingGroup.start && edit.end == owner.printingGroup.end);
-  copy(owner.start, printable.start);
-  bytes.add(printable.bytes);
-  copy(printable.end, spans[root]!.start);
-  write(AiNativeAppearanceTreeChild.retain(source: root, children: children), 1);
-  copy(spans[root]!.end, owner.end);
-  final Uint8List replacement = bytes.takeBytes();
+  final List<AiSourceEdit> printingEdits = _nativeAppearancePrintingEdits(model, changes.map((change) => change.artwork).toList());
+  final List<AiSourceEdit> edits = [];
+  final Set<AiSourceEdit> embeddedPrinting = {};
+  int outputBytes = 0;
+  for (final AiNativeAppearanceTreeChange change in changes) {
+    final AiNativeAppearanceArtwork owner = change.artwork.artwork;
+    final AiNativeGroup root = owner.group!;
+    bytes = _NativeDocumentBytes(maximum: program.limits.maxDecodedBytes - outputBytes);
+    bounds = change.artwork.bounds;
+    final AiSourceEdit printable = printingEdits.singleWhere((edit) => edit.start == owner.printingGroup.start && edit.end == owner.printingGroup.end);
+    embeddedPrinting.add(printable);
+    copy(owner.start, printable.start);
+    bytes.add(printable.bytes);
+    copy(printable.end, spans[root]!.start);
+    write(AiNativeAppearanceTreeChild.retain(source: root, children: change.children), 1);
+    copy(spans[root]!.end, owner.end);
+    final Uint8List replacement = bytes.takeBytes();
+    outputBytes += replacement.length;
+    edits.add(AiSourceEdit(start: owner.start, end: owner.end, bytes: replacement));
+  }
+  edits.sort((a, b) => a.start.compareTo(b.start));
   final List<AiNativeObjectIdentifier> removed = model.structure.identifiers
-      .where((identity) => identity.field.owner.start >= owner.start && identity.field.owner.end <= owner.end)
+      .where((identity) => owners.any((owner) => identity.field.owner.start >= owner.start && identity.field.owner.end <= owner.end))
       .where((identity) => !preserved.any((span) => identity.field.owner.start >= span.start && identity.field.owner.end <= span.end))
       .toList();
   if (removed.isNotEmpty) {
@@ -179,14 +212,12 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
     records: AiNativeRecords.decode(
       program: AiNativeEditor.apply(
         program: program,
-        edits: [AiSourceEdit(start: owner.start, end: owner.end, bytes: replacement)],
+        edits: edits,
       ),
     ),
   );
   final AiNativeAppearances candidate = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: provisional));
-  final _NativeSubtreeSpan span = (start: owner.start, end: owner.start + replacement.length);
-  final AiNativeAppearanceArtwork revised = _createdAppearanceOwner(candidate, span);
-  if (revised.group == null || candidate.styles.length != model.styles.length || provisional.liveShapes.length != drawing.liveShapes.length) {
+  if (candidate.styles.length != model.styles.length || provisional.liveShapes.length != drawing.liveShapes.length) {
     throw const FormatException('Private topology changed unrelated native definitions.');
   }
   final Set<String> oldNames = _nativeIdentityNames(model.structure);
@@ -204,50 +235,72 @@ AiNativeAppearances _replaceNativeAppearanceChildren(
   if (!seen.containsAll(retainedNames)) {
     throw const FormatException('Private topology lost a retained native identity.');
   }
-  final List<AiNativeInstruction> commands = _pathInterval(provisional.items, span.start, span.end, (item) => item.start).whereType<AiNativeInstruction>().toList();
-  final _NativeShapeAccess access = _nativeAppearanceArtworkAccess(provisional, revised, commands);
-  final _NativeShapeInputs incoming = states[owner.start]!;
-  if (!incoming.native.keys.toSet().containsAll(access.nativeReads) || !incoming.printing.keys.toSet().containsAll(access.printingReads)) {
-    throw UnsupportedError('Private topology requires explicit complete owner inputs.');
-  }
-  final Map<int, _NativeShapeInputs> revisedStates = _shapeCopyInputs(provisional, [span.start, span.end], clipping: true, appearanceArtwork: _nativeBodyAppearanceArtwork(candidate));
-  final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
+  final List<AiSourceEdit> placedEdits = [];
+  final Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements = {};
+  final List<int> useIndices = [];
+  int offset = 0;
+  final Map<int, _NativeShapeInputs> revisedStates = _shapeCopyInputs(
     provisional,
-    span,
-    commands,
-    const {},
-    access,
-    revisedStates[span.start]!,
-    revisedStates[span.end]!,
-    incoming,
-    states[owner.end]!,
-    maxBytes: program.limits.maxDecodedBytes,
-  );
-  _sourceFollowingDependencies(
-    drawing,
-    {
-      (start: owner.start, end: owner.end): (
-        commands: [],
-        styles: {},
-        prefix: [],
-        suffix: [],
-        unresolved: placed.replacement.unresolved,
-        printingUnresolved: placed.replacement.printingUnresolved,
-        discard: false,
-      ),
-    },
-    retainedArtwork: retained,
+    [
+      for (final AiNativeAppearanceArtwork owner in _nativeBodyAppearanceArtwork(candidate)) ...[owner.start, owner.end],
+    ],
     clipping: true,
-    patterns: candidate._patternNames,
+    appearanceArtwork: _nativeBodyAppearanceArtwork(candidate),
   );
+  for (final AiSourceEdit edit in edits) {
+    final AiNativeAppearanceArtwork owner = owners.singleWhere((owner) => owner.start == edit.start);
+    final _NativeSubtreeSpan span = (start: edit.start + offset, end: edit.start + offset + edit.bytes.length);
+    offset += edit.bytes.length - (edit.end - edit.start);
+    final AiNativeAppearanceArtwork revised = _createdAppearanceOwner(candidate, span);
+    if (revised.group == null) {
+      throw const FormatException('Private topology must retain each complete group owner.');
+    }
+    final List<AiNativeInstruction> commands = _pathInterval(provisional.items, span.start, span.end, (item) => item.start).whereType<AiNativeInstruction>().toList();
+    final _NativeShapeAccess access = _nativeAppearanceArtworkAccess(provisional, revised, commands);
+    final _NativeShapeInputs incoming = states[owner.start]!;
+    if (!incoming.native.keys.toSet().containsAll(access.nativeReads) || !incoming.printing.keys.toSet().containsAll(access.printingReads)) {
+      throw UnsupportedError('Private topology requires explicit complete owner inputs.');
+    }
+    // Owner ranges may omit a scalar prefix emitted by this transaction. Inspect
+    // exact replacement boundaries so restoration covers that prefix as well.
+    final Map<int, _NativeShapeInputs> boundaries = revisedStates.containsKey(span.start) && revisedStates.containsKey(span.end)
+        ? revisedStates
+        : _shapeCopyInputs(provisional, [span.start, span.end], clipping: true, appearanceArtwork: _nativeBodyAppearanceArtwork(candidate));
+    final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
+      provisional,
+      span,
+      commands,
+      const {},
+      access,
+      boundaries[span.start]!,
+      boundaries[span.end]!,
+      incoming,
+      states[owner.end]!,
+      maxBytes: program.limits.maxDecodedBytes,
+    );
+    placedEdits.add(AiSourceEdit(start: owner.start, end: owner.end, bytes: placed.bytes));
+    replacements[(start: owner.start, end: owner.end)] = (
+      commands: [],
+      styles: {},
+      prefix: [],
+      suffix: [],
+      unresolved: placed.replacement.unresolved,
+      printingUnresolved: placed.replacement.printingUnresolved,
+      discard: false,
+    );
+    useIndices.add(candidate.uses.indexOf(revised.use));
+  }
+  _sourceFollowingDependencies(drawing, replacements, retainedArtwork: retained, clipping: true, patterns: candidate._patternNames);
   final AiNativeDrawing result = _groupLifecycleResult(
     drawing,
-    [AiSourceEdit(start: owner.start, end: owner.end, bytes: placed.bytes), ...printingEdits.where((edit) => !identical(edit, printable))],
+    [...placedEdits, ...printingEdits.where((edit) => !embeddedPrinting.contains(edit))],
     paths: provisional.paths.length,
     groups: provisional.groups.length,
     liveShapes: drawing.liveShapes.length,
   );
   final AiNativeAppearances updated = AiNativeAppearances.decode(structure: AiNativeStructure.decode(drawing: result));
-  updated.artworkFor(use: updated.uses[candidate.uses.indexOf(revised.use)]);
+  for (final int index in useIndices) {
+    updated.artworkFor(use: updated.uses[index]);
+  }
   return updated;
 }

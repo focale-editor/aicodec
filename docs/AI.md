@@ -1670,4 +1670,16 @@ Ordinary private groups may now be empty, both in typed creation and after child
 removal. Their metadata and named style remain attached; compound and clipping
 groups retain their required contour structure. The host supplies the complete
 printing view and matching PDF, including for an empty group. This transaction
-does not move children across independent complete owners or release clips.
+does not release clips.
+
+`replaceArtworkTrees` accepts immutable `AiNativeAppearanceTreeChange` plans for
+several complete ordinary group owners. Every source and destination must be
+selected with its complete host printing replacement. Retained children may move
+between these owners, keeping their native identity, mask dictionaries and named
+style applications. An item occurs only once across the entire transaction;
+complete roots remain in place. Omitted children undergo deletion checks only
+after all plans are assembled, so a moved identifier remains a valid reference.
+Each owner restores its original outgoing native and printing state. Aggregate
+byte limits, retained source membership, uniqueness, references and final owner
+qualification are checked before returning the new snapshot. Unselected sources,
+duplicate children, recycled identities and nested complete roots reject atomically.

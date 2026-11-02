@@ -1689,7 +1689,7 @@ Named child closure, visibility and locking edits retain their own masks and
 identities without changing parent flags. Shared tile and brush resources are
 reused or retained for other applications.
 
-The same tile/nib qualification applies as for standalone contours. Cross-owner child transfers, dynamic shape children, other brush families and broader
+The same tile/nib qualification applies as for standalone contours. Dynamic shape children, other brush families and broader
 effects still require their authoring contracts. Acceptance tooling inspects
 nested applications, references, identities, masks and original/reopened host
 PDF pixels. It does not execute Illustrator's native brush/pattern engines.
@@ -1727,9 +1727,8 @@ New child/group masks attach to their freshly authored native identities.
 Removing a child removes its owned masks and applications after reference checks;
 independent styles, tiles and brush descriptors remain available to other users.
 The last child may leave an empty ordinary group with its original identity.
-Clipping contours remain attached to their source groups. Transfers between
-independent complete owners, dynamic shape children and other unconnected
-families retain their explicit guards; they are not silently recreated.
+Clipping contours remain attached to their source groups. Dynamic shape children
+and other unconnected families retain their explicit guards; they are not silently recreated.
 
 `ai_group_topology_test.dart` covers fresh groups around existing masked children,
 new painted/masked paths, selected brush and label edits, successive saved child
@@ -1748,3 +1747,34 @@ new independent topology views join the previous 92 native/container/PDF
 comparisons. Package analysis is clean; host analysis retains 550 existing
 informational lints with no errors or warnings. Formatting and scoped fix checks
 pass. These checks do not establish Illustrator rendering or editability.
+
+
+### Transferring private children between complete appearances
+
+The retained host planner binds all editable private children to their original
+complete owner and route, then computes their final ancestor placement. Geometry,
+paint, label and mask changes consume the original bindings before one atomic
+`replaceArtworkTrees` call updates every affected owner. Source and destination
+printing expansions come from their final host trees. A fresh wrapper may contain
+a transferred child; groups may become empty without losing their identity.
+
+Retained metadata and mask identities travel with the subtree. Shared styles,
+tiles and brush descriptors are retained; moved identities are not treated as
+removed references. Complete roots, preserved proxies, ordinary outside artwork
+and resource-local instances retain their separate lifecycle contracts. Duplicate
+host ownership rejects before serialization. Tests exercise bidirectional moves,
+changed masks/brushes, transformed fresh wrappers, return moves into an emptied
+owner, native references and original/reopened PDF comparisons. When the original
+complete owner is removed in the same host edit, its transferred children leave
+before the ordinary lifecycle removes the remaining pair. A fresh complete owner
+requires its own source-binding contract; retained child IDs cannot silently turn
+into newly authored identities there.
+
+
+Local package validation passes 1,546 tests on both VM and Node with clean
+analysis. Four new native regressions cover bidirectional transfers, referenced
+identities, atomic invalid plans and restored following state. The independent
+host verifier passes all 104 native/container/PDF comparisons, including six
+original/reopened transfer views and simultaneous source-owner removal. Final
+Focale Git-dependency suite evidence is recorded in ADR 0444. Illustrator
+rendering and editability remain unverified.
