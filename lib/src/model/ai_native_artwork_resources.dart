@@ -131,6 +131,38 @@ final class AiNativeArtworkResources {
   /// Retains immutable declaration ownership for one source snapshot.
   AiNativeArtworkResources._({required this.structure, required List<AiNativeArtworkResource> resources}) : resources = List.unmodifiable(resources);
 
+  /// Creates a pattern tile, symbol master or brush artwork declaration.
+  ///
+  /// Supply native [artworkBytes] with complete local groups, metadata and fresh
+  /// object/sample identities. Pattern [bounds] are required; other namespaces
+  /// have no tile rectangle. Names are byte-exact and unique within their kind.
+  /// Symbol masters join every existing symbol panel, or a new CC panel, unless
+  /// [addToSymbolList] is false. Brush artwork does not create a brush descriptor.
+  /// Literal dependencies and all source limits are checked atomically; the host
+  /// retains responsibility for painting instances and composing their PDF views.
+  AiNativeArtworkResources create({
+    required AiNativeArtworkResourceKind kind,
+    required List<int> nameBytes,
+    required List<int> artworkBytes,
+    AiBoundingBox? bounds,
+    bool addToSymbolList = true,
+  }) => _createNativeArtworkResource(this, kind, nameBytes, artworkBytes, bounds, addToSymbolList);
+
+  /// Removes unused declarations and matching symbol-panel entries together.
+  ///
+  /// Supply distinct current handles. Retained pattern/style/brush dependencies,
+  /// uncertain identity references, conditional owners and opaque schemas reject.
+  /// No dependent artwork, shared style or brush descriptor is silently removed.
+  AiNativeArtworkResources remove({required List<AiNativeArtworkResource> resources}) => _removeNativeArtworkResources(this, resources);
+
+  /// Replaces unused native artwork while retaining its name and panel order.
+  ///
+  /// Referenced definitions require their dependent printing transaction instead.
+  /// Explicit [bounds] are required for patterns and forbidden for other kinds.
+  /// Existing local identities may remain; new identities must be globally fresh.
+  AiNativeArtworkResources replaceUnused({required AiNativeArtworkResource resource, required List<int> artworkBytes, AiBoundingBox? bounds}) =>
+      _replaceUnusedNativeArtworkResource(this, resource, artworkBytes, bounds);
+
   /// Finds the enclosing declaration for an exact known source application.
   ///
   /// Returns null for body, palette or other uses outside an artwork declaration.

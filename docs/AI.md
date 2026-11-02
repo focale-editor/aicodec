@@ -1418,7 +1418,7 @@ Legacy DSC inspection retains comments and continuations, resolves `(atend)` met
 | Gradients and palettes | Qualified resources, instances and cells | Creation/removal, ordered hard stops, exact application rebinding, named paints, focus and CC placement | Host ramps/printing; opaque references, ATE/color-book ink redefinition and unsupported caches remain excluded. |
 | Cartesian version-2 meshes | Yes | Paint, geometry, explicit topology and direct object lifecycle | New geometry/lifecycle validation pending; no tessellation. |
 | Embedded rasters and linked previews | Qualified layouts | Samples, affine placement, relink and embed | Host pixels/decoders; unresolved dependent caches reject. |
-| Setup pattern/symbol/brush artwork | Source-owned inventory | Qualified appearance transactions | Complete transitive dependencies; general instances remain incomplete. |
+| Setup pattern/symbol/brush artwork | Source-owned inventory | Create, replace/remove unused declarations; qualified appearance transactions | Complete transitive dependencies; general instances and brush descriptor authoring remain incomplete. |
 | Catalog XMP | Qualified references | Explicit selected-reference changes | No inferred native/XMP identity mapping. |
 | New AI documents | CC version 24 | Initial boards, layers, paths, text resources and images; host PDF packaging | Focale integration and Adobe acceptance remain open; standalone AI7 creation is excluded. |
 | Other effects, resources and plug-ins | Source preserved where parsing permits | No general semantic writer | Recognition does not qualify dependent edits. |
@@ -1516,3 +1516,34 @@ Newly authored linked preview blocks include an explicit empty
 `%AI17_Alternate_Content` branch, keeping following artwork visible to readers
 that expect both version branches. Existing qualified blocks without that empty
 branch remain readable and editable; their bytes are preserved when unchanged.
+
+### Authoring reusable native artwork declarations
+
+`AiNativeArtworkResources.create` adds an ordinary pattern tile, symbol master or
+brush artwork declaration from host-supplied native bytes. Pattern bounds are
+explicit, finite and nonempty. Names are unique within each namespace; symbol
+masters join existing symbol inventories, or a new CC inventory, unless disabled.
+Brush artwork is separate from a brush descriptor and its application parameters.
+
+`replaceUnused` retains the declaration name and symbol-panel order while replacing
+unused local artwork and explicit pattern bounds. `remove` deletes a distinct set
+of current declarations together with their symbol-panel entries. Retained pattern
+paints, palettes, named styles and brush descriptors must still resolve. Closed sets
+of unused dependent resources may be removed together. Referenced definitions
+require a transaction supplying their dependent printing representations instead.
+
+These operations qualify literal native dependencies, groups, paths, raster blocks
+and metadata before applying immutable source edits. Recursive pattern dependencies,
+opaque/conditional ownership, stale handles, identity collisions and exceeded output
+budgets reject atomically. Replacement may retain identities owned by the replaced
+resource. Removal conservatively rejects retained literals matching removed object
+or sample identities. Unrelated document artwork and retained declarations remain
+source-owned. The host supplies native artwork and synchronized PDF; this API does
+not compose tile artwork, instances, brush strokes or effects.
+
+`tool/check_native_artwork_resource_lifecycle.dart` produces nine complete saves
+(creation, replacement and removal in all three namespaces), reopening each before
+the next edit. Its companion Python verifier checks the native library with pinned
+inkai, the AI container with pypdf, and unchanged page pixels with Poppler. Unused
+library definitions do not appear on the PDF page: those checks establish native
+structure and page preservation, not Illustrator visual or editability acceptance.

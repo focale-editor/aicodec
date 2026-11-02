@@ -73,6 +73,7 @@ part '../editing/ai_native_artboard_svg_filters.dart';
 part '../editing/ai_native_artboard_text_model.dart';
 part '../editing/ai_native_artboard_text_objects.dart';
 part '../editing/ai_native_artboard_text_scope.dart';
+part '../editing/ai_native_artwork_resource_lifecycle.dart';
 part '../editing/ai_native_artwork_creation.dart';
 part '../editing/ai_native_artwork_state.dart';
 part '../editing/ai_native_clipping_lifecycle.dart';

@@ -1570,3 +1570,20 @@ four new mixed-page outputs retain page/board identities and exact preserved dat
 with matching per-page Poppler pixels. Package analysis is clean; host analysis
 has no errors or warnings (550 existing informational lints). Formatting and
 scoped fix checks pass. Actual Illustrator exchange remains unverified.
+
+### Reusable native artwork declarations
+
+AiKit now provides `AiNativeArtworkResources.create`, `replaceUnused` and `remove`
+for literal pattern tiles, symbol masters and brush artwork, with dependency,
+identity, symbol-panel and source-preservation checks. Focale can supply their
+native artwork without introducing rendering into the format package. This does
+not yet connect Focale's tiling/symbol/brush models: instance serialization,
+application descriptors, dependent printing and effect authoring remain separate
+integration work. The acceptance producer verifies unused native libraries and
+unchanged host PDF pages; it does not certify an Illustrator exchange.
+
+Local validation for this package lot passes 1,504 VM and 1,504 Node tests,
+including 13 resource lifecycle regressions. Analysis and formatting are clean;
+`dart fix --dry-run` has no proposed fixes. The independent reader/container/pixel
+checks pass all nine successive saves. Focale's source and Git dependency pin are
+unchanged in this lot; no new host integration or Adobe acceptance is claimed.
