@@ -1600,7 +1600,7 @@ remain source-owned. Project persistence retains this editable scene data.
 Current qualification covers rectangular positive repeats matching tile bounds,
 literal local paths/groups/clips and canonical placement plus an affine matrix.
 Other repeat layouts, isolated tile groups, local image/text/nested-resource
-content, conversion of ordinary paths and private group children need broader
+content and private group children need broader
 connections. `ai_pattern_test.dart` covers creation, copying, reordering, deletion,
 shared tiles, successive edits and project persistence. It emits eight
 initial/edited/reopened PDF comparisons for `tool/verify_focale_patterns.py`.
@@ -1634,7 +1634,7 @@ AiKit additionally provides complete descriptor lifecycle operations for art,
 pattern and bristle brush libraries. Their application/geometry connections in
 Focale remain separate work. Current host qualification covers one open spine,
 fixed nibs with roundness at least five percent, no pressure profile or dashes,
-and similarity placement. Ordinary-path conversion, private group children and
+and similarity placement. Private group children and
 other brush families still require their native connections. Host outline folds
 or exhausted geometry budgets fail atomically with the original source intact.
 
@@ -1651,3 +1651,28 @@ checks, eight pattern comparisons and six calligraphic comparisons. Package
 analysis is clean; host analysis has no errors or warnings. Formatting and scoped
 fix checks pass. Native brush execution and editing in Illustrator remain
 unverified.
+
+### Retained ordinary paths acquiring appearances
+
+Focale routes an existing ordinary single contour through `convertPathArtwork`
+when it acquires a qualified vector pattern, fixed calligraphic brush or luminance
+mask. The native object retains its XML identity, parent and stacking slot;
+source metadata is retained, with explicit name edits applied first. The host
+composes the complete printing view and synchronized PDF from the same revision.
+The transient lifecycle ledger changes family only after successful conversion,
+so reparenting, sibling ordering and multiple conversions share one atomic save.
+On reopening, the scene uses its normal `ai-appearance-*` projection identity.
+Dynamic shape conversion and children inside a private group remain separate
+contracts. Independent native/PDF checks do not establish Illustrator acceptance.
+
+Native `UnicodeString` object names now reuse the explicit UTF-16 reader used by
+image/group dictionaries. Conversion leaves unchanged names byte-preserved;
+explicit renaming retains the saved scalar type and encoding.
+
+The package validation passes 1,528 tests on both VM and Node, including five
+conversion regressions for metadata/identity retention, inherited state,
+sequential promotion, absent metadata, point-count conventions and atomic
+rejections. Package analysis, formatting and fix checks pass. Six independent
+original/reopened comparisons cover pattern, calligraphic and masked conversions,
+in addition to the prior 78 native/container/PDF checks. Illustrator execution
+and editability remain unverified.

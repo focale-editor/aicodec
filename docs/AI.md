@@ -1606,3 +1606,20 @@ parameters remain local to their filter. Rendering and synchronized PDF remain
 host responsibilities. `tool/check_native_brush_lifecycle.dart` produces twelve
 complete descriptor saves for pinned independent parsing and page-preservation
 checks. This evidence does not certify Illustrator's brush rendering or editing.
+
+### Ordinary contour conversion to complete appearances
+
+`AiNativeAppearances.convertPathArtwork` changes one qualified ordinary contour
+into an editable private contour with an existing named style and host-supplied
+complete printing group. It retains the original metadata bytes, XML identity,
+point-count convention, parent and stacking slot. Supplied unpainted geometry,
+winding, locking and visibility replace the ordinary authoring geometry. Native
+and printing boundary state are restored separately for following artwork.
+Resource references belong to the existing style; this operation does not delete
+and recreate the source identity. Save with the same-revision host PDF.
+
+Stale handles, painted authoring inputs, private descendants, direct dynamic
+shapes, gradient owners, compound/clipping descendants and unresolved metadata
+or inherited state reject atomically. Those families retain their own authoring
+contracts. The host may rename the ordinary object before conversion and attach
+a mask to the resulting private carrier through the existing complete-owner API.

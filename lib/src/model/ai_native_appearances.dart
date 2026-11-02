@@ -328,6 +328,25 @@ final class AiNativeAppearances {
     AiLayer? layer,
   }) => _createNativeAppearancePath(this, definition, styleNameBytes, printingBytes, parent, layer);
 
+  /// Converts an ordinary contour into a complete named native appearance.
+  ///
+  /// Supply a current independent path, unpainted authoring geometry and a
+  /// complete host printing group. The existing metadata, XML identity, point
+  /// count convention, parent and stacking slot remain attached. Geometry,
+  /// winding, locking and visibility use the supplied values. The named style
+  /// must already resolve and owns the paints. Dynamic shapes, gradient owners,
+  /// private descendants and unresolved metadata require their own contracts.
+  /// Outgoing native and printing state is restored for neighboring artwork;
+  /// unresolved dependencies reject atomically. Save with a matching host PDF.
+  AiNativeAppearances convertPathArtwork({
+    required AiNativePath path,
+    required AiArtworkPath artwork,
+    required AiBoundingBox bounds,
+    required List<int> styleNameBytes,
+    required List<int> printingBytes,
+    bool hidden = false,
+  }) => _convertNativeAppearancePath(this, path, artwork, bounds, styleNameBytes, printingBytes, hidden);
+
   /// Removes complete native/printing body owners and their child applications.
   ///
   /// Supply distinct current `artworkFor` handles. Shared styles remain declared.
