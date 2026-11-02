@@ -100,6 +100,9 @@ AiNativeAppearancePartKind _nativeAppearanceKind(AiNativeContainer record, AiNat
     return .opaque;
   }
   if (filter.flags.first == 1) {
+    if (name == 'Adobe Calligraphic Brush Tool' && const {'Illustrator.exe', 'CalligraphicBrushTool.aip'}.contains(record['PluginFileName']?.text())) {
+      return .calligraphic;
+    }
     return name == 'Adobe Stroke Offset' && const {'Illustrator.exe', 'StrokeOffset.aip'}.contains(record['PluginFileName']?.text()) ? .strokeOffset : .effect;
   }
   if (filter.flags.first != 0) {

@@ -43,6 +43,10 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
   'kAIBeautifulStrokesParamsDictKey' => field.container?.type == 'Dictionary',
   'BSAdvStrokeDictionaryVersion' => field.type == 'Int' && field.number == 1,
   'BSDashAdj' => field.type == 'Bool' && const {0, 1}.contains(field.number),
+  'Brush' => field.container?.type == 'GObjRef',
+  'PluginObject' => owner.type == 'GObjRef' && field.items.length == 2 && field.items.every((item) => item is AiNativeToken && _artboardPaletteName(item.token)),
+  'Angle' || 'Diameter' || 'Roundness' || 'AngleVariation' || 'DiameterVariation' || 'RoundnessVariation' => field.type == 'Real' && field.number != null,
+  'AngleDependsOn' || 'DiameterDependsOn' || 'RoundnessDependsOn' || 'AngleRelativeTo' => field.type == 'Int' && field.number == 0,
   'NotRecorded' => field.isQualifier,
   _ => false,
 };
@@ -59,7 +63,7 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
     return _nativeSimpleStyleState(drawing, style, definition, patterns: patterns);
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
-  _artboardRetainedStyle(layers, style, {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use}, patterns, {});
+  _artboardRetainedStyle(layers, style, {for (final AiNativeResourceUse use in layers.structure.resourceUses) use.instruction.start: use}, patterns, _nativeStyleBrushes(drawing, style));
   final Set<String> writes = {};
   final Set<String> reads = {};
   for (final AiNativeContainer record in drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end)) {
@@ -71,7 +75,7 @@ bool _shapeCopyStyleField(AiNativeContainer owner, AiNativeEntry field) => switc
       throw UnsupportedError('Shape copies require literal, typed native filter fields.');
     }
     final String? plugin = record['PluginFileName']?.text();
-    if (plugin != null && !const {'Illustrator.exe', 'StrokeOffset.aip'}.contains(plugin)) {
+    if (plugin != null && !const {'Illustrator.exe', 'StrokeOffset.aip', 'CalligraphicBrushTool.aip'}.contains(plugin)) {
       throw UnsupportedError('Shape copies cannot qualify external appearance plug-ins.');
     }
     if (const {'FillStyle', 'StrokeStyle', 'BlendStyle'}.contains(record.type)) {

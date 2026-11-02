@@ -1575,3 +1575,34 @@ Deletion rejects ambiguous object identities and retained resource/descriptor
 string literals equal to a removed identity, conservatively including label
 collisions. Unknown metadata, executable references and conditional resource
 ownership retain their rejection policy.
+
+### Brush descriptors and fixed calligraphic appearances
+
+`AiNativeBrushes` reads qualified calligraphic, art, pattern and bristle plug-in
+namespaces independently of brush-art declarations. Descriptor payloads preserve
+literal continuation bytes. `create`, `replaceUnused`, `remove` and `setOrder`
+update complete declarations and the native manager panel atomically. Creating
+art/pattern descriptors requires their referenced brush-art tiles. Names remain
+independent across plug-ins; panel membership uses its explicit delimiter grammar.
+Unlisted names may contain characters that cannot round-trip through that panel.
+
+Replacement and removal reject references from any retained style, including
+unused styles. Unknown or executable layouts, conditional ownership, stale
+handles, unresolved tiles and output limits retain explicit rejection policies.
+These APIs never synthesize brush geometry, raster samples or previews.
+
+`AiNativeCalligraphicPaint` supplies a fixed nib, its literal descriptor reference
+and the matching version-one descriptor payload. Diameter is in native points,
+roundness in percent and angle in degrees; the owned stroke width is a separate
+multiplier. Creating a `.calligraphic` appearance part supplies its ordinary paint
+and fixed nib together. The appearance parser now distinguishes these qualified
+plug-in parts from generic `.effect` parts. The descriptor must match the local fixed nib; ambiguous overrides reject.
+Variable/device-dependent nib settings remain retained data and reject this fixed-nib editing contract.
+
+The existing complete appearance transactions qualify the descriptor namespace,
+retain an editable private spine and update the supplied printing representation.
+Outgoing drawing-state checks cover only the explicit stroke assignments; nib
+parameters remain local to their filter. Rendering and synchronized PDF remain
+host responsibilities. `tool/check_native_brush_lifecycle.dart` produces twelve
+complete descriptor saves for pinned independent parsing and page-preservation
+checks. This evidence does not certify Illustrator's brush rendering or editing.

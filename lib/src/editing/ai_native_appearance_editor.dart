@@ -23,7 +23,13 @@ AiNativeAppearances _editNativeAppearance(
     throw UnsupportedError('Appearance editing requires a unique unconditional definition with qualified parts.');
   }
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
-  _artboardRetainedStyle(layers, declaration, {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use}, _nativeAppearancePatterns(model, appearance), {});
+  _artboardRetainedStyle(
+    layers,
+    declaration,
+    {for (final AiNativeResourceUse use in model.structure.resourceUses) use.instruction.start: use},
+    _nativeAppearancePatterns(model, appearance),
+    _nativeStyleBrushes(drawing, declaration),
+  );
   final ({Set<String> reads, Set<String> writes}) state = _nativeAppearanceStyleState(model, appearance);
   final List<AiSourceEdit> styleEdits = _nativeAppearanceChanges(model, appearance, paints, parts);
   final List<AiNativeAppearanceReplacement> replacements = [...artwork];

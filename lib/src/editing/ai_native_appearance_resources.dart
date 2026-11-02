@@ -180,3 +180,34 @@ List<AiNativeInstruction> _nativeResourceAppearanceInterval(AiNativeDrawing draw
   }
   return result;
 }
+
+/// Resolves fixed nib references without qualifying unrelated brush libraries for ordinary styles.
+Set<(String, String)> _nativeStyleBrushes(AiNativeDrawing drawing, AiNativeContainer style) {
+  final List<AiNativeContainer> filters = drawing.records.containers.where((record) => record.start >= style.start && record.end <= style.end && record.type == 'BasicFilter').toList();
+  final List<AiNativeContainer> calligraphic = filters.where((record) => _nativeAppearanceKind(record, _nativeAppearanceFilter(record)) == .calligraphic).toList();
+  if (calligraphic.isEmpty) {
+    return const {};
+  }
+  final AiNativeLayers layers = AiNativeLayers.decode(drawing: drawing);
+  final _ArtboardResourceScope resources = _artboardResourceScope(layers);
+  final Map<String, AiNativeBrushDescriptor> descriptors = {};
+  final _ArtboardBrushScope brushes = _artboardBrushScope(
+    layers,
+    resources.brushes,
+    inspect: (brush) {
+      if (brush.kind == .calligraphic) {
+        descriptors[latin1.decode(brush.nameBytes)] = brush;
+      }
+    },
+  );
+  for (final AiNativeContainer filter in calligraphic) {
+    final AiNativeCalligraphicPaint nib = AiNativeCalligraphicPaint._decode(filter);
+    final AiNativeBrushDescriptor? descriptor = descriptors[latin1.decode(nib.brushNameBytes)];
+    final List<double> expected = _artboardBrushNumbers(latin1.decode(nib.descriptorPayload), count: 11);
+    final List<double>? actual = descriptor == null ? null : _artboardBrushNumbers(latin1.decode(descriptor.payloadBytes), count: 11);
+    if (actual == null || actual.indexed.any((value) => value.$2 != expected[value.$1])) {
+      throw UnsupportedError('Fixed calligraphic editing requires matching descriptor and local nib parameters.');
+    }
+  }
+  return brushes.names;
+}

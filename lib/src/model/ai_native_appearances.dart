@@ -17,6 +17,9 @@ enum AiNativeAppearancePartKind {
   /// A qualified native inside/outside stroke descriptor.
   strokeOffset,
 
+  /// A native calligraphic nib and its independently qualified stroke paint.
+  calligraphic,
+
   /// A local blend part whose original paint commands remain available.
   blend,
 
@@ -129,6 +132,9 @@ final class AiNativeAppearancePart {
 
   /// Advanced options of a stroke part, independent of its literal dash array.
   final AiNativeStrokeSettings? strokeSettings;
+
+  /// Fixed calligraphic parameters, rejecting device-dependent nib settings.
+  AiNativeCalligraphicPaint? get calligraphic => kind == .calligraphic ? AiNativeCalligraphicPaint._decode(record) : null;
 
   /// Freezes owned graph indices and paint payloads after bounded inspection.
   AiNativeAppearancePart._({

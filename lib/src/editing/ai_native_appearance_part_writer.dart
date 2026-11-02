@@ -21,17 +21,19 @@ Uint8List _createdNativeAppearancePart(
   void text(String value) => append(latin1.encode(value));
 
   final bool compound = definition.kind == .stack || definition.kind == .chain;
+  final bool calligraphic = definition.kind == .calligraphic;
   final bool offset = definition.kind == .stroke && definition.strokeAlignment != .center;
   final String filter = switch (definition.kind) {
     .stack => 'Stack Style Filter',
     .chain => 'Chain Style Filter',
     .fill => 'Fill Style Filter',
+    .calligraphic => 'Adobe Calligraphic Brush Tool',
     .stroke => offset ? 'Adobe Stroke Offset' : 'Stroke Style Filter',
     .conduit => 'Conduit Filter',
     .blend => 'Blend Style Filter',
     _ => throw ArgumentError('Unsupported created appearance part.'),
   };
-  text('/${compound ? 'CompoundFilter' : 'BasicFilter'} : ($filter) ${offset ? 1 : 0} 0 /Filter , ${definition.visible ? 1 : 0} /Visible , ');
+  text('/${compound ? 'CompoundFilter' : 'BasicFilter'} : ($filter) ${offset || calligraphic ? 1 : 0} 0 /Filter , ${definition.visible ? 1 : 0} /Visible , ');
   if (compound) {
     for (final AiNativeAppearanceChild child in definition.children) {
       append(childBytes(child));
@@ -40,14 +42,27 @@ Uint8List _createdNativeAppearancePart(
   } else if (definition.kind == .blend) {
     text('/Dictionary : /NotRecorded , /BlendStyle : ${definition.transparency!.operands.join(' ')} Xy /Def ; (BlendStyle) , ; /Dict , ');
   } else if (definition.kind != .conduit) {
-    final bool stroke = definition.kind == .stroke;
+    final bool stroke = definition.kind == .stroke || calligraphic;
     if (stroke) {
+      if (calligraphic) {
+        text('(CalligraphicBrushTool.aip) /PluginFileName , ');
+      }
       if (offset) {
         text('(StrokeOffset.aip) /PluginFileName , ');
       }
       text('2 /FillOrStroke , ');
     }
     text('/Dictionary : /NotRecorded , ');
+    if (definition.calligraphic case final AiNativeCalligraphicPaint nib) {
+      text('/GObjRef : ');
+      append(_nativeLiteralString(nib.brushNameBytes, limits.maxDecodedBytes));
+      text(' (Adobe Calligraphic Brush Tool) /PluginObject ; (Brush) , ');
+      text('${nib.angle} /Real (Angle) , ${nib.diameter} /Real (Diameter) , ${nib.roundness} /Real (Roundness) , ');
+      text('0 /Real (AngleVariation) , 0 /Real (DiameterVariation) , 0 /Real (RoundnessVariation) , ');
+      text('0 /Int (AngleDependsOn) , 0 /Int (DiameterDependsOn) , 0 /Int (RoundnessDependsOn) , 0 /Int (AngleRelativeTo) , ');
+      append(_nativeLiteralString(nib.brushNameBytes, limits.maxDecodedBytes));
+      text(' /String (DisplayString) , ');
+    }
     if (!stroke) {
       text('${definition.evenOdd ? 1 : 0} /Bool (UseEvenOdd) , ');
     } else if (offset) {

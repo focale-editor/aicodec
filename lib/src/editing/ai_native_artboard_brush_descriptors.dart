@@ -4,7 +4,7 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 typedef _ArtboardBrushScope = ({Set<(String, String)> names, Set<String> artwork, List<({int start, int end})> ranges});
 
 /// Retains known brush descriptors and resolves their independent artwork owners.
-_ArtboardBrushScope _artboardBrushScope(AiNativeLayers layers, Set<String> artwork) {
+_ArtboardBrushScope _artboardBrushScope(AiNativeLayers layers, Set<String> artwork, {void Function(AiNativeBrushDescriptor descriptor)? inspect}) {
   final AiNativeRecords records = layers.drawing.records;
   final List<AiToken> tokens = records._projection.tokens;
   final Set<(String, String)> names = {};
@@ -71,6 +71,15 @@ _ArtboardBrushScope _artboardBrushScope(AiNativeLayers layers, Set<String> artwo
       }
       references.addAll(_artboardBrushPayload(plugin, data, artwork));
     }
+    inspect?.call(
+      AiNativeBrushDescriptor._(
+        plugin: plugin,
+        nameBytes: aiStringBytes(values[1]),
+        payloadBytes: latin1.encode(data),
+        start: opening.start,
+        end: closing.end,
+      ),
+    );
     ranges.add((start: opening.start, end: closing.end));
   }
   if (inventory != null && (inventory.toSet().length != inventory.length || inventory.any((name) => !names.contains(name)))) {

@@ -1620,3 +1620,34 @@ original/reopened host PDF pixels. Package analysis is clean; host analysis has
 no errors or warnings (550 existing informational lints). Formatting and scoped
 fix checks pass. These results do not certify native rendering or editability
 in Illustrator.
+
+### Fixed calligraphic brush applications
+
+New standalone open spines can retain a native calligraphic brush, stroke paint
+and same-revision printing/PDF. Import projects the fixed nib and editable spine;
+subsequent nib, color, width and similarity-placement edits replace the complete
+selected appearance. Byte-identical descriptor payloads are reused. Copying and
+removing owners retain the independent descriptor and named-style library.
+Project persistence retains the brush inputs instead of serialized outline caches.
+
+AiKit additionally provides complete descriptor lifecycle operations for art,
+pattern and bristle brush libraries. Their application/geometry connections in
+Focale remain separate work. Current host qualification covers one open spine,
+fixed nibs with roundness at least five percent, no pressure profile or dashes,
+and similarity placement. Ordinary-path conversion, private group children and
+other brush families still require their native connections. Host outline folds
+or exhausted geometry budgets fail atomically with the original source intact.
+
+`ai_brush_test.dart` emits six initial/edited/reopened comparisons for the
+independent native/container/PDF verifier. The reader checks literal nib metrics
+and descriptor references but does not execute Adobe's brush engine; actual
+Illustrator appearance and editability remain unverified.
+
+Local validation passes 1,523 package tests on both VM and Node and 310 Focale
+AI/PDF/source/prepress/color tests. Eleven package regressions cover descriptor
+references, panel ownership, fixed-nib coherence and byte budgets. Independent
+checks pass twelve descriptor-library saves, the 64 previous complete-save
+checks, eight pattern comparisons and six calligraphic comparisons. Package
+analysis is clean; host analysis has no errors or warnings. Formatting and scoped
+fix checks pass. Native brush execution and editing in Illustrator remain
+unverified.

@@ -41,6 +41,9 @@ final class AiNativeAppearancePartDefinition {
   /// Literal pattern placement, exclusive with process and named colors.
   final AiNativePatternPaint? pattern;
 
+  /// Fixed native nib and descriptor reference for a calligraphic stroke.
+  final AiNativeCalligraphicPaint? calligraphic;
+
   /// Explicit overprint flag for a new fill or stroke.
   final bool overprint;
 
@@ -93,6 +96,7 @@ final class AiNativeAppearancePartDefinition {
     List<AiColor> colors = const [],
     this.namedColor,
     this.pattern,
+    this.calligraphic,
     this.overprint = false,
     this.opacity = 1,
     this.transparency,
@@ -111,10 +115,12 @@ final class AiNativeAppearancePartDefinition {
        dash = List.unmodifiable(dash),
        alignmentLabelBytes = alignmentLabelBytes == null ? null : List.unmodifiable(alignmentLabelBytes),
        children = List.unmodifiable(children) {
-    final bool paint = kind == .fill || kind == .stroke;
+    final bool stroke = kind == .stroke || kind == .calligraphic;
+    final bool paint = kind == .fill || stroke;
     final bool compound = kind == .stack || kind == .chain;
     if (!paint && !compound && kind != .conduit && kind != .blend ||
         !compound && children.isNotEmpty ||
+        (kind == .calligraphic) != (calligraphic != null) ||
         namedColor != null && pattern != null ||
         paint && (namedColor == null && pattern == null ? !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) : colors.isNotEmpty) ||
         !paint && (colors.isNotEmpty || namedColor != null || pattern != null)) {
@@ -133,9 +139,10 @@ final class AiNativeAppearancePartDefinition {
         dash.isNotEmpty && dash.every((value) => value == 0)) {
       throw ArgumentError('New appearance paint attributes must be finite, portable and valid.');
     }
-    if ((kind == .stroke && strokeAlignment != .center) != (alignmentLabelBytes != null) ||
+    if (kind == .calligraphic && (strokeAlignment != .center || adjustDashes != null || dash.isNotEmpty || dashPhase != 0) ||
+        (kind == .stroke && strokeAlignment != .center) != (alignmentLabelBytes != null) ||
         alignmentLabelBytes?.any((byte) => byte < 0 || byte > 255) == true ||
-        kind != .stroke && (adjustDashes != null || strokeAlignment != .center || strokeWidth != 1 || lineCap != 0 || lineJoin != 0 || miterLimit != 4 || dash.isNotEmpty || dashPhase != 0) ||
+        !stroke && (adjustDashes != null || strokeAlignment != .center || strokeWidth != 1 || lineCap != 0 || lineJoin != 0 || miterLimit != 4 || dash.isNotEmpty || dashPhase != 0) ||
         !paint && (overprint || opacity != 1 || evenOdd) ||
         kind == .blend && transparency == null ||
         transparency != null && (!paint && kind != .blend || opacity != 1)) {
