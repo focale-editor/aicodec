@@ -1847,8 +1847,8 @@ still rejects live style references.
 
 The layout follows the pinned Illustrator `gradient_linear.ai` and
 `gradient_linear_random_test.ai` producer fixtures, including their distinct
-fill/stroke `Bb` and `BB` selectors. This connects native style authoring only;
-Focale projection/composition for these private gradient parts remains pending.
+fill/stroke `Bb` and `BB` selectors. This package step connects native style
+authoring; the subsequent host connection is documented below.
 The initial value covers linear and centered radial gradients, without focal
 highlights or cached imaging matrices. Independent inspection of placeholder
 printing/PDF does not establish visual parity or actual Illustrator acceptance.
@@ -1859,3 +1859,45 @@ resource lifetime, immutable inputs, unresolved references and output limits.
 The independent reader confirms four complete native/container cases. Analysis,
 formatting and fix checks pass. No Focale runtime integration is claimed for this
 step, and no downloaded artwork is included in the package.
+
+### Relative gradient styles in Focale
+
+Focale now creates and projects linear and centered radial gradients in private
+fill and ordinary stroke parts, including standalone strokes, transparent groups
+and masked children. Shared stop resources retain distinct placement per paint.
+Selected edits and contour changes refresh the relative placement together with
+host-composed printing and PDF. Paint removal and complete-owner deletion use
+the existing appearance transactions. An inherited positional style no longer
+falls back to a stale process color on following contours.
+
+The CC placement uses exact cubic extrema in the gradient basis. Its relative
+origin carries position because the pinned external reader ignores matrix
+translation; the stored matrix uses downward-y coordinates. The independent
+verifier calls that reader's actual gradient projector on the serialized contour,
+checking native controls within `1e-10` and sample parameters within `1e-5` after
+Inkex's SVG decimal serialization. This is acceptance tooling only, with no new
+runtime dependency or AiKit renderer.
+
+The qualified profile retains encoded process stops, centered midpoints, extended
+ends, and centered radial focus. Focal highlights, cached imaging matrices,
+calligraphic gradient strokes and collapsed relative geometry reject explicitly.
+Ordinary stroke transform restrictions are unchanged.
+
+Local validation passes 336 Focale AI/PDF/source/prepress/color tests, including
+eight private-gradient regressions. Full host analysis retains 550 existing
+informational lints without errors or warnings. The independent host verifier
+passes 128 native/container/PDF views, including fourteen new gradient views.
+Original PDF pixels and all three subsequent edited/reshaped saves match exactly
+with Poppler at 144 dpi and Ghostscript at 72 dpi. Initial reopened transformed
+curves differ on 14–19 Poppler edge pixels (maximum 50/255) and zero to four
+non-antialiased Ghostscript edge pixels (maximum 204/255 at the 80-percent-opacity
+hard stop). Baking placement into native cubic controls changes the equivalent
+PDF coordinate basis. These four fixtures explicitly bound those differences
+to 25 pixels with 64/255 per channel and five pixels with 204/255 per channel,
+respectively; they do not claim pixel identity or arbitrary-resolution
+equivalence. Native geometry and
+gradient parameters are checked separately as described above.
+
+AiKit runtime code is unchanged in this host lot; its preceding 1,562 VM and Node
+test results remain the package baseline. Actual Illustrator rendering, native
+editability and Illustrator-to-Focale resaving remain unverified.

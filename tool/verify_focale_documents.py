@@ -23,6 +23,7 @@ from verify_focale_brushes import verify_brushes, verify_affine_brushes
 from verify_focale_conversions import verify_conversions
 from verify_focale_group_paints import verify_group_paints
 from verify_focale_group_topology import verify_group_topology, verify_group_transfers
+from verify_focale_style_gradients import verify_style_gradients
 from corpus_support import REVISION, native_programs
 from verify_native_colors import operators
 from verify_native_documents import renders
@@ -566,6 +567,7 @@ def main():
     verify_group_paints(inkai, args.output)
     verify_group_topology(inkai, args.output)
     verify_group_transfers(inkai, args.output)
+    verify_style_gradients(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 
