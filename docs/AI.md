@@ -256,11 +256,16 @@ Bounds supplied by the host describe complete ink, including strokes and effects
 
 Qualified subtrees can include ordinary paths/groups, direct live shapes and complete CC authoring/printing pairs. Opaque children may survive a header-only edit without qualifying for subtree editing. Copies and deletion follow the shared identity/state rules. Reparenting requires explicit inheritance, and self/descendant destinations reject.
 
-Mixed artwork methods accept exact current path/layer handles whose immediate
-parent is a layer or the global root. Group-owned direct selections are excluded.
+Mixed artwork methods accept exact current handles for admitted paths, complete
+layers and the other families described below. Their immediate parent must be a
+qualified ordinary layer/group or the global root; a layer cannot be a group child.
 Selections must be disjoint; moving layers updates declared root counts and
 requires explicit invalidation of saved view data where applicable. Source names,
-identities and qualified subtree metadata survive these operations.
+identities and qualified subtree metadata survive these operations. Moving or
+removing an ordinary neighbor after a complete appearance uses that pair's resolved
+native/printing state, just like mixed reordering. The retained pair is never
+flattened or selected through one of its private contours. Identity deletion still
+checks whole-source references; unidentified deletion retains its local scope.
 
 ## Native paths and groups
 

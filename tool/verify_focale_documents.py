@@ -216,51 +216,52 @@ def verify_appearance_inks(inkai, output):
     print('Verified eight private-ink saves: style/group paints, mask inks, exact alternatives, refreshed printing and PDF pixels.')
 
 
-def verify_mixed_inks(inkai, output):
-    """Bind preserved spans independently and check mixed ink revisions twice."""
+def preserved_parts(inkai, output, stem):
+    """Validate host range metadata against the external compound inventory."""
     from inkai.parser.hierarchy_objects import Mask
 
-    def preserved(stem):
-        """Validate host range metadata against the external compound inventory."""
-        native = (output / f'{stem}.ps').read_bytes()
-        ranges = json.loads((output / f'{stem}.json').read_text())
-        document = inkai.parse(str(output / f'{stem}.ps'))
-        _, groups, _ = group_inventory(document)
-        compound, = [group for group in groups if group['kind'] == '*u']
-        assert compound['private'], stem
-        start, end = ranges['owner']
-        assert 0 <= start < end <= len(native), stem
-        pieces = []
-        for key in ('authoring', 'printing'):
-            first, last = ranges[key]
-            assert start <= first < last <= end, (stem, key)
-            pieces.append(native[first:last])
-        authoring = [(op.command, tuple(op.tokens)) for op in operators(parse_fragment(pieces[0]))]
-        assert authoring == [(command, operands) for command, operands, _ in compound['commands'] if command is not None], stem
-        assert authoring[0][0] == '*u' and authoring[-1][0] == '*U', stem
-        printing = list(operators(parse_fragment(pieces[1])))
-        assert printing[0].command == 'u' and printing[-1].command == 'U', stem
-        values = list(native_values(document.trailer))
-        owner, = [value for value in values if isinstance(value, dict) and value.get('AIArtName') == 'Compound source']
-        assert 'AI10_ArtUID' in owner, stem
-        masks = [value for value in values if isinstance(value, Mask)]
-        assert len(masks) == int('-raster-' in stem), stem
-        styles = []
-        for first, last in ranges['styles']:
-            assert 0 <= first < last <= start, stem
-            fragment = native[first:last]
-            assert fragment.startswith(b'/KnownStyle') and b'/ActiveStyle' in fragment and b'/Execution' in fragment, stem
-            styles.append(fragment)
-        assert styles, stem
-        return native, native[start:end], pieces, styles, owner['AI10_ArtUID'], document
+    native = (output / f'{stem}.ps').read_bytes()
+    ranges = json.loads((output / f'{stem}.json').read_text())
+    document = inkai.parse(str(output / f'{stem}.ps'))
+    _, groups, _ = group_inventory(document)
+    compound, = [group for group in groups if group['kind'] == '*u']
+    assert compound['private'], stem
+    start, end = ranges['owner']
+    assert 0 <= start < end <= len(native), stem
+    pieces = []
+    for key in ('authoring', 'printing'):
+        first, last = ranges[key]
+        assert start <= first < last <= end, (stem, key)
+        pieces.append(native[first:last])
+    authoring = [(op.command, tuple(op.tokens)) for op in operators(parse_fragment(pieces[0]))]
+    assert authoring == [(command, operands) for command, operands, _ in compound['commands'] if command is not None], stem
+    assert authoring[0][0] == '*u' and authoring[-1][0] == '*U', stem
+    printing = list(operators(parse_fragment(pieces[1])))
+    assert printing[0].command == 'u' and printing[-1].command == 'U', stem
+    values = list(native_values(document.trailer))
+    owner, = [value for value in values if isinstance(value, dict) and value.get('AIArtName') == 'Compound source']
+    assert 'AI10_ArtUID' in owner, stem
+    masks = [value for value in values if isinstance(value, Mask)]
+    assert len(masks) == int('-raster-' in stem), stem
+    styles = []
+    for first, last in ranges['styles']:
+        assert 0 <= first < last <= start, stem
+        fragment = native[first:last]
+        assert fragment.startswith(b'/KnownStyle') and b'/ActiveStyle' in fragment and b'/Execution' in fragment, stem
+        styles.append(fragment)
+    assert styles, stem
+    return native, native[start:end], pieces, styles, owner['AI10_ArtUID'], document
 
+
+def verify_mixed_inks(inkai, output):
+    """Bind preserved spans independently and check mixed ink revisions twice."""
     for printing in ('raster', 'vector'):
         for neighbor in ('path', 'appearance'):
             base = f'ink-mixed-{printing}-{neighbor}'
-            initial = preserved(f'{base}-initial')
+            initial = preserved_parts(inkai, output, f'{base}-initial')
             for revision in (1, 2):
                 stem = f'{base}-{revision}'
-                native, owner, pieces, styles, identity, document = preserved(stem)
+                native, owner, pieces, styles, identity, document = preserved_parts(inkai, output, stem)
                 assert (owner, pieces, styles, identity) == initial[1:5], stem
                 paints = [op for section in (document.setup, document.trailer)
                           for op in operators(section) if op.command in ('x', 'X')]
@@ -271,6 +272,29 @@ def verify_mixed_inks(inkai, output):
                 assert len(PdfReader(path, strict=True).pages) == 1, stem
                 assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
     print('Verified eight mixed-ink saves: exact preserved compound/style/mask/printing bytes, editable ink alternatives and PDF pixels.')
+
+
+def verify_mixed_lifecycle(inkai, output):
+    """Verify neighbor authoring and repeated complete-pair preservation."""
+    for printing in ('raster', 'vector'):
+        base = f'mixed-lifecycle-{printing}'
+        initial = preserved_parts(inkai, output, f'{base}-initial')
+        for revision in (1, 2):
+            stem = f'{base}-{revision}'
+            native, owner, pieces, styles, identity, document = preserved_parts(inkai, output, stem)
+            assert (owner, pieces, styles, identity) == initial[1:5], stem
+            names = [value['AIArtName'] for value in native_values(document.trailer)
+                     if isinstance(value, dict) and 'AIArtName' in value]
+            assert 'Tracé before' not in names and 'Editable ink' not in names, (stem, names)
+            assert names.count('Compound source') == names.count('Destination') == 1, (stem, names)
+            assert names.count('Created appearance') == int(revision == 1), (stem, names)
+            assert names.count('Duplicate') == int(revision == 2), (stem, names)
+            assert (names.index('Compound source') < names.index('Destination')) == (revision == 1), stem
+            path = output / f'{stem}.ai'
+            assert native_programs(path) == [native], stem
+            assert len(PdfReader(path, strict=True).pages) == 1, stem
+            assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+    print('Verified four mixed-lifecycle saves: created/removed/moved neighbors, reordered native pairs and exact preserved source/PDF pixels.')
 
 
 def main():
@@ -483,6 +507,7 @@ def main():
     verify_authored_inks(inkai, args.output)
     verify_appearance_inks(inkai, args.output)
     verify_mixed_inks(inkai, args.output)
+    verify_mixed_lifecycle(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 

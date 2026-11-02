@@ -37,6 +37,7 @@ Map<int, _NativeShapeInputs> _sourceMovementStates(
   AiNativeStructureNode? parent,
   bool inheritParentFlags, {
   Iterable<int> boundaries = const [],
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
   final AiNativeStructure structure = drawing._objects.structure;
   // Layer and object inventories can own separate structure snapshots over the
@@ -58,7 +59,7 @@ Map<int, _NativeShapeInputs> _sourceMovementStates(
     position,
     ...sourceGroups.map((node) => node.start),
     ...targetGroups.map((node) => node.start),
-  ]);
+  ], appearanceArtwork: appearanceArtwork);
   if (!inheritParentFlags &&
       (sourceGroups.length != targetGroups.length ||
           sourceGroups.indexed.any((entry) {

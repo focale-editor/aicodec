@@ -10,6 +10,7 @@ List<AiSourceEdit> _relocatedNativeSubtree(
   AiNativeStructureNode? parent,
   bool inheritParentFlags, {
   bool groups = false,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
 }) {
   if (position > span.start && position < span.end) {
     throw ArgumentError('A native subtree cannot move inside its own source span.');
@@ -23,8 +24,9 @@ List<AiSourceEdit> _relocatedNativeSubtree(
     parent,
     inheritParentFlags,
     boundaries: pairs.map((pair) => pair.shape.end),
+    appearanceArtwork: appearanceArtwork,
   );
-  final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, pairs, groups: groups);
+  final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, pairs, groups: groups, appearanceArtwork: appearanceArtwork);
   final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = _retainedSubtreeState(ordinary, pairs, states, drawing.records.program.limits.maxDecodedBytes);
   final List<AiNativeInstruction> commands = [...ordinary, for (final _NativeShapeBundle pair in pairs) ...pair.commands]..sort((first, second) => first.start.compareTo(second.start));
   final ({List<int> bytes, _NativeSourceReplacement replacement}) placed = _placedNativeSource(
@@ -39,6 +41,6 @@ List<AiSourceEdit> _relocatedNativeSubtree(
     states[position]!,
     maxBytes: drawing.records.program.limits.maxDecodedBytes - retained.bytes.length,
   );
-  _sourceFollowingDependencies(drawing, {span: retained.replacement}, insertions: {position: placed.replacement});
+  _sourceFollowingDependencies(drawing, {span: retained.replacement}, insertions: {position: placed.replacement}, retainedArtwork: appearanceArtwork);
   return [AiSourceEdit(start: span.start, end: span.end, bytes: retained.bytes), AiSourceEdit(start: position, end: position, bytes: placed.bytes)];
 }

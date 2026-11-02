@@ -42,24 +42,45 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 }
 
 /// Removes whole mixed subtrees while retaining both streams' persistent effects.
-List<AiSourceEdit> _removedNativeSubtrees(AiNativeLayers model, List<_NativeSubtreeSpan> spans, List<_NativeShapeBundle> pairs, {bool groups = false}) {
+List<AiSourceEdit> _removedNativeSubtrees(
+  AiNativeLayers model,
+  List<_NativeSubtreeSpan> spans,
+  List<_NativeShapeBundle> pairs, {
+  bool groups = false,
+  List<AiNativeAppearanceArtwork> appearanceArtwork = const [],
+}) {
   final AiNativeDrawing drawing = model.drawing;
-  _nativeRemovalReferences(model, [
+  final List<AiNativeObjectIdentifier> identifiers = [
     for (final AiNativeObjectIdentifier identifier in model.structure.identifiers)
       if (spans.any((span) => identifier.field.owner.start >= span.start && identifier.field.owner.end <= span.end)) identifier,
-  ], _layerHeaderItems(model));
-  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, pairs.map((pair) => pair.shape.end));
+  ];
+  _nativeRemovalReferences(
+    model,
+    identifiers,
+    _layerHeaderItems(model),
+    bodyDictionaries: identifiers.isEmpty || appearanceArtwork.isEmpty
+        ? null
+        : _nativeReferenceBody(
+            model,
+            _layerHeaderItems(model),
+            inspect: _nativeAppearanceInterval,
+            qualifyShapeNeighbors: false,
+            clipping: true,
+            appearanceArtwork: appearanceArtwork,
+          ),
+  );
+  final Map<int, _NativeShapeInputs> states = _shapeCopyInputs(drawing, pairs.map((pair) => pair.shape.end), appearanceArtwork: appearanceArtwork);
   final List<AiSourceEdit> edits = [];
   final Map<_NativeSubtreeSpan, _NativeSourceReplacement> replacements = {};
   int remaining = drawing.records.program.limits.maxDecodedBytes;
   for (final _NativeSubtreeSpan span in spans) {
     final List<_NativeShapeBundle> selected = pairs.where((pair) => pair.start >= span.start && pair.shape.end <= span.end).toList();
-    final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, selected, groups: groups);
+    final List<AiNativeInstruction> ordinary = _subtreeOrdinaryCommands(model, span.start, span.end, selected, groups: groups, appearanceArtwork: appearanceArtwork);
     final ({List<int> bytes, _NativeSourceReplacement replacement}) retained = _retainedSubtreeState(ordinary, selected, states, remaining);
     edits.add(AiSourceEdit(start: span.start, end: span.end, bytes: retained.bytes));
     replacements[span] = retained.replacement;
     remaining -= retained.bytes.length;
   }
-  _sourceFollowingDependencies(drawing, replacements);
+  _sourceFollowingDependencies(drawing, replacements, retainedArtwork: appearanceArtwork);
   return edits;
 }

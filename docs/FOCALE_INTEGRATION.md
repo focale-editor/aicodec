@@ -28,9 +28,8 @@ validation section and the remaining limits below.
   ones. Do not use a flattened PDF as evidence of native export completion.
 - Preserve earlier uncommitted work in both repositories. Check the current
   dependency resolution before application tests. Implementation used a local
-  AiKit override. Final validation removes it and locks Focale to Git commit
-  `553ba770e9042beff961f7112eaaeb598a8e0460`; all 200 library files match the
-  validated worktree. No package version or publication changes are involved.
+  AiKit override. Final validation removes it and locks Focale to the pushed AiKit revision.
+  The Git dependency library files must match the validated worktree exactly. No package version or publication changes are involved.
 - Record the implementation and meaningful verification for each completed step
   below. Leave requirements open until their full acceptance is established.
 
@@ -1514,3 +1513,29 @@ checks pass. Independent native/PDF readers and Poppler validate 56 complete sav
 including eight mixed-ink revisions with byte-exact owner/style/mask/printing
 preservation and matching reference PDF pixels. This is local evidence; no real
 Illustrator round trip has been performed.
+
+## Supported neighbor lifecycle in mixed documents
+
+Preserved complete pairs participate in the host's native lifecycle ledger as
+opaque appearance owners. Their printable descendants never become independent
+editable paths or images. Focale can create, delete, duplicate, reparent and reorder
+supported neighbors while retaining each preserved pair's parent chain, ancestor
+attributes and complete native data. Page edits and direct preserved reparenting
+remain rejected.
+
+Source indices may change when an editable appearance is inserted or removed.
+Preservation therefore matches complete source bytes with multiplicity and checks
+all referenced style definitions, rather than reusing the old appearance index.
+Regressions combine neighbor deletion, creation of a new appearance and ordinary
+group, reparenting, duplication, stacking changes, project recovery and two complete
+saves beside vector/raster printing. Independent readers check retained compounds,
+style/mask/printing bytes, native object names/order and exact reference PDF pixels.
+
+Validation on 2026-11-02: 1,486 package tests pass on VM and Node, including four
+ordinary-neighbor movement/removal regressions. The final focused Node run also
+checks local anonymous deletion against the final reference guard. All 297
+AI/PDF/source/prepress/color host tests pass, including three mixed-lifecycle
+regressions. Package analysis is clean; application analysis has no errors or
+warnings (550 existing informational lints). Formatting and scoped fixes pass.
+Independent native/PDF readers and Poppler verify 60 complete saves, including four
+new mixed-lifecycle revisions. Actual Illustrator exchange remains unverified.

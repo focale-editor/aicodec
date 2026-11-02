@@ -108,7 +108,8 @@ AiNativeLayers _moveNativeLayerArtwork(AiNativeLayers model, AiNativeItem artwor
   if (parent != null && group != null) {
     throw ArgumentError('Moving artwork requires at most one group or layer destination.');
   }
-  final ({_NativeSubtreeSpan span, AiNativeStructureNode node}) owner = _nativeLayerArtworkOwner(model, artwork);
+  final List<AiNativeAppearanceArtwork> retained = _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: model.structure));
+  final ({_NativeSubtreeSpan span, AiNativeStructureNode node}) owner = _nativeLayerArtworkOwner(model, artwork, appearanceArtwork: retained);
   if (parent != null) {
     _qualifiedLayerHeader(model, parent);
     if (parent.start >= owner.span.start && parent.end <= owner.span.end) {
@@ -144,6 +145,7 @@ AiNativeLayers _moveNativeLayerArtwork(AiNativeLayers model, AiNativeItem artwor
       position,
       destination,
       inheritParentFlags,
+      appearanceArtwork: retained,
     ),
   ], roots: roots);
 }
@@ -153,7 +155,9 @@ AiNativeLayers _removeNativeLayerArtwork(AiNativeLayers model, List<AiNativeItem
   if (artwork.isEmpty || artwork.toSet().length != artwork.length) {
     throw ArgumentError('Mixed removal requires distinct owned artwork.');
   }
-  final List<_NativeSubtreeSpan> spans = artwork.map((item) => _nativeLayerArtworkOwner(model, item).span).toList()..sort((first, second) => first.start.compareTo(second.start));
+  final List<AiNativeAppearanceArtwork> retained = _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: model.structure));
+  final List<_NativeSubtreeSpan> spans = artwork.map((item) => _nativeLayerArtworkOwner(model, item, appearanceArtwork: retained).span).toList()
+    ..sort((first, second) => first.start.compareTo(second.start));
   if (model.drawing.records.containers.any((record) => record.type == 'AI11Text' && spans.any((span) => record.start >= span.start && record.end <= span.end))) {
     throw UnsupportedError('Remove text stories or frames before deleting their containing artwork.');
   }
@@ -171,7 +175,7 @@ AiNativeLayers _removeNativeLayerArtwork(AiNativeLayers model, List<AiNativeItem
     model,
     [
       if (layers.isNotEmpty) ..._layerDeclarations(model, roots, discardViewState),
-      ..._removedNativeSubtrees(model, spans, pairs),
+      ..._removedNativeSubtrees(model, spans, pairs, appearanceArtwork: retained),
     ],
     roots: roots,
     layers: model.layers.length - layers.length,
