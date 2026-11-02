@@ -5,6 +5,9 @@ The independent reader parses nib descriptors and styles. It does not execute
 Illustrator's brush engine; native appearance/editability acceptance is separate.
 """
 
+from io import BytesIO
+
+from PIL import Image, ImageChops
 from pypdf import PdfReader
 
 from corpus_support import native_programs
@@ -48,3 +51,65 @@ def verify_brushes(inkai, output):
             assert renders(ai) == renders(reference)
             print(stem, 'passed', flush=True)
     print('Verified six brush comparisons across three complete saves and original/reopened host PDF views.')
+
+
+def verify_affine_brushes(inkai, output):
+    """Check physical nib ellipses under unequal scale, shear and reflection."""
+    import math
+    from verify_focale_group_paints import ghostscript_renders
+
+    def metric(angle, ratio, width, matrix):
+        cosine, sine = math.cos(math.radians(angle)), math.sin(math.radians(angle))
+        a, b, c, d = matrix
+        x, y = width * (a * cosine + c * sine), width * (b * cosine + d * sine)
+        u, v = width * ratio * (-a * sine + c * cosine), width * ratio * (-b * sine + d * cosine)
+        return x * x + u * u, x * y + u * v, y * y + v * v
+
+    cosine, sine = math.cos(.3), math.sin(.3)
+    cases = {
+        'brush-affine-0': (30, .25, 6, (1.7, 0, 0, -.8)),
+        'brush-affine-1': (30, .25, 6, (cosine, -sine, .55 * cosine - sine, -(.55 * sine + cosine))),
+        'brush-affine-2': (30, .25, 6, (-1.6, 0, -.33, -1.1)),
+        'brush-affine-nested-1': (20, .4, 5, (1.4, 0, .36, .9)),
+        'brush-affine-nested-2': (-35, .6, 5, (1.4, 0, .36, .9)),
+    }
+    for base, expected in cases.items():
+        for reopened in (False, True):
+            stem = base + ('-reopened' if reopened else '')
+            path = output / f'{stem}.ai'
+            source = output / f'{stem}.ps'
+            assert native_programs(path) == [source.read_bytes()], stem
+            document = inkai.parse(str(source))
+            assert descriptor_state(document)['references'], stem
+            filters = [value for value in native_values(document.setup) if type(value).__name__ == 'BasicFilter' and value.Filter[0] == 'Adobe Calligraphic Brush Tool']
+            parameters = filters[-1].Dict
+            width, = [float(value.tokens[0]) for value in native_values(parameters['StrokeStyle']) if getattr(value, 'command', None) == 'w']
+            actual = metric(float(parameters['Angle']), float(parameters['Roundness']) / 100, width * float(parameters['Diameter']), (1, 0, 0, 1))
+            assert all(abs(a - b) < 1e-8 for a, b in zip(actual, metric(*expected))), (stem, actual, expected)
+            reference = output / f'{stem}-reference.pdf'
+            saved, host = PdfReader(path, strict=True), PdfReader(reference, strict=True)
+            assert len(saved.pages) == len(host.pages) == 1 and saved.pages[0].mediabox == host.pages[0].mediabox, stem
+            if not reopened:
+                assert renders(path) == renders(reference), stem
+                assert renders(path, dpi=144) == renders(reference, dpi=144), stem
+            else:
+                # Rebuilding an equivalent ellipse changes the coordinate basis
+                # used by the host's .01-point outline approximation. These small
+                # fixtures permit at most ten antialiased edge pixels at 144 dpi;
+                # native ellipse metrics above remain independently constrained.
+                actual_pages = renders(path, dpi=144)
+                expected_pages = renders(reference, dpi=144)
+                assert len(actual_pages) == len(expected_pages) == 1, stem
+                actual_image = Image.open(BytesIO(actual_pages[0])).convert('RGB')
+                expected_image = Image.open(BytesIO(expected_pages[0])).convert('RGB')
+                assert actual_image.size == expected_image.size, stem
+                difference = ImageChops.difference(actual_image, expected_image)
+                red, green, blue = difference.split()
+                nonzero = ImageChops.lighter(red, ImageChops.lighter(green, blue))
+                changed = actual_image.width * actual_image.height - nonzero.histogram()[0]
+                maximum = max(high for _, high in difference.getextrema())
+                assert changed <= 10 and maximum <= 32, (stem, changed, maximum)
+                print(stem, f'Poppler 144 dpi: {changed} edge pixels, maximum channel difference {maximum}/255', flush=True)
+            assert ghostscript_renders(path) == ghostscript_renders(reference), stem
+            print(stem, 'passed', flush=True)
+    print('Verified ten affine-brush views: native nib metrics, exact original PDF pixels, bounded reopened Poppler edges and exact Ghostscript 72 dpi pixels.')

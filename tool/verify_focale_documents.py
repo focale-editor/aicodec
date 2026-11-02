@@ -19,7 +19,7 @@ from pypdf import PdfReader
 from pypdf.generic import ContentStream
 
 from verify_focale_patterns import verify_patterns
-from verify_focale_brushes import verify_brushes
+from verify_focale_brushes import verify_brushes, verify_affine_brushes
 from verify_focale_conversions import verify_conversions
 from verify_focale_group_paints import verify_group_paints
 from verify_focale_group_topology import verify_group_topology, verify_group_transfers
@@ -561,6 +561,7 @@ def main():
     verify_mixed_pages(inkai, args.output)
     verify_patterns(inkai, args.output)
     verify_brushes(inkai, args.output)
+    verify_affine_brushes(inkai, args.output)
     verify_conversions(inkai, args.output)
     verify_group_paints(inkai, args.output)
     verify_group_topology(inkai, args.output)

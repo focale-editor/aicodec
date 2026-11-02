@@ -1804,3 +1804,33 @@ bounded association work. The pinned independent reader confirms eight reference
 across four synthetic sources. Analysis, formatting and scoped fix checks pass.
 These checks establish inspection behavior only; instance authoring and real
 Illustrator exchange remain outstanding.
+
+### Affine placement of fixed calligraphic brushes
+
+Focale's existing fixed-nib writer now derives an equivalent ellipse under unequal
+axis scale, shear and reflection, while retaining the editable native spine.
+A normalized principal-axis calculation supplies native angle, roundness and
+major-diameter stroke width. Source and destination printing remain host composed.
+The same calculation serves newly authored paths and retained private children.
+No AiKit format extension or nib renderer is required. Ordinary strokes retain
+their existing transform qualification, and transformed nib ratios below the
+host's five-percent minimum reject instead of being clamped visibly.
+
+Local validation passes 328 Focale AI/PDF/source/prepress/color tests, including
+seven brush cases. Full host analysis retains 550 existing informational lints
+with no errors or warnings; formatting and scoped fix checks pass. The complete
+independent host verifier passes 114 native/container/PDF comparisons, including
+ten affine-brush views. Native ellipse covariance agrees within `1e-8` and the
+original host PDF matches exactly with Poppler at 72 and 144 dpi. Ghostscript at
+72 dpi matches both original and reopened views exactly. Reopened Poppler views
+at 144 dpi differ on zero to six edge pixels, with maximum channel differences
+of 21/255, due to the host's `.01`-point outline approximation in the changed nib
+basis. The regression explicitly bounds this difference to ten pixels and
+32/255 per channel on these fixtures; it does not assert pixel identity or
+arbitrary-resolution equivalence. Native angles already in the host range stay
+exact on import and unchanged-axis placement, avoiding duplicate descriptors
+from floating-point angle normalization during a width-only edit.
+
+AiKit runtime code is unchanged in this lot. These checks do not execute
+Illustrator's brush engine; actual Adobe rendering and editability remain
+unverified.
