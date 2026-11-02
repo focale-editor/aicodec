@@ -19,7 +19,7 @@ AiNativeAppearances _createNativeAppearancePath(
   AiNativeGroup? parent,
   AiLayer? layer,
 ) {
-  if (definition.artwork.fill != null || definition.artwork.stroke != null) {
+  if (definition.filled || definition.stroked) {
     throw ArgumentError('A standalone appearance contour must be unpainted; its named style owns the paints.');
   }
   if (styleNameBytes.isEmpty || styleNameBytes.any((byte) => byte < 0 || byte > 255)) {

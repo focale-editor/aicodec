@@ -365,7 +365,7 @@ final class AiNativeDrawing {
   /// clipping, compound, private and conditional groups retain separate contracts.
   AiNativeDrawing updateGroupAttributes({required AiNativeGroup group, bool? hidden, bool? locked}) => _updateNativeGroupAttributes(this, group, hidden, locked);
 
-  /// Replaces one ordinary path's geometry and complete process appearance.
+  /// Replaces one ordinary path's geometry and complete literal appearance.
   ///
   /// Retains its attached name, XML identity and qualified metadata. Explicit
   /// flags apply only to the selected object; separate native and printing state
@@ -373,16 +373,20 @@ final class AiNativeDrawing {
   /// artwork when saving. Private shapes, gradients, compounds and unresolved
   /// metadata require their own contracts. All supplied attributes are complete,
   /// rather than patches over inherited values.
+  /// Named channels replace the corresponding absent process channels; names,
+  /// alternatives and native tint operands are serialized without conversion.
   AiNativeDrawing replacePathArtwork({
     required AiNativePath path,
     required AiArtworkPath artwork,
     required AiBoundingBox bounds,
+    AiNativeNamedColor? namedFill,
+    AiNativeNamedColor? namedStroke,
     double opacity = 1,
     AiNativeTransparency? transparency,
     bool hidden = false,
     bool fillOverprint = false,
     bool strokeOverprint = false,
-  }) => _replaceNativePathArtwork(this, path, artwork, bounds, opacity, hidden, fillOverprint, strokeOverprint, transparency: transparency);
+  }) => _replaceNativePathArtwork(this, path, artwork, bounds, opacity, hidden, fillOverprint, strokeOverprint, transparency: transparency, namedFill: namedFill, namedStroke: namedStroke);
 
   /// Duplicates ordinary paths immediately after their original source objects.
   ///

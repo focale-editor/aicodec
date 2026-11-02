@@ -1413,9 +1413,10 @@ master/path change cannot accidentally detach each paint into a process color.
 Project persistence and repeated saves retain the shared identities.
 
 This bridge covers ordinary custom-color artwork in retained legacy and CC files.
-New native resource creation/deletion, renaming, local tint/paint changes, `Xs`/`Xz`
-semantics, and global revisions needing composed appearance, gradient or mesh
-representations remain additional work. Such mutations reject before saving.
+The authoring extension below adds initial palettes and per-object tint changes.
+Deleting referenced native resources, renaming,
+`Xs`/`Xz` semantics, and global revisions needing composed appearance, gradient or
+mesh representations remain additional work. Such mutations reject before saving.
 Native color alternatives are converted by Focale when needed, never by AiKit.
 
 Validation on 2026-11-02: the combined host campaign passes 275 cases; the final
@@ -1426,3 +1427,37 @@ informational lints. The pinned independent native reader, pypdf and Poppler pas
 assert exact native alternatives and names, inverse native/PDF tints, PDF Separation
 functions and exact rendered pixels against the host reference PDFs. No Illustrator
 reopen/editability exchange is claimed.
+
+## Initial spot palettes and local named paints
+
+New Focale documents now serialize their CMYK/RGB spot masters into native palette
+cells before authoring artwork. Unused masters survive save/reopen. Palette and
+artwork paints retain the same exact native ink identity; two host masters cannot
+silently introduce conflicting native names. Shared process-color libraries and
+nonlinear or non-device spot functions still require their own typed contracts.
+
+Ordinary paths accept independent named fill/stroke channels when created or
+repainted. A local tint change keeps the shared definition and other applications
+unchanged, including inherited outgoing state. Retained documents can create a new
+path using an existing ink or add a fresh master and its first application in one
+save. Unused palette masters can be removed after AiKit proves that no references
+remain outside their cells. Host resource IDs are rebound to canonical native byte
+identities before the remaining object edits; existing masters and paths remain
+unchanged. Direct live-shape creation and parameter replacement
+preserve named paints, as do gradient strokes and conversion from a gradient to a
+named solid fill. Private paint stacks retain their separate complete-appearance
+requirements; they cannot silently flatten a named paint into process channels.
+
+Literal process/named palette cells are now qualified as independent of ATE
+indices during text initialization and story lifecycle. Their complete source
+bytes remain unchanged. Conditional, compound-gradient and unrecognized cells
+still reject; this does not authorize global edits of ATE named colors.
+
+Validation on 2026-11-02: all 1,467 package tests pass on VM and Node, including
+seven named-path cases and one palette/text lifecycle regression. Package analysis,
+formatting and scoped fix checks pass. Fourteen focused host ink tests pass.
+Independent verification covers 40 complete host saves, with two additional
+initial-palette/local-tint revisions checking unused masters, native state at each
+contour, inverse PDF ink amounts and exact PDF pixels. The final Node run includes
+the repaired absent-named-paint case; the serializer uses explicit nullable-channel
+checks instead of destructuring nullable records. No Illustrator exchange is claimed.

@@ -1089,6 +1089,18 @@ For linear positional edits, existing cached `Bm` interval strips cannot be repa
 
 ### Global named-ink alternatives
 
+Ordinary path authoring also accepts literal named channels through
+`AiNativePathDefinition.namedFill`/`namedStroke` and the corresponding
+`replacePathArtwork` arguments. Each channel is exclusive with its process color.
+Creation and replacement serialize the original named-color kind, alternatives,
+name bytes and tint operand; outgoing native and printing states are restored for
+following artwork. Direct live shapes retain these channels during complete
+parameter/artwork replacement. Gradient contours may have a named stroke.
+Unpainted private appearance carriers and clipping contours cannot acquire a named
+paint implicitly. These fields do not redefine another resource or compose any
+printing representation. Hosts may create palette cells separately to retain
+unused masters.
+
 `AiNativeInks.decode(records:)` groups exact byte-name references in literal
 fill/stroke paints, native style trees, palette cells, authoritative/compatibility
 gradient stops and mesh Separation/NChannel declarations. A palette's display

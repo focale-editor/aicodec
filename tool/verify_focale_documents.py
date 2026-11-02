@@ -132,6 +132,53 @@ def verify_named_inks(inkai, output):
     print('Verified four named-ink saves: shared CMYK/RGB alternatives, native/PDF tint inversion, spot plates and exact repeated-save PDF pixels.')
 
 
+def verify_authored_inks(inkai, output):
+    """Verify new palette resources and independently selected path tints."""
+    for revision, tint in ((1, .6), (2, .9)):
+        stem = f'ink-authored-{revision}'
+        path = output / f'{stem}.ai'
+        native = (output / f'{stem}.ps').read_bytes()
+        document = inkai.parse(str(output / f'{stem}.ps'))
+        palette = [op for op in operators(document.setup) if op.command in ('x', 'Xx')]
+        assert len(palette) == 2, stem
+        assert sorted(op.tokens[-2] if op.command == 'x' else op.tokens[-3] for op in palette) == [b'Authored', b'Unused'], stem
+        assert all(float(op.tokens[-1] if op.command == 'x' else op.tokens[-2]) == 0 for op in palette), stem
+        states, fill, stroke = [], None, None
+        for op in operators(document.trailer):
+            if op.command in ('x', 'Xx'):
+                fill = (op.tokens[-2] if op.command == 'x' else op.tokens[-3], float(op.tokens[-1] if op.command == 'x' else op.tokens[-2]))
+            elif op.command in ('X', 'XX'):
+                stroke = (op.tokens[-2] if op.command == 'X' else op.tokens[-3], float(op.tokens[-1] if op.command == 'X' else op.tokens[-2]))
+            elif op.command in ('g', 'k', 'Xa'):
+                fill = None
+            elif op.command in ('G', 'K', 'XA'):
+                stroke = None
+            elif op.command == 'm':
+                states.append((fill, stroke))
+        assert len(states) == 2 and states[0][0][0] == states[0][1][0] == b'Authored', stem
+        assert math.isclose(states[0][0][1], 1 - tint) and math.isclose(states[0][1][1], .7), stem
+        assert states[1] == (None, None), stem
+        assert native_programs(path) == [native], stem
+        pdf = PdfReader(path, strict=True)
+        tints = []
+
+        def inspect(stream, resources, depth=0):
+            """Check painted PDF ink amounts through explicit form ownership."""
+            assert depth < 16
+            for operands, operator in ContentStream(stream, pdf).operations:
+                if operator in (b'scn', b'SCN'):
+                    tints.extend(map(float, operands))
+                elif operator == b'Do':
+                    form = resources['/XObject'][operands[0]].get_object()
+                    if form.get('/Subtype') == '/Form':
+                        inspect(form, form.get('/Resources', resources), depth + 1)
+
+        inspect(pdf.pages[0].get_contents(), pdf.pages[0]['/Resources'])
+        assert len(tints) == 2 and all(math.isclose(a, b) for a, b in zip(sorted(tints), [.3, tint])), (stem, tints)
+        assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+    print('Verified two authored-ink saves: unused palette master, independent fill/stroke tints, unchanged neighbor state and exact PDF pixels.')
+
+
 def main():
     """Verify shared native owners, edited geometry, caches and exact page pixels."""
     if not __debug__:
@@ -339,6 +386,7 @@ def main():
     assert page_references['boards-removed'] == [page_references['boards-inserted'][i] for i in (1, 0)]
     appearances = verify_appearance_lifecycle(inkai, args.output)
     verify_named_inks(inkai, args.output)
+    verify_authored_inks(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 

@@ -72,7 +72,7 @@ AiNativeAppearances _replaceNativeAppearancePaths(
     };
     final Map<String, AiNativeInstruction> original = states[path.end]!.native;
     stateChanges[path] = (writes: writes, reads: reads, unresolved: writes.difference(original.keys.toSet()));
-    final String prefix = ['${paint.locked ? 1 : 0} A', '${change.hidden ? 1 : 0} Xw', ..._nativePathPaintCommands(definition)].join(' ');
+    final String prefix = ['${paint.locked ? 1 : 0} A', '${change.hidden ? 1 : 0} Xw', ..._nativePathPaintCommands(definition, maximum: drawing.records.program.limits.maxDecodedBytes)].join(' ');
     final List<AiSourceEdit> geometry = _replaceShapeContour(drawing, path, contours[path]!.pointCount, paint.segments, remaining, closed: paint.closed);
     for (final AiSourceEdit edit in geometry) {
       add(edit.start == path.geometry.first.start ? AiSourceEdit(start: edit.start, end: edit.end, bytes: [...latin1.encode('$prefix '), ...edit.bytes]) : edit);

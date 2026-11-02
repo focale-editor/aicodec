@@ -11,6 +11,8 @@ AiNativeDrawing _replaceNativePathArtwork(
   bool fillOverprint,
   bool strokeOverprint, {
   AiNativeTransparency? transparency,
+  AiNativeNamedColor? namedFill,
+  AiNativeNamedColor? namedStroke,
   AiNativeShapeParameters? shapeParameters,
   double? rotationRadians,
 }) {
@@ -42,6 +44,8 @@ AiNativeDrawing _replaceNativePathArtwork(
       drawing,
       AiNativePathDefinition(
         artwork: artwork,
+        namedFill: namedFill,
+        namedStroke: namedStroke,
         bounds: bounds,
         counted: count != null,
         opacity: opacity,

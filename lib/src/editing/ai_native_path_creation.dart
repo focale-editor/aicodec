@@ -1,7 +1,7 @@
 part of 'package:aikit/src/model/ai_native_records.dart';
 
-/// Supplies literal process paint state without geometry, guides or identities.
-Iterable<String> _nativePathPaintCommands(AiNativePathDefinition definition) sync* {
+/// Supplies literal paint state without geometry, guides or identities.
+Iterable<String> _nativePathPaintCommands(AiNativePathDefinition definition, {required int maximum}) sync* {
   final AiArtworkPath path = definition.artwork;
   yield '${path.evenOdd ? 1 : 0} XR';
   yield '${definition.transparency?.operands.join(' ') ?? '0 ${definition.opacity} 0 0 0'} Xy';
@@ -16,6 +16,12 @@ Iterable<String> _nativePathPaintCommands(AiNativePathDefinition definition) syn
       };
       yield '${value.channels.join(' ')} $operator';
     }
+  }
+  if (definition.namedFill case final AiNativeNamedColor fill) {
+    yield latin1.decode(fill._bytes(stroke: false, limit: maximum));
+  }
+  if (definition.namedStroke case final AiNativeNamedColor stroke) {
+    yield latin1.decode(stroke._bytes(stroke: true, limit: maximum));
   }
   yield '${path.strokeWidth} w';
   yield '${path.lineCap} J';
@@ -33,7 +39,7 @@ List<int> _createdNativePathBytes(
   AiNativePathMask mask = .none,
 }) {
   final AiArtworkPath path = definition.artwork;
-  if (mask != .none && (gradient != null || path.fill != null || path.stroke != null || path.closed != (mask == .closed))) {
+  if (mask != .none && (gradient != null || definition.filled || definition.stroked || path.closed != (mask == .closed))) {
     throw ArgumentError('Created clipping paths require unpainted geometry with matching explicit closure.');
   }
   final int maximum = drawing.records.program.limits.maxDecodedBytes;
@@ -57,7 +63,7 @@ List<int> _createdNativePathBytes(
     }
   }
   line('0 D');
-  _nativePathPaintCommands(definition).forEach(line);
+  _nativePathPaintCommands(definition, maximum: maximum).forEach(line);
   final List<AiPathSegment> segments = [...path.segments];
   if (definition.counted && path.closed) {
     final List<double> first = segments.first.coordinates;
@@ -82,11 +88,11 @@ List<int> _createdNativePathBytes(
   }
   final String paint = gradient != null
       ? 'F'
-      : path.fill == null
-      ? path.stroke == null
+      : !definition.filled
+      ? !definition.stroked
             ? 'N'
             : 'S'
-      : path.stroke == null
+      : !definition.stroked
       ? 'F'
       : 'B';
   if (mask == .none) {
@@ -96,7 +102,7 @@ List<int> _createdNativePathBytes(
   }
   if (gradient != null) {
     line(
-      '${path.stroke == null
+      '${!definition.stroked
           ? 0
           : path.closed
           ? 2

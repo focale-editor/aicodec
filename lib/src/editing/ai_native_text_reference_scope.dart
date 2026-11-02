@@ -17,6 +17,15 @@ List<({int start, int end})> validateTextLifecycleSource({required AiNativeRecor
     for (final AiNativeGradientArtwork owner in layers.drawing.gradientArtwork) (start: owner.start, end: owner.end),
   ];
   final List<({int start, int end})> independent = [...artwork];
+  for (final AiNativePalette palette in AiNativeSwatches.decode(records: records).palettes) {
+    if (palette.conditional || palette.swatches.any((cell) => cell.commands.length != 1)) {
+      throw UnsupportedError('Text lifecycle requires independent literal palette cells.');
+    }
+    for (final AiNativeSwatch cell in palette.swatches) {
+      _artboardPaletteColor(cell.commands.single);
+    }
+    independent.add((start: palette.start, end: palette.end));
+  }
   independent.addAll(_artboardFontSetupRanges(layers, const []));
   final Set<AiNativeContainer> retained = {
     for (final _NativeImageOwner image in images) ?image.dictionary,

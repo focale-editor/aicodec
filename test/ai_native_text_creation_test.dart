@@ -23,6 +23,29 @@ AiNativeTextDocument newDocumentText({AiNativeRecords? records, PsEngineLimits l
 
 /// Verifies initial ATE resources and their interaction with existing documents.
 void main() {
+  test('retains literal process and named palettes through text initialization and story lifecycle', () {
+    final AiNativeSwatches named = AiNativeSwatches.decode(records: newDocumentRecords(blank: true)).createNamed(
+      nameBytes: ascii.encode('Spot'),
+      color: AiNativeNamedColor(kind: .legacyCmyk, components: [.1, .2, .3, .4], nameBytes: ascii.encode('Ink'), tint: 0),
+    );
+    final AiNativeSwatches palette = named.createProcess(
+      nameBytes: ascii.encode('Process'),
+      color: AiColor(space: .rgb, channels: [.3, .4, .5]),
+    );
+    final AiNativePalette original = palette.palettes.single;
+    final List<int> bytes = palette.records.program.bytes.sublist(original.start, original.end);
+    final AiNativeTextDocument initialized = newDocumentText(records: palette.records);
+    final AiNativeTextDocument created = initialized.createStory(text: 'Palette and text', frames: [AiNativeTextFrameDefinition.point(x: 10, y: 20)], layer: initialized.records.program.layers.single);
+    final AiNativeTextDocument removed = created.removeStory(story: created.stories.single);
+    for (final AiNativeTextDocument document in [initialized, created, removed]) {
+      final AiNativePalette retained = AiNativeSwatches.decode(records: document.records).palettes.single;
+      check(document.records.program.bytes.sublist(retained.start, retained.end)).deepEquals(bytes);
+    }
+    final String unsupported = latin1.decode(palette.records.program.bytes).replaceFirst('0.3 0.4 0.5 Xa', '1 /Font CustomPaletteCommand');
+    final AiNativeRecords unknown = AiNativeRecords.decode(program: AiProgram.decode(bytes: latin1.encode(unsupported)));
+    check(() => newDocumentText(records: unknown)).throws<UnsupportedError>();
+  });
+
   test('initializes and edits text while retaining ordinary embedded and linked images', () {
     final AiNativeDrawing original = createdImageDocument();
     final AiNativeRasters images = AiNativeRasters.decode(records: original.records);

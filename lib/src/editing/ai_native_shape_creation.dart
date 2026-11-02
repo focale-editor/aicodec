@@ -104,6 +104,8 @@ AiNativeDrawing _replaceNativeDirectLiveShape(AiNativeDrawing drawing, AiLiveSha
     definition.fillOverprint,
     definition.strokeOverprint,
     transparency: definition.transparency,
+    namedFill: definition.namedFill,
+    namedStroke: definition.namedStroke,
     shapeParameters: parameters,
     rotationRadians: rotationRadians,
   );
