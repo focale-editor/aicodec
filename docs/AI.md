@@ -1087,6 +1087,39 @@ For linear positional edits, existing cached `Bm` interval strips cannot be repa
 
 `AiNativePaintChange.namedColor` changes those literal components/tints in qualified active or simple appearances, retaining the source representation and ink name. Selected/shared use isolation and complete printing synchronization follow the same contract as process paints. This is broader named-paint editing, not a document-wide ink redefinition: unrelated same-name paints, ATE named colors, mesh ink declarations and external color-book records are not rewritten. Ink renaming and unsupported selectors reject.
 
+### Global named-ink alternatives
+
+`AiNativeInks.decode(records:)` groups exact byte-name references in literal
+fill/stroke paints, native style trees, palette cells, authoritative/compatibility
+gradient stops and mesh Separation/NChannel declarations. A palette's display
+label remains independent of the ink identity. The inventory is not permission to
+edit opaque same-name references.
+
+`redefine(ink:, cmyk:, rgb:, gray:, ramps:, artwork:)` changes every qualified
+alternative of one ink atomically. Supply the device alternatives required by the
+source; AiKit does not convert between them. Original ink names, tint operands,
+mesh tint order, geometry, object identities and unrelated ink values remain
+intact. Literal `CMYKCustomColor`/`RGBCustomColor` DSC declarations and continuation
+lines are synchronized without changing the document's ink-name list.
+
+Each affected gradient name requires one current definition key and freshly
+composed ramps; all its counted banks and both stop copies are updated together.
+Duplicate banks must agree on authoritative stops. Every complete appearance pair
+requires one host-supplied printing replacement using `printingOwners` handles;
+nested applications share their outer pair. Unchanged expansions may supply their
+original bytes. These complete inputs prevent forgotten resource-driven printing
+caches; their visual equivalence and the matching PDF remain host responsibilities.
+
+Whole-source dependency qualification and same-name reference coverage precede the
+transaction. Unknown references, populated text-engine dependencies, unsupported
+mesh metadata, conditional owners, missing device alternatives or incomplete
+printing/ramps reject without changing the source. Changed symbol artwork and
+referenced brush artwork also reject until their instance caches can be replaced;
+ink dependencies propagate through pattern/style references under an explicit work
+limit. Color-book payloads, ATE named colors and ink renaming need further typed
+contracts. Global operations are reported as requiring validation, never
+universally available.
+
 ### Palette color and gradient cells
 
 `AiNativeSwatches.decode(records:)` exposes palettes, authored groups and source-owned `AiNativeSwatch` cells, including display-name bytes, process alternatives, named paints and gradient applications. Unsupported cell commands remain inspectable. Native palette display labels are distinct from named-ink identities and gradient resource names.
@@ -1340,7 +1373,7 @@ Legacy DSC inspection retains comments and continuations, resolves `(atend)` met
 | Ordered appearances | Named trees and literal settings | Editable subset | Complete affected-user coverage and host-supplied printing groups. |
 | CC live shapes | Five qualified families, including irregular-polygon parallelograms | Similarities, qualified affine changes, host-supplied parameter/contour transactions and complete-pair lifecycle | Host owns regeneration and printing; arbitrary effects and positional dependencies remain excluded. |
 | ATE text, fonts, runs and frames | Named CS / compact CC | Editable subset and supplied layouts | Host composition; unresolved caches/shared dependencies reject. |
-| Gradients and palettes | Qualified resources, instances and cells | Creation/removal, ordered hard stops, exact application rebinding, named paints, focus and CC placement | Host ramps/printing; opaque references, global ink redefinition and unsupported caches remain excluded. |
+| Gradients and palettes | Qualified resources, instances and cells | Creation/removal, ordered hard stops, exact application rebinding, named paints, focus and CC placement | Host ramps/printing; opaque references, ATE/color-book ink redefinition and unsupported caches remain excluded. |
 | Cartesian version-2 meshes | Yes | Paint, geometry, explicit topology and direct object lifecycle | New geometry/lifecycle validation pending; no tessellation. |
 | Embedded rasters and linked previews | Qualified layouts | Samples, affine placement, relink and embed | Host pixels/decoders; unresolved dependent caches reject. |
 | Setup pattern/symbol/brush artwork | Source-owned inventory | Qualified appearance transactions | Complete transitive dependencies; general instances remain incomplete. |

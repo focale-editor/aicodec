@@ -1369,3 +1369,25 @@ plus 12 new group/path appearances at layer, ordinary-group and canvas scope acr
 two revisions. It checks exact mask carriers/settings, native identities, composed
 image state, current header caches and exact Poppler PDF pixels. AiKit runtime
 sources are unchanged by this addition. No Adobe Illustrator exchange is claimed.
+
+## Global named-ink alternatives in AiKit
+
+The package now exposes one source-backed ink inventory and an atomic redefinition
+transaction across ordinary paints, appearance styles, palette cells, gradients,
+mesh declarations and literal DSC alternatives. Native names and tints remain
+unchanged; all required device alternatives come from the host. Complete printing
+owners and gradient ramps must be supplied with the change. Unknown cross-references
+and unsupported text/color-book dependencies are explicitly rejected.
+
+This supplies the missing package operation for document-wide ink changes. Focale's
+named-color projection/resource-edit bridge remains to be connected; process-color
+editing already present in the adapter is unchanged.
+
+Validation on 2026-11-02: all 1,459 AiKit tests pass on both Dart VM and Node,
+including 16 global-ink regressions. Analysis, formatting and the scoped fix check
+pass. The unchanged pinned inkai reader and pypdf independently verify four
+complete compressed saves over two revisions: exact names/tints, palette cells,
+paired gradient banks and ramps, mesh alternatives/controls, DSC caches, shared
+appearance printing and supplied PDF streams. Independent color, transparency and
+opacity-mask checks also pass. These checks establish stored representation and
+reference consistency, not native/PDF visual equivalence or Illustrator interchange.

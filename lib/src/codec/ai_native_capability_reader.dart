@@ -94,7 +94,14 @@ final class _NativeCapabilityReader {
   AiNativeCapabilityReport read() {
     inspect(.program, 0, source.bytes.length, () {
       final AiProgram program = AiProgram.decode(bytes: source.bytes, limits: limits);
-      add(.program, 0, source.bytes.length, .preserved, 'Original program retained; findings do not imply complete semantic coverage.', edits: conditional([.gradientCreation, .swatchCreation]));
+      add(
+        .program,
+        0,
+        source.bytes.length,
+        .preserved,
+        'Original program retained; findings do not imply complete semantic coverage.',
+        edits: conditional([.gradientCreation, .swatchCreation, .inkRedefinition]),
+      );
       for (final AiLayer layer in program.layers) {
         add(
           .layer,

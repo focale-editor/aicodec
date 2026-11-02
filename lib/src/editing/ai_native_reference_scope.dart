@@ -210,6 +210,7 @@ void _referenceProgram(AiNativeLayers model, List<({int start, int end})> indepe
   };
   const Set<String> markers = {'%%EndComments', '%%BeginProlog', '%%EndProlog', '%%BeginSetup', '%%EndSetup', '%%PageTrailer', '%%Trailer', '%%EOF', '%AI9_BeginDocumentData', '%AI9_EndDocumentData'};
   const Set<String> fields = {'%%Creator', '%%Title', '%%For', '%%CreationDate', '%%BoundingBox', '%%HiResBoundingBox', '%%Pages', '%%Orientation', '%%PageOrder', '%%DocumentData', '%%LanguageLevel'};
+  final Set<int> inkDeclarations = _nativeInkHeaders(model.drawing.records).map((row) => row.source.start).toSet();
   final List<String> trailer = [];
   int index = 0;
   bool initial = true;
@@ -247,7 +248,8 @@ void _referenceProgram(AiNativeLayers model, List<({int start, int end})> indepe
       nonPrinting = opening;
       continue;
     }
-    if (declarations.contains(token.start) ||
+    if (inkDeclarations.contains(token.start) ||
+        declarations.contains(token.start) ||
         fileDeclarations.contains(token.start) ||
         initial && versionMarkers.contains(token.start) ||
         markers.contains(token.lexeme) ||

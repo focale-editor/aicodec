@@ -269,6 +269,9 @@ enum AiNativeEditOperation {
 
   /// Attach a host-composed layout or explicitly invalidate the selected cache.
   textLayout,
+
+  /// Redefine literal named-ink alternatives with complete host representations.
+  inkRedefinition,
 }
 
 /// One immutable editing qualification for the containing source finding.
