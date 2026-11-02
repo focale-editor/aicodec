@@ -41,6 +41,9 @@ final class AiNativeAppearancePartDefinition {
   /// Literal pattern placement, exclusive with process and named colors.
   final AiNativePatternPaint? pattern;
 
+  /// Relative CC gradient, exclusive with process, named and pattern paints.
+  final AiNativeGradientPaint? gradient;
+
   /// Fixed native nib and descriptor reference for a calligraphic stroke.
   final AiNativeCalligraphicPaint? calligraphic;
 
@@ -96,6 +99,7 @@ final class AiNativeAppearancePartDefinition {
     List<AiColor> colors = const [],
     this.namedColor,
     this.pattern,
+    this.gradient,
     this.calligraphic,
     this.overprint = false,
     this.opacity = 1,
@@ -121,9 +125,10 @@ final class AiNativeAppearancePartDefinition {
     if (!paint && !compound && kind != .conduit && kind != .blend ||
         !compound && children.isNotEmpty ||
         (kind == .calligraphic) != (calligraphic != null) ||
-        namedColor != null && pattern != null ||
-        paint && (namedColor == null && pattern == null ? !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) : colors.isNotEmpty) ||
-        !paint && (colors.isNotEmpty || namedColor != null || pattern != null)) {
+        [?namedColor, ?pattern, ?gradient].length > 1 ||
+        gradient != null && kind != .fill && kind != .stroke ||
+        paint && (namedColor == null && pattern == null && gradient == null ? !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) : colors.isNotEmpty) ||
+        !paint && (colors.isNotEmpty || namedColor != null || pattern != null || gradient != null)) {
       throw ArgumentError('New appearances require a supported part with its own paint or child payload.');
     }
     if (![opacity, strokeWidth, miterLimit, dashPhase, ...dash].every((value) => value.isFinite && value.abs() <= 9007199254740991) ||

@@ -1834,3 +1834,28 @@ from floating-point angle normalization during a width-only edit.
 AiKit runtime code is unchanged in this lot. These checks do not execute
 Illustrator's brush engine; actual Adobe rendering and editability remain
 unverified.
+
+### Creating gradient paint parts
+
+AiKit now supplies typed `AiNativeGradientPaint` values for CC relative fill and
+stroke appearance parts. Creation and retained-tree replacement share the same
+writer, preserve explicit axis/matrix/aspect data and require resolved resource
+references. Colors, patterns and gradients are mutually exclusive. Existing
+gradient resources continue to own stops and host-composed ramps; complete
+printing replacements remain mandatory for affected artwork. Resource removal
+still rejects live style references.
+
+The layout follows the pinned Illustrator `gradient_linear.ai` and
+`gradient_linear_random_test.ai` producer fixtures, including their distinct
+fill/stroke `Bb` and `BB` selectors. This connects native style authoring only;
+Focale projection/composition for these private gradient parts remains pending.
+The initial value covers linear and centered radial gradients, without focal
+highlights or cached imaging matrices. Independent inspection of placeholder
+printing/PDF does not establish visual parity or actual Illustrator acceptance.
+
+Local validation passes all 1,562 package tests on both VM and Node. Eight new
+regressions cover the four paint variants, whole-file saves, retained-tree edits,
+resource lifetime, immutable inputs, unresolved references and output limits.
+The independent reader confirms four complete native/container cases. Analysis,
+formatting and fix checks pass. No Focale runtime integration is claimed for this
+step, and no downloaded artwork is included in the package.

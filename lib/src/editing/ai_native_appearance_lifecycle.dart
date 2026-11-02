@@ -62,7 +62,7 @@ AiNativeAppearances _createNativeAppearanceStyle(AiNativeAppearances model, List
   _artboardRetainedStyle(
     layers,
     added.resource.definition.source as AiNativeContainer,
-    const {},
+    {for (final AiNativeResourceUse use in result.structure.resourceUses) use.instruction.start: use},
     _nativeAppearancePatterns(result, added),
     _nativeStyleBrushes(result.structure.drawing, added.resource.definition.source as AiNativeContainer),
   );

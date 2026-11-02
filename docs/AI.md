@@ -1576,6 +1576,28 @@ string literals equal to a removed identity, conservatively including label
 collisions. Unknown metadata, executable references and conditional resource
 ownership retain their rejection policy.
 
+### Gradient paints in appearance styles
+
+`AiNativeGradientPaint` authors a CC artwork-relative gradient in a new fill or
+stroke part. Pass it as `AiNativeAppearancePartDefinition.gradient`, exclusively
+with process colors, named colors and patterns. The byte name must resolve to an
+existing unconditional gradient declaration; that resource owns its editable
+stops and host-supplied ramps. The same typed part can be created in an existing
+appearance tree while supplying every affected printing owner.
+
+The writer retains explicit origin, angle, positive relative length, affine matrix
+and positive aspect ratio. It emits the observed relative `2 (...) ... Bg` layout,
+with matching `Bb`/`BB` fill or stroke selectors. It does not infer artwork bounds,
+coordinate conversion, gradient interpolation, printing or PDF. This initial
+authoring value covers linear and centered radial styles; focal highlights and
+cached imaging matrices remain outside its creation contract. Existing source
+instances keep their broader inspection and selected-edit APIs.
+
+`check_native_gradient_paints.dart` and `verify_native_gradient_paints.py` check
+four authored fill/stroke and linear/radial native/container cases against pinned
+inkai. Their supplied placeholder printing/PDF is deliberately not visual
+acceptance. Focale composition and actual Illustrator editing remain separate.
+
 ### Brush descriptors and fixed calligraphic appearances
 
 `AiNativeBrushes` reads qualified calligraphic, art, pattern and bristle plug-in

@@ -79,7 +79,7 @@ Uint8List _createdNativeAppearancePart(
     } else if (definition.namedColor case final AiNativeNamedColor named) {
       append(named._bytes(stroke: stroke, limit: limits.maxDecodedBytes));
       text(' ');
-    } else {
+    } else if (definition.gradient == null) {
       final String color = definition.colors.expand((color) => color.channels).join(' ');
       final String operator = definition.colors.length == 2
           ? (stroke ? 'XA' : 'Xa')
@@ -98,7 +98,12 @@ Uint8List _createdNativeAppearancePart(
       }
       text('${definition.lineCap} J ${definition.lineJoin} j ${definition.strokeWidth} w ${definition.miterLimit} M [${definition.dash.join(' ')}] ${definition.dashPhase} d ');
     }
-    text('${stroke ? '1 0' : '0 1'} Xd /Def ; (${stroke ? 'StrokeStyle' : 'FillStyle'}) , ; /Dict , ');
+    text('${stroke ? '1 0' : '0 1'} Xd ');
+    if (definition.gradient case final AiNativeGradientPaint gradient) {
+      append(gradient._bytes(stroke: stroke, limit: limits.maxDecodedBytes));
+      text(' ');
+    }
+    text('/Def ; (${stroke ? 'StrokeStyle' : 'FillStyle'}) , ; /Dict , ');
   }
   text(';');
   return output.takeBytes();
