@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_shape_lifecycle_test.dart' show identifiedShapeLifecycleSource;
 import '../test/ai_native_shape_movement_test.dart' show shapeMovementSource;

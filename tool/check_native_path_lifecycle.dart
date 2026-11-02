@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// A counted native fixture with different inherited states and nested owners.
 const String _synthetic = '''%!PS-Adobe-3.0

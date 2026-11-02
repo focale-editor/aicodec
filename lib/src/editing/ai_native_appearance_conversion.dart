@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Retains one ordinary owner's identity and slot while changing its paint model.
 AiNativeAppearances _convertNativeAppearancePath(

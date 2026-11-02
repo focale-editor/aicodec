@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Collects direct setup wrappers without reading strings or executable bodies.
 AiNativeArtworkResources _nativeArtworkResources(AiNativeStructure structure, {bool requireOrdinary = false}) {

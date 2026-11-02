@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Generates preserved and edited packets for independent XML/PDF inspection.
 Future<void> main() async {
@@ -18,10 +18,10 @@ Future<void> main() async {
     throw StateError('The pinned ExifTool packet should have one known manifest resource.');
   }
   const String path = '/assets/Été & <soir> 😀.png';
-  final AiXmpMetadata changed = source.relink(resources: source.resources, filePath: path, documentId: 'xmp.did:aikit-corpus-resource', instanceId: null);
+  final AiXmpMetadata changed = source.relink(resources: source.resources, filePath: path, documentId: 'xmp.did:aicodec-corpus-resource', instanceId: null);
   await File('${output.path}/relinked.xmp').writeAsString(changed.source);
   // This is an explicit synthetic catalog carrier, not a relink of BlueSquare art.
   await File('${output.path}/metadata-carrier.ai').writeAsBytes(const AiCodec().encode(changed.writeTo(document: original)));
-  await File('${output.path}/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert({'path': path, 'documentId': 'xmp.did:aikit-corpus-resource', 'instanceId': null}));
+  await File('${output.path}/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert({'path': path, 'documentId': 'xmp.did:aicodec-corpus-resource', 'instanceId': null}));
   stdout.writeln('XMP: Adobe packet retained; one dependency relinked; two PDF catalog carriers saved.');
 }

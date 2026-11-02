@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_artboards_test.dart' show mixedArtboardSource;
 import '../test/ai_native_group_creation_test.dart' show groupCreationDrawing;

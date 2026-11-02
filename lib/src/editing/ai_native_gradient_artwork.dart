@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies direct gradient owners independently of opaque neighboring artwork.
 List<AiNativeGradientArtwork> _readNativeGradientArtwork(AiNativeDrawing drawing) {

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_group_creation_test.dart' show groupCreationDrawing, groupCreationSource;
 import '../test/ai_native_objects_test.dart' show objectSource;
@@ -25,7 +25,7 @@ Future<void> main() async {
     AiNativeDrawing result = source;
     String? issue;
     try {
-      result = source.createGroup(parent: parent, layer: layer, identifierBytes: latin1.encode('AiKit_group'), nameBytes: latin1.encode('AiKit (group)'), inheritParentFlags: inherit);
+      result = source.createGroup(parent: parent, layer: layer, identifierBytes: latin1.encode('AiCodec_group'), nameBytes: latin1.encode('AiCodec (group)'), inheritParentFlags: inherit);
     } on UnsupportedError catch (error) {
       if (!reject) {
         rethrow;

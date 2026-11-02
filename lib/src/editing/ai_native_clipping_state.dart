@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Contour attributes restored by ordinary `q`/`Q`, unlike persistent paint data.
 const Set<String> _nativeClipStateKeys = {'J', 'j', 'w', 'M', 'd'};

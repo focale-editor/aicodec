@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Renames a native layer in an existing PDF-backed AI without changing its art.
 ///
@@ -8,7 +8,7 @@ import 'package:aikit/aikit.dart';
 /// edits additionally require matching derived representations from the host.
 Future<void> main(List<String> arguments) async {
   if (arguments.length != 3) {
-    throw ArgumentError('Usage: dart run example/aikit_example.dart input.ai output.ai "Layer name"');
+    throw ArgumentError('Usage: dart run example/aicodec_example.dart input.ai output.ai "Layer name"');
   }
   final File output = File(arguments[1]);
   if (await output.exists()) {

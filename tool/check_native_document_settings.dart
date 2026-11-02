@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Records settings and exact native ownership from both baseline and CC units.
 Future<void> main() async {

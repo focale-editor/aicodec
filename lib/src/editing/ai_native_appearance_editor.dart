@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Changes selected native fields and their supplied expansions in one snapshot.
 AiNativeAppearances _editNativeAppearance(

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// One source-derived scalar assignment and its output projection.
 typedef _NativeShapeReplay = ({AiNativeInstruction value, bool private});

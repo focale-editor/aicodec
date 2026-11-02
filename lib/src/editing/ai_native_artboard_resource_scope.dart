@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualified artwork resource names, source spans and owned metadata retained together.
 typedef _ArtboardResourceScope = ({Set<String> patterns, Set<String> symbols, Set<String> brushes, List<({int start, int end})> ranges, Set<AiNativeContainer> objects});

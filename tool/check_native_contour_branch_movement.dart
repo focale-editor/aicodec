@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_contour_branch_movement_test.dart' show contourBranchSource, contourBranchTreeSource, moveContourBranch;
 import '../test/ai_native_group_creation_test.dart' show groupCreationDrawing;

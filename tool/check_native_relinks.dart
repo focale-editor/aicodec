@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Relinks an intact CC file while retaining its placed extent and native art.
 Future<void> main() async {

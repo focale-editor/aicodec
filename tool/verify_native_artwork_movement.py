@@ -184,7 +184,7 @@ def main():
         old_layers = verified_inventory(inkai, source, row['before']['layers'])
         new_layers = verified_inventory(inkai, target, row['after']['layers'])
         if row['operation'] == 'insert':
-            variant = dict(selected=0, name=list(b'Destination'), identifier=list(b'AiKit_destination'), after=row['after']['layers'])
+            variant = dict(selected=0, name=list(b'Destination'), identifier=list(b'AiCodec_destination'), after=row['after']['layers'])
             verify_insertion(before, after, old_layers, new_layers, dict(before=row['before']['layers']), variant)
         else:
             document, changed_document = inkai.parse(str(source)), inkai.parse(str(target))

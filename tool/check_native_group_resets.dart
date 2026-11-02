@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_artwork_movement_test.dart' show movementPath;
 import '../test/ai_native_group_metadata_test.dart' show groupMetadataSource, groupResetEmptySource, groupResetSource;

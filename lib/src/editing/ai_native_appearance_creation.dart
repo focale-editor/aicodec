@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Shares ordinary contour serialization without exposing private lines publicly.
 void _writeNativeAppearancePath(_NativeDocumentBytes bytes, AiNativeDrawing drawing, AiNativePathDefinition definition, {AiNativePathMask mask = .none}) {

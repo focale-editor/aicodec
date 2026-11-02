@@ -12,7 +12,7 @@ from verify_native_meshes import CORPUS, OUTPUT, inks, native_program, tokens
 
 
 def read_packet(program):
-    """Read the fixture's scalar/array fields without importing AiKit."""
+    """Read the fixture's scalar/array fields without importing AiCodec."""
     packet = re.search(rb'/Mesh X!\r?\n?(.*?)/End X!', program, re.S)
     if packet is None:
         raise ValueError('Missing mesh packet')

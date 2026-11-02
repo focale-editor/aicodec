@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Native color models, including named colors and their retained alternatives.
 enum AiNativeGradientColorKind {

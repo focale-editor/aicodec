@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Associates known structural instructions and identity records with their layer.
 Map<int, AiNativeLayer> _layerHeaderItems(AiNativeLayers model) => {

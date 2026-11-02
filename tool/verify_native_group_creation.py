@@ -87,14 +87,14 @@ def verify(inkai, source, target, row):
     inserted = parsed(after[position:position + size])
     assert len(inserted) == 3 and inserted[0].command == 'u' and inserted[1].command == 'U'
     assert not inserted[0].tokens and not inserted[1].tokens and not inserted[0].is_pseudo_comment and not inserted[1].is_pseudo_comment
-    assert inserted[2] == {'_type': 'ArtDictionary', 'AI10_ArtUID': 'AiKit_group', 'AIArtName': 'AiKit (group)'}
-    assert all(not isinstance(item, dict) or item.get('AI10_ArtUID') != 'AiKit_group' for item in items)
+    assert inserted[2] == {'_type': 'ArtDictionary', 'AI10_ArtUID': 'AiCodec_group', 'AIArtName': 'AiCodec (group)'}
+    assert all(not isinstance(item, dict) or item.get('AI10_ArtUID') != 'AiCodec_group' for item in items)
     expected = deepcopy(nodes)
     expected[parent]['children'].append(('node', len(expected)))
     expected.append(dict(kind='u', parent=parent, label=None, children=[]))
     changed_items, actual = tree(changed, list(range(len(row['after']['pairs']))))
     assert topology(actual) == topology(expected)
-    added = [node for node in actual if node['kind'] == 'u' and node['last'] + 1 < len(changed_items) and isinstance(changed_items[node['last'] + 1], dict) and changed_items[node['last'] + 1].get('AI10_ArtUID') == 'AiKit_group']
+    added = [node for node in actual if node['kind'] == 'u' and node['last'] + 1 < len(changed_items) and isinstance(changed_items[node['last'] + 1], dict) and changed_items[node['last'] + 1].get('AI10_ArtUID') == 'AiCodec_group']
     assert len(added) == 1 and not added[0]['children']
     assert len(row['before']['pairs']) == len(row['after']['pairs'])
     for old, new in zip(row['before']['pairs'], row['after']['pairs']):

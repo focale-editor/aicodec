@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_subtree_removal_test.dart' show subtreeRemovalSource;
 import 'check_native_shape_lifecycle.dart' show shapeLifecycleInventory;

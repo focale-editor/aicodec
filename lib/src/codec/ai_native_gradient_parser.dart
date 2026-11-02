@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Groups gradient commands while preserving unsupported surrounding semantics.
 List<AiNativeGradient> _readNativeGradients({required Iterable<AiNativeInstruction> instructions, required List<AiNativePath> paths}) {

@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:aikit/src/codec/ai_postscript.dart';
-import 'package:aikit/src/model/ai_document.dart';
-import 'package:aikit/src/model/ai_native_records.dart';
-import 'package:aikit/src/model/ai_program.dart';
+import 'package:aicodec/src/codec/ai_postscript.dart';
+import 'package:aicodec/src/model/ai_document.dart';
+import 'package:aicodec/src/model/ai_native_records.dart';
+import 'package:aicodec/src/model/ai_program.dart';
 import 'package:pscore/pscore.dart';
 
 part 'ai_native_text_styles.dart';

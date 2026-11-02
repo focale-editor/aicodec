@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import 'native_layer_support.dart';
 
@@ -24,8 +24,8 @@ Future<void> main() async {
         await File('${output.path}/$native').writeAsBytes(source.$2.bytes);
         final List<Map<String, Object?>> variants = [];
         for (final AiNativeLayer layer in model.layers) {
-          final List<int> label = latin1.encode('AiKit inserted layer');
-          final List<int>? identifier = layer.identifier == null ? null : latin1.encode('AiKit_inserted_${layer.index}');
+          final List<int> label = latin1.encode('AiCodec inserted layer');
+          final List<int>? identifier = layer.identifier == null ? null : latin1.encode('AiCodec_inserted_${layer.index}');
           try {
             final AiNativeLayers changed = model.insertAfter(after: layer, nameBytes: label, identifierBytes: identifier, discardViewState: true);
             final String file = '$name.${source.$1}.insert-${layer.index}.ps';

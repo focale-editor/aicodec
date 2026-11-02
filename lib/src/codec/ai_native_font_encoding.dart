@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// One declarative font mark, separate from array-valued setup operands.
 typedef _NativeFontEncoding = ({int start, int end, List<String> names});

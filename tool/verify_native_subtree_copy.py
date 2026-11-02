@@ -271,7 +271,7 @@ def main():
     expected = requests()
     assert len(rows) == len(expected) == 23 and {(row['source'], row['operation']) for row in rows} == expected.keys()
     checked = []
-    with tempfile.TemporaryDirectory(prefix='aikit-subtree-copy-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='aicodec-subtree-copy-') as temporary:
         for row in rows:
             assert (row['selected'], row['rejected']) == expected[row['source'], row['operation']]
             assert row['original'] == row['source'] + '.original.ps' and row['result'] == row['source'] + '.' + row['operation'] + '.ps'

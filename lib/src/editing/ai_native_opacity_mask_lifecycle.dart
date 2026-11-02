@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Binds an attachment to existing authoritative metadata, never printing art.
 AiNativeContainer? _opacityMaskTarget(AiNativeAppearances model, AiNativeOpacityMaskAttachment attachment) {

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_live_shape_affine_save_test.dart' show affineSave, parallelogramReplacement;
 import '../test/ai_live_shape_affine_test.dart';

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Changes vertex paint atomically without leaving stale neighboring corners.
 AiNativeMeshes _paintMeshVertices(AiNativeMeshes source, AiNativeMesh mesh, List<AiNativeMeshVertexPaint> changes) {

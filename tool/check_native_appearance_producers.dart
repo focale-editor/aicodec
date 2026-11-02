@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_appearance_graph_test.dart' show newAppearanceFill;
 import 'check_native_appearances.dart' show appearanceInventory;

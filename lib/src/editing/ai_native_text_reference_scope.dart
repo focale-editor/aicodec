@@ -1,8 +1,8 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Internal bridge qualifying non-text owners before renumbering ATE references.
 ///
-/// Not exported by `aikit.dart`. Text-local ownership is checked by the text
+/// Not exported by `aicodec.dart`. Text-local ownership is checked by the text
 /// library; this shares the native document and setup dependency contracts.
 List<({int start, int end})> validateTextLifecycleSource({required AiNativeRecords records, required Set<AiNativeContainer> textRecords}) {
   final AiNativeLayers layers = AiNativeLayers.decode(drawing: AiNativeDrawing.decode(records: records));

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_artwork_movement_test.dart' show artworkMovementSource;
 import 'native_layer_support.dart';
@@ -62,7 +62,7 @@ Future<void> main() async {
     await File('${output.path}/$name.original.ps').writeAsBytes(original.records.program.bytes);
     final AiNativeLayers layers = AiNativeLayers.decode(drawing: original);
     final AiNativeDrawing inserted = layers
-        .insertAfter(after: layers.layers.single, nameBytes: latin1.encode('Destination'), identifierBytes: latin1.encode('AiKit_destination'), discardViewState: true)
+        .insertAfter(after: layers.layers.single, nameBytes: latin1.encode('Destination'), identifierBytes: latin1.encode('AiCodec_destination'), discardViewState: true)
         .drawing;
     await record(name, '$name.original.ps', 'insert', 'insert', original, inserted, 0);
     await record(

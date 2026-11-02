@@ -238,7 +238,7 @@ def main():
     rows = json.loads((args.output / 'report.json').read_text())
     expected, checked = requests(), []
     assert len(rows) == len(expected) == 43 and {(row['source'], row['operation'], row['variant']) for row in rows} == expected.keys()
-    with tempfile.TemporaryDirectory(prefix='aikit-subtree-reordering-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='aicodec-subtree-reordering-') as temporary:
         for row in rows:
             assert (row['order'], row['rejected']) == expected[row['source'], row['operation'], row['variant']]
             assert row['original'] == row['source'] + '.' + row['operation'] + '.original.ps'

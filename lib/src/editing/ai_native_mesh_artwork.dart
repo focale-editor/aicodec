@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies complete Cartesian body packets without promoting opaque neighbors.
 List<AiNativeMeshArtwork> _readNativeMeshArtwork(AiNativeDrawing drawing) {

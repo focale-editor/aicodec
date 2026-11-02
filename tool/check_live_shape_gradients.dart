@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Isolates selected real CC appearances before exercising global gradient APIs.
 Future<void> main() async {
@@ -22,14 +22,14 @@ Future<void> main() async {
         .toList();
     final List<AiLiveShape> selection = {eligible.first, eligible[eligible.length ~/ 2], eligible.last}.toList();
     final List<int> selected = selection.map(drawing.liveShapes.indexOf).toList();
-    final AiNativeDrawing isolated = drawing.isolateLiveShapeGradient(shapes: selection, sourceNameBytes: sourceName, nameBytes: latin1.encode('AiKit Selected Gradient'));
+    final AiNativeDrawing isolated = drawing.isolateLiveShapeGradient(shapes: selection, sourceNameBytes: sourceName, nameBytes: latin1.encode('AiCodec Selected Gradient'));
     final AiBoundingBox bounds = AiBoundingBox.parse(value: RegExp(r'%AI3_Cropmarks:\s*([^\r\n]+)').firstMatch(latin1.decode(program.bytes))![1]!);
     await File('${output.path}/$name.original.ps').writeAsBytes(program.bytes);
     await File('${output.path}/$name.isolated.ps').writeAsBytes(isolated.records.program.bytes);
     final bool radial = name == 'gradient_radial.ai';
     for (final String variant in ['isolated', 'colors', if (radial) 'focus']) {
       AiNativeGradientResources resources = AiNativeGradientResources.decode(records: isolated.records);
-      final AiNativeGradientDefinition definition = resources.definitions.firstWhere((definition) => latin1.decode(definition.nameBytes) == 'AiKit Selected Gradient');
+      final AiNativeGradientDefinition definition = resources.definitions.firstWhere((definition) => latin1.decode(definition.nameBytes) == 'AiCodec Selected Gradient');
       if (variant == 'colors') {
         resources = resources.replaceStops(
           definition: definition,
@@ -59,7 +59,7 @@ Future<void> main() async {
         'file': name,
         'variant': variant,
         'sourceName': latin1.decode(sourceName),
-        'name': 'AiKit Selected Gradient',
+        'name': 'AiCodec Selected Gradient',
         'selected': selected,
         'shapes': drawing.liveShapes.length,
         'paths': drawing.paths.length,

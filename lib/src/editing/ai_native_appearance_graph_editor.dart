@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Rebuilds an existing execution tree with explicit source ownership and limits.
 final class _NativeAppearanceGraphEditor {

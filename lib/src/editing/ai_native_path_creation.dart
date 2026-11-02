@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Supplies literal paint state without geometry, guides or identities.
 Iterable<String> _nativePathPaintCommands(AiNativePathDefinition definition, {required int maximum}) sync* {

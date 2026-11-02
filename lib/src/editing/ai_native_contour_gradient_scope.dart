@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies unchanged gradient neighbors without granting edits to their paths.
 Set<AiNativeInstruction> _nativeContourGradientCommands(AiNativeLayers layers) {

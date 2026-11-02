@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Derives representable native parameters without generating printing outlines.
 AiNativeDrawing _transformLiveShapes(AiNativeDrawing drawing, List<AiLiveShape> shapes, AiNativeAffineTransform transform, AiBoundingBox bounds, Map<AiLiveShape, List<int>> printing) {

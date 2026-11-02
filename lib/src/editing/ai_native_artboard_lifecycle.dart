@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies complete source dependencies and unambiguous artboard identities.
 void _nativeArtboardStructureScope(AiNativeArtboards model) {

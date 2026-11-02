@@ -345,7 +345,7 @@ def composition_events(story, authored=False):
 
 
 def verify_fonts(before, name, output, text_parser, stream, inkai, binary_type):
-    """Check appended identities and references without using AiKit projections."""
+    """Check appended identities and references without using AiCodec projections."""
     payload = (output / f'{name}.fonts.ate').read_bytes()
     actual = text_parser.read_object(stream(io.BytesIO(payload)))
     expected = copy.deepcopy(before)
@@ -545,7 +545,7 @@ def main():
         expected = copy.deepcopy(before)
         styles = resources(expected, "5", "StyleSheetSet")
         if styles:
-            styles[0]["/0" if "/0" in styles[0] else "/Name"] = "AiKit corpus style 🖋"
+            styles[0]["/0" if "/0" in styles[0] else "/Name"] = "AiCodec corpus style 🖋"
         assert after == expected, f"ATE data other than the style name changed: {name}"
         parsed = inkai.parse(str(args.output / f"{name}.text-renamed.ps"))
         section = parsed.setup.first_subsection_of_type(b"%AI11_BeginTextDocument")

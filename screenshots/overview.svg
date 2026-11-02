@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <title>AiKit package overview</title>
+  <title>AiCodec package overview</title>
   <desc>An Illustrator container represented by a document and a geometric A.</desc>
   <rect width="512" height="512" rx="80" fill="#181F33"/>
   <g transform="translate(38.4 38.4) scale(0.534601226993865)">

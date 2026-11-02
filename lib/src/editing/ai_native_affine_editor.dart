@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Transforms selected authoritative contours while retaining native paint state.
 AiNativeDrawing _transformNativePaths(AiNativeDrawing drawing, List<AiNativePath> paths, AiNativeAffineTransform transform, AiBoundingBox bounds, Map<AiNativePath, double> frameAngles) {

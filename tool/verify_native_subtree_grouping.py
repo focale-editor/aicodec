@@ -138,7 +138,7 @@ def main():
     rows = json.loads((args.output / 'report.json').read_text())
     expected, checked = requests(), []
     assert len(rows) == len(expected) == 18 and {(row['source'], row['variant']) for row in rows} == expected.keys()
-    with tempfile.TemporaryDirectory(prefix='aikit-subtree-grouping-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='aicodec-subtree-grouping-') as temporary:
         for row in rows:
             name, variant = row['source'], row['variant']
             operation, selected, discard, inherit, refusal = expected[name, variant]

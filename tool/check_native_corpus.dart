@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Exercises required native extraction and editing against the pinned corpus.
 Future<void> main() async {
@@ -38,8 +38,8 @@ Future<void> main() async {
             ? AiNativeTextDocument.decode(
                 records: records.replaceBinary(container: container, bytes: text.engine.bytes),
               )
-            : text.renameStyle(style: text.characterStyles.first, name: 'AiKit corpus style 🖋');
-        if (renamed.characterStyles.isNotEmpty && renamed.characterStyles.first.name != 'AiKit corpus style 🖋' || renamed.referenceIssues.isNotEmpty) {
+            : text.renameStyle(style: text.characterStyles.first, name: 'AiCodec corpus style 🖋');
+        if (renamed.characterStyles.isNotEmpty && renamed.characterStyles.first.name != 'AiCodec corpus style 🖋' || renamed.referenceIssues.isNotEmpty) {
           throw StateError('Native text style rename failed to retain valid references.');
         }
         textDocuments++;
@@ -205,10 +205,10 @@ Future<void> main() async {
       if (document is AiPdfDocument) {
         await File('${output.path}/$name.envelope').writeAsBytes(_envelope(document));
       }
-      AiProgram edited = program.layers.isEmpty ? program : AiNativeEditor.updateLayer(program: program, layer: program.layers.first, name: 'AiKit corpus layer');
+      AiProgram edited = program.layers.isEmpty ? program : AiNativeEditor.updateLayer(program: program, layer: program.layers.first, name: 'AiCodec corpus layer');
       final AiNativeRecords editedRecords = AiNativeRecords.decode(program: edited);
       if (editedRecords.artboards.isNotEmpty) {
-        edited = editedRecords.replaceString(entry: editedRecords.artboards.first.record['Name']!, bytes: latin1.encode('AiKit corpus artboard')).program;
+        edited = editedRecords.replaceString(entry: editedRecords.artboards.first.record['Name']!, bytes: latin1.encode('AiCodec corpus artboard')).program;
       }
       if (document is AiPdfDocument) {
         // Renaming native layers/artboards changes no painted geometry; the original

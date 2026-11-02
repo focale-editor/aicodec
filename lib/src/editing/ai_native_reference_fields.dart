@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Observed document settings without artwork identity or ownership semantics.
 const Map<String, Set<String>> _referenceDocumentRecorded = {

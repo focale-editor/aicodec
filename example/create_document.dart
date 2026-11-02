@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Creates editable native CC artwork and packages an independently supplied PDF.
 ///
@@ -50,7 +50,7 @@ Future<void> main(List<String> arguments) async {
       ),
     ],
   );
-  // This example authors both representations. AiKit does not render the native
+  // This example authors both representations. AiCodec does not render the native
   // triangle or check visual equivalence with this explicit host PDF content.
   final PdfDocument pdf = PdfDocument.fromPages(
     pages: [PdfPageSource(width: 200, height: 100, content: latin1.encode('1 0 0 rg 20 20 m 80 20 l 80 80 l h f'))],

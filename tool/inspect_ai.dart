@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Prints container metadata without interpreting Illustrator drawing commands.
 Future<void> main(List<String> arguments) async {

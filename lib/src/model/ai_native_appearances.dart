@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// The native role of a source appearance part, without executing its filter.
 enum AiNativeAppearancePartKind {
@@ -464,7 +464,7 @@ final class AiNativeAppearances {
   /// have no named-resource or identity dependencies. Authoritative live-shape
   /// masks also qualify; printing-side or alternate mask copies, resource instances,
   /// unknown mask commands and conditional owners reject. The host supplies
-  /// matching PDF content on full save; AiKit never composes mask pixels.
+  /// matching PDF content on full save; AiCodec never composes mask pixels.
   AiNativeAppearances updateOpacityMasks({required List<AiNativeOpacityMaskChange> changes, required List<AiNativeAppearanceReplacement> artwork}) => _editNativeOpacityMasks(this, changes, artwork);
 
   /// Attaches masks to qualified private paths or groups with complete printing.

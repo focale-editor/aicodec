@@ -35,7 +35,7 @@ def filter_state(document):
 
 
 def animation_count(nodes):
-    """Count real nested animation owners independently of AiKit's inspector."""
+    """Count real nested animation owners independently of AiCodec's inspector."""
     return sum((node['xmlnode-nodename'] == 'animate') + animation_count(node['xmlnode-children']) for node in nodes)
 
 

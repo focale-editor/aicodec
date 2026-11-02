@@ -1,8 +1,8 @@
-import 'package:aikit/src/codec/ai_native_data.dart';
-import 'package:aikit/src/model/ai_limit_exception.dart';
-import 'package:aikit/src/model/ai_native_records.dart';
-import 'package:aikit/src/model/ai_native_text.dart';
-import 'package:aikit/src/model/ai_program.dart';
+import 'package:aicodec/src/codec/ai_native_data.dart';
+import 'package:aicodec/src/model/ai_limit_exception.dart';
+import 'package:aicodec/src/model/ai_native_records.dart';
+import 'package:aicodec/src/model/ai_native_text.dart';
+import 'package:aicodec/src/model/ai_program.dart';
 import 'package:pscore/pscore.dart';
 
 part '../codec/ai_native_capability_reader.dart';

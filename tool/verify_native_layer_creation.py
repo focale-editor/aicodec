@@ -53,12 +53,12 @@ def verify(inkai, source, target, row):
     assert len(changed) == len(original) + 1
     added = changed[insertion]
     assert added['parent'] == parent and not added['children'] and not added['body']
-    assert added['name'] == row['name'] == list(b'AiKit (new)')
-    assert added['identifier'] == 'AiKit_new' and row['identifier'] == list(b'AiKit_new')
+    assert added['name'] == row['name'] == list(b'AiCodec (new)')
+    assert added['identifier'] == 'AiCodec_new' and row['identifier'] == list(b'AiCodec_new')
     assert added['attributes'] == row['attributes'] and added['expanded'] == row['expanded']
-    assert added['dictionary'] == {'_type': 'ArtDictionary', 'AI10_ArtUID': 'AiKit_new'}
+    assert added['dictionary'] == {'_type': 'ArtDictionary', 'AI10_ArtUID': 'AiCodec_new'}
     assert [(command, private) for command, _, private in added['commands']] == [('Lb', False), ('Ln', False), ('AE', False), ('LB', False)]
-    assert all(node['identifier'] != 'AiKit_new' for node in original)
+    assert all(node['identifier'] != 'AiCodec_new' for node in original)
 
     def shifted(index):
         """Account for the one new lexical index without changing old identities."""

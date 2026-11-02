@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Host-composed contours replacing one owned path in a printing expansion.
 ///
@@ -32,7 +32,7 @@ final class AiNativePrintingReplacement {
 
   /// Host-computed ink extent in y-up document drawing coordinates.
   ///
-  /// The host includes strokes, effects and inherited transforms. AiKit retains
+  /// The host includes strokes, effects and inherited transforms. AiCodec retains
   /// or expands document DSC bounds; it does not render to derive this extent.
   final AiBoundingBox bounds;
 

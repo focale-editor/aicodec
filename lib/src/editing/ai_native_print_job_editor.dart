@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Binds the selected Document's existing print-job dictionary only.
 AiNativePrintJob? _nativeArtboardPrintJob(AiNativeArtboards model) {

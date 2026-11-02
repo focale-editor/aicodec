@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import 'native_layer_support.dart';
 
@@ -75,7 +75,7 @@ Future<void> main() async {
     final List<AiNativeLayer> descendants = [for (final int index in selected) ...model.layers.where((layer) => layer.start >= model.layers[index].start && layer.end <= model.layers[index].end)];
     final Map<AiNativeLayer, List<int>> identifiers = {
       for (final AiNativeLayer layer in descendants)
-        if (layer.identifier != null) layer: latin1.encode('AiKit_copy_${layer.index}'),
+        if (layer.identifier != null) layer: latin1.encode('AiCodec_copy_${layer.index}'),
     };
     final Map<AiNativeLayer, List<int>> names = {
       for (final AiNativeLayer layer in descendants)
@@ -126,7 +126,7 @@ Future<void> main() async {
   for (final String name in ['simple_shapes.ai', 'simple_shapes_cc.ai']) {
     final AiNativeLayers before = _decode(AiNativeData.extract(const AiCodec().decode(await File('test/corpus/files/$name').readAsBytes())).single.bytes);
     await File('${output.path}/$name.original.ps').writeAsBytes(before.drawing.records.program.bytes);
-    final AiNativeLayers inserted = before.insertAfter(after: before.layers.single, nameBytes: latin1.encode('Inserted'), identifierBytes: latin1.encode('AiKit_inserted'), discardViewState: true);
+    final AiNativeLayers inserted = before.insertAfter(after: before.layers.single, nameBytes: latin1.encode('Inserted'), identifierBytes: latin1.encode('AiCodec_inserted'), discardViewState: true);
     await record(name, '$name.original.ps', 'insert', before, inserted, [0]);
     final AiNativeLayers moved = inserted.moveInto(layer: inserted.layers.last, parent: inserted.layers.first, inheritParentFlags: true);
     await record(name, '$name.insert.ps', 'inside', inserted, moved, [1], anchor: 0);

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies an ordinary group as a complete mixed owner or append destination.
 AiNativeStructureNode _nativeMixedArtworkGroup(AiNativeLayers model, AiNativeGroup group) {

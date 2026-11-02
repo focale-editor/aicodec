@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Explicit initial paint state for newly authored ordinary artwork.
 const String _newDocumentState = '0 A 0 Xw 0 Ap 0 D 0 XR 0 O 0 R 0 g 0 G 0 J 0 j 1 w 10 M [] 0 d 0 1 0 0 0 Xy\n';
@@ -121,7 +121,7 @@ AiNativeRecords _createNativeDocument(
 
   /// Writes the final extent and root count without inventing fonts or profiles.
   String header(int roots) =>
-      '%!PS-Adobe-3.0\n%%Creator: AiKit\n%%AI8_CreatorVersion: 24.0.0\n'
+      '%!PS-Adobe-3.0\n%%Creator: AiCodec\n%%AI8_CreatorVersion: 24.0.0\n'
       '%%Title: $title\n%%CreationDate: ${date.toIso8601String()}\n%%Canvassize: $canvasSize\n'
       '%%BoundingBox: ${bounds.left.floor()} ${bounds.bottom.floor()} ${bounds.right.ceil()} ${bounds.top.ceil()}\n'
       '%%HiResBoundingBox: ${bounds.left} ${bounds.bottom} ${bounds.right} ${bounds.top}\n'

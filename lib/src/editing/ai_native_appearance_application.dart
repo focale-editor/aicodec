@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Rebinds exact applications while retaining geometry and both boundary states.
 AiNativeAppearances _applyNativeAppearanceStyle(AiNativeAppearances model, AiNativeAppearance appearance, List<AiNativeAppearanceReplacement> artwork) {

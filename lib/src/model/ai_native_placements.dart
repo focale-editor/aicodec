@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Source-backed preview retained for a linked object, independently of its file.
 final class AiNativePlacedPreview extends AiNativeItem {

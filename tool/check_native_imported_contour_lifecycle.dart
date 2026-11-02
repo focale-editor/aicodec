@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_path_topology_test.dart' show topologyBounds;
 import 'check_native_path_topology.dart' show pathTopologyInventory;

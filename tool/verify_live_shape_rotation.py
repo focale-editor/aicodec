@@ -18,7 +18,7 @@ from corpus_support import REVISION, printable_svg
 
 
 def rotate(point, pivot, angle):
-    """Apply a rigid transform independently of AiKit's matrix serialization."""
+    """Apply a rigid transform independently of AiCodec's matrix serialization."""
     x, y = point[0] - pivot[0], point[1] - pivot[1]
     return (pivot[0] + math.cos(angle) * x - math.sin(angle) * y,
             pivot[1] + math.sin(angle) * x + math.cos(angle) * y)

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies existing mask artwork using the retained resource grammar.
 AiNativeOpacityMask _qualifiedAppearanceMask(AiNativeAppearances model, AiNativeContainer record) => model._opacityMasks.putIfAbsent(record, () {

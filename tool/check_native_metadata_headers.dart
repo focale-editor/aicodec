@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_metadata_header_test.dart' show withMetadataHeaders;
 import '../test/ai_native_save_test.dart' show multipleNativePrograms;
@@ -30,7 +30,7 @@ List<int> changedMetadataCreator(AiNativeSource source) {
   }
   final BytesBuilder result = BytesBuilder(copy: false)
     ..add(Uint8List.sublistView(source.bytes, 0, creator.start))
-    ..add(latin1.encode('%%Creator: AiKit cache validation'))
+    ..add(latin1.encode('%%Creator: AiCodec cache validation'))
     ..add(Uint8List.sublistView(source.bytes, creator.end));
   return result.takeBytes();
 }

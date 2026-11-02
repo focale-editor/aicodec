@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Explicit editable content in a newly authored private appearance tree.
 sealed class AiNativeAppearanceElementDefinition {

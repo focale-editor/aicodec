@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_artwork_movement_test.dart' show movementLayer, movementPath;
 import '../test/ai_native_layer_creation_test.dart' show createdLayerAttributes, layerCreationSource, layerDefinition;
@@ -21,7 +21,7 @@ Future<void> main() async {
 
   /// Saves explicit definitions and source-owned insertion boundaries.
   Future<void> record(String name, String variant, AiNativeLayers source, {int? parent, List<double> attributes = createdLayerAttributes, bool expanded = false}) async {
-    final AiNativeLayerDefinition definition = layerDefinition(name: 'AiKit (new)', identifier: 'AiKit_new', attributes: attributes, expanded: expanded);
+    final AiNativeLayerDefinition definition = layerDefinition(name: 'AiCodec (new)', identifier: 'AiCodec_new', attributes: attributes, expanded: expanded);
     final AiNativeLayer? owner = parent == null ? null : source.layers[parent];
     final AiNativeLayers result = source.create(definition: definition, parent: owner, discardViewState: true);
     final String original = '$name.original.ps';

@@ -1,4 +1,4 @@
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Retains complete artwork, panel, dictionary and style spans for reader checks.
 List<Map<String, Object?>> nativeObjectInventory(AiNativeDrawing drawing) => [

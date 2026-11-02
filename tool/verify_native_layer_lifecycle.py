@@ -229,7 +229,7 @@ def main():
         changed_layers = verified_inventory(inkai, target, row['after'])
         if row['operation'] == 'insert':
             assert row['selected'] == [0]
-            variant = dict(selected=0, name=list(b'Inserted'), identifier=list(b'AiKit_inserted') if original_layers[0]['identifier'] is not None else None, after=row['after'])
+            variant = dict(selected=0, name=list(b'Inserted'), identifier=list(b'AiCodec_inserted') if original_layers[0]['identifier'] is not None else None, after=row['after'])
             verify_insertion(before, after, original_layers, changed_layers, row, variant)
         else:
             document = inkai.parse(str(source))

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Requires explicit inheritance when changing a non-neutral or unknown parent.
 void _nativeGroupingFlags(AiNativeDrawing drawing, Iterable<int> boundaries, bool inheritParentFlags, {bool clipping = false}) {

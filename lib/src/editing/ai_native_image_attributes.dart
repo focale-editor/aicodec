@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies the enclosing and trailing owners of an ordinary retained image.
 int _nativeImageAttributeOwner(AiNativeDrawing drawing, AiNativeItem image, List<_NativeSubtreeSpan> images) {

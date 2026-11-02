@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies retained owners separately from artwork identity deletion.
 void _nativeArtboardReferenceScope(AiNativeArtboards model) {

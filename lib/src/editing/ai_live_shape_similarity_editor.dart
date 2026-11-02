@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Plans rotations and uniform scaling in drawing and native canvas coordinates.
 final class _LiveShapeSimilarity {

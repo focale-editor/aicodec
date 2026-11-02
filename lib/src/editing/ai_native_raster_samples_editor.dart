@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Replaces one bounded raster plane set and its dependent native metadata.
 AiNativeRasters _replaceNativeRasterSamples(AiNativeRasters source, AiNativeRaster image, AiNativeRasterSamples samples) {

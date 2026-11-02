@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Native named-ink layouts, retaining their different saved alternatives.
 enum AiNativeNamedColorKind {

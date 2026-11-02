@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_identity_lifecycle_test.dart' show artworkCopyIdentifiers, identityLifecycleSource, layerCopyIdentifiers;
 import '../test/ai_native_identity_reservation_test.dart' show identityReservationSource;

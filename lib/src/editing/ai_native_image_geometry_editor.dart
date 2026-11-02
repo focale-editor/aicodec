@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Sets both embedded-image matrices without touching their sample data.
 AiNativeRasters _setNativeRasterPlacement(AiNativeRasters source, AiNativeRaster image, List<double> matrix, double? rotationRadians) {

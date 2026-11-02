@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Replaces independent private path paints with complete host printing coverage.
 AiNativeAppearances _replaceNativeAppearancePaths(

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Checks complete literal definitions and references before changing a namespace.
 void _qualifiedArtworkResources(AiNativeArtworkResources model) => _paintResourceScope(model.structure.drawing.records);

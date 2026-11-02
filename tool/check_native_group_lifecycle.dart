@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Exercises state changes at both nested object and sibling slot boundaries.
 const String _synthetic = '''%!PS-Adobe-3.0

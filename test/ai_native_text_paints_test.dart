@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
 import 'package:pscore/pscore.dart' show PsWriteException;
 import 'package:test/test.dart';

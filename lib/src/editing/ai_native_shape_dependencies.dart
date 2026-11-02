@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Native commands and unresolved differences replacing one original pair slot.
 typedef _NativeShapeReplacement = ({

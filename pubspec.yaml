@@ -1,8 +1,8 @@
-name: aikit
+name: aicodec
 description: Pure Dart Adobe Illustrator containers, compressed native programs, source-preserving native editing and serialization.
 version: 0.1.0
-homepage: https://github.com/focale-editor/aikit
-repository: https://github.com/focale-editor/aikit
+homepage: https://github.com/focale-editor/aicodec
+repository: https://github.com/focale-editor/aicodec
 
 topics:
   - illustrator
@@ -32,6 +32,6 @@ dev_dependencies:
 
 release:
   changelog:
-    header: '# 📰 AiKit changelog'
+    header: '# 📰 AiCodec changelog'
     defaultIgnoredTypes: ['test']
     defaultIgnoredScopes: ['repo', 'docs', 'version', 'deps', 'tools']

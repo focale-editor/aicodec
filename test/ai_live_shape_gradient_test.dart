@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 
@@ -166,8 +166,8 @@ void main() {
     final AiNativeDrawing second = _isolate(first, name: latin1.encode('Other'), shapes: [first.liveShapes.last]);
     check(_names(second)).deepEquals(['New', 'New', 'Other', 'Other']);
     check(second.gradients.every((gradient) => gradient.onStroke)).isTrue();
-    check(second.liveShapes.first.styleName).equals('AiKit gradient 1');
-    check(second.liveShapes.last.styleName).equals('AiKit gradient 2');
+    check(second.liveShapes.first.styleName).equals('AiCodec gradient 1');
+    check(second.liveShapes.last.styleName).equals('AiCodec gradient 2');
     check(_objectBytes(second, 0)).deepEquals(_objectBytes(first, 0));
     check(second.records.roots.where((record) => record.type == 'KnownStyle')).length.equals(3);
     final AiNativeContainer copied = second.liveShapes.last.style!;

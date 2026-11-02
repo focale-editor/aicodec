@@ -1,7 +1,7 @@
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 import 'package:zcodec/zcodec.dart';

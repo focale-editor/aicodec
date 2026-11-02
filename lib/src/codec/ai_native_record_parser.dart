@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Removes native comment prefixes while retaining reversible source offsets.
 final class _NativeRecordProjection {

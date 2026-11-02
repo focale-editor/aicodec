@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Complete authoring/printing ownership and declarative state dependencies.
 final class _NativeShapeBundle {

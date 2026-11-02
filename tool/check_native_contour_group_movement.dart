@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_contour_group_movement_test.dart' show contourGroupMovementSource;
 import '../test/ai_native_contour_movement_test.dart' show contourMovementPath;

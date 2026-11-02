@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Composes a host-selected drawing transform with an existing native matrix.
 List<double> _compose(List<double> transform, List<double> matrix) => [

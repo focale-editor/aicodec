@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Checks the explicitly downloaded corpus and emits files for independent QA.
 Future<void> main() async {
@@ -63,7 +63,7 @@ Future<void> main() async {
     }
   }
   await File('test/corpus/output/report.json').writeAsString(const JsonEncoder.withIndent('  ').convert(report));
-  stdout.writeln('AiKit: ${entries.length - failures}/${entries.length} expected outcomes');
+  stdout.writeln('AiCodec: ${entries.length - failures}/${entries.length} expected outcomes');
   if (failures != 0) {
     exitCode = 1;
   }

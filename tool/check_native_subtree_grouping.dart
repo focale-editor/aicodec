@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_shape_reordering_test.dart' show shapeReorderingSource;
 import '../test/ai_native_subtree_grouping_test.dart' show subtreeGroupingSource;

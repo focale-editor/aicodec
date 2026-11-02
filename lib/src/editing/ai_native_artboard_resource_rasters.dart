@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Shares source-backed raster inspection across retained resource artwork.
 final class _ArtboardResourceInspection {

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// A source-owned palette cell, distinct from artwork using the same color.
 final class AiNativeSwatch extends AiNativeItem {

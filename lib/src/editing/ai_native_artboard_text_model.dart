@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Keeps frame and story references in one independent text-engine namespace.
 final class _ArtboardTextSnapshot {

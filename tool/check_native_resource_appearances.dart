@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_appearance_clipping_test.dart' show clippingAppearanceSource;
 import '../test/ai_native_appearance_editing_test.dart' show appearanceEditingModel, appearanceEditingSource;

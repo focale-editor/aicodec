@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_document_creation_test.dart';
 import '../test/ai_native_image_creation_test.dart';

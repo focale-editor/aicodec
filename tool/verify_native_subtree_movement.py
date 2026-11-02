@@ -314,7 +314,7 @@ def main():
     rows = json.loads((args.output / 'report.json').read_text())
     expected, checked = requests(), []
     assert len(rows) == len(expected) == 51 and {(row['source'], row['operation'], row['variant']) for row in rows} == expected.keys()
-    with tempfile.TemporaryDirectory(prefix='aikit-subtree-movement-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='aicodec-subtree-movement-') as temporary:
         for row in rows:
             assert tuple(row[key] for key in ('selected', 'destination', 'anchor', 'inheritParentFlags', 'rejected')) == expected[row['source'], row['operation'], row['variant']]
             assert row['original'] == row['source'] + '.' + row['operation'] + '.original.ps'

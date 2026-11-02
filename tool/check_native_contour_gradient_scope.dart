@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_artwork_movement_test.dart' show movementState;
 import '../test/ai_native_contour_gradient_scope_test.dart' show contourGradientSource;

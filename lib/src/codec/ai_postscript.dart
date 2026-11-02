@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:aikit/src/model/ai_limit_exception.dart';
+import 'package:aicodec/src/model/ai_limit_exception.dart';
 
 part 'ai_raster_data.dart';
 part 'ai_placed_preview_data.dart';

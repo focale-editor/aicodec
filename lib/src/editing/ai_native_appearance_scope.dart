@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies retained ordinary masks and state between complete appearance pairs.
 List<AiNativeInstruction> _nativeAppearanceInterval(AiNativeLayers layers, int start, int end, Map<int, AiNativeLayer> headers) {

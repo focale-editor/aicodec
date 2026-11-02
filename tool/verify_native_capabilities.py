@@ -36,7 +36,7 @@ def body_operators(value):
 
 
 def owners(path):
-    """Read catalog/page membership independently of AiKit's extracted handles."""
+    """Read catalog/page membership independently of AiCodec's extracted handles."""
     document = PdfReader(path)
     result = []
     for index, owner in enumerate([document.trailer['/Root'], *document.pages]):

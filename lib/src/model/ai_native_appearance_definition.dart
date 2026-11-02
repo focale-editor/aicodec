@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// One retained, copied or newly authored child of an appearance stack or chain.
 final class AiNativeAppearanceChild {

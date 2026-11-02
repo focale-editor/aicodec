@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Removes and inserts one complete pair while preserving both boundary states.
 AiNativeDrawing _relocateNativeShape(AiNativeDrawing drawing, _NativeShapeBundle bundle, int position, AiNativeStructureNode? parent, bool inheritParentFlags) {

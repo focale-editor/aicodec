@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:aikit/src/codec/ai_native_data.dart';
-import 'package:aikit/src/codec/ai_postscript.dart';
-import 'package:aikit/src/model/ai_artwork.dart';
-import 'package:aikit/src/model/ai_document.dart';
-import 'package:aikit/src/model/ai_limit_exception.dart';
-import 'package:aikit/src/model/ai_native_text.dart' show validateTextArtworkReferences;
-import 'package:aikit/src/model/ai_program.dart';
+import 'package:aicodec/src/codec/ai_native_data.dart';
+import 'package:aicodec/src/codec/ai_postscript.dart';
+import 'package:aicodec/src/model/ai_artwork.dart';
+import 'package:aicodec/src/model/ai_document.dart';
+import 'package:aicodec/src/model/ai_limit_exception.dart';
+import 'package:aicodec/src/model/ai_native_text.dart' show validateTextArtworkReferences;
+import 'package:aicodec/src/model/ai_program.dart';
 import 'package:pdfcore/pdfcore.dart';
 import 'package:pscore/pscore.dart';
 

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Places a complete source owner with separate native and printing state replay.
 ({List<int> bytes, _NativeSourceReplacement replacement}) _placedNativeSource(

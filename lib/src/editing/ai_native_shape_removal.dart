@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Retains explicit public/private assignments without applying an orphaned style.
 List<int> _removedShapeState(_NativeShapeBundle bundle, Map<String, AiNativeInstruction> restored, int maxBytes) {

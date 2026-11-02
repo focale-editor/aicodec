@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Accumulates one version boundary without exposing mutable document state.
 final class _NativeVersionBuilder {

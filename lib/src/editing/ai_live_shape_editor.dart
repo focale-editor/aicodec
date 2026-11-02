@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Plans synchronized edits against one immutable authoring snapshot.
 final class _LiveShapeEditor {
@@ -127,10 +127,10 @@ final class _LiveShapeEditor {
           if (name == null) {
             int suffix = 1;
             final String operation = gradientEdit != null ? 'gradient' : (scale != 1 ? 'scaled' : 'translated');
-            while (styleNames.contains('AiKit $operation $suffix')) {
+            while (styleNames.contains('AiCodec $operation $suffix')) {
               suffix++;
             }
-            name = 'AiKit $operation $suffix';
+            name = 'AiCodec $operation $suffix';
             styleNames.add(name);
             copiedStyles[style] = name;
             final AiNativeEntry naming = style['Name']!;

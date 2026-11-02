@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Validates ordered stops without sorting away the two sides of a hard edge.
 void _validateGradientStops(List<AiNativeGradientStop> stops, List<AiNativeGradientRamp> ramps) {

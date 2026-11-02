@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Copies mutable scalar maps before simulating one relocated contour branch.
 _NativeShapeInputs _nativeContourSnapshot(_NativeShapeInputs state) => (

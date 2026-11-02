@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies complete ordinary contour trees and all owned scalar instructions.
 List<AiNativeInstruction> _nativeContourGroupCommands(AiNativeDrawing drawing, AiNativeGroup root) {

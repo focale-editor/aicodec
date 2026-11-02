@@ -1,4 +1,4 @@
-# AiKit external corpus
+# AiCodec external corpus
 
 The manifests pin source URLs, revisions, sizes, SHA-256 checksums, licensing and
 expected outcomes. The main manifest contains 37 accepted fixtures. Downloads
@@ -451,11 +451,11 @@ git clone https://gitlab.com/inkscape/extras/extension-ai.git /tmp/extension-ai
 git -C /tmp/extension-ai checkout 1a5f42a0b0407fc869e032420570682048810108
 ```
 
-Keep the checkout outside AiKit. Use a Python environment with inkex, Pillow,
+Keep the checkout outside AiCodec. Use a Python environment with inkex, Pillow,
 lxml, pypdf 3.x and zstandard. External SVG comparisons require Inkscape; XMP
 preservation checks additionally use ExifTool and Poppler. Ghostscript decodes
 path string operands in the relinking verifier. No external renderer is a
-runtime dependency of AiKit.
+runtime dependency of AiCodec.
 
 The tools compare native data and serialization. They do not package edited
 programs with stale original PDF pages. The former native-to-PDF exporter and
@@ -1687,7 +1687,7 @@ separate acceptance work. See [the technical reference](../../docs/AI.md).
 
 ### Focale ordinary CC integration
 
-From the sibling Focale checkout, using the matching AiKit revision (or an
+From the sibling Focale checkout, using the matching AiCodec revision (or an
 optional local dependency override), run:
 
 ```sh
@@ -1720,10 +1720,10 @@ This is bounded application integration evidence, not Adobe Illustrator acceptan
 
 The following host suites emit fixtures when `FOCALE_AI_NEW_OUTPUT` names an
 output directory. Run each suite from Focale with `flutter test`, then invoke
-its verifier from AiKit's Python corpus environment with
+its verifier from AiCodec's Python corpus environment with
 `--reference <pinned-inkai-checkout> --output <same-directory>`.
 
-| Workflow | Focale test under `test/features/documents/` | AiKit verifier |
+| Workflow | Focale test under `test/features/documents/` | AiCodec verifier |
 | --- | --- | --- |
 | Path text and paragraphs | `ai_text_flow_test.dart` | [verify_focale_text_flow.py](../../tool/verify_focale_text_flow.py) |
 | Mixed groups and opacity masks | `ai_mixed_appearance_test.dart` | [verify_focale_mixed_appearances.py](../../tool/verify_focale_mixed_appearances.py) |

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
 import 'package:test/test.dart';
 
@@ -213,9 +213,9 @@ void main() {
 
   test('copies positional known styles without modifying unselected references', () {
     final String style = _style.replaceFirst('0 0 0 k', 'Bb 2 (Colors) 1 2 30 40 2 0 0 3 5 6 Bg 0 BB');
-    final AiNativeDrawing source = _drawing('${_alternate()}${_alternate()}', setup: '$style${_style.replaceFirst('(Solid)', '(AiKit translated 1)')}');
+    final AiNativeDrawing source = _drawing('${_alternate()}${_alternate()}', setup: '$style${_style.replaceFirst('(Solid)', '(AiCodec translated 1)')}');
     final AiNativeDrawing changed = source.translateLiveShapes(shapes: [source.liveShapes.first], deltaX: 7, deltaY: -3);
-    check(changed.liveShapes.first.styleName).equals('AiKit translated 2');
+    check(changed.liveShapes.first.styleName).equals('AiCodec translated 2');
     check(changed.liveShapes.last.styleName).equals('Solid');
     check(changed.liveShapes.last.path!.segments.first.coordinates).deepEquals([10.0, 20.0]);
     final AiNativeContainer copied = changed.liveShapes.first.style!;

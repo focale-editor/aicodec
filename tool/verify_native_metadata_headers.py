@@ -40,7 +40,7 @@ def without_fonts(data):
 def changed_creator(program):
     """Require one exact nonvisual edit and preserve the entire native body."""
     original = header(program)
-    changed, count = re.subn(rb'(?:^|(?<=[\r\n]))%%Creator:[^\r\n]*', b'%%Creator: AiKit cache validation', original)
+    changed, count = re.subn(rb'(?:^|(?<=[\r\n]))%%Creator:[^\r\n]*', b'%%Creator: AiCodec cache validation', original)
     assert count == 1
     return changed + program[len(original):]
 

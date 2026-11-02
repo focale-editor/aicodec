@@ -103,7 +103,7 @@ def main():
     rows = json.loads((args.output / 'report.json').read_text())
     expected, checked = requests(), []
     assert len(rows) == len(expected) == 18 and {(row['source'], row['variant']) for row in rows} == expected.keys()
-    with tempfile.TemporaryDirectory(prefix='aikit-group-resets-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='aicodec-group-resets-') as temporary:
         directory = Path(temporary)
         for row in rows:
             name, variant = row['source'], row['variant']

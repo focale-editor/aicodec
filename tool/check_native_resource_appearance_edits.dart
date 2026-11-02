@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_appearance_editing_test.dart' show appearanceAssignment, appearanceEditingModel;
 import '../test/ai_native_resource_appearance_editing_test.dart' show resourceAppearanceEdit, resourceAppearanceEditingSource;

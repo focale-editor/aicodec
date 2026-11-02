@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Binds retained drawing text to its selected main or undo-free frame namespace.
 Set<AiNativeContainer> _artboardTextObjects(AiNativeLayers layers, List<_ArtboardTextSnapshot> snapshots) {

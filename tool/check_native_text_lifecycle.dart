@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_test.dart' as fixtures;
 import '../test/ai_native_text_lifecycle_test.dart' show addLifecycleStory, lifecycleDocument;

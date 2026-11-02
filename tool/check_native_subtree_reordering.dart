@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_subtree_reordering_test.dart' show subtreeBatchReorderingSource, subtreeReorderingGroups, subtreeReorderingSource;
 import 'check_native_shape_lifecycle.dart' show shapeLifecycleInventory;

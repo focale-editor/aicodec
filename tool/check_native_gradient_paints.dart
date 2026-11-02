@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_document_creation_test.dart' show newDocumentPdf, newDocumentSave;
 import '../test/ai_native_gradient_paint_test.dart' show gradientPaintOwner;

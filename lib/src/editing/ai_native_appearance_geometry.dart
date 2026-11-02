@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Changes private contours together with each complete supplied printing owner.
 AiNativeAppearances _editNativeAppearancePaths(

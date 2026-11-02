@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Qualifies retained appearance graphs without applying or transforming them.
 void _artboardRetainedStyle(AiNativeLayers layers, AiNativeContainer style, Map<int, AiNativeResourceUse> references, Set<String> patterns, Set<(String, String)> brushes) {

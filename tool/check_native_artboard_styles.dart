@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_artboard_lifecycle_test.dart' show newArtboard;
 import '../test/ai_native_artboard_styles_test.dart' show artboardActiveStyle;

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Uniformly scales all live shapes while preserving unselected artwork in real CC files.
 Future<void> main() async {

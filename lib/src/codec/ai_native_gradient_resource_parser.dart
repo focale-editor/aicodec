@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Finds setup resources while excluding embedded documents and procedures.
 List<AiNativeGradientDefinition> _readGradientResources(AiNativeRecords records) {

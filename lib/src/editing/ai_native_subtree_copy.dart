@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Assigns fresh identities to ordinary artwork and every complete pair dictionary.
 List<AiSourceEdit> _subtreeCopyEdits(

@@ -1,4 +1,4 @@
-part of 'package:aikit/src/model/ai_native_records.dart';
+part of 'package:aicodec/src/model/ai_native_records.dart';
 
 /// Keeps palette cells and their local paint references separate from artboards.
 void _artboardPalette(List<AiToken> tokens, AiNativeLimits limits, Map<int, AiNativeResourceUse> gradientUses, Set<String> patternNames, {Set<int> versionMarkers = const {}}) {

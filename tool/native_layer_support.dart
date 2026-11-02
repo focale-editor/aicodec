@@ -1,4 +1,4 @@
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 /// Retains source boundaries and exact metadata for independent native decoding.
 Map<String, Object?> nativeLayerInventory(AiNativeLayers model) => {

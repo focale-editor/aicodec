@@ -86,7 +86,7 @@ def main():
         for packet, mesh in zip(packets, row['meshes']):
             assert [packet.start(), packet.end()] == [mesh['start'], mesh['end']]
             assert mesh['version'] == 2 and not mesh['private']
-            # This strict fixture grammar is independent of AiKit's token and
+            # This strict fixture grammar is independent of AiCodec's token and
             # hierarchical readers. It also checks every projected source span.
             text = packet[1].decode('latin1').replace('%_', '')
             matches = list(re.finditer(r'\s*(.*?)\s*/([A-Za-z]+) X#', text, re.S))

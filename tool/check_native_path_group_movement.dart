@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:aikit/aikit.dart';
+import 'package:aicodec/aicodec.dart';
 
 import '../test/ai_native_path_group_movement_test.dart' show countedPathGroupSource, mixedPathGroupSource, pathGroupParent, pathGroupPath, pathGroupSource;
 import 'check_native_shape_lifecycle.dart' show shapeLifecycleInventory;
