@@ -27,9 +27,10 @@ validation section and the remaining limits below.
 - Retain unsupported source data and distinguish preserved objects from editable
   ones. Do not use a flattened PDF as evidence of native export completion.
 - Preserve earlier uncommitted work in both repositories. Check the current
-  dependency resolution before application tests. Development validation now uses
-  Focale/pubspec_overrides.yaml to resolve this local AiKit worktree; this is not
-  a published integration or a new pinned release.
+  dependency resolution before application tests. Implementation used a local
+  AiKit override. Final validation removes it and locks Focale to Git commit
+  `553ba770e9042beff961f7112eaaeb598a8e0460`; all 200 library files match the
+  validated worktree. No package version or publication changes are involved.
 - Record the implementation and meaningful verification for each completed step
   below. Leave requirements open until their full acceptance is established.
 
@@ -1322,9 +1323,10 @@ On 2026-11-02, with Dart 3.13.5 / Flutter 3.47.7 on Linux:
 - AiKit: 1,443 tests pass on VM and Node. The final explicit preview-branch
   compatibility change also passes 36 focused Node cases and a repeated complete
   VM suite. `dart analyze` reports no issues; formatting and diff checks pass.
-- Focale: the final AI/PDF/device-gray campaign passes 216 tests. Extended host
-  checks cover mesh rendering/interchange, gradient precision, editor masks,
-  text capture, project recovery and source editing. The analyzer reports no
+- Focale: all 470 tests in the final extended campaign pass with the Git-locked
+  dependencies, after incorporating the concurrent upstream changes. They cover
+  AI/PDF/device-gray round trips, mesh rendering/interchange, gradient precision,
+  editor masks, text capture, project recovery and source editing. The analyzer reports no
   errors or warnings (550 informational lints remain across the application).
 - Both corpus runners report 40/40 required outcomes; manifest size/checksum
   verification passes. New documents, text creation/lifecycle, colors, affine
