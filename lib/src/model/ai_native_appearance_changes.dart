@@ -139,13 +139,19 @@ final class AiNativeAppearancePartChange {
   }
 }
 
-/// Complete process paint and geometry for one retained private group child.
+/// Complete paint and geometry for one retained private group child.
 final class AiNativeAppearancePathChange {
   /// Current authoritative contour inside a complete appearance group.
   final AiNativePath path;
 
   /// Explicit geometry, closure, process colors and stroke/locking attributes.
   final AiArtworkPath artwork;
+
+  /// Literal named fill, exclusive with the process fill in [artwork].
+  final AiNativeNamedColor? namedFill;
+
+  /// Literal named stroke, exclusive with the process stroke in [artwork].
+  final AiNativeNamedColor? namedStroke;
 
   /// Explicit opacity when no complete transparency tuple is supplied.
   final double opacity;
@@ -163,7 +169,20 @@ final class AiNativeAppearancePathChange {
   final bool strokeOverprint;
 
   /// Retains immutable values without replacing names, identities or source frames.
-  AiNativeAppearancePathChange({required this.path, required this.artwork, this.opacity = 1, this.transparency, this.hidden = false, this.fillOverprint = false, this.strokeOverprint = false}) {
+  AiNativeAppearancePathChange({
+    required this.path,
+    required this.artwork,
+    this.namedFill,
+    this.namedStroke,
+    this.opacity = 1,
+    this.transparency,
+    this.hidden = false,
+    this.fillOverprint = false,
+    this.strokeOverprint = false,
+  }) {
+    if (namedFill != null && artwork.fill != null || namedStroke != null && artwork.stroke != null) {
+      throw ArgumentError('Private paint channels cannot contain both process and named colors.');
+    }
     if (!opacity.isFinite || opacity < 0 || opacity > 1 || transparency != null && opacity != 1) {
       throw ArgumentError('Private path paint requires valid opacity or an explicit transparency tuple.');
     }

@@ -751,7 +751,7 @@ For each affected owner, supply one complete `AiNativeAppearanceReplacement(artw
 | `AiNativeAppearancePartChange` | Changes qualified visibility, winding, alignment and stroke settings. Offset-stroke labels require explicit source-encoded bytes. |
 | `childOrder` | Permutes every current direct child of a stack/chain without changing ownership. |
 | `children` with `AiNativeAppearanceChild` | Retains, copies, creates, removes or reparents children; mutually exclusive with `childOrder` on the same parent. |
-| `AiNativeAppearancePartDefinition` | Creates process fills/strokes, explicit blend parts, stacks/chains and conduits with explicit paint/settings. |
+| `AiNativeAppearancePartDefinition` | Creates process or named fills/strokes, explicit blend parts, stacks/chains and conduits with explicit paint/settings. |
 
 Copies retain their original snapshot, not simultaneous edits to the original. Retained children must occur once; cycles, stale/foreign handles and edits to removed parts reject. Unknown effects and parameters are preserved but do not qualify for these changes.
 
@@ -768,7 +768,7 @@ Ambiguous/conditional styles, captured names, incomplete shared coverage, enclos
 is an explicit `AiNativeAppearancePartDefinition` tree: basic fill/stroke/blend or
 conduit, or nested stacks/chains. Children must use
 `AiNativeAppearanceChild.create`; source-owned children cannot be silently moved
-or copied into a new resource. Native process alternatives, stroke alignment,
+or copied into a new resource. Native process alternatives or literal named paints, stroke alignment,
 dash settings, visibility and complete transparency use the existing part writer.
 No geometry or printing content is generated.
 
@@ -1101,8 +1101,16 @@ paint implicitly. These fields do not redefine another resource or compose any
 printing representation. Hosts may create palette cells separately to retain
 unused masters.
 
+`AiNativeAppearancePartDefinition.namedColor` authors each of those five literal
+layouts in fill/stroke parts, exclusively with `colors`. Private group path
+replacement accepts `AiNativeAppearancePathChange.namedFill`/`namedStroke`, with
+the same process-channel exclusivity. The complete printing owner remains
+mandatory, and outgoing state is restored for unchanged siblings. Named mask
+paths use the existing complete path definitions in the host-supplied Art tree.
+
 `AiNativeInks.decode(records:)` groups exact byte-name references in literal
-fill/stroke paints, native style trees, palette cells, authoritative/compatibility
+fill/stroke paints, native style trees, palette cells, qualified opacity-mask Art,
+authoritative/compatibility
 gradient stops and mesh Separation/NChannel declarations. A palette's display
 label remains independent of the ink identity. The inventory is not permission to
 edit opaque same-name references.

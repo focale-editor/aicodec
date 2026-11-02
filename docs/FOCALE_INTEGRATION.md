@@ -1199,8 +1199,9 @@ Retained saves reuse complete-owner geometry and mask transactions. Paint change
 create and apply a fresh style to the exact selected owner, preserving the old
 declaration and any other users. Printing and PDF use the same host revision.
 Mask settings, content, removal and recreation share the existing path/group mask
-transaction. Empty paint stacks, gradient/named inks and richer private families
-remain outside this projection. The following increment connects contour flags.
+transaction. At that increment, empty paint stacks, gradients, named inks and
+richer private families remained outside the projection. Named inks are connected
+in the later private-appearance increment below.
 
 Added deferred cases cover fill-only/stroke-only/combined paints under a
 pass-through parent, following artwork, no-op byte preservation, exact path mask
@@ -1461,3 +1462,28 @@ initial-palette/local-tint revisions checking unused masters, native state at ea
 contour, inverse PDF ink amounts and exact PDF pixels. The final Node run includes
 the repaired absent-named-paint case; the serializer uses explicit nullable-channel
 checks instead of destructuring nullable records. No Illustrator exchange is claimed.
+
+## Named paints in private appearances
+
+The host now binds custom CMYK/RGB inks in standalone fill/stroke styles, private
+group contours and opacity-mask Art to the same document color table. Initial
+creation and selected paint edits retain exact names and independent tints.
+Style application replay retains both its execution position and the original
+paint assignment position, so following artwork receives the correct named state.
+
+Global master revisions supply freshly composed printing for every editable
+appearance owner, including mask coverage, and then derive the compatibility PDF
+from the canonical native revision. Combined geometry/lifecycle edits are saved
+first, before ink-driven printing replacement can renumber native path handles.
+Unsupported preserved owners, named gradient/mesh composition and separation-aware
+overprint captures retain explicit rejection. Illustrator exchange remains an
+external acceptance requirement.
+
+Validation on 2026-11-02: all 1,475 package tests pass on VM and Node, including
+eight private named-paint and mask-reference cases. Package analysis is clean;
+formatting and scoped fixes pass. The 288 AI/PDF/source/prepress/color host tests
+pass, including six new private-ink cases. Application analysis has no errors or
+warnings (550 existing informational lints). Independent readers and Poppler pass
+48 complete saves, including eight private-ink revisions with exact native
+alternatives, mask references, refreshed printing and reference PDF pixels.
+This remains local format/rendering evidence, without Illustrator certification.

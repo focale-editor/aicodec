@@ -21,7 +21,7 @@ final class AiNativeAppearanceChild {
   const AiNativeAppearanceChild.create({required AiNativeAppearancePartDefinition this.definition}) : part = null, copied = false;
 }
 
-/// Explicit process paints and structural parts for native appearance creation.
+/// Explicit paints and structural parts for native appearance creation.
 ///
 /// New values are serialized literally. Supplied CMYK/RGB alternatives are never
 /// converted, and the host supplies the matching printing and PDF representations.
@@ -34,6 +34,9 @@ final class AiNativeAppearancePartDefinition {
 
   /// One process color or authored CMYK followed by RGB alternatives.
   final List<AiColor> colors;
+
+  /// Literal named paint, exclusive with process [colors].
+  final AiNativeNamedColor? namedColor;
 
   /// Explicit overprint flag for a new fill or stroke.
   final bool overprint;
@@ -85,6 +88,7 @@ final class AiNativeAppearancePartDefinition {
     required this.kind,
     this.visible = true,
     List<AiColor> colors = const [],
+    this.namedColor,
     this.overprint = false,
     this.opacity = 1,
     this.transparency,
@@ -107,8 +111,8 @@ final class AiNativeAppearancePartDefinition {
     final bool compound = kind == .stack || kind == .chain;
     if (!paint && !compound && kind != .conduit && kind != .blend ||
         !compound && children.isNotEmpty ||
-        paint && !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) ||
-        !paint && colors.isNotEmpty) {
+        paint && (namedColor == null ? !(colors.length == 1 || colors.length == 2 && colors[0].space == .cmyk && colors[1].space == .rgb) : colors.isNotEmpty) ||
+        !paint && (colors.isNotEmpty || namedColor != null)) {
       throw ArgumentError('New appearances require a supported part with its own paint or child payload.');
     }
     if (![opacity, strokeWidth, miterLimit, dashPhase, ...dash].every((value) => value.isFinite && value.abs() <= 9007199254740991) ||

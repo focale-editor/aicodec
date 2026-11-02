@@ -26,7 +26,7 @@ final class AiNativeOpacityMaskSettings {
 /// Decoding validates the literal fields and X=/X+ boundaries. Artwork remains
 /// preserved data until an owning appearance qualifies it for a transaction.
 final class AiNativeOpacityMask {
-  /// Serializes editable process paths/groups for a mask's complete Art payload.
+  /// Serializes editable literal paints and paths/groups for a mask's complete Art payload.
   ///
   /// The result includes `X=`/`X+`; only subsequent lines receive private prefixes
   /// when [private] is true. Attach it through mask creation/update together with

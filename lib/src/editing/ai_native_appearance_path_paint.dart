@@ -52,6 +52,8 @@ AiNativeAppearances _replaceNativeAppearancePaths(
     final AiNativeAppearanceReplacement owner = artwork.singleWhere((replacement) => replacement.artwork.groupContours.any((contour) => identical(contour.path, path)));
     final AiNativePathDefinition definition = AiNativePathDefinition(
       artwork: paint,
+      namedFill: change.namedFill,
+      namedStroke: change.namedStroke,
       bounds: owner.bounds,
       opacity: change.opacity,
       transparency: change.transparency,
@@ -59,16 +61,16 @@ AiNativeAppearances _replaceNativeAppearancePaths(
       fillOverprint: change.fillOverprint,
       strokeOverprint: change.strokeOverprint,
     );
-    final Set<String> writes = {'A', 'Xw', 'XR', 'Xy', 'O', 'R', 'w', 'J', 'j', 'M', 'd', if (paint.fill != null) 'fill', if (paint.stroke != null) 'stroke'};
+    final Set<String> writes = {'A', 'Xw', 'XR', 'Xy', 'O', 'R', 'w', 'J', 'j', 'M', 'd', if (definition.filled) 'fill', if (definition.stroked) 'stroke'};
     final Set<String> reads = {
       'A',
       'Xw',
       'Ap',
       'D',
       'XR',
-      if (paint.fill != null || paint.stroke != null) 'Xy',
-      if (paint.fill != null) ...{'O', 'fill'},
-      if (paint.stroke != null) ...{'stroke', 'R', 'w', 'J', 'j', 'M', 'd'},
+      if (definition.filled || definition.stroked) 'Xy',
+      if (definition.filled) ...{'O', 'fill'},
+      if (definition.stroked) ...{'stroke', 'R', 'w', 'J', 'j', 'M', 'd'},
     };
     final Map<String, AiNativeInstruction> original = states[path.end]!.native;
     stateChanges[path] = (writes: writes, reads: reads, unresolved: writes.difference(original.keys.toSet()));
@@ -77,7 +79,7 @@ AiNativeAppearances _replaceNativeAppearancePaths(
     for (final AiSourceEdit edit in geometry) {
       add(edit.start == path.geometry.first.start ? AiSourceEdit(start: edit.start, end: edit.end, bytes: [...latin1.encode('$prefix '), ...edit.bytes]) : edit);
     }
-    final String operator = paint.fill == null ? (paint.stroke == null ? 'N' : 'S') : (paint.stroke == null ? 'F' : 'B');
+    final String operator = !definition.filled ? (!definition.stroked ? 'N' : 'S') : (!definition.stroked ? 'F' : 'B');
     add(AiSourceEdit(start: path.paint.start, end: path.paint.end, bytes: ascii.encode(paint.closed ? operator.toLowerCase() : operator)));
     final String restoration = writes.where(original.containsKey).map((key) => _shapeStateText(original[key]!, private: true)).join();
     if (restoration.isNotEmpty) {

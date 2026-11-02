@@ -58,16 +58,22 @@ Uint8List _createdNativeAppearancePart(
       text('/Dictionary : /NotRecorded , 1 /Int (BSAdvStrokeDictionaryVersion) , ${adjust ? 1 : 0} /Bool (BSDashAdj) , ; (kAIBeautifulStrokesParamsDictKey) , ');
     }
     text('/${stroke ? 'StrokeStyle' : 'FillStyle'} : ${definition.overprint ? 1 : 0} ${stroke ? 'R' : 'O'} ');
-    final String color = definition.colors.expand((color) => color.channels).join(' ');
-    final String operator = definition.colors.length == 2
-        ? (stroke ? 'XA' : 'Xa')
-        : switch (definition.colors.single.space) {
-            .gray => stroke ? 'G' : 'g',
-            .rgb => stroke ? 'XA' : 'Xa',
-            .cmyk => stroke ? 'K' : 'k',
-          };
+    if (definition.namedColor case final AiNativeNamedColor named) {
+      append(named._bytes(stroke: stroke, limit: limits.maxDecodedBytes));
+      text(' ');
+    } else {
+      final String color = definition.colors.expand((color) => color.channels).join(' ');
+      final String operator = definition.colors.length == 2
+          ? (stroke ? 'XA' : 'Xa')
+          : switch (definition.colors.single.space) {
+              .gray => stroke ? 'G' : 'g',
+              .rgb => stroke ? 'XA' : 'Xa',
+              .cmyk => stroke ? 'K' : 'k',
+            };
+      text('$color $operator ');
+    }
     final String transparency = definition.transparency?.operands.join(' ') ?? '0 ${definition.opacity} 0 0 0';
-    text('$color $operator $transparency Xy ${definition.evenOdd ? 1 : 0} XR ');
+    text('$transparency Xy ${definition.evenOdd ? 1 : 0} XR ');
     if (stroke) {
       if (definition.dash.length > limits.maxTokens || definition.dash.length > limits.maxDecodedBytes ~/ 2) {
         throw const AiLimitException(message: 'Created appearance dash operands exceed native limits.');

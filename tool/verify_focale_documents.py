@@ -179,6 +179,42 @@ def verify_authored_inks(inkai, output):
     print('Verified two authored-ink saves: unused palette master, independent fill/stroke tints, unchanged neighbor state and exact PDF pixels.')
 
 
+def verify_appearance_inks(inkai, output):
+    """Verify private named paints, mask references and repeated composed saves."""
+    from inkai.parser.hierarchy_objects import Mask
+
+    for kind in ('path', 'group'):
+        for mask_kind in ('process', 'named'):
+            previous_pixels = None
+            for revision in (1, 2):
+                stem = f'ink-appearance-{kind}-{mask_kind}-{revision}'
+                path = output / f'{stem}.ai'
+                native = (output / f'{stem}.ps').read_bytes()
+                document = inkai.parse(str(output / f'{stem}.ps'))
+                paints = [op for section in (document.setup, document.trailer)
+                          for op in operators(section) if op.command in ('x', 'X')]
+                assert paints and any(op.command == 'X' for op in paints), stem
+                expected = [.2 * revision, .1, .5, .2]
+                assert all(op.tokens[4] == b'Authored' for op in paints), stem
+                assert all(list(map(float, op.tokens[:4])) == expected for op in paints), stem
+                assert {.4, .7}.issubset({round(float(op.tokens[5]), 12) for op in paints}), stem
+                masks = [value for value in native_values(document.trailer) if isinstance(value, Mask)]
+                assert len(masks) == 1, stem
+                mask_paints = [op for op in operators(masks[0].Art) if op.command in ('x', 'X')]
+                assert bool(mask_paints) == (mask_kind == 'named'), stem
+                raster, = images(document)
+                color, alpha = samples(raster)
+                pixels = (bytes(color), bytes(alpha))
+                assert len(color) == raster.w * raster.h * 3 and len(alpha) == raster.w * raster.h, stem
+                assert pixels != previous_pixels, stem
+                previous_pixels = pixels
+                assert native_programs(path) == [native], stem
+                pdf = PdfReader(path, strict=True)
+                assert len(pdf.pages) == 1, stem
+                assert renders(path) == renders(output / f'{stem}-reference.pdf'), stem
+    print('Verified eight private-ink saves: style/group paints, mask inks, exact alternatives, refreshed printing and PDF pixels.')
+
+
 def main():
     """Verify shared native owners, edited geometry, caches and exact page pixels."""
     if not __debug__:
@@ -387,6 +423,7 @@ def main():
     appearances = verify_appearance_lifecycle(inkai, args.output)
     verify_named_inks(inkai, args.output)
     verify_authored_inks(inkai, args.output)
+    verify_appearance_inks(inkai, args.output)
     print(f'Verified {appearances} additional appearance saves: native mask carriers, stable identities, supplied image state, exact PDF pixels and repeated saves.')
     print(f'Verified {len(cases)} Focale AI saves: native contours, image samples, appearances and artboards, retained page identities, shared owners, current headers and exact PDF pixels after repeated edits.')
 

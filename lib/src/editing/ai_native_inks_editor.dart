@@ -4,12 +4,27 @@ part of 'package:aikit/src/model/ai_native_records.dart';
 List<AiNativeInstruction> _nativeInkPaints(AiNativeAppearances model) => {
   for (final AiNativeInstruction command in [
     ..._structureCommands(model.structure.drawing),
+    ..._nativeInkMaskPaints(model.structure.drawing.records),
     for (final AiNativeArtworkResource resource in model.artworkResources.resources) ...resource._drawing.items.whereType<AiNativeInstruction>(),
     for (final AiNativePalette palette in AiNativeSwatches.decode(records: model.structure.drawing.records).palettes)
       for (final AiNativeSwatch cell in palette.swatches) ...cell.commands,
   ])
     if (_nativeNamedColorOperators.contains(command.operator)) command.start: command,
 }.values.toList();
+
+/// Reads mask Art fields with their original source offsets and raster boundaries.
+///
+/// Unsupported masks remain opaque. Their name tokens are deliberately absent
+/// from qualified spans, so any attempted same-name redefinition rejects.
+Iterable<AiNativeInstruction> _nativeInkMaskPaints(AiNativeRecords records) sync* {
+  for (final AiNativeContainer record in records.containers.where((record) => record.type == 'Mask')) {
+    try {
+      yield* AiNativeOpacityMask.decode(records: records, record: record).artworkDrawing.items.whereType<AiNativeInstruction>();
+    } on UnsupportedError {
+      continue;
+    }
+  }
+}
 
 /// Groups explicit references by exact decoded bytes rather than display names.
 AiNativeInks _readNativeInks(AiNativeRecords records) {
