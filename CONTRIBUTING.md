@@ -85,3 +85,7 @@ capital after the scope and a final period, for example
 `feat(text): Added native text feature editing.` Keep review follow-up changes on
 the same branch. Routine validation does not include package publication or a
 release-version change.
+
+## Maintenance tools
+
+Keep `tool/` limited to the seven general commands in the [corpus guide](test/corpus/README.md#maintained-tools). Add feature regressions under `test/`; host export/rendering verification belongs in Focale. Reuse an existing corpus command before adding another script. Repository tools are excluded from pub.dev archives.

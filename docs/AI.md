@@ -308,7 +308,7 @@ atomic file persistence. For subsequent saves, extract fresh sources and use the
 normal `AiNativeData.replace`/mapped replacement APIs.
 
 See [the runnable example](../example/create_document.dart) and the
-[new-document corpus checks](../test/corpus/README.md#new-cc-documents-without-a-source-ai).
+[new-document regressions](../test/ai_native_document_creation_test.dart).
 This is a qualified CC serialization profile; standalone AI7 authoring remains
 outside this contract. Adobe reopening is not certified.
 
@@ -556,7 +556,7 @@ converts polygon/star tangent setbacks to actual circle radii. Native rectangle
 corner ordering and initial quadrant, native polygon rotation convention, all
 cubic controls and native centers are checked together. This interpretation follows
 the pinned Inkscape AI reference notes and corpus. See the
-[shape verification guide](../test/corpus/README.md#native-text-and-shapes) for
+[shape verification guide](../test/corpus/README.md#independent-text-and-shape-checks) for
 independent checks; no Illustrator exchange result is implied.
 
 ### Affine contours and dynamic shape parameters
@@ -583,7 +583,7 @@ Rounded shapes accept positive similarities with scaled radii. Nonuniform maps a
 
 Authoritative, redundant and saved alternative metadata are updated together, retaining qualifiers, identities and unrelated bytes. Existing parameter copies must agree. Counts retain closure conventions; printing groups retain outgoing state. Byte/token limits apply to the complete transaction. Saving uses `AiNativeData.replace` with the corresponding host PDF, as for other native edits.
 
-`tool/check_native_affine.dart` emits direct/CC shear and parameter-edit snapshots plus four complete compressed AI saves. `tool/verify_native_affine.py --reference <pinned-extension-ai>` independently checks producer irregular-polygon evidence, native contours/counts/metadata and PDF payloads. These are structural checks, not Illustrator reopen/render certification.
+[Affine regressions](../test/ai_native_affine_test.dart) cover direct/CC shear, parameter edits and saved native/PDF data. The [general corpus checks](../test/corpus/README.md) retain independent producer geometry checks. These do not certify Illustrator reopening or rendering.
 
 ### Host-supplied printing contours
 
@@ -821,7 +821,7 @@ Before packaging, call `validateTextForSave(overflowStarts: ...)` on the current
 
 A complete save uses that composed native program with the host's matching PDF graph, derived from the original PDF, then reopens the encoded AI. The host must regenerate/remove affected PDF resources and previews as described in [the derived-representation policy](#derived-representations). Neither attaching a view nor passing the structural gate proves visual equivalence with the PDF.
 
-Regression acceptance covers creation, copying, linked-frame insertion/removal, deletion, cache identity invalidation, resource/strike compaction and a second save after reopening a compressed PDF-backed AI. `tool/check_native_text_lifecycle.dart` generates twelve synthetic CC/CS snapshots and two complete saved files; `tool/verify_native_text_lifecycle.py --reference <pinned-inkai-checkout>` checks their ATE data, drawing references and PDF text using independent readers. Synthetic glyph IDs deliberately test serialization rather than font shaping. This evidence is not Adobe Illustrator reopen/render certification or acceptance of every producer profile.
+[Text lifecycle regressions](../test/ai_native_text_lifecycle_test.dart) cover creation, copying, linked-frame insertion/removal, deletion, cache invalidation, resource/strike compaction and a second save after reopening a PDF-backed AI. Synthetic glyph IDs test serialization rather than font shaping. The [general text oracle](../test/corpus/README.md#independent-text-and-shape-checks) independently checks producer text resources and edits; neither check certifies every producer profile or Illustrator reopening.
 
 ### Text paints and strokes
 
@@ -1413,7 +1413,7 @@ universally available.
 
 `remove(swatches:)` deletes complete selected cells without changing groups or applied artwork. Referenced named inks reject, including uncertain same-name literal references elsewhere; the host must first resolve their applications. Removing a gradient cell does not delete its global definition, but can make that resource eligible for separate removal. Saved conditional palette branches and opaque reference owners are preserved and excluded from lifecycle edits. This cell model requires explicit `Pc` boundaries; legacy implicit terminators require separate ownership qualification.
 
-The offline regressions include native/PDF save and reopen checks. `tool/check_native_colors.dart` and `tool/verify_native_colors.py --reference <pinned-extension-ai>` independently verify four complete AI saves, both stop copies, exact application bindings, named alternatives/tints, palettes and bank deletion. This is structural acceptance, not Adobe reopen/render certification.
+The [ink regressions](../test/ai_native_inks_test.dart) and related palette/gradient tests cover native/PDF save and reopen, named alternatives, exact bindings and resource deletion. Independent Focale export verification belongs to the host. These checks do not establish Adobe reopening or rendering certification.
 
 ### Relative gradient placement
 
@@ -1440,10 +1440,7 @@ authoring value covers linear and centered radial styles; focal highlights and
 cached imaging matrices remain outside its creation contract. Existing source
 instances keep their broader inspection and selected-edit APIs.
 
-`check_native_gradient_paints.dart` and `verify_native_gradient_paints.py` check
-four authored fill/stroke and linear/radial native/container cases against pinned
-inkai. Their supplied placeholder printing/PDF is deliberately not visual
-acceptance. Focale composition and actual Illustrator editing remain separate.
+[Gradient-paint regressions](../test/ai_native_gradient_paint_test.dart) cover authored fill/stroke and linear/radial native/container cases. Supplied placeholder printing/PDF is not visual acceptance. Focale composition and actual Illustrator editing remain separate.
 
 ## Reusable artwork resources
 
@@ -1485,12 +1482,7 @@ or sample identities. Unrelated document artwork and retained declarations remai
 source-owned. The host supplies native artwork and synchronized PDF; this API does
 not compose tile artwork, instances, brush strokes or effects.
 
-`tool/check_native_artwork_resource_lifecycle.dart` produces nine complete saves
-(creation, replacement and removal in all three namespaces), reopening each before
-the next edit. Its companion Python verifier checks the native library with pinned
-inkai, the AI container with pypdf, and unchanged page pixels with Poppler. Unused
-library definitions do not appear on the PDF page: those checks establish native
-structure and page preservation, not Illustrator visual or editability acceptance.
+[Artwork-resource lifecycle regressions](../test/ai_native_artwork_resource_lifecycle_test.dart) cover creation, replacement, removal and reopening before later edits. They establish native structure and preservation; synchronized host PDF and Illustrator editability require separate host acceptance.
 
 ### Typed pattern paints and local vector declarations
 
@@ -1546,9 +1538,9 @@ creation and editing still require qualified host/native synchronization.
 The observed field layout is checked against the pinned Inkscape extension
 `inkai/parser/hierarchy_objects.py` and `tests/parser/test_data_hierarchy.py`
 at `1a5f42a0b0407fc869e032420570682048810108`.
-`tool/check_native_symbols.dart` and `tool/verify_native_symbols.py` compare
-synthetic source spans, names, matrices and conditional resolution independently;
-these fixtures do not establish Illustrator acceptance.
+[Symbol regressions](../test/ai_native_symbols_test.dart) cover source spans,
+names, matrices and conditional resolution. Focale owns independent verification
+of its authored symbol exports; these checks do not establish Illustrator acceptance.
 
 ### Static symbol instance authoring
 
@@ -1601,9 +1593,9 @@ The existing complete appearance transactions qualify the descriptor namespace,
 retain an editable private spine and update the supplied printing representation.
 Outgoing drawing-state checks cover only the explicit stroke assignments; nib
 parameters remain local to their filter. Rendering and synchronized PDF remain
-host responsibilities. `tool/check_native_brush_lifecycle.dart` produces twelve
-complete descriptor saves for pinned independent parsing and page-preservation
-checks. This evidence does not certify Illustrator's brush rendering or editing.
+host responsibilities. [Brush lifecycle regressions](../test/ai_native_brush_lifecycle_test.dart)
+cover descriptor creation, edits and removal. Focale owns independent verification
+of its brush exports; these checks do not certify Illustrator rendering or editing.
 
 ### Fixed artistic and pattern brush applications
 
@@ -1704,7 +1696,7 @@ supply complete ink bounds and regenerate the synchronized PDF/previews.
 Interpolation, tessellation and color management remain application responsibilities.
 The mesh editing fixtures compare serialized native controls/colors/opacity and
 original/reopened host PDF views independently; see
-[the mesh verifier](../tool/verify_focale_mesh_editing.py) and
+Focale's `tool/validation/verify_ai_documents/` command and
 [the Focale profile](#focale-integration) for coverage and boundaries.
 
 ## Images and linked files
@@ -1742,7 +1734,7 @@ fresh artwork identity. Both accept explicit placement/attributes and qualified
 root/group/layer destinations. Cross-document copies require the host to rebase
 relative paths. Generic subtree copying of image-bearing owners still rejects;
 hosts can author destination layers and copy their qualified children explicitly.
-See the [image corpus checks](../test/corpus/README.md#raster-data-and-linked-placements)
+See the [offline image regressions](../test/corpus/README.md#offline-regressions)
 for validation scope; they do not establish Adobe application acceptance.
 
 ### Native image creation

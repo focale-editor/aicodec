@@ -330,9 +330,9 @@ def composition_events(story, authored=False):
             events.append(('segment', x, y, field(node, '20', 'FirstCharacterIndexInSegment') or 0, count, field(mapping, '5', 'WRValid') or False, hyphen))
         if authored:
             assert tag in ('PC', 'PathSelectGroupCharacter', 'F', 'FrameStrike', 'R', 'RowColStrike', 'L', 'LineStrike', 'S', 'Segment')
-            common = {'/99', '/StreamTag', '/0', '/Transform', '/5', '/ChildProcession', '/6', '/Children'}
+            common = {'/99', '/StreamTag', '/0', '/Transform', '/5', '/Procession', '/6', '/Children'}
             specific = {'/10', '/Frame'} if tag in ('F', 'FrameStrike') else {'/1', '/Bounds', '/14', '/SelectionAscent', '/15', '/SelectionDescent'} if tag in ('L', 'LineStrike') else {'/20', '/FirstCharacterIndexInSegment', '/15', '/Mapping'} if tag in ('S', 'Segment') else set()
-            assert set(node) <= common | specific
+            assert set(node) <= common | specific, (tag, sorted(set(node) - common - specific))
         for child in field(node, '6', 'Children') or []:
             if field(child, '99', 'StreamTag') not in ('/G', '/GlyphStrike'):
                 walk(child, x, y)
@@ -571,14 +571,14 @@ def main():
         assert compositions == entry['composedStories']
         assert entry['rejectedPathLayouts'] == len(stories) - compositions
         results.append({"file": name, "stories": len(stories), "renamedStyle": bool(styles), "contentEdits": edits, "featureEdits": feature_edits, "fontAdditions": font_additions, "translatedFrames": frames, "translatedConfinements": confinements, "compositions": compositions, "automaticHyphens": hyphens, "layoutInvalidations": invalidations, "status": "passed"})
-    assert len(results) == 32, "The required text-document corpus was not fully exercised"
+    assert len(results) == 35, f"The pinned corpus requires 35 text documents, checked {len(results)}"
     content_edits = sum(result["contentEdits"] for result in results)
     assert content_edits == 20, "The required native stories were not all edited"
     assert sum(result['layoutInvalidations'] for result in results) == 20
     feature_edits = sum(result["featureEdits"] for result in results)
     assert feature_edits == 60, "The required native stories and forced-break spans were not all formatted"
     font_additions = sum(result['fontAdditions'] for result in results)
-    assert font_additions == 64, 'The required native font registrations were not all exercised'
+    assert font_additions == 70, 'The required native font registrations were not all exercised'
     assert sum(result['translatedFrames'] for result in results) == 26, 'The required native frames were not all translated'
     assert sum(result['translatedConfinements'] for result in results) == 13, 'The required confinement paths were not all translated'
     compositions = sum(result['compositions'] for result in results)

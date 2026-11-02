@@ -29,3 +29,6 @@ __pycache__/
 /test/
 /doc/
 /docs/
+
+# Repository-only corpus and diagnostic commands.
+/tool/
