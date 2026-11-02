@@ -1683,3 +1683,33 @@ Each owner restores its original outgoing native and printing state. Aggregate
 byte limits, retained source membership, uniqueness, references and final owner
 qualification are checked before returning the new snapshot. Unselected sources,
 duplicate children, recycled identities and nested complete roots reject atomically.
+
+### Symbol instance inspection
+
+`AiNativeSymbols.decode(artworkResources: ...)` exposes saved `/SymbolInstance`
+records and links their literal `/SymbolRef` names to the symbol declaration
+namespace. Patterns and brushes with equal names are independent. Each snapshot
+retains the exact record, lexical node, enclosing resource (when present), raw
+name bytes and six finite `/RTransformMatrix` components. Malformed or repeated
+reference/transform fields remain in the record; their typed values are null.
+Unknown entries and qualifiers remain explicitly available in `otherEntries`.
+
+`candidates` and `resolution` distinguish missing, ambiguous, conditional and
+uniquely available definitions, including same-branch references. `instancesOf`
+includes potential conditional/ambiguous users; `referencesIn` inventories
+resource-local dependencies. These associations are bounded independently of
+source byte size, immutable and tied to exact source handles.
+
+This is inspection, not an instance authoring or printing-ownership contract.
+Relative matrices are returned unchanged: ruler/canvas offsets, registration
+points and y-axis conversion are not guessed. No identity matrix is substituted
+for an absent transform, and no alternative `Matrix` field is assumed equivalent.
+Unknown fields may carry additional dependencies. Complete instance rendering,
+creation and editing still require qualified host/native synchronization.
+
+The observed field layout is checked against the pinned Inkscape extension
+`inkai/parser/hierarchy_objects.py` and `tests/parser/test_data_hierarchy.py`
+at `1a5f42a0b0407fc869e032420570682048810108`.
+`tool/check_native_symbols.dart` and `tool/verify_native_symbols.py` compare
+synthetic source spans, names, matrices and conditional resolution independently;
+these fixtures do not establish Illustrator acceptance.

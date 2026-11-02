@@ -1778,3 +1778,29 @@ host verifier passes all 104 native/container/PDF comparisons, including six
 original/reopened transfer views and simultaneous source-owner removal. Final
 Focale Git-dependency suite evidence is recorded in ADR 0444. Illustrator
 rendering and editability remain unverified.
+
+
+### Inspecting symbol instance bindings
+
+AiKit now exposes `AiNativeSymbols`: exact source records, raw relative matrices,
+byte-preserving symbol names, resource-local ownership and explicit missing,
+ambiguous or conditional resolution. Equal pattern or brush names do not bind
+symbol instances. Malformed/repeated fields remain inspectable instead of being
+replaced by defaults; association work has its own aggregate token budget.
+
+This supplies the reference inventory needed for Focale's symbol table and
+instance synchronization. It does not yet connect symbol instances to host objects
+or qualify their printing/cache ownership. The pinned external parser contains
+an observed instance-field fixture; the inspected pinned artwork corpus contains
+no complete symbol-instance specimen. Relative-to-canvas conversion, native
+instance writing and actual Illustrator acceptance therefore remain unverified.
+The existing resource mutation guards are unchanged.
+
+
+Local validation passes all 1,554 package tests on both VM and Node. Eight new
+regressions cover namespaces, raw byte names, relative matrices, conditional and
+ambiguous bindings, opaque/local records, malformed fields, immutable handles and
+bounded association work. The pinned independent reader confirms eight references
+across four synthetic sources. Analysis, formatting and scoped fix checks pass.
+These checks establish inspection behavior only; instance authoring and real
+Illustrator exchange remain outstanding.
