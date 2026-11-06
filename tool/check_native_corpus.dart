@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aicodec/aicodec.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 
 /// Exercises required native extraction and editing against the pinned corpus.
 Future<void> main() async {

@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Encodes caller-supplied byte strings after bounding their escaped output size.
 List<int> _nativeLiteralString(List<int> value, int maxBytes) {

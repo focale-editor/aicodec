@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// A finite invertible affine map in native drawing coordinates (y up).
 final class AiNativeAffineTransform {

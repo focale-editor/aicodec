@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 import 'package:test/test.dart';
 
 import 'ai_native_appearances_test.dart' show appearanceStyle;
@@ -28,7 +28,7 @@ AiNativeAppearances appearanceEditingModel({String? source, AiNativeLimits limit
 /// Host-authored expansion with different paint and the original outgoing color.
 const String appearanceEditedGroup = 'u\n0.7 0.6 0.5 Xa\n0 0 m 10 0 L 10 10 L f\n0 0 0 1 k\nU';
 
-/// Supplies an expansion for one exact user without generating artwork in AiCodec.
+/// Supplies an expansion for one exact user without generating artwork in IllustratorKit.
 AiNativePrintingGroupReplacement appearancePrinting(AiNativeAppearances model, int index, {String bytes = appearanceEditedGroup}) => AiNativePrintingGroupReplacement(
   shape: model.structure.drawing.liveShapes[index],
   bytes: latin1.encode(bytes),

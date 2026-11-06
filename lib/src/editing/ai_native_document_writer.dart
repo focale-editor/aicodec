@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Explicit initial paint state for newly authored ordinary artwork.
 const String _newDocumentState = '0 A 0 Xw 0 Ap 0 D 0 XR 0 O 0 R 0 g 0 G 0 J 0 j 1 w 10 M [] 0 d 0 1 0 0 0 Xy\n';

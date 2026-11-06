@@ -1,10 +1,10 @@
-# Contributing to AiCodec
+# Contributing to IllustratorKit
 
-Thanks for helping improve AiCodec. Bug reports, focused fixes, documentation improvements, and well-scoped features are welcome.
+Thanks for helping improve IllustratorKit. Bug reports, focused fixes, documentation improvements, and well-scoped features are welcome.
 
 ## Before you start
 
-- Search [existing issues](https://github.com/focale-editor/aicodec/issues) before opening a new one.
+- Search [existing issues](https://github.com/focale-editor/illustratorkit/issues) before opening a new one.
 - Include a minimal reproduction, the Dart SDK version, and the Illustrator version and PDF-compatibility setting involved.
 - Share sample files only when their license and contents permit it. Do not include secrets, private artwork, or personal data in a public report.
 
@@ -13,8 +13,8 @@ Thanks for helping improve AiCodec. Bug reports, focused fixes, documentation im
 Use a Dart SDK compatible with [`pubspec.yaml`](pubspec.yaml). Fork the repository, then run:
 
 ```sh
-git clone https://github.com/YOUR_ACCOUNT/aicodec.git
-cd aicodec
+git clone https://github.com/YOUR_ACCOUNT/illustratorkit.git
+cd illustratorkit
 dart pub get
 ```
 
@@ -35,7 +35,7 @@ Follow [`AGENTS.md`](AGENTS.md) and keep each change focused on one fix or featu
 
 - Keep each pull request focused on one fix or feature.
 - Do not bump the package version or edit the changelog unless a maintainer asks you to.
-- Keep format models independent of Flutter, native libraries, and Focale. Native authoring records belong in AiCodec; rendering and synchronization with the host's scene belong to the application adapter.
+- Keep format models independent of Flutter, native libraries, and Focale. Native authoring records belong in IllustratorKit; rendering and synchronization with the host's scene belong to the application adapter.
 - Document public and private APIs, preserve caller-owned values, and add regression tests for parser, editing or writer changes.
 - Base compatibility changes on specifications and real files. Preserve opaque data when safe; reject transformations that would silently lose unsupported content.
 - Update the [technical reference](docs/AI.md), examples, and README when support or public behavior changes.

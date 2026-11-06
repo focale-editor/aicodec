@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// One source-backed `value /key X#` mesh record, including unknown fields.
 final class AiNativeMeshField extends AiNativeItem {

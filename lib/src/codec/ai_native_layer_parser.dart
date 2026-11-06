@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Pairs only real body layer comments with their matching executable owners.
 Map<AiLayer, ({AiToken opening, AiToken closing})> _nativeLayerComments(AiNativeDrawing drawing) {

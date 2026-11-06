@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Assigns only flags consumed by the opening group, preserving child state.
 AiNativeDrawing _updateNativeGroupAttributes(AiNativeDrawing drawing, AiNativeGroup group, bool? hidden, bool? locked) {

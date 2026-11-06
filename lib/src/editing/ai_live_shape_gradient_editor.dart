@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Plans selected appearance edits without changing native shape geometry.
 abstract interface class _LiveShapeGradientEdit {

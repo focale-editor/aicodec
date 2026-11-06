@@ -1,4 +1,4 @@
-import 'package:aicodec/src/model/ai_program.dart';
+import 'package:illustratorkit/src/model/ai_program.dart';
 
 /// Device color channels used by editable Illustrator path artwork.
 enum AiColorSpace {

@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Qualifies destination ancestors without requiring ordinary-only child artwork.
 void _sourceMovementParents(AiNativeDrawing drawing, List<AiNativeStructureNode> parents) {

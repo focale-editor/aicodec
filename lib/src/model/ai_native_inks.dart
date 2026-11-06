@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// One byte-named ink shared by literal paints, gradients and mesh declarations.
 final class AiNativeInk {
@@ -60,7 +60,7 @@ final class AiNativeInks {
   /// inferred. Gradient ramps are keyed by one current definition per affected
   /// gradient name, covering all its printing/nonprinting banks. Artwork uses
   /// handles from [printingOwners]. The host supplies matching complete printing
-  /// and PDF content; AiCodec does not render or establish visual equivalence.
+  /// and PDF content; IllustratorKit does not render or establish visual equivalence.
   /// [retainedArtwork] may cover unaffected owners instead of replacements; their
   /// complete source printing remains untouched. Affected owners cannot be retained.
   ///

@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_program.dart';
+part of 'package:illustratorkit/src/model/ai_program.dart';
 
 /// One byte-range replacement against an immutable native source snapshot.
 final class AiSourceEdit {

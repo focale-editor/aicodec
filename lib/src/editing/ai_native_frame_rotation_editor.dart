@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Reads an explicit frame angle independently of the artwork geometry.
 double? _nativeFrameRotation(AiNativeContainer? dictionary) {

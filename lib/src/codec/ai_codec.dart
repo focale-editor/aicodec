@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:aicodec/src/codec/ai_postscript.dart';
-import 'package:aicodec/src/model/ai_document.dart';
+import 'package:illustratorkit/src/codec/ai_postscript.dart';
+import 'package:illustratorkit/src/model/ai_document.dart';
 import 'package:pdfcore/pdfcore.dart';
 
 /// Resource policy for AI containers and legacy DSC inspection.

@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// One counted setup bank, preserving printing/nonprinting placement.
 final class _NativeGradientBank {

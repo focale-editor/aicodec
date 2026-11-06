@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Explicit pairing of one current native artboard and a host-produced PDF page.
 final class AiNativeArtboardPage {

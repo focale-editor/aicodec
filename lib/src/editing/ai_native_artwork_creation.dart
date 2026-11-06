@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Resolves appearance boundaries before admitting independent following artwork.
 List<AiNativeAppearanceArtwork> _nativeCreationAppearances(AiNativeDrawing drawing) => _nativeBodyAppearanceArtwork(AiNativeAppearances.decode(structure: drawing._objects.structure));

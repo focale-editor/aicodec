@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Declarative attributes whose values can be replayed without rendering.
 const Set<String> _nativeArtworkStateKeys = {'fill', 'stroke', 'A', 'Xw', 'O', 'R', 'XR', 'D', 'Ap', 'J', 'j', 'w', 'M', 'd', 'Xy'};

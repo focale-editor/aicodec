@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Synchronizes relative authoring geometry with printable gradient placement.
 final class _LiveShapeGradientPlacement implements _LiveShapeGradientEdit {

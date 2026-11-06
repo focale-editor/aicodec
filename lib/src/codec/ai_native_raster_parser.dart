@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Associates each raster section with one explicit XI command and opaque body.
 List<AiNativeRaster> _readNativeRasters(AiNativeRecords records, bool bodyOnly, {int? start, int? end}) {

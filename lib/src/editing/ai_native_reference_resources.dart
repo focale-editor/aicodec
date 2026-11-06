@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Qualifies counted gradient declarations without treating resource names as art IDs.
 List<({int start, int end})> _referenceGradientRanges(AiNativeLayers model, {List<_NativeFontEncoding>? fontDeclarations}) {

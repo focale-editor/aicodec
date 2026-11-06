@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Retains declarative setup inventories separately from instantiated artwork.
 List<({int start, int end})> _artboardSetupRanges(AiNativeLayers layers, {required Set<String> patternNames, required Set<String> symbolNames}) {

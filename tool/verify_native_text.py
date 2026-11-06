@@ -345,7 +345,7 @@ def composition_events(story, authored=False):
 
 
 def verify_fonts(before, name, output, text_parser, stream, inkai, binary_type):
-    """Check appended identities and references without using AiCodec projections."""
+    """Check appended identities and references without using IllustratorKit projections."""
     payload = (output / f'{name}.fonts.ate').read_bytes()
     actual = text_parser.read_object(stream(io.BytesIO(payload)))
     expected = copy.deepcopy(before)

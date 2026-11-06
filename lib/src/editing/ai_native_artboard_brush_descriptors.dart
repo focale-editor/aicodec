@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Qualified plug-in/name identities and complete retained declaration spans.
 typedef _ArtboardBrushScope = ({Set<(String, String)> names, Set<String> artwork, List<({int start, int end})> ranges});

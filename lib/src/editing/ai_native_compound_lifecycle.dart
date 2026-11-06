@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Qualifies complete compound elements without interpreting their appearance.
 List<AiNativePathTopology> _nativeCompoundElements(AiNativeDrawing drawing, List<AiNativeItem> elements, {AiNativeGroup? compound, bool retainContourData = false}) {

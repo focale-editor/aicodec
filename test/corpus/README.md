@@ -1,4 +1,4 @@
-# AiCodec external corpus
+# IllustratorKit external corpus
 
 The manifests retain pinned source URLs, revisions, sizes, SHA-256 checksums,
 licensing and expected outcomes. The main manifest contains 40 fixtures.
@@ -52,7 +52,7 @@ git clone https://gitlab.com/inkscape/extras/extension-ai.git /tmp/extension-ai
 git -C /tmp/extension-ai checkout 1a5f42a0b0407fc869e032420570682048810108
 ```
 
-Keep it outside AiCodec. These optional checks need a Python environment with
+Keep it outside IllustratorKit. These optional checks need a Python environment with
 inkex, Pillow, lxml, pypdf 3.x and zstandard. The shape comparison also requires
 Inkscape on `PATH`. Neither the reader nor renderer is a runtime dependency.
 After `check_native_corpus.dart` has produced its report and native programs:
@@ -109,5 +109,5 @@ add `--verify-only` to avoid downloads. The general checkers above use
 Focale owns generation of native printing/PDF artwork and its independent export
 checks. The maintained command and its helper modules now live in the Focale
 repository at `tool/validation/verify_ai_documents/`. Its README documents fixture
-generation, dependencies and the single verification entry point. AiCodec does
+generation, dependencies and the single verification entry point. IllustratorKit does
 not require a Focale checkout for its own tests or corpus checks.

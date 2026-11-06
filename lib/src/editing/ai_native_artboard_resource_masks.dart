@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Checks flags and owned mask artwork without changing its linked coordinates.
 void _artboardOpacityMask(_ArtboardResourceInspection scope, AiNativeContainer source) {

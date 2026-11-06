@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Serializes explicit part data, delegating child ownership to the graph writer.
 Uint8List _createdNativeAppearancePart(

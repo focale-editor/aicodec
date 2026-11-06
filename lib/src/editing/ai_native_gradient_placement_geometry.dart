@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Rejects unrepresentable gradient coordinates before serialization.
 List<double> _placementFinite(List<double> values) {

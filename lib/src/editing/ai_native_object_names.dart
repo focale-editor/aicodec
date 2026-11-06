@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Writes qualified display-name fields while preserving all other metadata.
 List<AiSourceEdit> _nativeObjectNameEdits(AiNativeDrawing drawing, AiNativeObject object, List<int> value, int budget) {

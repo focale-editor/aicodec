@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Reads bounded numeric fields from the owning initial document header.
 Map<String, AiNativeHeaderField> _nativeNumericHeader(AiNativeRecords records, Set<String> fields) {

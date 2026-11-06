@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Reads linked-file placement syntax without resolving any external resource.
 List<AiNativePlacedObject> _readNativePlacements(AiNativeRecords records, bool bodyOnly) {

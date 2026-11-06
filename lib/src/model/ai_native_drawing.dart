@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// A version-selection boundary retained beside native drawing records.
 final class AiNativeVersionComment extends AiNativeItem {
@@ -492,7 +492,7 @@ final class AiNativeDrawing {
 
   /// Inserts a raster link, its optional preview and document file dependency.
   ///
-  /// Paths retain host-supplied bytes; AiCodec never opens the external file.
+  /// Paths retain host-supplied bytes; IllustratorKit never opens the external file.
   /// Placement uses the local downward-y rectangle and native drawing points.
   /// Parent selection and outgoing-state guarantees match [createRaster].
   AiNativeDrawing createPlacement({required AiNativePlacementDefinition definition, AiNativeGroup? parent, AiLayer? layer}) => _createNativePlacement(this, definition, parent, layer);

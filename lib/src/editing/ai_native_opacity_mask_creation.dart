@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Serializes local vector authoring without inventing resource identities.
 Uint8List _createdNativeLocalArtwork(AiNativeRecords records, List<AiNativeAppearanceElementDefinition> elements, bool private, {bool mask = false}) {

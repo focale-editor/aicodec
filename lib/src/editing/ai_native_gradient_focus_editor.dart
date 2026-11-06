@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Changes polar authoring values and redundant printing offsets together.
 AiNativeGradientResources _setNativeGradientFocus(AiNativeGradientResources resources, AiNativeGradientDefinition definition, double angle, double length) {

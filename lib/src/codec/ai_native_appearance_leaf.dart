@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Recognizes one complete native payload without accepting opaque commands.
 AiNativeAppearanceLeaf? _readNativeAppearanceLeaf(AiNativeDrawing drawing, AiNativeGroup group) => drawing._appearanceLeaves.putIfAbsent(group, () {

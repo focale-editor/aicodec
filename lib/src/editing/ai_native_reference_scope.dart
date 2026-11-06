@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Requires exact owned scalar schemas and delegates explicitly known structures.
 void _referenceFields(

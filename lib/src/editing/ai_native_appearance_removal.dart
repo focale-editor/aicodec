@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Retains observable boundary values without replaying deleted drawing scopes.
 ({List<int> bytes, _NativeSourceReplacement replacement}) _removedAppearanceState(

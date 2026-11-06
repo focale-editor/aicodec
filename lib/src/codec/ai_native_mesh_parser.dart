@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Finds explicit mesh packets without interpreting other drawing commands.
 List<AiNativeMesh> _readNativeMeshes(AiNativeRecords records, bool bodyOnly) {

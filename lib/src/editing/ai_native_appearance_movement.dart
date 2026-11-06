@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Rebinds inventory wrappers only through their exact immutable source handles.
 ({_NativeSubtreeSpan span, AiNativeStructureNode node}) _appearanceMovementAnchor(

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 import 'package:test/test.dart';
 import 'package:zcodec/zcodec.dart';
 
@@ -72,7 +72,7 @@ void main() {
       final AiNativeSource source = AiNativeData.extract(original).single;
       final AiProgram program = AiProgram.decode(bytes: source.bytes);
       final AiProgram changed = AiNativeEditor.updateLayer(program: program, layer: program.layers.single, name: 'Host-edited layer');
-      // The host supplies each page's appearance; AiCodec never interprets Xy.
+      // The host supplies each page's appearance; IllustratorKit never interprets Xy.
       final List<List<int>> appearances = [
         latin1.encode('0 0 0 1 k 0 0 m 10 0 l 10 10 20 10 20 0 c f'),
         latin1.encode('q 1 0 0 1 30 40 cm 0 0 0 1 k 0 0 m 10 0 l 10 10 20 10 20 0 c f Q'),

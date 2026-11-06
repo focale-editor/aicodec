@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Checks the observed CC raster-placement contract before source edits.
 void _validateRasterPlacement(AiNativePlacedObject object) {

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:aicodec/src/model/ai_document.dart';
+import 'package:illustratorkit/src/model/ai_document.dart';
 import 'package:pdfcore/pdfcore.dart';
 
 /// Opaque host authoring bound to a separately usable Illustrator/PDF document.

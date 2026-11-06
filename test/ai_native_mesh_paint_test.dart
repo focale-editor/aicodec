@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 import 'package:test/test.dart';
 
 /// Creates four adjacent cells with duplicated source corners and sharp handles.

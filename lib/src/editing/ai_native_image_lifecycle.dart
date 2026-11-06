@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Complete ordinary image boundaries and their retained instruction identities.
 typedef _NativeImageOwner = ({AiNativeItem image, AiNativeInstruction instruction, AiNativeContainer? dictionary, _NativeSubtreeSpan span});

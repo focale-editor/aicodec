@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Edits numeric geometry tokens while retaining colors and opaque byte layout.
 AiNativeMeshes _editMeshGeometry(AiNativeMeshes source, AiNativeMesh mesh, List<AiNativeMeshNodeGeometry> changes, AiBoundingBox bounds, {List<AiSourceEdit> auxiliary = const []}) {

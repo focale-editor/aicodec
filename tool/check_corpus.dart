@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aicodec/aicodec.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 
 /// Checks the explicitly downloaded corpus and emits files for independent QA.
 Future<void> main() async {

@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Embedded native raster samples with their original placement and source spans.
 final class AiNativeRaster extends AiNativeItem {

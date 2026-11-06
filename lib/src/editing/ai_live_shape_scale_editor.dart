@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Scales a native distance without silently overflowing or collapsing it.
 double _scaleNativeLength(double value, double factor) {

@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Checks finite portable coordinates before constructing any native edit.
 void _nativeArtboardCoordinates(Iterable<double> values) {

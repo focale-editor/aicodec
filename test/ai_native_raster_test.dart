@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 import 'package:test/test.dart';
 
 /// Builds a binary native raster independently of the decoder.

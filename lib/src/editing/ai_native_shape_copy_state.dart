@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Known values and unknown-value provenance for both source interpretations.
 typedef _NativeShapeInputs = ({

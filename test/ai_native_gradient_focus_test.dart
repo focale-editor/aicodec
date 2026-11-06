@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:aicodec/aicodec.dart';
 import 'package:checks/checks.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 import 'package:test/test.dart';
 
 /// A deliberately skewed radial placement with an off-origin center.

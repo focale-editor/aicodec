@@ -1,8 +1,8 @@
 # Illustrator technical reference
 
-This document describes how AiCodec represents Illustrator data, which structures it can edit and serialize, and what remains with the host application. Start with the [README](../README.md) for an introduction.
+This document describes how IllustratorKit represents Illustrator data, which structures it can edit and serialize, and what remains with the host application. Start with the [README](../README.md) for an introduction.
 
-AiCodec is a pure Dart format package. PdfCore handles PDF containers, ZCodec handles native compression, and PsCore supplies the Adobe text-engine grammar shared with PsdKit. Consumers normally import `package:aicodec/aicodec.dart`.
+IllustratorKit is a pure Dart format package. PdfCore handles PDF containers, ZCodec handles native compression, and PsCore supplies the Adobe text-engine grammar shared with PsdKit. Consumers normally import `package:illustratorkit/illustratorkit.dart`.
 
 ## Contents
 
@@ -32,10 +32,10 @@ AiCodec is a pure Dart format package. PdfCore handles PDF containers, ZCodec ha
 
 ## Package and host responsibilities
 
-AiCodec follows the PsdKit/Focale split: it owns native data, preservation and
+IllustratorKit follows the PsdKit/Focale split: it owns native data, preservation and
 serialization. The host owns the editing experience and the resulting appearance.
 
-| AiCodec | Host application |
+| IllustratorKit | Host application |
 | --- | --- |
 | Decode containers, native programs and metadata. | Map supported native data into its document model. |
 | Expose and edit qualified layers, paths, text, colors, meshes and resources. | Provide tools, selection, undo/redo and interactive rendering. |
@@ -43,7 +43,7 @@ serialization. The host owns the editing experience and the resulting appearance
 | Write supplied contours, text layouts, ramps, pixels and previews. | Shape text, manage color, evaluate effects and compose derived representations. |
 | Package edited native bytes with the supplied compatibility PDF. | Produce a matching PDF from the same immutable document revision. |
 
-AiCodec does not execute arbitrary PostScript, shape text, tessellate meshes or
+IllustratorKit does not execute arbitrary PostScript, shape text, tessellate meshes or
 render native artwork to PDF. Serialization does not depend on a rendering
 operator whitelist. A preserved record or PDF appearance is not evidence of
 native editability. Use the [capability report](#native-capability-reports) and
@@ -57,7 +57,7 @@ operation-specific contracts to decide which edits are safe.
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:aicodec/aicodec.dart';
+import 'package:illustratorkit/illustratorkit.dart';
 
 final Uint8List input = await File('input.ai').readAsBytes();
 final AiDocument document = const AiCodec().decode(input);
@@ -101,7 +101,7 @@ For PDF files, extraction follows catalog/page `PieceInfo → Illustrator → Pr
 
 Supported envelopes are plain `%!PS-Adobe-`, `%AI12_CompressedData` followed by zlib, and `%AI24_ZStandard_Data` followed by Zstandard. Split envelope markers are supported. Unknown blocks and private fields remain in the source graph. `AiNativeSource` retains immutable bytes, compression and catalog/page ownership; `asPostScript()` exposes the program without converting its native version. `AiNativeData.encodeEnvelope` encodes an explicitly selected compression family.
 
-Edits return new snapshots. Obtain layers, paths, frames, resources and other handles from the snapshot being edited; handles from an earlier or foreign snapshot are rejected. Reacquire handles after each edit. Unrelated source bytes are preserved according to the individual API's contract, rather than rebuilding an entire document from the subset of fields AiCodec understands.
+Edits return new snapshots. Obtain layers, paths, frames, resources and other handles from the snapshot being edited; handles from an earlier or foreign snapshot are rejected. Reacquire handles after each edit. Unrelated source bytes are preserved according to the individual API's contract, rather than rebuilding an entire document from the subset of fields IllustratorKit understands.
 
 `AiNativeEditor.apply` is a lower-level byte-edit API. It validates spans, overlap and output size, then reparses the result. Its caller owns semantic consistency between any dependent native records it changes.
 
@@ -179,7 +179,7 @@ AiPdfDocument renameFirstLayer({
 }
 ```
 
-This example requires one native source containing a layer. For visual edits, the host must supply the matching PDF and any required native printing data, text layouts, pixels or previews. The PDF must derive from the original graph and retain metadata references and owner mappings. AiCodec does not render the program or establish visual equivalence between supplied representations.
+This example requires one native source containing a layer. For visual edits, the host must supply the matching PDF and any required native printing data, text layouts, pixels or previews. The PDF must derive from the original graph and retain metadata references and owner mappings. IllustratorKit does not render the program or establish visual equivalence between supplied representations.
 
 For several independent programs, construct immutable `AiNativeReplacement(source: ..., program: ...)` entries and call `AiNativeData.replaceAll(replacements: ..., synchronizedPdf: ...)`. Every entry must originate from the same `AiDocument` snapshot. Shared owners are one entry; duplicate/overlapping entries reject. All replacement envelopes and aggregate byte limits are checked before a result is published. Unselected native programs remain unchanged.
 
@@ -246,7 +246,7 @@ revision. Cache invalidation is an intermediate state, not a complete save.
 | Embedded samples and linked previews | Supply decoded pixels and explicit color/alpha data. Relinking refreshes or removes the preview; geometry-only changes may retain unchanged samples. External files are never resolved implicitly. |
 | `AIMetaData` | Let the kit synchronize qualified full or font-filtered header caches. Unchanged headers may preserve unknown caches; changed ambiguous layouts reject. |
 | Native thumbnails | Replacement drops the selected program's old leading thumbnails. There is no qualified thumbnail-image writer; unselected programs retain theirs. |
-| PDF page thumbnails | Regenerate or remove affected `/Thumb` entries in the supplied PDF graph. AiCodec cannot infer visual changes from native owner indices. |
+| PDF page thumbnails | Regenerate or remove affected `/Thumb` entries in the supplied PDF graph. IllustratorKit cannot infer visual changes from native owner indices. |
 | XMP, fonts and linked resources | Update affected dependencies explicitly. Native placement identities do not imply an automatic XMP mapping; font programs and embedding belong to the host. |
 | Unknown derived payloads | Preserve them while dependencies are unchanged. Editing a dependency requires a qualified update or invalidation contract. |
 
@@ -414,7 +414,7 @@ Native and printing state are restored separately after the selected object;
 unknown outgoing values still needed by a neighbor reject atomically. Private or
 dynamic shapes, gradient owners, compound/clipping members and opaque metadata
 require their existing specialized APIs. The host supplies a matching PDF when
-saving; no renderer or color-space conversion runs in AiCodec.
+saving; no renderer or color-space conversion runs in IllustratorKit.
 
 `insertPaths(insertions:)` instead inserts `AiNativePathInsertion` geometry after anchors, inheriting each anchor's appearance and count convention. Equal-anchor requests retain input order. Inserting after a direct live shape creates a plain path without copying the native shape definition.
 
@@ -577,9 +577,9 @@ independent checks; no Illustrator exchange result is implied.
 
 Rounded shapes accept positive similarities with scaled radii. Nonuniform maps and reflections of rounded shapes require host-regenerated corners and parameters. Reflections require an explicit native winding flag except for lines. Existing frame angles are transformed from their saved first-axis direction; conflicting redundant frame values reject.
 
-`AiNativeParallelogram` exposes a center and two independent half-edge vectors in drawing space. `segments` supplies its four straight sides; `parameters(rulerOriginX:, rulerOriginY:)` supplies canvas-space `ai::Polygon` fields with `NumSides=4`, `IsRegular=false` and `Radius=-11`. The sentinel and irregular-polygon representation are observed in the pinned producer corpus (`simple_shapes.ai`, `simple_shapes_cc.ai`). AiCodec does not invent an `ai::Parallelogram` handler. `AiLiveShape.parallelogram` recognizes this geometry after reopening; other quadrilaterals and curved corners return null. A transformed rectangle becomes a polygon, so rectangle-specific corner controls are no longer retained.
+`AiNativeParallelogram` exposes a center and two independent half-edge vectors in drawing space. `segments` supplies its four straight sides; `parameters(rulerOriginX:, rulerOriginY:)` supplies canvas-space `ai::Polygon` fields with `NumSides=4`, `IsRegular=false` and `Radius=-11`. The sentinel and irregular-polygon representation are observed in the pinned producer corpus (`simple_shapes.ai`, `simple_shapes_cc.ai`). IllustratorKit does not invent an `ai::Parallelogram` handler. `AiLiveShape.parallelogram` recognizes this geometry after reopening; other quadrilaterals and curved corners return null. A transformed rectangle becomes a polygon, so rectangle-specific corner controls are no longer retained.
 
-`replaceLiveShapes(replacements:)` commits complete `AiNativeLiveShapeReplacement` values atomically: typed `AiNativeShapeParameters`, host-supplied authoring `segments`, complete CC `printing`, explicit nullable `rotationRadians` and ink `bounds`. `fromShape`/`copyWith` preserve known fields while modifying dimensions, corners, ellipse pie angles, polygon side counts, star point counts/radii or line length. The host regenerates matching geometry; AiCodec does not verify geometric or visual equivalence between independently supplied parameters, contours and printing artwork. The only family conversion is a sharp rectangle to the qualified parallelogram polygon; unknown fields and incompatible types reject.
+`replaceLiveShapes(replacements:)` commits complete `AiNativeLiveShapeReplacement` values atomically: typed `AiNativeShapeParameters`, host-supplied authoring `segments`, complete CC `printing`, explicit nullable `rotationRadians` and ink `bounds`. `fromShape`/`copyWith` preserve known fields while modifying dimensions, corners, ellipse pie angles, polygon side counts, star point counts/radii or line length. The host regenerates matching geometry; IllustratorKit does not verify geometric or visual equivalence between independently supplied parameters, contours and printing artwork. The only family conversion is a sharp rectangle to the qualified parallelogram polygon; unknown fields and incompatible types reject.
 
 Authoritative, redundant and saved alternative metadata are updated together, retaining qualifiers, identities and unrelated bytes. Existing parameter copies must agree. Counts retain closure conventions; printing groups retain outgoing state. Byte/token limits apply to the complete transaction. Saving uses `AiNativeData.replace` with the corresponding host PDF, as for other native edits.
 
@@ -706,7 +706,7 @@ final AiProgram changedProgram = changed.records.program;
 
 `replaceText` inherits character formatting at the insertion start, adjusts native paragraph runs at CR and U+0003 forced breaks, and preserves unrelated stories/resources. A forced break remains inside the same logical paragraph. LF input, malformed UTF-16, split surrogate pairs, removal of the terminal CR, active unsupported auxiliary features and unknown model/view dependencies reject.
 
-`setCharacterFeatures` accepts `AiNativeCharacterChanges` for a selected range: font, size, leading, scale, tracking, baseline, rotation, kerning mode and explicit OpenType switches/sets, plus the qualified text paints and strokes described below. Point size and `RefFontSize` change together; unresolved non-point reference modes and alternate-glyph dependencies reject relevant edits. `setParagraphFeatures` accepts `AiNativeParagraphChanges` for whole paragraphs touched by an end-exclusive selection, including their forced-break spans. Alignment, indents, spacing, hyphenation, direction and composer settings are stored data; AiCodec does not implement the selected compositor.
+`setCharacterFeatures` accepts `AiNativeCharacterChanges` for a selected range: font, size, leading, scale, tracking, baseline, rotation, kerning mode and explicit OpenType switches/sets, plus the qualified text paints and strokes described below. Point size and `RefFontSize` change together; unresolved non-point reference modes and alternate-glyph dependencies reject relevant edits. `setParagraphFeatures` accepts `AiNativeParagraphChanges` for whole paragraphs touched by an end-exclusive selection, including their forced-break spans. Alignment, indents, spacing, hyphenation, direction and composer settings are stored data; IllustratorKit does not implement the selected compositor.
 
 Both change models support `inherit` to remove local overrides without modifying named parent resources. Unknown style features survive qualified edits. Changed inline styles receive fresh identities when required; unchanged fragments retain theirs. `renameStyle` changes only a style's display name.
 
@@ -1187,7 +1187,7 @@ replacing its wrapper identity, style or mask. `AiNativeAppearanceTreeChange.lea
 does the same for a complete root leaf. Typed creation, tree reordering, movement
 and deletion use the existing complete-owner transactions, restoring native and
 printing boundary state and checking live-shape counts. The host still supplies
-complete printing bytes and a same-revision PDF; AiCodec adds no compositor.
+complete printing bytes and a same-revision PDF; IllustratorKit adds no compositor.
 
 Text uses the existing global ATE namespace. `createStory(appearanceParent:)`
 accepts one frame in an empty qualified private wrapper. Content/frame changes
@@ -1340,7 +1340,7 @@ For linear positional edits, existing cached `Bm` interval strips cannot be repa
 
 `updateSelected` isolates the style for the explicitly supplied users and changes only the chosen assignment. Another fill using the same gradient stays bound to its original resource. `updateShared` requires every user and printing owner. Complete printing groups, outgoing-state validation, resource-dependent expansion coverage, and native state checks remain mandatory. This also covers retained nested users under the existing appearance ownership contract. No visual correspondence between host groups and native gradient values is inferred.
 
-`AiNativeNamedColor` exposes five exact native layouts: legacy CMYK `x`/`X`, generic CMYK/RGB `Xx`/`XX` with selectors zero/one, named CMYK `Xs`/`XS`, and explicit CMYK+RGB `Xz`/`XZ` with selector one. `AiNativePaintAssignment.namedColor` retains component alternatives, raw name bytes and the native tint operand. Tint is not opacity; AiCodec neither inverts it nor converts components between profiles.
+`AiNativeNamedColor` exposes five exact native layouts: legacy CMYK `x`/`X`, generic CMYK/RGB `Xx`/`XX` with selectors zero/one, named CMYK `Xs`/`XS`, and explicit CMYK+RGB `Xz`/`XZ` with selector one. `AiNativePaintAssignment.namedColor` retains component alternatives, raw name bytes and the native tint operand. Tint is not opacity; IllustratorKit neither inverts it nor converts components between profiles.
 
 `AiNativePaintChange.namedColor` changes those literal components/tints in qualified active or simple appearances, retaining the source representation and ink name. Selected/shared use isolation and complete printing synchronization follow the same contract as process paints. This is broader named-paint editing, not a document-wide ink redefinition: unrelated same-name paints, ATE named colors, mesh ink declarations and external color-book records are not rewritten. Ink renaming and unsupported selectors reject.
 
@@ -1374,7 +1374,7 @@ edit opaque same-name references.
 
 `redefine(ink:, cmyk:, rgb:, gray:, ramps:, artwork:, retainedArtwork:)` changes every qualified
 alternative of one ink atomically. Supply the device alternatives required by the
-source; AiCodec does not convert between them. Original ink names, tint operands,
+source; IllustratorKit does not convert between them. Original ink names, tint operands,
 mesh tint order, geometry, object identities and unrelated ink values remain
 intact. Literal `CMYKCustomColor`/`RGBCustomColor` DSC declarations and continuation
 lines are synchronized without changing the document's ink-name list.
@@ -1421,7 +1421,7 @@ The [ink regressions](../test/ai_native_inks_test.dart) and related palette/grad
 
 Angles use degrees in −360..360; length and aspect ratio must be positive. Linear gradients require `originY: 0` and `aspectRatio: 1`: x origin and length are fractions of the shape's extent along the selected angle. Radial origins are measured from the center in fractions of width/height, with positive y down. Their radius is `length * sqrt((width * (originX - 0.5))² + (height * (originY - 0.5))²) / sqrt(2)`, before angle, aspect and retained object transform. Degenerate results reject.
 
-The operation requires the qualified CC clipped layout, resolved stroke state and consistent strip/cap coverage. Arbitrary affine paint changes, legacy placement layouts, plain-path selections and unresolved appearance graphs remain unsupported. Color management, ramp composition and PDF generation belong to the host; native gradient resource modeling and serialization belong to AiCodec.
+The operation requires the qualified CC clipped layout, resolved stroke state and consistent strip/cap coverage. Arbitrary affine paint changes, legacy placement layouts, plain-path selections and unresolved appearance graphs remain unsupported. Color management, ramp composition and PDF generation belong to the host; native gradient resource modeling and serialization belong to IllustratorKit.
 
 ### Gradient paints in appearance styles
 
@@ -1546,7 +1546,7 @@ of its authored symbol exports; these checks do not establish Illustrator accept
 
 `AiNativeAppearanceSymbolDefinition` writes a literal `/SymbolInstance` with one
 `/SymbolRef` and an explicit nonsingular six-component `/RTransformMatrix` inside
-a qualified appearance leaf. Names and matrices are immutable. AiCodec neither
+a qualified appearance leaf. Names and matrices are immutable. IllustratorKit neither
 expands the master nor derives printing: the host supplies the complete owner's
 printing bytes, bounds and synchronized PDF in the same save.
 
@@ -1665,12 +1665,12 @@ Local node edits retain the frame orientation unless a separate transform change
 `AiNativeMeshDefinition`: dimensions, uniquely indexed cells, cyclic nodes, colors,
 opacity and explicit weights. Four colored corners per cell and exact shared
 positions are required. `AiNativeMeshPatchDefinition.nativeParameters` carries an
-explicit numeric `/R` array, or null to omit it. AiCodec does not assign an assumed
+explicit numeric `/R` array, or null to omit it. IllustratorKit does not assign an assumed
 rotation or subdivision meaning to those values. `fromSource` constructors retain
 qualified node data and named inks without converting their tints. Unknown fields,
 reference-valued parameters and ambiguous parameter ownership reject replacement.
 Focale supplies explicit source-cell lineage when subdividing imported cells,
-including inherited numeric arrays for both descendants; AiCodec neither infers
+including inherited numeric arrays for both descendants; IllustratorKit neither infers
 that mapping nor interprets those values. Variable vertex opacity and one-cell
 axes use this existing native schema, with composition owned by Focale.
 
@@ -1844,7 +1844,7 @@ and fractional selectors reject instead of receiving defaults.
 
 Geometric filters precede paints; shadow/glow filters follow the painted input.
 Creation, selected rebinding, copy/removal and complete replacement use existing
-appearance transactions and host-supplied printing/PDF. AiCodec never evaluates an
+appearance transactions and host-supplied printing/PDF. IllustratorKit never evaluates an
 offset, approximates corner curves or rasterizes an effect. Recognizing these
 schemas does not qualify arbitrary effect ordering or prove Adobe recomposition.
 
@@ -1901,7 +1901,7 @@ Unknown records and unsupported layouts are retained when safe; edits reject dep
 
 ## Focale integration
 
-Focale uses AiCodec for new AI exports and source-preserving edits of imported AI
+Focale uses IllustratorKit for new AI exports and source-preserving edits of imported AI
 files. Its adapter supplies printing data and the compatibility PDF, then rebuilds
 bindings from the saved native snapshot. The table describes connected profiles;
 it does not extend the package contracts to every Illustrator producer or object.
@@ -1957,14 +1957,14 @@ nested snapshots on repeated saves. Project recovery preserves this baseline.
 Unchanged saves retain exact bytes. Source files imported only through PDF and
 page rasterization across preserved opaque native owners still reject.
 
-AiCodec only stores the bounded opaque stream and supplies binding bytes. It gains
+IllustratorKit only stores the bounded opaque stream and supplies binding bytes. It gains
 no rendering engine, project schema or host dependency. This mode covers retained
 Focale authoring and supplied appearances, not Adobe execution of equivalent
 effects. See the [snapshot storage contract](#opaque-host-authoring-snapshots).
 
 ## Safety and platform behavior
 
-AiCodec has no Flutter or native rendering dependency. File access, resource resolution, interactive tools and persistence belong to the application. Parsers and edits use immutable snapshots and explicit resource limits:
+IllustratorKit has no Flutter or native rendering dependency. File access, resource resolution, interactive tools and persistence belong to the application. Parsers and edits use immutable snapshots and explicit resource limits:
 
 | Policy | Default ceilings |
 | --- | --- |
@@ -1982,7 +1982,7 @@ Limits are checked before relevant allocation/output growth; they are not a whol
 
 Run the package's offline checks with `dart analyze`, `dart test` and `dart test --platform node`. The [external corpus guide](../test/corpus/README.md) contains the required generators, pinned fixture manifests and independent verification commands. Downloads and generated artwork remain ignored and excluded from publication; provenance and licensing stay in the manifests.
 
-Validation distinguishes native extraction, unchanged preservation, semantic edits and save/reopen behavior. Independent readers check source records and unselected data; external SVG rendering can additionally check qualified native geometry without adding a renderer to AiCodec. Host-supplied PDF/native save tests check that both representations survive; they cannot prove visual equivalence.
+Validation distinguishes native extraction, unchanged preservation, semantic edits and save/reopen behavior. Independent readers check source records and unselected data; external SVG rendering can additionally check qualified native geometry without adding a renderer to IllustratorKit. Host-supplied PDF/native save tests check that both representations survive; they cannot prove visual equivalence.
 
 Adobe Illustrator reopening remains unverified. The [Focale profile](#focale-integration)
 describes locally exercised host workflows; fixture counts do not measure general

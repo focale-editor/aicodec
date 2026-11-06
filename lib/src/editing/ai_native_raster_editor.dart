@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Rewrites both image placement matrices while preserving all sample bytes.
 AiNativeRasters _translateNativeRasters(AiNativeRasters source, List<AiNativeRaster> images, double deltaX, double deltaY) {

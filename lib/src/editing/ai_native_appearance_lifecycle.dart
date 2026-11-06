@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Writes an entirely authored execution tree using the existing part grammar.
 Uint8List _newNativeAppearanceExecution(AiNativeAppearancePartDefinition definition, AiNativeLimits limits) {

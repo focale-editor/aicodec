@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Changes explicit native coordinates or weights of one source node occurrence.
 ///
@@ -157,7 +157,7 @@ final class AiNativeMeshPatchDefinition {
   /// Explicit numeric `/R` payload, or null to omit that field.
   ///
   /// This is retained native data, not an inferred rotation or subdivision rule.
-  /// The host supplies it with the new topology; AiCodec does not interpolate it.
+  /// The host supplies it with the new topology; IllustratorKit does not interpolate it.
   final List<double>? nativeParameters;
 
   /// Captures a complete patch without synthesizing any omitted native fields.

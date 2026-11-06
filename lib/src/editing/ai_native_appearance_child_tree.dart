@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Revises complete private trees with retained source and explicit new children.
 AiNativeAppearances _replaceNativeAppearanceTrees(

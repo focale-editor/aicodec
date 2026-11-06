@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Plans synchronized edits against one immutable authoring snapshot.
 final class _LiveShapeEditor {

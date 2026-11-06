@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Collects named applications from source-owned commands without scanning bytes.
 List<AiNativeInstruction> _nativeInkPaints(AiNativeAppearances model) => {

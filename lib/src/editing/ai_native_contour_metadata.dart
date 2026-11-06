@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Import provenance and export preferences that do not define native contours.
 const Set<String> _nativeSvgDocumentAttributes = {

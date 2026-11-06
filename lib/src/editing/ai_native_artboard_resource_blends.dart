@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Retained endpoint annotations whose identities belong to one local group.
 const Set<String> _artboardResourceBlendFields = {'ShapeBlendPathType', 'ShapeBlendPathID', 'ShapeBlendMatchToBefore', 'ShapeBlendMatchToAfter'};

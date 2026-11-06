@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:aicodec/src/model/ai_document.dart';
+import 'package:illustratorkit/src/model/ai_document.dart';
 import 'package:pdfcore/pdfcore.dart';
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';

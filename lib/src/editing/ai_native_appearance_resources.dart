@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Keeps literal pattern references separate from process-paint assignments.
 Iterable<AiNativeInstruction> _nativeAppearancePatternPaints(AiNativeAppearance style) => [

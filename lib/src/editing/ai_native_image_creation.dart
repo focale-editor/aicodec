@@ -1,4 +1,4 @@
-part of 'package:aicodec/src/model/ai_native_records.dart';
+part of 'package:illustratorkit/src/model/ai_native_records.dart';
 
 /// Validates portable nonsingular placement and computes exact corner bounds.
 AiBoundingBox _nativeImageBounds(List<double> matrix, List<double> local) {
