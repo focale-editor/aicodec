@@ -15,10 +15,6 @@ It is written in pure Dart, with no Flutter or native rendering dependency.
 PdfCore handles the PDF container, ZCodec handles native compression, and PsCore
 supplies the Adobe text-engine grammar shared with PsdKit.
 
-IllustratorKit replaces the `aicodec` package. Update the dependency to
-`illustratorkit` and imports to `package:illustratorkit/illustratorkit.dart`.
-Public types such as `AiCodec` and `AiDocument` remain unchanged.
-
 ## Supported data
 
 - PDF-backed Illustrator containers and legacy PostScript documents.
