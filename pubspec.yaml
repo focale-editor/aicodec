@@ -19,10 +19,10 @@ environment:
   sdk: '>=3.13.0 <4.0.0'
 
 dependencies:
-  pdfcore: ^0.1.0
-  pscore: ^0.2.2
+  pdfcore: '>=0.1.0 <0.2.0'
+  pscore: '>=0.2.2 <0.3.0'
   xml: ^7.0.1
-  zcodec: '>=0.2.6 <3.0.0'
+  zcodec: '>=0.2.6 <0.3.0'
 
 dev_dependencies:
   checks: ^0.3.2
