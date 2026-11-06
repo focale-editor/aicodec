@@ -1,5 +1,10 @@
 # 📰 IllustratorKit changelog
 
+## v0.1.1
+Released on November 6, 2026.
+
+* **DOCS**: Updated README. ([#4c78bbb](https://github.com/focale-editor/illustratorkit/commit/4c78bbb))
+
 ## v0.1.0
 Released on November 6, 2026.
 
