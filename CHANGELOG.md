@@ -1,5 +1,10 @@
 # 📰 IllustratorKit changelog
 
+## v0.1.2
+Released on November 6, 2026.
+
+No release note found for this version.
+
 ## v0.1.1
 Released on November 6, 2026.
 
